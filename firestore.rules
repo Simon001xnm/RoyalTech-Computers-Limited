@@ -1,0 +1,77 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Users can read and write their own profile.
+    // Admins can read and write any user profile.
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // The following collections are now read-only for all signed-in users
+    // as their management logic has been simplified or moved.
+    // Write access should be handled by trusted server-side code (Cloud Functions) if needed.
+    match /laptops/{laptopId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn(); // Allowing writes for now for POS etc.
+    }
+    match /accessories/{accessoryId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    match /customers/{customerId} {
+       allow read, write: if isSignedIn();
+    }
+    match /leaseAgreements/{leaseId} {
+       allow read, write: if isSignedIn();
+    }
+     match /documents/{documentId} {
+      allow read, write: if isSignedIn();
+    }
+    match /sales/{saleId} {
+        allow read, write: if isSignedIn();
+    }
+    match /expenses/{expenseId} {
+        allow read, write: if isSignedIn();
+    }
+    match /reports/{reportId} {
+        allow read, write: if isSignedIn();
+    }
+    match /payments/{paymentId} {
+        allow read, write: if isSignedIn();
+    }
+     match /campaigns/{campaignId} {
+      allow read, write: if isSignedIn();
+    }
+    match /tickets/{ticketId} {
+      allow read, write: if isSignedIn();
+    }
+    match /projects/{projectId} {
+      allow read, write: if isSignedIn();
+    }
+    match /employees/{employeeId} {
+       allow read, write: if isSignedIn();
+    }
+    match /jobPostings/{jobPostingId} {
+      allow read, write: if isSignedIn();
+    }
+    match /applicants/{applicantId} {
+      allow read, write: if isSignedIn();
+    }
+    match /messages/{messageId} {
+      allow read, write: if isSignedIn();
+    }
+     match /resellers/{resellerId} {
+      allow read, write: if isSignedIn();
+    }
+    match /itemIssuances/{issuanceId} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}

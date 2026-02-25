@@ -1,0 +1,134 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+@layer base {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  
+  :root {
+    --background: 0 0% 96.1%; /* Light grey (#F5F5F5) */
+    --foreground: 210 29% 24%; /* Dark blue (#2c3e50) */
+
+    --muted: 0 0% 90%;
+    --muted-foreground: 210 29% 35%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 29% 24%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 29% 24%;
+
+    --border: 0 0% 85%;
+    --input: 0 0% 85%;
+
+    --primary: 220 40% 30%; /* Dark Navy Blue */
+    --primary-foreground: 0 0% 100%; /* White text on navy */
+
+    --secondary: 210 40% 95%; /* Lighter grey for secondary elements */
+    --secondary-foreground: 210 29% 24%; /* Dark blue */
+    
+    --accent: 220 40% 30%; /* Dark Navy Blue */
+    --accent-foreground: 0 0% 100%; /* White text on navy */
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --ring: 220 40% 30%; /* Dark Navy Blue for focus rings */
+    --radius: 0.5rem;
+
+    --chart-1: 220 40% 30%; /* Dark Navy Blue */
+    --chart-2: 210 29% 44%; /* Darker Blue */
+    --chart-3: 220 50% 60%; /* Lighter Navy */
+    --chart-4: 210 20% 60%; /* Lighter Blue */
+    --chart-5: 0 0% 60%; /* Grey */
+
+    --sidebar-background: 210 29% 18%; /* Darker blue for sidebar */
+    --sidebar-foreground: 0 0% 90%; /* Light grey/white text */
+    --sidebar-primary: 220 40% 40%; /* Lighter Navy */
+    --sidebar-primary-foreground: 0 0% 100%; /* White */
+    --sidebar-accent: 210 29% 25%; /* Slightly lighter dark blue for hover */
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 210 29% 22%;
+    --sidebar-ring: 220 40% 40%;
+  }
+
+  .dark {
+    --background: 210 29% 12%; /* Very Dark blue */
+    --foreground: 0 0% 90%; /* Light grey text */
+
+    --muted: 210 29% 18%;
+    --muted-foreground: 0 0% 70%;
+
+    --popover: 210 29% 8%;
+    --popover-foreground: 0 0% 90%;
+
+    --card: 210 29% 8%;
+    --card-foreground: 0 0% 90%;
+
+    --border: 210 29% 22%;
+    --input: 210 29% 22%;
+
+    --primary: 220 40% 50%; /* Brighter Navy Blue for dark mode */
+    --primary-foreground: 0 0% 10%; 
+
+    --secondary: 210 29% 22%; 
+    --secondary-foreground: 0 0% 90%;
+    
+    --accent: 220 40% 50%;
+    --accent-foreground: 0 0% 10%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --ring: 220 40% 50%;
+    
+    --chart-1: 220 40% 50%;
+    --chart-2: 210 29% 60%;
+    --chart-3: 220 50% 70%;
+    --chart-4: 210 20% 75%;
+    --chart-5: 0 0% 70%;
+
+    --sidebar-background: 0 0% 8%; 
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 220 40% 50%; 
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 0 0% 12%;
+    --sidebar-ring: 220 40% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+@media print {
+  body {
+    background: white;
+  }
+  .print-container {
+      margin: 0;
+      padding: 0;
+      border: none;
+      box-shadow: none;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

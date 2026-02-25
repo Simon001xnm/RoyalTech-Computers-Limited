@@ -1,0 +1,219 @@
+
+"use client";
+
+import { useState, useMemo } from "react";
+import type { Applicant, JobPosting } from "@/types";
+import { Button } from "@/components/ui/button";
+import { PlusCircle, UserPlus } from "lucide-react";
+import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, doc } from "firebase/firestore";
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type PaginationState,
+} from "@tanstack/react-table";
+import { getApplicantColumns, type ApplicantColumnActions } from "./applicant-columns";
+import { ApplicantForm } from "./applicant-form";
+import { Input } from "@/components/ui/input";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+
+export function ApplicantList() {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const { user, isUserLoading } = useUser();
+
+    const applicantsCollection = useMemoFirebase(() => user ? collection(firestore, 'applicants') : null, [firestore, user]);
+    const { data: applicants, isLoading: isLoadingApplicants } = useCollection<Applicant>(applicantsCollection);
+    
+    const postingsCollection = useMemoFirebase(() => user ? collection(firestore, 'jobPostings') : null, [firestore, user]);
+    const { data: postings, isLoading: isLoadingPostings } = useCollection<JobPosting>(postingsCollection);
+
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingApplicant, setEditingApplicant] = useState<Applicant | null>(null);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [applicantToDelete, setApplicantToDelete] = useState<Applicant | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [pagination, setPagination] = useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: 10,
+    });
+    
+    const isLoading = isUserLoading || isLoadingApplicants || isLoadingPostings;
+    
+    const filteredApplicants = useMemo(() => {
+        if (!applicants) return [];
+        return applicants.filter(applicant =>
+            applicant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            applicant.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [applicants, searchTerm]);
+
+    const handleAddApplicant = () => {
+        setEditingApplicant(null);
+        setIsFormOpen(true);
+    };
+
+    const handleEditApplicant = (applicant: Applicant) => {
+        setEditingApplicant(applicant);
+        setIsFormOpen(true);
+    };
+
+    const handleDeleteApplicant = (applicant: Applicant) => {
+        setApplicantToDelete(applicant);
+        setIsDeleteConfirmOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (applicantToDelete) {
+            deleteDocumentNonBlocking(doc(firestore, 'applicants', applicantToDelete.id));
+            toast({ title: "Applicant Record Deleted", description: `The record for "${applicantToDelete.name}" has been removed.` });
+        }
+        setIsDeleteConfirmOpen(false);
+    };
+    
+    const handleFormSubmit = (data: any) => {
+        const selectedPosting = postings?.find(p => p.id === data.jobId);
+        const applicantData = { ...data, jobTitle: selectedPosting?.title };
+
+        if (editingApplicant) {
+            setDocumentNonBlocking(doc(firestore, 'applicants', editingApplicant.id), applicantData, { merge: true });
+            toast({ title: "Applicant Record Updated" });
+        } else {
+            addDocumentNonBlocking(collection(firestore, 'applicants'), { ...applicantData, appliedAt: new Date().toISOString() });
+            toast({ title: "Applicant Added" });
+        }
+        setIsFormOpen(false);
+        setEditingApplicant(null);
+    };
+
+    const columnActions: ApplicantColumnActions = {
+        onEdit: handleEditApplicant,
+        onDelete: handleDeleteApplicant,
+    };
+
+    const columns = useMemo<ColumnDef<Applicant, any>[]>(() => getApplicantColumns(columnActions), [columnActions]);
+
+    const table = useReactTable({
+        data: filteredApplicants,
+        columns,
+        state: {
+          pagination,
+        },
+        onPaginationChange: setPagination,
+        getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+    });
+    
+    return (
+        <Card>
+            <CardHeader>
+                 <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Applicants</CardTitle>
+                        <CardDescription>View and manage all job applicants.</CardDescription>
+                    </div>
+                    <Button onClick={handleAddApplicant}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Applicant
+                    </Button>
+                </div>
+                 <Input
+                  placeholder="Search by name or job title..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="max-w-sm"
+                />
+            </CardHeader>
+            <CardContent>
+                 {isLoading && <p>Loading applicants...</p>}
+                {!isLoading && applicants?.length === 0 && (
+                    <Alert>
+                        <UserPlus className="h-4 w-4" />
+                        <AlertTitle>No Applicants Found</AlertTitle>
+                        <AlertDescription>Click "Add Applicant" to create your first candidate record.</AlertDescription>
+                    </Alert>
+                )}
+                 {!isLoading && applicants && applicants.length > 0 && (
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                {table.getHeaderGroups().map(headerGroup => (
+                                    <TableRow key={headerGroup.id}>
+                                        {headerGroup.headers.map(header => (
+                                            <TableHead key={header.id}>
+                                                {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                                            </TableHead>
+                                        ))}
+                                    </TableRow>
+                                ))}
+                            </TableHeader>
+                            <TableBody>
+                                {table.getRowModel().rows.length ? (
+                                    table.getRowModel().rows.map(row => (
+                                        <TableRow key={row.id}>
+                                            {row.getVisibleCells().map(cell => (
+                                                <TableCell key={cell.id}>
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={columns.length} className="h-24 text-center">No results found.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                         <DataTablePagination table={table} />
+                    </div>
+                )}
+            </CardContent>
+
+             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{editingApplicant ? "Edit Applicant Record" : "Add New Applicant"}</DialogTitle>
+                    </DialogHeader>
+                    <ApplicantForm
+                        applicant={editingApplicant}
+                        jobPostings={postings?.filter(p => p.status === 'Open') || []}
+                        onSubmit={handleFormSubmit}
+                        onCancel={() => setIsFormOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm Deletion</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete the record for <strong>{applicantToDelete?.name}</strong>?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
+                        <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </Card>
+    );
+}
