@@ -1,17 +1,16 @@
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Sale, Expense } from '@/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, DollarSign, TrendingDown, ChevronsRight, FileText } from 'lucide-react';
+import { PlusCircle, DollarSign, TrendingDown, ChevronsRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, Timestamp } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { TransactionForm } from './transaction-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
@@ -23,22 +22,38 @@ export function AccountingClient() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
 
-  const { start, end } = useMemo(() => {
+  // Set date range on mount to avoid hydration mismatch
+  useEffect(() => {
     const now = new Date();
-    return {
-      start: startOfMonth(now),
-      end: endOfMonth(now),
-    };
+    setDateRange({
+      start: startOfMonth(now).toISOString(),
+      end: endOfMonth(now).toISOString(),
+    });
   }, []);
 
-  const salesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'sales'), where('date', '>=', start.toISOString()), where('date', '<=', end.toISOString())) : null, [firestore, user, start, end]);
+  const salesQuery = useMemoFirebase(() => {
+    if (!user || !dateRange) return null;
+    return query(
+      collection(firestore, 'sales'), 
+      where('date', '>=', dateRange.start), 
+      where('date', '<=', dateRange.end)
+    );
+  }, [firestore, user, dateRange]);
   const { data: sales, isLoading: salesLoading } = useCollection<Sale>(salesQuery);
   
-  const expensesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'expenses'), where('date', '>=', start.toISOString()), where('date', '<=', end.toISOString())) : null, [firestore, user, start, end]);
+  const expensesQuery = useMemoFirebase(() => {
+    if (!user || !dateRange) return null;
+    return query(
+      collection(firestore, 'expenses'), 
+      where('date', '>=', dateRange.start), 
+      where('date', '<=', dateRange.end)
+    );
+  }, [firestore, user, dateRange]);
   const { data: expenses, isLoading: expensesLoading } = useCollection<Expense>(expensesQuery);
   
-  const isLoading = isUserLoading || salesLoading || expensesLoading;
+  const isLoading = isUserLoading || salesLoading || expensesLoading || !dateRange;
 
   const { totalSales, totalCogs, totalExpenses, netProfit } = useMemo(() => {
     const totalSales = sales?.reduce((sum, s) => sum + s.amount, 0) ?? 0;
@@ -65,10 +80,10 @@ export function AccountingClient() {
 
   if (isLoading) {
     return (
-      <>
+      <div className="space-y-6">
         <PageHeader title="Accounting" description="Manage your sales, expenses, and financial health." />
-        <p>Loading financial data for {format(new Date(), 'MMMM yyyy')}...</p>
-      </>
+        <p className="p-4 text-muted-foreground">Loading financial data...</p>
+      </div>
     );
   }
 
@@ -122,7 +137,7 @@ export function AccountingClient() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                     No transactions recorded for this month yet.
                   </TableCell>
                 </TableRow>

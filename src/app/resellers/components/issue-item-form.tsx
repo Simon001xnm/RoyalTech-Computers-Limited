@@ -35,8 +35,10 @@ export function IssueItemForm({ availableItems, onSubmit, onCancel }: IssueItemF
         const searchLower = search.toLowerCase();
 
         return unselectedItems.filter(item => {
-            // TypeScript now correctly narrows 'item' based on the 'type' property
-            const displayName = item.type === 'laptop' ? item.model : item.name;
+            // Using Option B: Bulletproof property check for 'model' vs 'name'
+            const displayName = (item.type === 'laptop' && 'model' in item) 
+                ? item.model 
+                : ('name' in item ? item.name : 'Unknown Item');
             
             return displayName.toLowerCase().includes(searchLower) ||
                    item.serialNumber.toLowerCase().includes(searchLower);
@@ -61,7 +63,11 @@ export function IssueItemForm({ availableItems, onSubmit, onCancel }: IssueItemF
     };
 
     const renderItem = (item: Item, action: 'add' | 'remove') => {
-        const displayName = item.type === 'laptop' ? item.model : item.name;
+        // Using Option B: Bulletproof property check
+        const displayName = (item.type === 'laptop' && 'model' in item) 
+            ? item.model 
+            : ('name' in item ? item.name : 'Unknown Item');
+
         return (
             <div key={item.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md">
                 <div className="flex items-center gap-3">
@@ -87,7 +93,6 @@ export function IssueItemForm({ availableItems, onSubmit, onCancel }: IssueItemF
     return (
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Available Items Pane */}
                 <div className="space-y-2">
                     <h3 className="text-lg font-medium">Available Items</h3>
                     <Input 
@@ -106,7 +111,6 @@ export function IssueItemForm({ availableItems, onSubmit, onCancel }: IssueItemF
                     </ScrollArea>
                 </div>
 
-                {/* Selected Items Pane (Cart) */}
                  <div className="space-y-2">
                     <h3 className="text-lg font-medium flex items-center">
                         <ShoppingCart className="h-5 w-5 mr-2" />

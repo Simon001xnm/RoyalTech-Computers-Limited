@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -46,7 +45,7 @@ export interface FirebaseServicesAndUser {
 }
 
 // Return type for useUser() - specific to user auth state
-export interface UserHookResult { // Renamed from UserAuthHookResult for consistency if desired, or keep as UserAuthHookResult
+export interface UserHookResult { 
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
@@ -82,49 +81,45 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       async (firebaseUser) => {
         if (firebaseUser) {
           // Force a refresh of the ID token to ensure custom claims are present.
-          await firebaseUser.getIdToken(true);
+          try {
+            await firebaseUser.getIdToken(true);
+          } catch (e) {
+            console.warn("Failed to force token refresh:", e);
+          }
           
-          // Ensure a user document exists. This also serves as a "health check"
-          // to confirm the auth token is ready for Firestore operations.
+          // Ensure a user document exists.
           const userDocRef = doc(firestore, 'users', firebaseUser.uid);
           try {
             const docSnap = await getDoc(userDocRef);
             if (!docSnap.exists()) {
-              // The document doesn't exist, so let's create it.
-              // This is a fallback for users created directly in Auth console
-              // or if the client-side creation in signup fails after Auth creation.
               await setDoc(userDocRef, {
                 id: firebaseUser.uid,
                 email: firebaseUser.email || `user-${firebaseUser.uid}@example.com`,
                 name: firebaseUser.displayName || 'New User',
-                role: 'user', // Default all fallback creations to 'user' role
+                role: 'user',
               });
             }
           } catch (error: any) {
-            // If this initial read/write fails, it could be a critical permission issue.
             const contextualError = new FirestorePermissionError({
-              operation: 'get', // The initial operation that failed was likely a 'get'
+              operation: 'get',
               path: `users/${firebaseUser.uid}`,
             });
-            // Emit the error for the global boundary and also update the local state.
             errorEmitter.emit('permission-error', contextualError);
             setUserAuthState({ user: null, isUserLoading: false, userError: contextualError });
-            return; // Stop further processing for this user
+            return;
           }
         }
-        // If all checks pass, set the user state and mark loading as complete.
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
-      (error) => { // This is the error callback for the listener itself
+      (error) => {
         console.error("FirebaseProvider: onIdTokenChanged listener error:", error);
         setUserAuthState({ user: null, isUserLoading: false, userError: error });
       }
     );
     
-    return () => unsubscribe(); // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, [auth, firestore]);
 
-  // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);
     return {
@@ -148,7 +143,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
 /**
  * Hook to access core Firebase services and user authentication state.
- * Throws error if core services are not available or used outside provider.
  */
 export const useFirebase = (): FirebaseServicesAndUser => {
   const context = useContext(FirebaseContext);
@@ -158,12 +152,7 @@ export const useFirebase = (): FirebaseServicesAndUser => {
   }
 
   if (!context.areServicesAvailable || !context.firebaseApp || !context.firestore || !context.auth) {
-    throw new Error('Firebase core services not available. Check FirebaseProvider props.');
-  }
-
-  // If there was an error during user loading, throw it to be caught by an error boundary.
-  if (context.userError) {
-      throw context.userError;
+    throw new Error('Firebase core services not available.');
   }
 
   return {
@@ -207,16 +196,11 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
 
 /**
  * Hook specifically for accessing the authenticated user's state.
- * This provides the User object, loading status, and any auth errors.
- * @returns {UserHookResult} Object with user, isUserLoading, userError.
  */
-export const useUser = (): UserHookResult => { // Renamed from useAuthUser
+export const useUser = (): UserHookResult => {
   const context = useContext(FirebaseContext);
    if (context === undefined) {
     throw new Error('useUser must be used within a FirebaseProvider.');
-  }
-   if (context.userError) {
-      throw context.userError;
   }
   return { user: context.user, isUserLoading: context.isUserLoading, userError: context.userError };
 };

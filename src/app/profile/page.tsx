@@ -1,4 +1,3 @@
-
 'use client';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,10 +23,10 @@ export default function ProfilePage() {
   const { toast } = useToast();
 
   // Profile fields state
-  const [displayName, setDisplayName] = useState("Loading...");
-  const [email, setEmail] = useState("loading...");
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState<AppUser['role']>("user");
-  const [joinDate, setJoinDate] = useState(new Date().toISOString());
+  const [joinDate, setJoinDate] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
   // Password fields state
@@ -124,7 +123,6 @@ export default function ProfilePage() {
                 firestoreUpdateData.email = email; // update email in firestore too
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Email Update Failed', description: `Could not update email. ${error.message}` });
-                // Do not proceed with other saves if email change fails
                 return;
             }
         } else if (passwordForEmailChange === null) {
@@ -150,11 +148,11 @@ export default function ProfilePage() {
     }
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || !displayName) {
     return (
        <div className="space-y-6">
         <PageHeader title="User Profile" description="Manage your personal information and settings." />
-        <p>Loading profile...</p>
+        <p className="p-4 text-muted-foreground">Loading profile...</p>
       </div>
     )
   }
@@ -201,7 +199,9 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-1">
                 <Label htmlFor="joinDate">Member Since</Label>
-                <p id="joinDate" className="text-sm text-muted-foreground pt-2">{new Date(joinDate).toLocaleDateString()}</p>
+                <p id="joinDate" className="text-sm text-muted-foreground pt-2">
+                  {joinDate ? new Date(joinDate).toLocaleDateString() : 'N/A'}
+                </p>
             </div>
           </div>
            <div className="flex justify-end pt-4">
