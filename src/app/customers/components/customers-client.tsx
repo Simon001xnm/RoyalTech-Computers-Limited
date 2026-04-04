@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -36,12 +35,9 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc } from "firebase/firestore";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-
 
 export function CustomersClient() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,12 +52,9 @@ export function CustomersClient() {
     pageSize: 10,
   });
 
-  const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
-  const customersCollection = useMemoFirebase(() => user ? collection(firestore, 'customers') : null, [firestore, user]);
-  const { data: customers, isLoading: customersLoading } = useCollection<Customer>(customersCollection);
-
-  const isLoading = isUserLoading || customersLoading;
+  // DEXIE LOCAL QUERY
+  const customers = useLiveQuery(() => db.customers.toArray());
+  const isLoading = customers === undefined;
 
   const filteredCustomers = useMemo(() => {
     if (!customers) return [];
@@ -86,45 +79,39 @@ export function CustomersClient() {
     setIsDeleteConfirmOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (customerToDelete) {
-      const docRef = doc(firestore, 'customers', customerToDelete.id);
-      deleteDocumentNonBlocking(docRef);
+      await db.customers.delete(customerToDelete.id);
       toast({ title: "Customer Deleted", description: `${customerToDelete.name} has been removed.` });
       setCustomerToDelete(null);
     }
     setIsDeleteConfirmOpen(false);
   };
 
-  const handleFormSubmit = (data: any) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
-        return;
-    }
-    const auditInfo = {
-        uid: user.uid,
-        name: user.displayName || user.email || (user.isAnonymous ? 'Anonymous User' : 'System'),
+  const handleFormSubmit = async (data: any) => {
+    const customerData: Customer = {
+      ...data,
+      id: editingCustomer?.id || crypto.randomUUID(),
+      updatedAt: new Date().toISOString()
     };
 
-    if (editingCustomer) {
-      const docRef = doc(firestore, 'customers', editingCustomer.id);
-      setDocumentNonBlocking(docRef, { 
-        ...data, 
-        updatedAt: new Date().toISOString(),
-        lastModifiedBy: auditInfo 
-      }, { merge: true });
-      toast({ title: "Customer Updated", description: `${data.name} has been updated.`});
-    } else {
-      addDocumentNonBlocking(collection(firestore, 'customers'), { 
-        ...data, 
-        registrationDate: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        createdBy: auditInfo
-      });
-      toast({ title: "Customer Added", description: `${data.name} has been added.`});
+    try {
+        if (editingCustomer) {
+            await db.customers.put(customerData);
+            toast({ title: "Customer Updated" });
+        } else {
+            await db.customers.add({ 
+                ...customerData, 
+                registrationDate: new Date().toISOString(),
+                createdAt: new Date().toISOString() 
+            });
+            toast({ title: "Customer Added" });
+        }
+        setIsFormOpen(false);
+        setEditingCustomer(null);
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save customer.' });
     }
-    setIsFormOpen(false);
-    setEditingCustomer(null);
   };
 
   const columnActions: CustomerColumnActions = {
@@ -151,8 +138,8 @@ export function CustomersClient() {
   return (
     <>
       <PageHeader
-        title="Customer Management"
-        description="Manage your customer records."
+        title="Customer Management (Local)"
+        description="Manage your customer records stored on this device."
         actionLabel="Add New Customer"
         onAction={handleAddCustomer}
         ActionIcon={PlusCircle}
@@ -167,14 +154,14 @@ export function CustomersClient() {
         />
       </div>
       
-      {isLoading && <p>Loading customers...</p>}
+      {isLoading && <p>Loading customers from local storage...</p>}
 
       {!isLoading && filteredCustomers.length === 0 && searchTerm && (
         <Alert variant="default" className="mb-4 bg-card">
           <UserX className="h-4 w-4" />
           <AlertTitle>No Customers Found</AlertTitle>
           <AlertDescription>
-            Your search for "{searchTerm}" did not match any customers. Try a different term or add a new customer.
+            Your search for "{searchTerm}" did not match any records.
           </AlertDescription>
         </Alert>
       )}
@@ -184,7 +171,7 @@ export function CustomersClient() {
           <Users className="h-4 w-4" />
           <AlertTitle>No Customers Yet</AlertTitle>
           <AlertDescription>
-            There are currently no customers in your records. Click "Add New Customer" to get started.
+            Click "Add New Customer" to start your local database.
           </AlertDescription>
         </Alert>
       )}
@@ -225,7 +212,7 @@ export function CustomersClient() {
               ) : (
                  <TableRow>
                   <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results for the current filter.
+                    No results.
                   </TableCell>
                 </TableRow>
               )}
@@ -239,9 +226,6 @@ export function CustomersClient() {
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingCustomer ? "Edit Customer" : "Add New Customer"}</DialogTitle>
-            <DialogDescription>
-              {editingCustomer ? "Update the details of the existing customer." : "Fill in the details to add a new customer."}
-            </DialogDescription>
           </DialogHeader>
           <CustomerForm
             customer={editingCustomer}
@@ -256,7 +240,7 @@ export function CustomersClient() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the customer: <strong>{customerToDelete?.name}</strong>? This action cannot be undone.
+              Are you sure you want to delete <strong>{customerToDelete?.name}</strong>?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
