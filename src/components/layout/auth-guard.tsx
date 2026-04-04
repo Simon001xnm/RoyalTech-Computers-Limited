@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useUser, useAuth } from '@/firebase/provider';
+import { useUser, useAuth, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarSeparator, SidebarTrigger } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { APP_NAME } from '@/lib/constants';
@@ -13,6 +13,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { LogOut, Settings, User } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { doc, onSnapshot } from 'firebase/firestore';
+import type { User as AppUser } from '@/types';
 
 
 const LOADING_SCREEN = (
@@ -27,6 +29,25 @@ const PUBLIC_PATHS = ['/login', '/signup'];
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     const { user } = useUser();
     const auth = useAuth();
+    const firestore = useFirestore();
+    const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+
+    useEffect(() => {
+      if (user) {
+        setProfileAvatar(user.photoURL);
+        const userRef = doc(firestore, 'users', user.uid);
+        const unsub = onSnapshot(userRef, (doc) => {
+          if (doc.exists()) {
+            const userData = doc.data() as AppUser;
+            if (userData.avatarUrl) {
+              setProfileAvatar(userData.avatarUrl);
+            }
+          }
+        });
+        return () => unsub();
+      }
+    }, [user, firestore]);
+
     const handleLogout = () => {
         auth.signOut();
     };
@@ -70,7 +91,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10 border border-border">
-                      <AvatarImage src={user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`} alt="User" />
+                      <AvatarImage src={profileAvatar || `https://picsum.photos/seed/${user.uid}/40/40`} alt="User" />
                       <AvatarFallback>{user.displayName?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
                     </Avatar>
                   </Button>

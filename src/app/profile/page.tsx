@@ -30,7 +30,6 @@ export default function ProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AppUser['role']>("user");
-  const [joinDate, setJoinDate] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
   // Password fields state
@@ -42,7 +41,6 @@ export default function ProfilePage() {
     if (authUser) {
       setDisplayName(authUser.displayName || '');
       setEmail(authUser.email || '');
-      setJoinDate(authUser.metadata.creationTime || new Date().toISOString());
       setAvatarUrl(authUser.photoURL || "");
 
       const userRef = doc(firestore, 'users', authUser.uid);
@@ -50,6 +48,7 @@ export default function ProfilePage() {
         if (doc.exists()) {
           const userData = doc.data() as AppUser;
           setRole(userData.role);
+          if (userData.avatarUrl) setAvatarUrl(userData.avatarUrl);
           if (!displayName) setDisplayName(userData.name || authUser.displayName || '');
           if (!email) setEmail(userData.email || authUser.email || '');
         }
@@ -61,7 +60,13 @@ export default function ProfilePage() {
   const handleAvatarSelect = async (url: string) => {
     if (!authUser) return;
     try {
-      await updateProfile(authUser, { photoURL: url });
+      // Firebase Auth photoURL has a limit of 2048 characters.
+      // Base64 strings for images are usually much longer.
+      // We only update Auth profile for short preset URLs.
+      if (url.length < 2000) {
+        await updateProfile(authUser, { photoURL: url });
+      }
+      
       setAvatarUrl(url);
       
       const userDocRef = doc(firestore, 'users', authUser.uid);
@@ -69,6 +74,7 @@ export default function ProfilePage() {
       
       toast({ title: 'Avatar Updated', description: 'Your profile picture has been changed.' });
     } catch (e) {
+      console.error("Avatar update error:", e);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to update avatar.' });
     }
   };
@@ -76,6 +82,12 @@ export default function ProfilePage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Basic validation for image size (limit to 800KB since Firestore doc limit is 1MB)
+      if (file.size > 800000) {
+        toast({ variant: 'destructive', title: 'File Too Large', description: 'Please select an image smaller than 800KB.' });
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
@@ -128,7 +140,6 @@ export default function ProfilePage() {
 
     const userDocRef = doc(firestore, 'users', authUser.uid);
     let nameUpdated = false;
-    let emailUpdated = false;
 
     if (authUser.displayName !== displayName) {
         await updateProfile(authUser, { displayName: displayName });
@@ -145,7 +156,6 @@ export default function ProfilePage() {
                 const credential = EmailAuthProvider.credential(authUser.email, passwordForEmailChange);
                 await reauthenticateWithCredential(authUser, credential);
                 await updateEmail(authUser, email);
-                emailUpdated = true;
                 firestoreUpdateData.email = email;
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Email Update Failed', description: `Could not update email. ${error.message}` });

@@ -21,6 +21,7 @@ export interface User {
   name?: string;
   phone?: string;
   role: 'admin' | 'user';
+  avatarUrl?: string;
 }
 
 export interface Laptop extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
