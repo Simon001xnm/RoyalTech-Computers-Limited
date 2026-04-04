@@ -6,7 +6,7 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
-  const { customer, laptop, details, signature } = document.data;
+  const { customer, laptop, items, details, deliveredBy, receivedBy, delivererSignature, recipientSignature } = document.data;
 
   return (
     <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full">
@@ -29,9 +29,10 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
           <h3 className="font-bold mb-1">Deliver To:</h3>
           {customer ? (
             <>
-              <p>{customer.name}</p>
+              <p className="font-semibold">{customer.name}</p>
               <p>{customer.address || 'Address not specified'}</p>
               <p>{customer.email}</p>
+              <p>{customer.phone || 'Phone not specified'}</p>
             </>
           ) : <p>Customer details not available.</p>}
         </div>
@@ -46,7 +47,7 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
           <thead className="bg-gray-100">
             <tr>
               <th className="p-2 font-bold">Item Description</th>
-              <th className="p-2 font-bold">Serial Number</th>
+              <th className="p-2 font-bold">Serial Number / Details</th>
               <th className="p-2 font-bold text-center">Quantity</th>
             </tr>
           </thead>
@@ -57,6 +58,14 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
                 <td className="p-2">{laptop.serialNumber}</td>
                 <td className="p-2 text-center">1</td>
               </tr>
+            ) : items && items.length > 0 ? (
+                items.map((item: any, idx: number) => (
+                    <tr key={idx} className="border-b">
+                        <td className="p-2">{item.description}</td>
+                        <td className="p-2">{item.serialNumber || 'N/A'}</td>
+                        <td className="p-2 text-center">{item.quantity}</td>
+                    </tr>
+                ))
             ) : (
                  <tr className="border-b">
                     <td colSpan={3} className="p-2 text-center text-gray-500">No item details available.</td>
@@ -68,34 +77,48 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
       
       {details && (
         <section className="mt-6">
-            <h3 className="font-bold mb-1">Notes:</h3>
-            <p className="text-xs text-gray-600">{details}</p>
+            <h3 className="font-bold mb-1 text-xs text-gray-500 uppercase">Special Instructions / Notes:</h3>
+            <p className="text-xs text-gray-600 italic bg-gray-50 p-2 rounded">{details}</p>
         </section>
       )}
 
-      <section className="mt-16">
-        <p className="mb-2">Received in good condition by:</p>
-        <div className="flex justify-between items-end">
-            <div className="w-2/5">
-                {signature ? (
-                    <div className="mb-2 h-20 flex items-center justify-center">
-                        <img src={signature} alt="Customer Signature" className="max-h-full w-auto" />
-                    </div>
+      <section className="mt-16 grid grid-cols-2 gap-12">
+        {/* Deliverer Side */}
+        <div className="space-y-4">
+            <h4 className="font-bold border-b pb-1 text-xs uppercase text-gray-500">Delivered By:</h4>
+            <div className="h-24 flex flex-col justify-end">
+                {delivererSignature ? (
+                    <img src={delivererSignature} alt="Deliverer Signature" className="max-h-full w-auto object-contain mx-auto" />
                 ) : (
-                    <div className="border-b border-gray-400 mt-12"></div>
+                    <div className="border-b border-gray-300 w-full mb-2"></div>
                 )}
-                <p className="text-xs text-center mt-1">Recipient's Signature</p>
-                <p className="text-xs text-center font-bold">{customer?.name}</p>
             </div>
-            <div className="w-2/5">
-                <div className="border-b border-gray-400 mt-12"></div>
-                <p className="text-xs text-center mt-1">Date</p>
+            <div className="text-center">
+                <p className="font-bold text-sm">{deliveredBy || 'RoyalTech Agent'}</p>
+                <p className="text-[10px] text-gray-400 uppercase">Signature & Name</p>
+            </div>
+        </div>
+
+        {/* Recipient Side */}
+        <div className="space-y-4">
+            <h4 className="font-bold border-b pb-1 text-xs uppercase text-gray-500">Received In Good Condition By:</h4>
+            <div className="h-24 flex flex-col justify-end">
+                {recipientSignature ? (
+                    <img src={recipientSignature} alt="Recipient Signature" className="max-h-full w-auto object-contain mx-auto" />
+                ) : (
+                    <div className="border-b border-gray-300 w-full mb-2"></div>
+                )}
+            </div>
+            <div className="text-center">
+                <p className="font-bold text-sm">{receivedBy || customer?.name || 'Authorized Recipient'}</p>
+                <p className="text-[10px] text-gray-400 uppercase">Signature & Name</p>
             </div>
         </div>
       </section>
 
-       <footer className="text-center text-xs text-gray-400 border-t pt-4 mt-16">
-        <p>Thank you for your business!</p>
+       <footer className="text-center text-[10px] text-gray-400 border-t pt-4 mt-16 flex justify-between">
+        <p>White: Office Copy | Blue: Customer Copy | Yellow: Delivery Copy</p>
+        <p>Thank you for choosing RoyalTech Computers Limited!</p>
       </footer>
     </div>
   );

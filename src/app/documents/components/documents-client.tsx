@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, FileText, ListChecks, Receipt, FileWarning, Truck, Check, ChevronsUpDown, Trash2, PlusCircle, ShoppingCart } from "lucide-react";
+import { Download, FileText, ListChecks, Receipt, FileWarning, Truck, Check, ChevronsUpDown, Trash2, PlusCircle, ShoppingCart, ArrowRightLeft } from "lucide-react";
 import type { DocumentType, Document as AppDocument, Lease, Customer, Laptop, DocumentLineItem } from "@/types";
 import {
   Table,
@@ -57,6 +57,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePad } from "@/components/ui/signature-pad";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
 
 const VAT_RATE = 0.16;
 
@@ -86,7 +88,13 @@ export function DocumentsClient() {
   const [details, setDetails] = useState('');
   const [amount, setAmount] = useState<string>('');
   const [applyVat, setApplyVat] = useState(false);
-  const [signature, setSignature] = useState('');
+  
+  // Delivery specific fields
+  const [deliveredBy, setDeliveredBy] = useState('');
+  const [receivedBy, setReceivedBy] = useState('');
+  const [delivererSignature, setDelivererDelivererSignature] = useState('');
+  const [recipientSignature, setRecipientSignature] = useState('');
+  const [signature, setSignature] = useState(''); // Shared/Generic signature
   
   // New state for Invoice/Quotation type and lease fields
   const [invoiceType, setInvoiceType] = useState<'standard' | 'lease'>('standard');
@@ -120,6 +128,10 @@ export function DocumentsClient() {
     setAmount('');
     setApplyVat(false);
     setSignature('');
+    setDeliveredBy('');
+    setReceivedBy('');
+    setDelivererDelivererSignature('');
+    setRecipientSignature('');
     setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
     setInvoiceType('standard');
     setLeaseDescription('');
@@ -207,6 +219,30 @@ export function DocumentsClient() {
         documentData.lease = selectedLease;
         documentData.laptop = leaseLaptop;
         relatedTo = `Lease: ${leaseLaptop?.model || 'Laptop'} - ${selectedCustomer?.name || 'Customer'}`;
+    } else if (type === 'DeliveryNote') {
+        if (!selectedCustomerId) {
+            toast({ variant: 'destructive', title: 'Error', description: 'A customer must be selected for delivery.' });
+            return;
+        }
+        documentData.deliveredBy = deliveredBy;
+        documentData.receivedBy = receivedBy;
+        documentData.delivererSignature = delivererSignature;
+        documentData.recipientSignature = recipientSignature;
+        
+        if (selectedLaptop) {
+            documentData.laptop = selectedLaptop;
+            relatedTo = `Delivery: ${selectedLaptop.model} to ${selectedCustomer?.name}`;
+        } else {
+            // Support itemized deliveries from invoices
+            const validLineItems = lineItems.filter(item => item.description.trim() !== '');
+            if (validLineItems.length > 0) {
+                documentData.items = validLineItems;
+                relatedTo = `Delivery to ${selectedCustomer?.name}`;
+            } else {
+                toast({ variant: 'destructive', title: 'Error', description: 'A laptop or items must be specified for delivery.' });
+                return;
+            }
+        }
     } else if (['LPO'].includes(type)) { // LPO specific logic
          const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
         if (validLineItems.length === 0) {
@@ -220,12 +256,12 @@ export function DocumentsClient() {
         documentData.applyVat = false;
         documentData.supplier = { name: details }; // Use details field for supplier name in LPO
         relatedTo = `Supplier: ${details}`;
-    } else { // For other document types like DeliveryNote, RepairNote
+    } else { // For other document types like RepairNote
       if (selectedLaptop) {
           documentData.laptop = selectedLaptop;
           relatedTo = `Laptop: ${selectedLaptop.model}`;
       }
-       if (['DeliveryNote', 'RepairNote'].includes(type) && !selectedLaptop) {
+       if (['RepairNote'].includes(type) && !selectedLaptop) {
           toast({ variant: 'destructive', title: 'Error', description: 'A laptop must be selected to generate this document.' });
           return;
       }
@@ -340,16 +376,97 @@ export function DocumentsClient() {
     setIsPdfPreviewOpen(true);
   }
 
+  const handleConvertDocument = (sourceDoc: AppDocument, targetType: DocumentType) => {
+    resetFormState();
+    setActiveTab(targetType);
+    
+    // Pre-populate form based on source data
+    if (sourceDoc.data.customer) {
+        setSelectedCustomerId(sourceDoc.data.customer.id);
+    }
+    if (sourceDoc.data.items) {
+        setLineItems(sourceDoc.data.items.map((i: any) => ({
+            description: i.description || i.name,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice || i.price
+        })));
+    }
+    if (sourceDoc.data.laptop) {
+        setSelectedLaptopId(sourceDoc.data.laptop.id);
+    }
+    if (sourceDoc.data.applyVat) {
+        setApplyVat(true);
+    }
+    if (sourceDoc.data.invoiceType) {
+        setInvoiceType(sourceDoc.data.invoiceType);
+    }
+    if (sourceDoc.data.leaseDetails) {
+        setLeaseDescription(sourceDoc.data.leaseDetails.description);
+        setLeaseQuantity(sourceDoc.data.leaseDetails.quantity.toString());
+        setLeaseDuration(sourceDoc.data.leaseDetails.duration.toString());
+        setLeaseDurationUnit(sourceDoc.data.leaseDetails.durationUnit);
+        setLeaseRate(sourceDoc.data.leaseDetails.rate.toString());
+    }
+
+    toast({
+        title: "Document Converted",
+        description: `Form pre-populated from ${sourceDoc.type}. Review and generate the new ${targetType}.`,
+    });
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const columnActions: DocumentColumnActions = {
     onView: handleViewPdf,
     onDownload: handleDownloadPdf,
   };
 
-  const columns = useMemo<ColumnDef<AppDocument, any>[]>(() => getDocumentColumns(columnActions), [columnActions]);
+  const customColumns = useMemo<ColumnDef<AppDocument, any>[]>(() => {
+      const base = getDocumentColumns(columnActions);
+      // Replace actions column with conversion logic
+      const actionsCol = base.find(c => c.id === 'actions');
+      if (actionsCol) {
+          actionsCol.cell = ({ row }) => {
+              const doc = row.original;
+              return (
+                <div className="text-right space-x-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleViewPdf(doc)}>View</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadPdf(doc)}>Download PDF</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Convert To</DropdownMenuLabel>
+                            {doc.type === 'Quotation' && (
+                                <>
+                                    <DropdownMenuItem onClick={() => handleConvertDocument(doc, 'Proforma')}>Proforma Invoice</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConvertDocument(doc, 'Invoice')}>Invoice</DropdownMenuItem>
+                                </>
+                            )}
+                            {doc.type === 'Proforma' && (
+                                <DropdownMenuItem onClick={() => handleConvertDocument(doc, 'Invoice')}>Invoice</DropdownMenuItem>
+                            )}
+                            {['Invoice', 'Receipt'].includes(doc.type) && (
+                                <DropdownMenuItem onClick={() => handleConvertDocument(doc, 'DeliveryNote')}>Delivery Note</DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button variant="outline" size="sm" onClick={() => handleViewPdf(doc)}>View</Button>
+                </div>
+              );
+          };
+      }
+      return base;
+  }, [columnActions]);
 
   const table = useReactTable({
     data: generatedDocuments || [],
-    columns,
+    columns: customColumns,
     state: {
         pagination,
     },
@@ -454,7 +571,8 @@ export function DocumentsClient() {
     const availableLaptops = laptops?.filter(l => l.status === 'Available' || l.status === 'Leased' || l.status === 'Repair');
     const showsInvoiceTypeSelector = ['Invoice', 'Proforma', 'Quotation'].includes(type);
     const showsLeaseSelector = type === 'LeaseAgreement';
-    const showsSignaturePad = ['DeliveryNote', 'RepairNote', 'LeaseAgreement'].includes(type);
+    const showsSignaturePad = ['RepairNote', 'LeaseAgreement'].includes(type);
+    const isDelivery = type === 'DeliveryNote';
 
     return (
       <Card className="shadow-lg">
@@ -485,7 +603,7 @@ export function DocumentsClient() {
           
            {showsLaptopSelector && (
              <div>
-                <Label>Related Laptop</Label>
+                <Label>Related Laptop (Optional if using Itemized List)</Label>
                  <Popover open={isLaptopComboboxOpen} onOpenChange={setIsLaptopComboboxOpen}>
                     <PopoverTrigger asChild>
                         <Button
@@ -582,6 +700,13 @@ export function DocumentsClient() {
           {showsInvoiceTypeSelector && invoiceType === 'standard' && renderManualItemEntry()}
           {showsInvoiceTypeSelector && invoiceType === 'lease' && renderLeaseEntry()}
 
+          {isDelivery && !selectedLaptopId && (
+              <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Specify items for delivery if no single laptop is selected.</p>
+                  {renderManualItemEntry()}
+              </div>
+          )}
+
           {type === 'LPO' && renderManualItemEntry()}
 
 
@@ -590,6 +715,23 @@ export function DocumentsClient() {
               <Label htmlFor={`${type}-details`}>Additional Details / Notes</Label>
               <Textarea id={`${type}-details`} placeholder={`Enter specific details for the ${type.toLowerCase().replace(/ /g, '')}...`} value={details} onChange={e => setDetails(e.target.value)} />
             </div>
+           )}
+
+           {isDelivery && (
+               <div className="space-y-6 pt-4 border-t">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-4">
+                           <Label>Person Delivering</Label>
+                           <Input placeholder="Full Name" value={deliveredBy} onChange={e => setDeliveredBy(e.target.value)} />
+                           <SignaturePad onSave={setDelivererDelivererSignature} defaultValue={delivererSignature} label="Deliverer Signature" />
+                       </div>
+                       <div className="space-y-4">
+                           <Label>Person Receiving</Label>
+                           <Input placeholder="Full Name" value={receivedBy} onChange={e => setReceivedBy(e.target.value)} />
+                           <SignaturePad onSave={setRecipientSignature} defaultValue={recipientSignature} label="Recipient Signature" />
+                       </div>
+                   </div>
+               </div>
            )}
 
            {showsSignaturePad && (
@@ -682,7 +824,7 @@ export function DocumentsClient() {
                     ) : (
                       <TableRow>
                         <TableCell
-                          colSpan={columns.length}
+                          colSpan={customColumns.length}
                           className="h-24 text-center"
                         >
                           No results.

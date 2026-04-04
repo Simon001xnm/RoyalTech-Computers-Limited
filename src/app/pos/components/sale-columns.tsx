@@ -4,13 +4,15 @@
 import type { Sale } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, FileText } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, FileText, Truck } from "lucide-react";
 import { format } from "date-fns";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
 
 export interface SaleColumnActions {
   onView: (sale: Sale) => void;
+  onGenerateDelivery?: (sale: Sale) => void;
 }
 
 export const getSaleColumns = (actions: SaleColumnActions): ColumnDef<Sale>[] => [
@@ -67,6 +69,10 @@ export const getSaleColumns = (actions: SaleColumnActions): ColumnDef<Sale>[] =>
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => actions.onView(sale)}>
                 <FileText className="mr-2 h-4 w-4" /> View Receipt
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => actions.onGenerateDelivery?.(sale)}>
+                <Truck className="mr-2 h-4 w-4" /> Generate Delivery Note
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
