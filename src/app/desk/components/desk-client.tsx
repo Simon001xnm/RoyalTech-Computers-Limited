@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Ticket, Customer, Lease, Laptop } from "@/types";
+import type { Ticket } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Inbox } from "lucide-react";
@@ -36,12 +35,9 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc } from "firebase/firestore";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-
 
 export function DeskClient() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,35 +47,20 @@ export function DeskClient() {
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
-  });
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
-  const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  // Local data fetching
+  const tickets = useLiveQuery(() => db.tickets.toArray());
+  const customers = useLiveQuery(() => db.customers.toArray());
+  const leases = useLiveQuery(() => db.leases.toArray());
+  const laptops = useLiveQuery(() => db.laptops.toArray());
 
-  const ticketsCollection = useMemoFirebase(() => user ? collection(firestore, 'tickets') : null, [firestore, user]);
-  const { data: tickets, isLoading: isLoadingTickets } = useCollection<Ticket>(ticketsCollection);
-  
-  const customersCollection = useMemoFirebase(() => user ? collection(firestore, 'customers') : null, [firestore, user]);
-  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollection);
-  
-  const leasesCollection = useMemoFirebase(() => user ? collection(firestore, 'leaseAgreements') : null, [firestore, user]);
-  const { data: leases, isLoading: isLoadingLeases } = useCollection<Lease>(leasesCollection);
-
-  const laptopsCollection = useMemoFirebase(() => user ? collection(firestore, 'laptops') : null, [firestore, user]);
-  const { data: laptops, isLoading: isLoadingLaptops } = useCollection<Laptop>(laptopsCollection);
-
-  const isLoading = isUserLoading || isLoadingTickets || isLoadingCustomers || isLoadingLeases || isLoadingLaptops;
+  const isLoading = tickets === undefined || customers === undefined || leases === undefined;
 
   const leasesWithLaptopDetails = useMemo(() => {
     return (leases || []).map(lease => {
       const laptop = laptops?.find(l => l.id === lease.laptopId);
-      return {
-        ...lease,
-        laptopSerialNumber: laptop?.serialNumber,
-      };
+      return { ...lease, laptopSerialNumber: laptop?.serialNumber };
     });
   }, [leases, laptops]);
 
@@ -91,32 +72,7 @@ export function DeskClient() {
     );
   }, [tickets, searchTerm]);
 
-  const handleAddTicket = () => {
-    setEditingTicket(null);
-    setIsFormOpen(true);
-  };
-
-  const handleEditTicket = (ticket: Ticket) => {
-    setEditingTicket(ticket);
-    setIsFormOpen(true);
-  };
-
-  const handleDeleteTicket = (ticket: Ticket) => {
-    setTicketToDelete(ticket);
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (ticketToDelete) {
-      const docRef = doc(firestore, 'tickets', ticketToDelete.id);
-      deleteDocumentNonBlocking(docRef);
-      toast({ title: "Ticket Deleted", description: `Ticket "${ticketToDelete.subject}" has been removed.` });
-      setTicketToDelete(null);
-    }
-    setIsDeleteConfirmOpen(false);
-  };
-
-  const handleFormSubmit = (data: any) => { 
+  const handleFormSubmit = async (data: any) => { 
     const selectedCustomer = customers?.find(c => c.id === data.customerId);
     const selectedLease = leases?.find(l => l.id === data.leaseId);
     const selectedLaptop = laptops?.find(l => l.id === selectedLease?.laptopId);
@@ -128,21 +84,33 @@ export function DeskClient() {
         updatedAt: new Date().toISOString(),
     };
 
-    if (editingTicket) {
-      const docRef = doc(firestore, 'tickets', editingTicket.id);
-      setDocumentNonBlocking(docRef, ticketData, { merge: true });
-      toast({ title: "Ticket Updated", description: `Ticket "${data.subject}" has been updated.`});
-    } else {
-      addDocumentNonBlocking(collection(firestore, 'tickets'), { ...ticketData, createdAt: new Date().toISOString() });
-      toast({ title: "Ticket Created", description: `New ticket "${data.subject}" has been created.`});
+    try {
+        if (editingTicket) {
+            await db.tickets.update(editingTicket.id, ticketData);
+            toast({ title: "Ticket Updated" });
+        } else {
+            await db.tickets.add({ ...ticketData, id: crypto.randomUUID(), createdAt: new Date().toISOString() });
+            toast({ title: "Ticket Created" });
+        }
+        setIsFormOpen(false);
+        setEditingTicket(null);
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
     }
-    setIsFormOpen(false);
-    setEditingTicket(null);
+  };
+
+  const confirmDelete = async () => {
+    if (ticketToDelete) {
+      await db.tickets.delete(ticketToDelete.id);
+      toast({ title: "Ticket Deleted" });
+      setTicketToDelete(null);
+    }
+    setIsDeleteConfirmOpen(false);
   };
 
   const columnActions: TicketColumnActions = {
-    onEdit: handleEditTicket,
-    onDelete: handleDeleteTicket,
+    onEdit: (t) => { setEditingTicket(t); setIsFormOpen(true); },
+    onDelete: (t) => { setTicketToDelete(t); setIsDeleteConfirmOpen(true); },
   };
   
   const columns = useMemo<ColumnDef<Ticket, any>[]>(() => getTicketColumns(columnActions), [columnActions]);
@@ -150,10 +118,7 @@ export function DeskClient() {
   const table = useReactTable({
     data: filteredTickets,
     columns,
-    state: {
-      rowSelection,
-      pagination,
-    },
+    state: { rowSelection, pagination },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
@@ -163,113 +128,25 @@ export function DeskClient() {
   
   return (
     <>
-      <PageHeader
-        title="Helpdesk"
-        description="Manage customer support tickets."
-        actionLabel="Create New Ticket"
-        onAction={handleAddTicket}
-        ActionIcon={PlusCircle}
-      />
-
-      <div className="mb-4">
-        <Input
-          placeholder="Search by subject or customer..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm bg-card"
-        />
-      </div>
-      
-      {isLoading && <p>Loading tickets...</p>}
-
-      {!isLoading && tickets && tickets.length === 0 && !searchTerm && (
-         <Alert variant="default" className="mb-4 bg-card">
-          <Inbox className="h-4 w-4" />
-          <AlertTitle>No Tickets Yet</AlertTitle>
-          <AlertDescription>
-            There are currently no support tickets. Click "Create New Ticket" to get started.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!isLoading && filteredTickets.length > 0 && (
+      <PageHeader title="Helpdesk (Local)" description="Track support issues on this device." actionLabel="Create Ticket" onAction={() => setIsFormOpen(true)} ActionIcon={PlusCircle} />
+      <div className="mb-4"><Input placeholder="Search tickets..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" /></div>
+      {isLoading ? <p>Loading...</p> : (
         <div className="rounded-lg border shadow-sm bg-card">
           <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map(headerGroup => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.length ? (
-                table.getRowModel().rows.map(row => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                 <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results for the current filter.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
+            <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
+            <TableBody>{table.getRowModel().rows.map(row => (<TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))}</TableBody>
           </Table>
           <DataTablePagination table={table} />
         </div>
       )}
-
-      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingTicket(null); } else { setIsFormOpen(true); }}}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingTicket ? "Edit Ticket" : "Create New Ticket"}</DialogTitle>
-            <DialogDescription>
-              {editingTicket ? "Update the details of the existing support ticket." : "Fill in the details to create a new support ticket."}
-            </DialogDescription>
-          </DialogHeader>
-          <TicketForm
-            ticket={editingTicket}
-            customers={customers || []}
-            leases={leasesWithLaptopDetails || []}
-            onSubmit={handleFormSubmit}
-            onCancel={() => { setIsFormOpen(false); setEditingTicket(null); }}
-            isLoading={isLoading}
-          />
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader><DialogTitle>{editingTicket ? "Edit Ticket" : "Create Ticket"}</DialogTitle></DialogHeader>
+          <TicketForm ticket={editingTicket} customers={customers || []} leases={leasesWithLaptopDetails || []} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} />
         </DialogContent>
       </Dialog>
-
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete the ticket: <strong>{ticketToDelete?.subject}</strong>? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogContent><DialogHeader><DialogTitle>Confirm Delete</DialogTitle></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button><Button variant="destructive" onClick={confirmDelete}>Delete</Button></DialogFooter></DialogContent>
       </Dialog>
     </>
   );

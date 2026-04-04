@@ -4,19 +4,23 @@ import { useEffect } from 'react';
 
 /**
  * A client component that registers the service worker for PWA support.
+ * Enhanced with better error handling to avoid "Failed to fetch" console noise.
  */
 export function PwaRegistration() {
   useEffect(() => {
-    if ('serviceWorker' in navigator && window.location.hostname !== 'localhost') {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker
-          .register('/sw.js')
-          .then((registration) => {
-            console.log('PWA Service Worker registered with scope:', registration.scope);
-          })
-          .catch((error) => {
-            console.error('PWA Service Worker registration failed:', error);
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      // Only register if not already registered
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        if (registrations.length === 0) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker
+              .register('/sw.js')
+              .catch((error) => {
+                // Silently handle PWA fetch errors
+                console.debug('PWA Service Worker registration skipped or failed:', error);
+              });
           });
+        }
       });
     }
   }, []);

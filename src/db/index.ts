@@ -13,7 +13,10 @@ import type {
   Reseller, 
   ItemIssuance,
   Message,
-  User
+  User,
+  Campaign,
+  JobPosting,
+  Applicant
 } from '@/types';
 
 /**
@@ -35,6 +38,9 @@ export class RoyalTechDB extends Dexie {
   itemIssuances!: Table<ItemIssuance>;
   messages!: Table<Message>;
   users!: Table<User>;
+  campaigns!: Table<Campaign>;
+  jobPostings!: Table<JobPosting>;
+  applicants!: Table<Applicant>;
 
   constructor() {
     super('RoyalTechDB', { addons: [dexieCloud] });
@@ -53,12 +59,15 @@ export class RoyalTechDB extends Dexie {
       resellers: 'id, name, status',
       itemIssuances: 'id, resellerId, itemId, status',
       messages: 'id, createdAt',
-      users: 'id, email, role'
+      users: 'id, email, role',
+      campaigns: 'id, status, createdAt',
+      jobPostings: 'id, status, createdAt',
+      applicants: 'id, jobId, status, appliedAt'
     });
 
     this.cloud.configure({
       databaseUrl: 'https://z1xwh7v7u.dexie.cloud',
-      requireAuth: false // Changed to false to prevent the login prompt. Data stays local until sync is manually triggered or configured.
+      requireAuth: false // Use Firebase for auth, Dexie stays local/syncs silently
     });
   }
 }
