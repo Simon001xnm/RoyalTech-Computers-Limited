@@ -40,7 +40,6 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { v4 as uuidv4 } from 'uuid'; // Standard practice for Dexie IDs
 
 export function StockClient() {
   const [searchTerm, setSearchTerm] = useState("");
