@@ -6,7 +6,7 @@ export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
-  const { customer, laptop, lease } = document.data;
+  const { customer, laptop, lease, signature } = document.data;
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
@@ -19,7 +19,8 @@ export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
     <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full">
       <header className="text-center mb-8">
         <img src="/picture1.png" alt="Company Logo" className="h-28 w-auto object-contain mx-auto mb-4" />
-        <h1 className="text-3xl font-bold text-gray-800">Lease Agreement</h1>
+        <h1 className="text-3xl font-bold text-gray-800 uppercase">ROYALTECH COMPUTERS LIMITED</h1>
+        <h2 className="text-xl font-semibold text-gray-600">Lease Agreement</h2>
         <p className="text-gray-500 mt-1">Document No: {document.title}</p>
       </header>
 
@@ -94,7 +95,13 @@ export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
                     </div>
                     <div className="w-1/2">
                         <h4 className="font-bold">LESSEE:</h4>
-                        <div className="border-b border-gray-400 mt-16"></div>
+                        {signature ? (
+                            <div className="h-20 flex items-center justify-center mb-2">
+                                <img src={signature} alt="Customer Signature" className="max-h-full w-auto" />
+                            </div>
+                        ) : (
+                            <div className="border-b border-gray-400 mt-16"></div>
+                        )}
                         <p className="text-xs mt-1">{customer.name}</p>
                     </div>
                 </div>

@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import * as React from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { SignaturePad } from "@/components/ui/signature-pad";
 
 const leaseFormSchema = z.object({
   customerId: z.string().min(1, "Customer is required."),
@@ -25,6 +26,7 @@ const leaseFormSchema = z.object({
   monthlyPayment: z.coerce.number().min(0, "Monthly payment must be positive.").optional(),
   paymentStatus: z.enum(["Paid", "Pending", "Overdue"]),
   status: z.enum(["Active", "Expired", "Terminated", "Upcoming"]),
+  signature: z.string().optional(),
 }).refine(data => data.endDate > data.startDate, {
   message: "End date must be after start date.",
   path: ["endDate"],
@@ -57,6 +59,7 @@ export function LeaseForm({
         paymentStatus: "Pending",
         status: "Upcoming",
         monthlyPayment: undefined,
+        signature: "",
       };
 
   const form = useForm<LeaseFormValues>({
@@ -261,6 +264,23 @@ export function LeaseForm({
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="signature"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <SignaturePad 
+                  onSave={field.onChange} 
+                  defaultValue={field.value} 
+                  label="Lessee Digital Signature" 
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>

@@ -80,6 +80,7 @@ export interface Lease extends Auditable {
   monthlyPayment?: number;
   paymentStatus: 'Paid' | 'Pending' | 'Overdue';
   status: 'Active' | 'Expired' | 'Terminated' | 'Upcoming';
+  signature?: string; // Base64 signature image
 }
 
 export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | 'DeliveryNote' | 'LeaseAgreement' | 'Quotation' | 'LPO';

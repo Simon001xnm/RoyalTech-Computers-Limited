@@ -6,7 +6,7 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
-  const { customer, laptop, details } = document.data;
+  const { customer, laptop, details, signature } = document.data;
 
   return (
     <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full">
@@ -77,8 +77,15 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
         <p className="mb-2">Received in good condition by:</p>
         <div className="flex justify-between items-end">
             <div className="w-2/5">
-                <div className="border-b border-gray-400 mt-12"></div>
+                {signature ? (
+                    <div className="mb-2 h-20 flex items-center justify-center">
+                        <img src={signature} alt="Customer Signature" className="max-h-full w-auto" />
+                    </div>
+                ) : (
+                    <div className="border-b border-gray-400 mt-12"></div>
+                )}
                 <p className="text-xs text-center mt-1">Recipient's Signature</p>
+                <p className="text-xs text-center font-bold">{customer?.name}</p>
             </div>
             <div className="w-2/5">
                 <div className="border-b border-gray-400 mt-12"></div>

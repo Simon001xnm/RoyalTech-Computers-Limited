@@ -39,6 +39,7 @@ import { RepairNotePdf } from "./pdfs/repair-note-pdf";
 import { DeliveryNotePdf } from "./pdfs/delivery-note-pdf";
 import { QuotationPdf } from "./pdfs/quotation-pdf";
 import { LpoPdf } from "./pdfs/lpo-pdf";
+import { LeaseAgreementPdf } from "./pdfs/lease-agreement-pdf";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SignaturePad } from "@/components/ui/signature-pad";
 
 const VAT_RATE = 0.16;
 
@@ -74,12 +76,17 @@ export function DocumentsClient() {
   const laptopsCollection = useMemoFirebase(() => user ? collection(firestore, 'laptops') : null, [firestore, user]);
   const { data: laptops, isLoading: isLoadingLaptops } = useCollection<Laptop>(laptopsCollection);
 
+  const leasesCollection = useMemoFirebase(() => user ? collection(firestore, 'leaseAgreements') : null, [firestore, user]);
+  const { data: leases } = useCollection<Lease>(leasesCollection);
+
   // Form State
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [selectedLaptopId, setSelectedLaptopId] = useState<string>('');
+  const [selectedLeaseId, setSelectedLeaseId] = useState<string>('');
   const [details, setDetails] = useState('');
   const [amount, setAmount] = useState<string>('');
   const [applyVat, setApplyVat] = useState(false);
+  const [signature, setSignature] = useState('');
   
   // New state for Invoice/Quotation type and lease fields
   const [invoiceType, setInvoiceType] = useState<'standard' | 'lease'>('standard');
@@ -108,9 +115,11 @@ export function DocumentsClient() {
   const resetFormState = () => {
     setSelectedCustomerId('');
     setSelectedLaptopId('');
+    setSelectedLeaseId('');
     setDetails('');
     setAmount('');
     setApplyVat(false);
+    setSignature('');
     setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
     setInvoiceType('standard');
     setLeaseDescription('');
@@ -123,7 +132,7 @@ export function DocumentsClient() {
   const handleGenerateDocument = async (type: DocumentType) => {
     let title = `${type.replace(/([A-Z])/g, ' $1').trim()} #${type.slice(0,3).toUpperCase()}-2026-${String((generatedDocuments?.length || 0) + 1).padStart(3,'0')}`;
     let relatedTo = "N/A";
-    const documentData: any = { details, applyVat };
+    const documentData: any = { details, applyVat, signature };
 
     // --- Validation and Data Gathering ---
     const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
@@ -188,6 +197,16 @@ export function DocumentsClient() {
             documentData.applyVat = applyVat;
             documentData.invoiceType = 'lease';
         }
+    } else if (type === 'LeaseAgreement') {
+        const selectedLease = leases?.find(l => l.id === selectedLeaseId);
+        if (!selectedLease) {
+            toast({ variant: 'destructive', title: 'Lease Required', description: 'Please select a valid lease to generate an agreement.' });
+            return;
+        }
+        const leaseLaptop = laptops?.find(l => l.id === selectedLease.laptopId);
+        documentData.lease = selectedLease;
+        documentData.laptop = leaseLaptop;
+        relatedTo = `Lease: ${leaseLaptop?.model || 'Laptop'} - ${selectedCustomer?.name || 'Customer'}`;
     } else if (['LPO'].includes(type)) { // LPO specific logic
          const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
         if (validLineItems.length === 0) {
@@ -349,6 +368,7 @@ export function DocumentsClient() {
       case 'DeliveryNote': return <DeliveryNotePdf document={selectedDocument} />;
       case 'Quotation': return <QuotationPdf document={selectedDocument} />;
       case 'LPO': return <LpoPdf document={selectedDocument} />;
+      case 'LeaseAgreement': return <LeaseAgreementPdf document={selectedDocument} />;
       default: return <p>Unsupported document type for preview.</p>;
     }
   }
@@ -431,8 +451,10 @@ export function DocumentsClient() {
 
   const renderForm = (type: DocumentType) => {
     const showsLaptopSelector = ['RepairNote', 'DeliveryNote'].includes(type);
-    const availableLaptops = laptops?.filter(l => l.status === 'Available');
+    const availableLaptops = laptops?.filter(l => l.status === 'Available' || l.status === 'Leased' || l.status === 'Repair');
     const showsInvoiceTypeSelector = ['Invoice', 'Proforma', 'Quotation'].includes(type);
+    const showsLeaseSelector = type === 'LeaseAgreement';
+    const showsSignaturePad = ['DeliveryNote', 'RepairNote', 'LeaseAgreement'].includes(type);
 
     return (
       <Card className="shadow-lg">
@@ -463,7 +485,7 @@ export function DocumentsClient() {
           
            {showsLaptopSelector && (
              <div>
-                <Label>Related Laptop (Optional)</Label>
+                <Label>Related Laptop</Label>
                  <Popover open={isLaptopComboboxOpen} onOpenChange={setIsLaptopComboboxOpen}>
                     <PopoverTrigger asChild>
                         <Button
@@ -506,6 +528,22 @@ export function DocumentsClient() {
                     </PopoverContent>
                 </Popover>
              </div>
+          )}
+
+          {showsLeaseSelector && (
+              <div>
+                <Label>Select Active Lease</Label>
+                <Select onValueChange={setSelectedLeaseId} value={selectedLeaseId} disabled={!selectedCustomerId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={selectedCustomerId ? "Select a lease agreement" : "Select a customer first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leases?.filter(l => l.customerId === selectedCustomerId).map(l => (
+                        <SelectItem key={l.id} value={l.id}>{l.laptopModel} ({format(new Date(l.startDate), 'MMM yyyy')})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
           )}
 
           {['Quotation', 'Receipt', 'Invoice', 'Proforma'].includes(type) && (
@@ -554,6 +592,12 @@ export function DocumentsClient() {
             </div>
            )}
 
+           {showsSignaturePad && (
+               <div className="pt-4 border-t">
+                   <SignaturePad onSave={setSignature} defaultValue={signature} />
+               </div>
+           )}
+
         </CardContent>
         <CardFooter>
           <Button onClick={() => handleGenerateDocument(type)} className="ml-auto" disabled={anyDataLoading}>
@@ -571,11 +615,11 @@ export function DocumentsClient() {
         description="Create and manage receipts, invoices, and other documents."
       />
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DocumentType)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 mb-6">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 mb-6 overflow-x-auto">
           <TabsTrigger value="Quotation">Quotation</TabsTrigger>
           <TabsTrigger value="Invoice">Invoice</TabsTrigger>
           <TabsTrigger value="Proforma">Proforma</TabsTrigger>
-          <TabsTrigger value="LPO">LPO</TabsTrigger>
+          <TabsTrigger value="LeaseAgreement">Lease Agreement</TabsTrigger>
           <TabsTrigger value="Receipt">Receipt</TabsTrigger>
           <TabsTrigger value="RepairNote">Repair Note</TabsTrigger>
           <TabsTrigger value="DeliveryNote">Delivery Note</TabsTrigger>
@@ -583,7 +627,7 @@ export function DocumentsClient() {
         <TabsContent value="Quotation">{renderForm("Quotation")}</TabsContent>
         <TabsContent value="Invoice">{renderForm("Invoice")}</TabsContent>
         <TabsContent value="Proforma">{renderForm("Proforma")}</TabsContent>
-        <TabsContent value="LPO">{renderForm("LPO")}</TabsContent>
+        <TabsContent value="LeaseAgreement">{renderForm("LeaseAgreement")}</TabsContent>
         <TabsContent value="Receipt">{renderForm("Receipt")}</TabsContent>
         <TabsContent value="RepairNote">{renderForm("RepairNote")}</TabsContent>
         <TabsContent value="DeliveryNote">{renderForm("DeliveryNote")}</TabsContent>
