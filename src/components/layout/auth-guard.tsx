@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useAuth } from '@/firebase/provider';
@@ -10,7 +11,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Settings, User } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 const LOADING_SCREEN = (
@@ -43,42 +45,65 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
             <SidebarNav />
         </SidebarContent>
         <SidebarSeparator />
-        <SidebarFooter className="p-2 space-y-2">
-            {user && (
-            <Link href="/profile" legacyBehavior passHref>
-                <button
-                    className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm text-sidebar-foreground outline-none ring-sidebar-ring transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50"
-                >
-                    <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`} alt="User Avatar" data-ai-hint="person avatar" />
-                        <AvatarFallback>{user.displayName ? user.displayName.substring(0, 2) : user.email?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-                        <span className="text-sm font-medium truncate">{user.displayName || 'User'}</span>
-                        <span className="text-xs text-sidebar-foreground/70 truncate">{user.email}</span>
-                    </div>
-                </button>
-            </Link>
-            )}
-            <div className="flex items-center justify-between group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2">
-                <Link href="/settings" passHref legacyBehavior>
-                    <Button variant="ghost" size="icon" className="text-sidebar-foreground/70 hover:text-sidebar-foreground group-data-[collapsible=icon]:w-full" aria-label="Settings">
-                        <Settings className="h-5 w-5"/>
-                    </Button>
-                </Link>
-                <Button onClick={handleLogout} variant="ghost" size="icon" className="text-sidebar-foreground/70 hover:text-sidebar-foreground group-data-[collapsible=icon]:w-full" aria-label="Log Out">
+        <SidebarFooter className="p-4">
+            <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
+                <Button onClick={handleLogout} variant="ghost" size="icon" className="text-sidebar-foreground/70 hover:text-sidebar-foreground" aria-label="Log Out">
                     <LogOut className="h-5 w-5"/>
                 </Button>
+                <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Logout</span>
             </div>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="min-h-screen">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 md:hidden">
-          <SidebarTrigger />
-          <Link href="/" className="flex items-center gap-2 font-semibold text-lg">
-             <Image src="/picture1.png" alt="RoyalTech Logo" width={30} height={30} className="rounded-md" />
-            <span className="">{APP_NAME}</span>
-          </Link>
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6">
+          <div className="flex items-center gap-4">
+            <SidebarTrigger />
+            <Link href="/" className="flex items-center gap-2 font-semibold text-lg md:hidden">
+               <Image src="/picture1.png" alt="RoyalTech Logo" width={30} height={30} className="rounded-md" />
+              <span className="">{APP_NAME}</span>
+            </Link>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            {user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10 border border-border">
+                      <AvatarImage src={user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`} alt="User" />
+                      <AvatarFallback>{user.displayName?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <Link href="/profile">
+                    <DropdownMenuItem>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="/settings">
+                    <DropdownMenuItem>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
+                  </Link>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </header>
         <main className="flex-1 p-4 md:p-6 lg:p-8">
           {children}

@@ -1,3 +1,4 @@
+
 'use client';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,21 +7,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Edit3 } from "lucide-react";
+import { Camera, Edit3, Image as ImageIcon, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useAuth } from "@/firebase/provider";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { doc, onSnapshot } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from "@/hooks/use-toast";
 import type { User as AppUser } from "@/types";
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateEmail, updateProfile } from "firebase/auth";
+import placeholderAvatars from '@/lib/placeholder-images.json';
+import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
   const { user: authUser, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile fields state
   const [displayName, setDisplayName] = useState("");
@@ -36,23 +40,50 @@ export default function ProfilePage() {
   
   useEffect(() => {
     if (authUser) {
-      setDisplayName(authUser.displayName || 'Anonymous User');
-      setEmail(authUser.email || 'No email provided');
+      setDisplayName(authUser.displayName || '');
+      setEmail(authUser.email || '');
       setJoinDate(authUser.metadata.creationTime || new Date().toISOString());
-      setAvatarUrl(authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/128/128`);
+      setAvatarUrl(authUser.photoURL || "");
 
       const userRef = doc(firestore, 'users', authUser.uid);
       const unsub = onSnapshot(userRef, (doc) => {
         if (doc.exists()) {
           const userData = doc.data() as AppUser;
           setRole(userData.role);
-          setDisplayName(userData.name || authUser.displayName || 'Anonymous User');
-          setEmail(userData.email || authUser.email || 'No email provided');
+          if (!displayName) setDisplayName(userData.name || authUser.displayName || '');
+          if (!email) setEmail(userData.email || authUser.email || '');
         }
       });
       return () => unsub();
     }
   }, [authUser, firestore]);
+
+  const handleAvatarSelect = async (url: string) => {
+    if (!authUser) return;
+    try {
+      await updateProfile(authUser, { photoURL: url });
+      setAvatarUrl(url);
+      
+      const userDocRef = doc(firestore, 'users', authUser.uid);
+      setDocumentNonBlocking(userDocRef, { avatarUrl: url }, { merge: true });
+      
+      toast({ title: 'Avatar Updated', description: 'Your profile picture has been changed.' });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update avatar.' });
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        handleAvatarSelect(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handlePasswordChange = async () => {
     if (authUser?.isAnonymous) {
@@ -99,19 +130,14 @@ export default function ProfilePage() {
     let nameUpdated = false;
     let emailUpdated = false;
 
-    // Update Display Name if changed
     if (authUser.displayName !== displayName) {
         await updateProfile(authUser, { displayName: displayName });
         nameUpdated = true;
     }
 
-    // Update Firestore document with name and potentially email
     const firestoreUpdateData: Partial<AppUser> = {};
-    if (nameUpdated) {
-        firestoreUpdateData.name = displayName;
-    }
+    if (nameUpdated) firestoreUpdateData.name = displayName;
     
-    // Update Email if changed (requires re-authentication)
     if (authUser.email !== email) {
         const passwordForEmailChange = prompt("To change your email, please re-enter your current password:");
         if (passwordForEmailChange && authUser.email) {
@@ -120,118 +146,135 @@ export default function ProfilePage() {
                 await reauthenticateWithCredential(authUser, credential);
                 await updateEmail(authUser, email);
                 emailUpdated = true;
-                firestoreUpdateData.email = email; // update email in firestore too
+                firestoreUpdateData.email = email;
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Email Update Failed', description: `Could not update email. ${error.message}` });
                 return;
             }
-        } else if (passwordForEmailChange === null) {
-            // User cancelled the prompt
-        } else {
-            toast({ variant: 'destructive', title: 'Email Not Updated', description: 'Password was required to change the email address.' });
         }
     }
     
-    // Write to Firestore if there's anything to update
     if (Object.keys(firestoreUpdateData).length > 0) {
         setDocumentNonBlocking(userDocRef, firestoreUpdateData, { merge: true });
     }
 
-    if (nameUpdated && emailUpdated) {
-        toast({ title: 'Profile Updated', description: 'Your name and email have been saved.' });
-    } else if (nameUpdated) {
-        toast({ title: 'Profile Updated', description: 'Your name has been saved.' });
-    } else if (emailUpdated) {
-        toast({ title: 'Email Updated', description: 'Your email has been saved.' });
-    } else {
-        toast({ title: 'No Changes', description: 'No new information was saved.' });
-    }
+    toast({ title: 'Profile Updated', description: 'Changes saved successfully.' });
   };
 
-  if (isUserLoading || !displayName) {
+  if (isUserLoading) {
     return (
        <div className="space-y-6">
-        <PageHeader title="User Profile" description="Manage your personal information and settings." />
-        <p className="p-4 text-muted-foreground">Loading profile...</p>
+        <PageHeader title="User Profile" description="Loading profile..." />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="User Profile" description="Manage your personal information and settings." />
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <PageHeader title="User Profile" description="Manage your personal information and look." />
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <div className="flex items-center space-x-4">
-            <Avatar className="h-24 w-24 border-2 border-primary">
-              <AvatarImage src={avatarUrl} alt={displayName} data-ai-hint="person avatar large" />
-              <AvatarFallback className="text-3xl">{displayName.split(" ").map(n => n[0]).join("")}</AvatarFallback>
-            </Avatar>
-            <div>
-              <CardTitle className="text-2xl">{displayName}</CardTitle>
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Avatar Sidebar */}
+        <Card className="md:col-span-1 shadow-md">
+          <CardHeader className="items-center text-center">
+            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+              <Avatar className="h-32 w-32 border-4 border-primary/10 shadow-lg">
+                <AvatarImage src={avatarUrl || `https://picsum.photos/seed/${authUser?.uid}/128/128`} />
+                <AvatarFallback className="text-4xl uppercase">{displayName.substring(0, 2)}</AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="h-8 w-8 text-white" />
+              </div>
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+            </div>
+            <div className="mt-4">
+              <CardTitle>{displayName || 'User'}</CardTitle>
               <CardDescription>{email}</CardDescription>
-              <Badge variant="outline" className="mt-1 capitalize">{role}</Badge>
+              <Badge variant="secondary" className="mt-2 capitalize">{role}</Badge>
             </div>
-             <Button variant="outline" size="icon" className="ml-auto">
-                <Edit3 className="h-4 w-4" />
-                <span className="sr-only">Edit Profile Picture</span>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Separator />
+            <div>
+              <p className="text-xs font-semibold uppercase text-muted-foreground mb-3">Choose an Avatar</p>
+              <div className="grid grid-cols-3 gap-2">
+                {placeholderAvatars.avatars.map((avatar) => (
+                  <button
+                    key={avatar.id}
+                    onClick={() => handleAvatarSelect(avatar.url)}
+                    className={cn(
+                      "relative rounded-md overflow-hidden border-2 transition-all hover:scale-105",
+                      avatarUrl === avatar.url ? "border-primary shadow-sm" : "border-transparent"
+                    )}
+                  >
+                    <img src={avatar.url} alt="preset avatar" className="aspect-square object-cover" />
+                    {avatarUrl === avatar.url && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
+                        <Check className="h-4 w-4 text-primary" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+              <ImageIcon className="mr-2 h-4 w-4" />
+              Upload Photo
             </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <Separator />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input id="fullName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div className="space-y-1">
-                <Label htmlFor="role">Role</Label>
-                <p id="role" className="text-sm capitalize text-muted-foreground pt-2">{role}</p>
-            </div>
-            <div className="space-y-1">
-                <Label htmlFor="joinDate">Member Since</Label>
-                <p id="joinDate" className="text-sm text-muted-foreground pt-2">
-                  {joinDate ? new Date(joinDate).toLocaleDateString() : 'N/A'}
-                </p>
-            </div>
-          </div>
-           <div className="flex justify-end pt-4">
-            <Button onClick={handleSaveChanges}>Save Changes</Button>
-          </div>
-          
-          <Separator />
-          
-          <div>
-            <h3 className="text-lg font-medium mb-4">Change Password</h3>
-            <div className="space-y-4">
-                 <div>
-                    <Label htmlFor="currentPassword">Current Password</Label>
-                    <Input id="currentPassword" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+          </CardContent>
+        </Card>
+
+        {/* Main Settings */}
+        <div className="md:col-span-2 space-y-6">
+          <Card className="shadow-md">
+            <CardHeader>
+              <CardTitle>Account Details</CardTitle>
+              <CardDescription>Update your personal information used in the system.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="displayName">Full Name</Label>
+                  <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
                 </div>
-                 <div>
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <Input id="newPassword" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </div>
-                 <div>
-                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                    <Input id="confirmPassword" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={handleSaveChanges}>Save Changes</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-md">
+            <CardHeader>
+              <CardTitle>Security</CardTitle>
+              <CardDescription>Change your password to keep your account secure.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input id="currentPassword" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input id="newPassword" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                 </div>
-            </div>
-             <div className="flex justify-end pt-4">
-                <Button onClick={handlePasswordChange} variant="secondary">Update Password</Button>
-             </div>
-          </div>
-        </CardContent>
-      </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                  <Input id="confirmPassword" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+                </div>
+              </div>
+              <div className="flex justify-end pt-2">
+                <Button variant="outline" onClick={handlePasswordChange}>Update Password</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

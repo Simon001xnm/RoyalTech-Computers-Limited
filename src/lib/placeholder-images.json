@@ -1,0 +1,29 @@
+{
+  "avatars": [
+    {
+      "id": "avatar-1",
+      "url": "https://picsum.photos/seed/avatar1/128/128",
+      "hint": "professional man"
+    },
+    {
+      "id": "avatar-2",
+      "url": "https://picsum.photos/seed/avatar2/128/128",
+      "hint": "professional woman"
+    },
+    {
+      "id": "avatar-3",
+      "url": "https://picsum.photos/seed/avatar3/128/128",
+      "hint": "tech specialist"
+    },
+    {
+      "id": "avatar-4",
+      "url": "https://picsum.photos/seed/avatar4/128/128",
+      "hint": "creative designer"
+    },
+    {
+      "id": "avatar-5",
+      "url": "https://picsum.photos/seed/avatar5/128/128",
+      "hint": "business executive"
+    }
+  ]
+}
