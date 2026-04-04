@@ -33,7 +33,7 @@ export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
       <section className="grid grid-cols-2 gap-8 mb-8">
         <div>
           <h2 className="font-bold text-base mb-2 border-b pb-1">LESSOR</h2>
-          <p className="font-semibold">RoyalTech Computers Limited</p>
+          <p className="font-semibold">ROYALTECH COMPUTERS LIMITED</p>
           <p>Revlon Professional Plaza, 2nd Floor, Suite 1</p>
           <p>Biashara Street, Nairobi</p>
           <p>info@royaltech.co.ke | +254 724404935</p>
@@ -90,7 +90,7 @@ export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
                     <div className="w-1/2">
                         <h4 className="font-bold">LESSOR:</h4>
                         <div className="border-b border-gray-400 mt-16"></div>
-                        <p className="text-xs mt-1">RoyalTech</p>
+                        <p className="text-xs mt-1 uppercase">ROYALTECH COMPUTERS LIMITED</p>
                     </div>
                     <div className="w-1/2">
                         <h4 className="font-bold">LESSEE:</h4>

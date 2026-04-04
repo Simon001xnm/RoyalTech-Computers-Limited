@@ -25,7 +25,7 @@ export function ProformaInvoicePdf({ document }: { document: AppDocument }) {
         <div className="flex items-center gap-4">
           <img src="/picture1.png" alt="Company Logo" className="h-28 w-auto object-contain" />
           <div>
-              <p className="font-bold text-lg">RoyalTech</p>
+              <p className="font-bold text-lg uppercase text-black">ROYALTECH COMPUTERS LIMITED</p>
               <p className="text-xs text-gray-500">Revlon Professional Plaza, 2nd Floor, Suite 1, Biashara Street, Nairobi</p>
               <p className="text-xs text-gray-500">Tel: +254 724404935 | E-mail: info@royaltech.co.ke</p>
           </div>

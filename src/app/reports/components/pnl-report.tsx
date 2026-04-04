@@ -59,7 +59,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
     <Card id="pnl-report" className="print-container shadow-lg bg-white">
       <CardHeader className="text-center p-4">
         <img src="/picture1.png" alt="Company Logo" className="h-28 w-auto object-contain mx-auto mb-4" />
-        <h1 className="text-2xl font-bold">Royaltech Computers Limited</h1>
+        <h1 className="text-2xl font-bold uppercase">ROYALTECH COMPUTERS LIMITED</h1>
         <p className="text-xl">Profit and Loss</p>
         <p className="text-sm text-muted-foreground">Basis: Accrual</p>
         {dateRange?.from && dateRange.to && (
