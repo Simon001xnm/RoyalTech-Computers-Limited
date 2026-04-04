@@ -58,7 +58,7 @@ export class RoyalTechDB extends Dexie {
 
     this.cloud.configure({
       databaseUrl: 'https://z1xwh7v7u.dexie.cloud',
-      requireAuth: true // Sync with Dexie Cloud authentication
+      requireAuth: false // Changed to false to prevent the login prompt. Data stays local until sync is manually triggered or configured.
     });
   }
 }
