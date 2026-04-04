@@ -1,9 +1,17 @@
-
-
 import type { LucideIcon } from 'lucide-react';
 import { LayoutDashboard, Package as PackageIcon, Users, FileText, Printer, MapPin, Settings, ClipboardList, BookOpen, Home, Inbox, Phone, ListChecks, Presentation, UserPlus, Briefcase, Component, ShoppingCart, BarChart3, User } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
+
+// M-PESA DARAJA API CONFIGURATION
+// Obtain these from https://developer.safaricom.co.ke/
+export const MPESA_CONFIG = {
+  CONSUMER_KEY: "YOUR_CONSUMER_KEY",
+  CONSUMER_SECRET: "YOUR_CONSUMER_SECRET",
+  BUSINESS_SHORTCODE: "174379", // Default Sandbox Shortcode
+  PASSKEY: "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919", // Default Sandbox Passkey
+  CALLBACK_URL: "https://your-domain.com/api/mpesa/callback",
+};
 
 export interface NavItem {
   href: string;
