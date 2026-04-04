@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Lease, Customer, Laptop } from "@/types";
+import type { Lease } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, FileSearch, FileX } from "lucide-react";
@@ -36,10 +35,9 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, writeBatch } from "firebase/firestore";
-import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useUser } from '@/firebase/provider';
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 
@@ -56,19 +54,13 @@ export function LeasesClient() {
     pageSize: 10,
   });
 
-  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
 
-  const leasesCollection = useMemoFirebase(() => user ? collection(firestore, 'leaseAgreements') : null, [firestore, user]);
-  const { data: leases, isLoading: isLoadingLeases } = useCollection<Lease>(leasesCollection);
+  const leases = useLiveQuery(() => db.leases.toArray());
+  const customers = useLiveQuery(() => db.customers.toArray());
+  const laptops = useLiveQuery(() => db.laptops.toArray());
 
-  const customersCollection = useMemoFirebase(() => user ? collection(firestore, 'customers') : null, [firestore, user]);
-  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollection);
-
-  const laptopsCollection = useMemoFirebase(() => user ? collection(firestore, 'laptops') : null, [firestore, user]);
-  const { data: laptops, isLoading: isLoadingLaptops } = useCollection<Laptop>(laptopsCollection);
-
-  const isLoading = isUserLoading || isLoadingLeases || isLoadingCustomers || isLoadingLaptops;
+  const isLoading = isUserLoading || leases === undefined || customers === undefined || laptops === undefined;
 
   const filteredLeases = useMemo(() => {
     if (!leases) return [];
@@ -96,24 +88,15 @@ export function LeasesClient() {
   const confirmDelete = async () => {
     if (leaseToDelete) {
         try {
-            const batch = writeBatch(firestore);
-
-            // 1. If the lease was associated with a laptop, set it back to 'Available'
-            if (leaseToDelete.laptopId) {
-                const laptopRef = doc(firestore, 'laptops', leaseToDelete.laptopId);
-                batch.update(laptopRef, { status: 'Available' });
-            }
-            
-            // 2. Delete the lease
-            const leaseRef = doc(firestore, 'leaseAgreements', leaseToDelete.id);
-            batch.delete(leaseRef);
-
-            await batch.commit();
-
-            toast({ title: "Lease Deleted", description: `Lease for ${leaseToDelete.laptopModel} has been removed and the laptop is now available.` });
-        } catch (error) {
-            console.error("Error deleting lease: ", error);
-            toast({ variant: "destructive", title: "Error", description: "Could not delete the lease." });
+            await db.transaction('rw', [db.leases, db.laptops], async () => {
+                if (leaseToDelete.laptopId) {
+                    await db.laptops.update(leaseToDelete.laptopId, { status: 'Available' });
+                }
+                await db.leases.delete(leaseToDelete.id);
+            });
+            toast({ title: "Lease Deleted" });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Error", description: error.message });
         } finally {
             setLeaseToDelete(null);
             setIsDeleteConfirmOpen(false);
@@ -125,14 +108,11 @@ export function LeasesClient() {
      const selectedCustomer = customers?.find(c => c.id === data.customerId);
      const selectedLaptop = laptops?.find(l => l.id === data.laptopId);
 
-    if (!selectedCustomer || !selectedLaptop || !user) {
-        toast({ variant: "destructive", title: "Error", description: "Invalid customer, laptop, or user session." });
-        return;
-    }
+    if (!selectedCustomer || !selectedLaptop || !user) return;
 
     const auditInfo = {
         uid: user.uid,
-        name: user.displayName || user.email || (user.isAnonymous ? "Anonymous User" : "System"),
+        name: user.displayName || user.email || "System",
     };
 
     const leaseData = {
@@ -146,61 +126,49 @@ export function LeasesClient() {
     };
 
     try {
-        const batch = writeBatch(firestore);
-        const laptopRef = doc(firestore, 'laptops', selectedLaptop.id);
-
-        if (editingLease) {
-            const leaseRef = doc(firestore, 'leaseAgreements', editingLease.id);
-            batch.set(leaseRef, leaseData, { merge: true });
-            
-            if (editingLease.laptopId !== selectedLaptop.id) {
-                const oldLaptopRef = doc(firestore, 'laptops', editingLease.laptopId);
-                batch.update(oldLaptopRef, { status: 'Available' });
-                batch.update(laptopRef, { status: 'Leased' });
+        await db.transaction('rw', [db.leases, db.laptops], async () => {
+            if (editingLease) {
+                await db.leases.update(editingLease.id, leaseData);
+                if (editingLease.laptopId !== selectedLaptop.id) {
+                    await db.laptops.update(editingLease.laptopId, { status: 'Available' });
+                    await db.laptops.update(selectedLaptop.id, { status: 'Leased' });
+                }
+                toast({ title: "Lease Updated" });
+            } else {
+                await db.leases.add({ 
+                    ...leaseData, 
+                    id: crypto.randomUUID(),
+                    createdAt: new Date().toISOString(), 
+                    createdBy: auditInfo 
+                });
+                await db.laptops.update(selectedLaptop.id, { status: 'Leased' });
+                toast({ title: "Lease Created" });
             }
-            
-            toast({ title: "Lease Updated", description: `Lease for ${leaseData.laptopModel} has been updated.`});
-        } else {
-            const newLeaseRef = doc(collection(firestore, 'leaseAgreements'));
-            batch.set(newLeaseRef, { ...leaseData, createdAt: new Date().toISOString(), createdBy: auditInfo });
-            batch.update(laptopRef, { status: 'Leased' });
-            toast({ title: "Lease Created", description: `New lease for ${leaseData.laptopModel} created.`});
-        }
-        
-        await batch.commit();
-
-    } catch (error) {
-        console.error("Error submitting form: ", error);
-        toast({ variant: "destructive", title: "Error", description: "There was a problem saving the lease." });
+        });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
         setIsFormOpen(false);
         setEditingLease(null);
     }
   };
   
-  const handleMarkPaid = (lease: Lease) => {
-    const docRef = doc(firestore, 'leaseAgreements', lease.id);
-    updateDocumentNonBlocking(docRef, { paymentStatus: 'Paid' });
-    toast({ title: "Payment Updated", description: `Lease for ${lease.laptopModel} marked as Paid.` });
+  const handleMarkPaid = async (lease: Lease) => {
+    await db.leases.update(lease.id, { paymentStatus: 'Paid' });
+    toast({ title: "Payment Updated" });
   };
 
   const handleTerminateLease = async (lease: Lease) => {
      try {
-        const batch = writeBatch(firestore);
-        const leaseRef = doc(firestore, 'leaseAgreements', lease.id);
-        
-        batch.update(leaseRef, { status: 'Terminated', endDate: new Date().toISOString() });
-        
-        if(lease.laptopId) {
-            const laptopRef = doc(firestore, 'laptops', lease.laptopId);
-            batch.update(laptopRef, { status: 'Available' });
-        }
-        
-        await batch.commit();
-        toast({ title: "Lease Terminated", description: `Lease for ${lease.laptopModel} has been terminated and the laptop is available again.` });
-     } catch (error) {
-        console.error("Error terminating lease: ", error);
-        toast({ variant: "destructive", title: "Error", description: "Could not terminate the lease." });
+        await db.transaction('rw', [db.leases, db.laptops], async () => {
+            await db.leases.update(lease.id, { status: 'Terminated', endDate: new Date().toISOString() });
+            if(lease.laptopId) {
+                await db.laptops.update(lease.laptopId, { status: 'Available' });
+            }
+        });
+        toast({ title: "Lease Terminated" });
+     } catch (error: any) {
+        toast({ variant: "destructive", title: "Error", description: error.message });
      }
   };
 
@@ -236,8 +204,8 @@ export function LeasesClient() {
   return (
     <>
       <PageHeader
-        title="Lease Tracking"
-        description="Manage all laptop lease agreements."
+        title="Lease Tracking (Local)"
+        description="Manage laptop lease agreements stored on this device."
         actionLabel="Create New Lease"
         onAction={handleAddLease}
         ActionIcon={PlusCircle}
@@ -259,7 +227,7 @@ export function LeasesClient() {
           <FileSearch className="h-4 w-4" />
           <AlertTitle>No Leases Found</AlertTitle>
           <AlertDescription>
-            Your search for "{searchTerm}" did not match any leases. Try a different term or create a new lease.
+            Your search for "{searchTerm}" did not match any local leases.
           </AlertDescription>
         </Alert>
       )}
@@ -269,7 +237,7 @@ export function LeasesClient() {
           <FileX className="h-4 w-4" />
           <AlertTitle>No Leases Recorded</AlertTitle>
           <AlertDescription>
-            There are currently no leases in your records. Click "Create New Lease" to get started.
+            There are currently no leases in your records.
           </AlertDescription>
         </Alert>
       )}
@@ -281,7 +249,7 @@ export function LeasesClient() {
               {table.getHeaderGroups().map(headerGroup => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map(header => (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
+                    <TableHead key={header.id}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -324,9 +292,6 @@ export function LeasesClient() {
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingLease ? "Edit Lease" : "Create New Lease"}</DialogTitle>
-            <DialogDescription>
-              {editingLease ? "Update the details of the existing lease." : "Fill in the details to create a new lease agreement."}
-            </DialogDescription>
           </DialogHeader>
           <LeaseForm
             lease={editingLease}
@@ -343,7 +308,7 @@ export function LeasesClient() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the lease for <strong>{leaseToDelete?.laptopModel}</strong> (Customer: {leaseToDelete?.customerName})? This action will set the laptop status back to "Available" and cannot be undone.
+              Are you sure you want to delete the lease for <strong>{leaseToDelete?.laptopModel}</strong>?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,9 +11,7 @@ import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { useFirestore } from '@/firebase/provider';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection } from 'firebase/firestore';
+import { db } from '@/db';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -43,7 +40,6 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ user, onFinished }: TransactionFormProps) {
-  const firestore = useFirestore();
   const { toast } = useToast();
 
   const saleForm = useForm<z.infer<typeof saleSchema>>({
@@ -57,58 +53,26 @@ export function TransactionForm({ user, onFinished }: TransactionFormProps) {
   });
 
   const handleSubmit = async (data: any, type: 'sales' | 'expenses') => {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
-      return;
-    }
-    const collectionRef = collection(firestore, type);
+    if (!user) return;
     
-    // Create a clean data object
-    const docData: { [key: string]: any } = {
+    const docData: any = {
       ...data,
+      id: crypto.randomUUID(),
       date: data.date.toISOString(),
       createdAt: new Date().toISOString(),
       createdBy: { uid: user.uid, name: user.displayName || user.email },
     };
 
-    // Remove any keys with an 'undefined' value before sending to Firestore
-    Object.keys(docData).forEach(key => {
-      if (docData[key] === undefined) {
-        delete docData[key];
-      }
-    });
-
-    await addDocumentNonBlocking(collectionRef, docData);
-    toast({ title: `Transaction Recorded`, description: `A new ${type.slice(0, -1)} has been added.` });
-    onFinished();
+    try {
+        if (type === 'sales') await db.sales.add(docData);
+        else await db.expenses.add(docData);
+        toast({ title: `Transaction Recorded Locally` });
+        onFinished();
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    }
   };
 
-  const renderDateField = (form: any, name: "date") => (
-    <FormField
-      control={form.control}
-      name={name}
-      render={({ field }) => (
-        <FormItem className="flex flex-col">
-          <FormLabel>Date</FormLabel>
-          <Popover>
-            <PopoverTrigger asChild>
-              <FormControl>
-                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                  {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                </Button>
-              </FormControl>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-            </PopoverContent>
-          </Popover>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  );
-  
   return (
     <Tabs defaultValue="sale" className="w-full">
       <TabsList className="grid w-full grid-cols-2">
@@ -118,20 +82,11 @@ export function TransactionForm({ user, onFinished }: TransactionFormProps) {
       <TabsContent value="sale">
         <Form {...saleForm}>
           <form onSubmit={saleForm.handleSubmit((data) => handleSubmit(data, 'sales'))} className="space-y-4 p-4">
-            <div className="grid grid-cols-2 gap-4">
-              {renderDateField(saleForm, 'date')}
-              <FormField control={saleForm.control} name="amount" render={({ field }) => (
+            <FormField control={saleForm.control} name="amount" render={({ field }) => (
                 <FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-              )}/>
-            </div>
-            <FormField control={saleForm.control} name="paymentMethod" render={({ field }) => (
-              <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Till">Till</SelectItem><SelectItem value="M-Pesa">M-Pesa</SelectItem><SelectItem value="Bank">Bank</SelectItem><SelectItem value="Paybill">Paybill</SelectItem><SelectItem value="Cash">Cash</SelectItem></SelectContent></Select><FormMessage /></FormItem>
             )}/>
-             <FormField control={saleForm.control} name="cogs" render={({ field }) => (
-                <FormItem><FormLabel>Cost of Goods Sold (Optional)</FormLabel><FormControl><Input type="number" placeholder="Cost for this specific sale" {...field} /></FormControl><FormMessage /></FormItem>
-              )}/>
-            <FormField control={saleForm.control} name="notes" render={({ field }) => (
-              <FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+            <FormField control={saleForm.control} name="paymentMethod" render={({ field }) => (
+              <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Till">Till</SelectItem><SelectItem value="M-Pesa">M-Pesa</SelectItem><SelectItem value="Bank">Bank</SelectItem><SelectItem value="Paybill">Paybill</SelectItem><SelectItem value="Cash">Cash</SelectItem></SelectContent></Select></FormItem>
             )}/>
             <Button type="submit">Record Sale</Button>
           </form>
@@ -140,18 +95,12 @@ export function TransactionForm({ user, onFinished }: TransactionFormProps) {
       <TabsContent value="expense">
          <Form {...expenseForm}>
           <form onSubmit={expenseForm.handleSubmit((data) => handleSubmit(data, 'expenses'))} className="space-y-4 p-4">
-             <div className="grid grid-cols-2 gap-4">
-                {renderDateField(expenseForm, 'date')}
-                <FormField control={expenseForm.control} name="amount" render={({ field }) => (
-                    <FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                )}/>
-             </div>
-             <FormField control={expenseForm.control} name="category" render={({ field }) => (
-                <FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g., Rent, Salaries, Utilities" {...field} /></FormControl><FormMessage /></FormItem>
+             <FormField control={expenseForm.control} name="amount" render={({ field }) => (
+                <FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
              )}/>
-             <FormField control={expenseForm.control} name="notes" render={({ field }) => (
-              <FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
-            )}/>
+             <FormField control={expenseForm.control} name="category" render={({ field }) => (
+                <FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g., Rent, Salaries" {...field} /></FormControl><FormMessage /></FormItem>
+             )}/>
             <Button type="submit">Record Expense</Button>
           </form>
         </Form>

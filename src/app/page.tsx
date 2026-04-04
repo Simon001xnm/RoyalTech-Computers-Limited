@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { useUser } from '@/firebase/provider';
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
@@ -18,32 +17,19 @@ import {
   Clock
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
-import type { Laptop as LaptopType, Accessory, Customer, Lease, Sale, Expense } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
 
-  // Data Fetching
-  const laptopsCol = useMemoFirebase(() => user ? collection(firestore, 'laptops') : null, [firestore, user]);
-  const { data: laptops } = useCollection<LaptopType>(laptopsCol);
-
-  const accessoriesCol = useMemoFirebase(() => user ? collection(firestore, 'accessories') : null, [firestore, user]);
-  const { data: accessories } = useCollection<Accessory>(accessoriesCol);
-
-  const customersCol = useMemoFirebase(() => user ? collection(firestore, 'customers') : null, [firestore, user]);
-  const { data: customers } = useCollection<Customer>(customersCol);
-
-  const leasesCol = useMemoFirebase(() => user ? collection(firestore, 'leaseAgreements') : null, [firestore, user]);
-  const { data: leases } = useCollection<Lease>(leasesCol);
-
-  const salesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'sales'), orderBy('date', 'desc'), limit(33)) : null, [firestore, user]);
-  const { data: sales } = useCollection<Sale>(salesQuery);
-
-  const expensesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'expenses'), orderBy('date', 'desc'), limit(33)) : null, [firestore, user]);
-  const { data: expenses } = useCollection<Expense>(expensesQuery);
+  // Data Fetching from Dexie
+  const laptops = useLiveQuery(() => db.laptops.toArray());
+  const accessories = useLiveQuery(() => db.accessories.toArray());
+  const customers = useLiveQuery(() => db.customers.toArray());
+  const leases = useLiveQuery(() => db.leases.toArray());
+  const sales = useLiveQuery(() => db.sales.orderBy('date').reverse().limit(33).toArray());
+  const expenses = useLiveQuery(() => db.expenses.orderBy('date').reverse().limit(33).toArray());
 
   // Computations
   const stats = useMemo(() => ({
@@ -98,7 +84,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <PageHeader 
         title="Dashboard Overview" 
-        description={`Welcome back, ${user?.displayName || 'User'}! Here's what's happening today.`} 
+        description={`Welcome back, ${user?.displayName || 'User'}! Here's what's happening at ROYALTECH COMPUTERS LIMITED today.`} 
       />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -166,7 +152,7 @@ export default function DashboardPage() {
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle>Latest Transactions</CardTitle>
-            <CardDescription>Recent 33 sales and expenses from the books.</CardDescription>
+            <CardDescription>Recent 33 sales and expenses from the local records.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border max-h-[400px] overflow-auto">

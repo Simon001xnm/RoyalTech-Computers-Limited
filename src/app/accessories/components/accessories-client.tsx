@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
 import type { Accessory } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, PackageSearch, Upload } from "lucide-react";
+import { PlusCircle, PackageSearch } from "lucide-react";
 import { AccessoryForm } from "./accessory-form";
 import { getAccessoryColumns, type AccessoryColumnActions } from "./accessory-columns";
 import { Input } from "@/components/ui/input";
@@ -36,12 +35,9 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { collection, doc, query, where, getDocs, writeBatch } from "firebase/firestore";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useUser } from '@/firebase/provider';
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 
@@ -58,12 +54,10 @@ export function AccessoriesClient() {
     pageSize: 10,
   });
   
-  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
-  const accessoriesCollection = useMemoFirebase(() => user ? collection(firestore, 'accessories') : null, [firestore, user]);
-  const { data: accessories, isLoading: accessoriesLoading } = useCollection<Accessory>(accessoriesCollection);
+  const accessories = useLiveQuery(() => db.accessories.toArray());
 
-  const isLoading = isUserLoading || accessoriesLoading;
+  const isLoading = isUserLoading || accessories === undefined;
 
   const filteredAccessories = useMemo(() => {
     if (!accessories) return [];
@@ -88,77 +82,43 @@ export function AccessoriesClient() {
     setIsDeleteConfirmOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (accessoryToDelete) {
-      const docRef = doc(firestore, 'accessories', accessoryToDelete.id);
-      deleteDocumentNonBlocking(docRef);
-      toast({ title: "Accessory Deleted", description: `${accessoryToDelete.name} has been removed.` });
+      await db.accessories.delete(accessoryToDelete.id);
+      toast({ title: "Accessory Deleted" });
       setAccessoryToDelete(null);
     }
     setIsDeleteConfirmOpen(false);
   };
   
   const handleFormSubmit = async (data: any) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to perform this action.' });
-        return;
-    }
-    const auditInfo = {
-        uid: user.uid,
-        name: user.displayName || user.email || (user.isAnonymous ? 'Anonymous User' : 'System'),
-    };
+    if (!user) return;
 
     const accessoryData = {
       ...data,
       purchaseDate: data.purchaseDate.toISOString(), 
     };
 
-    // Sanitize data for Firestore by removing undefined properties
-    if (accessoryData.purchasePrice === undefined) {
-      delete (accessoryData as any).purchasePrice;
-    }
-
-    const q = query(collection(firestore, 'accessories'), where('serialNumber', '==', accessoryData.serialNumber));
-    
     try {
-        const querySnapshot = await getDocs(q);
-        const existingAccessory = querySnapshot.docs.find(doc => doc.id !== editingAccessory?.id);
-
-        if (existingAccessory) {
-            toast({
-                variant: "destructive",
-                title: "Duplicate Serial Number",
-                description: `An accessory with the serial number ${accessoryData.serialNumber} already exists.`,
+        if (editingAccessory) {
+            await db.accessories.update(editingAccessory.id, { 
+                ...accessoryData, 
+                updatedAt: new Date().toISOString() 
             });
-            return;
+            toast({ title: "Accessory Updated" });
+        } else {
+            await db.accessories.add({
+                ...accessoryData,
+                id: crypto.randomUUID(),
+                createdAt: new Date().toISOString()
+            });
+            toast({ title: "Accessory Added" });
         }
-    } catch (error) {
-        const contextualError = new FirestorePermissionError({
-            operation: 'list',
-            path: 'accessories'
-        });
-        errorEmitter.emit('permission-error', contextualError);
-        return;
+        setIsFormOpen(false);
+        setEditingAccessory(null);
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
     }
-
-    if (editingAccessory) {
-      const docRef = doc(firestore, 'accessories', editingAccessory.id);
-      setDocumentNonBlocking(docRef, { 
-        ...accessoryData, 
-        updatedAt: new Date().toISOString(),
-        lastModifiedBy: auditInfo
-      }, { merge: true });
-      toast({ title: "Accessory Updated", description: `${accessoryData.name} has been updated.`});
-    } else {
-      addDocumentNonBlocking(collection(firestore, 'accessories'), {
-        ...accessoryData,
-        createdAt: new Date().toISOString(),
-        createdBy: auditInfo
-      });
-      toast({ title: "Accessory Added", description: `${accessoryData.name} has been added to stock.`});
-    }
-    setIsFormOpen(false);
-    setEditingAccessory(null);
   };
 
   const columnActions: AccessoryColumnActions = {
@@ -185,8 +145,8 @@ export function AccessoriesClient() {
   return (
     <>
       <PageHeader
-          title="Accessory Inventory"
-          description="Manage your accessory inventory."
+          title="Accessory Inventory (Local)"
+          description="Manage your accessory inventory stored on this device."
           actionLabel="Add New Accessory"
           onAction={handleAddAccessory}
           ActionIcon={PlusCircle}
@@ -208,7 +168,7 @@ export function AccessoriesClient() {
           <PackageSearch className="h-4 w-4" />
           <AlertTitle>No Accessories Found</AlertTitle>
           <AlertDescription>
-            Your search for "{searchTerm}" did not match any accessories. Try a different term or add a new accessory.
+            Your search for "{searchTerm}" did not match any accessories.
           </AlertDescription>
         </Alert>
       )}
@@ -218,7 +178,7 @@ export function AccessoriesClient() {
           <PackageSearch className="h-4 w-4" />
           <AlertTitle>No Accessories in Stock</AlertTitle>
           <AlertDescription>
-            There are currently no accessories in your inventory. Click "Add New Accessory" to get started.
+            There are currently no accessories in your inventory.
           </AlertDescription>
         </Alert>
       )}
@@ -230,7 +190,7 @@ export function AccessoriesClient() {
               {table.getHeaderGroups().map(headerGroup => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map(header => (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
+                    <TableHead key={header.id}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -259,7 +219,7 @@ export function AccessoriesClient() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results for the current filter.
+                    No results found.
                   </TableCell>
                 </TableRow>
               )}
@@ -273,9 +233,6 @@ export function AccessoriesClient() {
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingAccessory ? "Edit Accessory" : "Add New Accessory"}</DialogTitle>
-            <DialogDescription>
-              {editingAccessory ? "Update the details of the existing accessory." : "Fill in the details to add a new accessory to inventory."}
-            </DialogDescription>
           </DialogHeader>
           <AccessoryForm
             accessory={editingAccessory}
@@ -290,7 +247,7 @@ export function AccessoriesClient() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the accessory: <strong>{accessoryToDelete?.name}</strong> (S/N: {accessoryToDelete?.serialNumber})? This action cannot be undone.
+              Are you sure you want to delete the accessory: <strong>{accessoryToDelete?.name}</strong>?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

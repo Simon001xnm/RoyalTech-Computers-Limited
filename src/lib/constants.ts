@@ -43,4 +43,4 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
-export const APP_NAME = "RoyalTech";
+export const APP_NAME = "ROYALTECH COMPUTERS LIMITED";

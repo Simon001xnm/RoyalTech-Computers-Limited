@@ -8,10 +8,10 @@ import { PlusCircle, DollarSign, TrendingDown, ChevronsRight } from 'lucide-reac
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where } from 'firebase/firestore';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { useUser } from '@/firebase/provider';
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { TransactionForm } from './transaction-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { Badge } from '@/components/ui/badge';
@@ -20,11 +20,9 @@ type Transaction = (Sale | Expense) & { transactionType: 'Sale' | 'Expense' };
 
 export function AccountingClient() {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
 
-  // Set date range on mount to avoid hydration mismatch
   useEffect(() => {
     const now = new Date();
     setDateRange({
@@ -33,34 +31,23 @@ export function AccountingClient() {
     });
   }, []);
 
-  const salesQuery = useMemoFirebase(() => {
-    if (!user || !dateRange) return null;
-    return query(
-      collection(firestore, 'sales'), 
-      where('date', '>=', dateRange.start), 
-      where('date', '<=', dateRange.end)
-    );
-  }, [firestore, user, dateRange]);
-  const { data: sales, isLoading: salesLoading } = useCollection<Sale>(salesQuery);
+  const sales = useLiveQuery(() => {
+    if (!dateRange) return [];
+    return db.sales.where('date').between(dateRange.start, dateRange.end, true, true).toArray();
+  }, [dateRange]);
+
+  const expenses = useLiveQuery(() => {
+    if (!dateRange) return [];
+    return db.expenses.where('date').between(dateRange.start, dateRange.end, true, true).toArray();
+  }, [dateRange]);
   
-  const expensesQuery = useMemoFirebase(() => {
-    if (!user || !dateRange) return null;
-    return query(
-      collection(firestore, 'expenses'), 
-      where('date', '>=', dateRange.start), 
-      where('date', '<=', dateRange.end)
-    );
-  }, [firestore, user, dateRange]);
-  const { data: expenses, isLoading: expensesLoading } = useCollection<Expense>(expensesQuery);
-  
-  const isLoading = isUserLoading || salesLoading || expensesLoading || !dateRange;
+  const isLoading = isUserLoading || sales === undefined || expenses === undefined || !dateRange;
 
   const { totalSales, totalCogs, totalExpenses, netProfit } = useMemo(() => {
     const totalSales = sales?.reduce((sum, s) => sum + s.amount, 0) ?? 0;
     const totalCogs = sales?.reduce((sum, s) => sum + (s.cogs || 0), 0) ?? 0;
     const totalExpenses = expenses?.reduce((sum, e) => sum + e.amount, 0) ?? 0;
-    const netProfit = totalSales - totalCogs - totalExpenses;
-    return { totalSales, totalCogs, totalExpenses, netProfit };
+    return { totalSales, totalCogs, totalExpenses, netProfit: totalSales - totalCogs - totalExpenses };
   }, [sales, expenses]);
   
   const recentTransactions = useMemo(() => {
@@ -79,18 +66,13 @@ export function AccountingClient() {
   };
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Accounting" description="Manage your sales, expenses, and financial health." />
-        <p className="p-4 text-muted-foreground">Loading financial data...</p>
-      </div>
-    );
+    return <PageHeader title="Accounting" description="Loading financial data..." />;
   }
 
   return (
     <>
       <PageHeader
-        title="Accounting"
+        title="Accounting (Local)"
         description={`Financial summary for ${format(new Date(), 'MMMM yyyy')}`}
         actionLabel="Record Transaction"
         onAction={() => setIsFormOpen(true)}
@@ -105,43 +87,19 @@ export function AccountingClient() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-          <CardDescription>The last 10 transactions recorded this month.</CardDescription>
-        </CardHeader>
+        <CardHeader><CardTitle>Recent Local Transactions</CardTitle></CardHeader>
         <CardContent>
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Details</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
+            <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Details</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
             <TableBody>
-              {recentTransactions.length > 0 ? (
-                recentTransactions.map(t => (
-                  <TableRow key={t.id}>
-                    <TableCell>
-                      <Badge variant={t.transactionType === 'Sale' ? 'default' : 'destructive'}>
-                        {t.transactionType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{format(new Date(t.date), 'MMM d, yyyy')}</TableCell>
-                    <TableCell className="font-medium">
-                      {'category' in t ? t.category : t.notes || 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-right">{formatCurrency(t.amount)}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                    No transactions recorded for this month yet.
-                  </TableCell>
+              {recentTransactions.map(t => (
+                <TableRow key={t.id}>
+                  <TableCell><Badge variant={t.transactionType === 'Sale' ? 'default' : 'destructive'}>{t.transactionType}</Badge></TableCell>
+                  <TableCell>{format(parseISO(t.date), 'MMM d, yyyy')}</TableCell>
+                  <TableCell className="font-medium">{'category' in t ? t.category : t.notes || 'N/A'}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(t.amount)}</TableCell>
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         </CardContent>
@@ -149,13 +107,8 @@ export function AccountingClient() {
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Record a New Transaction</DialogTitle>
-          </DialogHeader>
-          <TransactionForm 
-            user={user}
-            onFinished={() => setIsFormOpen(false)} 
-          />
+          <DialogHeader><DialogTitle>Record Local Transaction</DialogTitle></DialogHeader>
+          <TransactionForm user={user} onFinished={() => setIsFormOpen(false)} />
         </DialogContent>
       </Dialog>
     </>
