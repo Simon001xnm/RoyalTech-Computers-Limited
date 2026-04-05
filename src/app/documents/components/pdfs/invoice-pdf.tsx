@@ -24,6 +24,7 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
   };
 
   const isLease = invoiceType === 'lease' && leaseDetails;
+  const primaryColor = company?.primaryColor || '#2c3e50';
 
   return (
     <div className="p-8 font-sans text-sm bg-white text-gray-800 w-full min-h-[1000px] flex flex-col">
@@ -36,7 +37,7 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
             <div className="h-28 w-28 bg-muted flex items-center justify-center text-xs text-muted-foreground uppercase font-bold border">No Logo</div>
           )}
           <div>
-              <h1 className="text-2xl font-bold text-black uppercase">{company?.name || 'Your Company'}</h1>
+              <h1 className="text-2xl font-bold uppercase" style={{ color: primaryColor }}>{company?.name || 'Your Company'}</h1>
               <p className="text-xs text-gray-600 mt-1">{company?.address}</p>
               <p className="text-xs text-gray-500">Tel: {company?.phone} | E-mail: {company?.email}</p>
           </div>
@@ -46,7 +47,7 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
         </div>
       </header>
 
-      <div className="border-t border-gray-300 mb-8"></div>
+      <div className="border-t mb-8" style={{ borderColor: primaryColor }}></div>
 
       {/* Bill To & Invoice Info */}
       <section className="flex justify-between mt-8 mb-10">
@@ -74,7 +75,7 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
       <section>
         <table className="w-full text-left table-auto">
           <thead>
-            <tr className="bg-[#2c3e50] text-white">
+            <tr style={{ backgroundColor: primaryColor, color: '#fff' }}>
               <th className="p-2 font-semibold text-sm">Description</th>
               <th className="p-2 font-semibold text-sm text-right w-24">Quantity</th>
               <th className="p-2 font-semibold text-sm text-right w-32">{isLease ? 'Lease Terms' : 'Unit Price'}</th>
@@ -126,7 +127,7 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
                 <span className="font-semibold text-gray-600">VAT ({(VAT_RATE * 100).toFixed(0)}%):</span>
                 <span className="text-right font-medium">{formatCurrency(vat || 0)}</span>
             </div>}
-            <div className="flex justify-between font-bold text-base py-2 mt-2 border-t border-gray-300">
+            <div className="flex justify-between font-bold text-base py-2 mt-2 border-t" style={{ borderColor: primaryColor }}>
                 <span>Total Due:</span>
                 <span className="text-right">{formatCurrency(total || 0)}</span>
             </div>
@@ -136,7 +137,7 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
       <div className="flex-grow"></div>
 
       {/* Footer */}
-      <footer className="text-xs text-gray-700 border-t-2 border-gray-300 pt-6 mt-10 space-y-5">
+      <footer className="text-xs text-gray-700 border-t pt-6 mt-10 space-y-5" style={{ borderColor: primaryColor }}>
         <div>
             <h4 className="font-bold text-xs uppercase text-gray-800 mb-2">Other Comments</h4>
             <ol className="list-decimal list-inside space-y-1 text-gray-600">

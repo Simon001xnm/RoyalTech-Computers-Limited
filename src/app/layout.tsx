@@ -9,6 +9,7 @@ import { AuthGuard } from '@/components/layout/auth-guard';
 import { PwaRegistration } from '@/components/layout/pwa-registration';
 import { BackgroundErrorGuard } from '@/components/layout/background-error-guard';
 import { OnboardingGuard } from '@/components/layout/onboarding-guard';
+import { DynamicThemeProvider } from '@/components/layout/dynamic-theme-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
     default: APP_NAME,
     template: `%s | ${APP_NAME}`,
   },
-  description: `Manage stock, customers, and leases for ${APP_NAME}.`,
+  description: `Professional business suite for managing records and operations.`,
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -56,9 +57,11 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <AuthGuard>
             <BackgroundErrorGuard>
-                <OnboardingGuard>
-                    {children}
-                </OnboardingGuard>
+                <DynamicThemeProvider>
+                    <OnboardingGuard>
+                        {children}
+                    </OnboardingGuard>
+                </DynamicThemeProvider>
             </BackgroundErrorGuard>
           </AuthGuard>
           <Toaster />

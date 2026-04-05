@@ -23,6 +23,8 @@ export interface Company extends Auditable {
   email: string;
   location?: string;
   website?: string;
+  primaryColor?: string; // Hex color
+  secondaryColor?: string; // Hex color
 }
 
 export interface User {

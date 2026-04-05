@@ -25,11 +25,12 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
   
   const receiptNumber = document.title.split('-').pop() || saleId?.slice(0, 5).toUpperCase() || 'N/A';
   const finalTotal = amount || subtotal || 0;
+  const primaryColor = company?.primaryColor || '#2c3e50';
 
   return (
     <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full min-h-[800px] flex flex-col">
       {/* Header */}
-      <header className="flex justify-between items-start pb-6 border-b border-gray-300">
+      <header className="flex justify-between items-start pb-6 border-b" style={{ borderColor: primaryColor }}>
         <div className="flex items-center gap-4">
           {company?.logoUrl ? (
             <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain" />
@@ -37,7 +38,7 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
             <div className="h-28 w-28 bg-muted flex items-center justify-center text-xs text-muted-foreground uppercase font-bold border">No Logo</div>
           )}
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 uppercase">{company?.name || 'Your Company'}</h1>
+            <h1 className="text-3xl font-bold uppercase" style={{ color: primaryColor }}>{company?.name || 'Your Company'}</h1>
             <p className="text-xs text-gray-500 mt-1">{company?.address}</p>
             <p className="text-xs text-gray-500">Tel: {company?.phone} | E-mail: {company?.email}</p>
           </div>
@@ -75,7 +76,7 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
       <section>
         <table className="w-full text-left table-auto">
           <thead>
-            <tr className="bg-[#2c3e50] text-white">
+            <tr style={{ backgroundColor: primaryColor, color: '#fff' }}>
               <th className="p-3 font-semibold">Item Description</th>
               <th className="p-3 font-semibold text-right w-24">Quantity</th>
               <th className="p-3 font-semibold text-right w-32">Unit Price</th>
@@ -119,7 +120,7 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
                     <span className="font-medium">Reference:</span> {referenceCode}
                  </p>
             )}
-            <div className="mt-4 p-4 bg-green-100 border border-green-300 rounded-md text-green-800">
+            <div className="mt-4 p-4 border rounded-md" style={{ backgroundColor: company?.secondaryColor || '#ecfdf5', borderColor: primaryColor, color: primaryColor }}>
                 <p className="font-bold text-lg">PAID IN FULL</p>
             </div>
          </div>
@@ -140,7 +141,7 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
                     <span>{formatCurrency(vat)}</span>
                 </div>
             )}
-            <div className="flex justify-between font-bold text-lg py-3 border-t">
+            <div className="flex justify-between font-bold text-lg py-3 border-t" style={{ borderColor: primaryColor }}>
                 <span>Total</span>
                 <span>{formatCurrency(finalTotal)}</span>
             </div>
@@ -160,7 +161,7 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
       <div className="flex-grow"></div>
 
       {/* Footer */}
-      <footer className="text-xs text-gray-500 border-t pt-6 mt-16 text-center">
+      <footer className="text-xs text-gray-500 border-t pt-6 mt-16 text-center" style={{ borderColor: primaryColor }}>
          <p className="font-bold text-gray-700">Thank you for your business!</p>
          <p className="mt-4">
            Software money once received is not refundable and goods once sold cannot be returned.
