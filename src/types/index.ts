@@ -109,6 +109,7 @@ export interface Document extends Auditable {
   title: string;
   generatedDate: string; // ISO string date
   relatedTo?: string; // e.g., Customer Name, Asset S/N
+  saleId?: string; // Direct link to a POS sale
   data: any; // Data used to generate the document
 }
 

@@ -53,7 +53,7 @@ export class RoyalTechDB extends Dexie {
       accessories: 'id, name, serialNumber, status',
       customers: 'id, name, email, phone',
       leases: 'id, customerId, assetId, status, endDate',
-      documents: 'id, type, title, generatedDate',
+      documents: 'id, type, title, generatedDate, saleId', // Added saleId for POS document lookup
       sales: 'id, date, customerId, resellerId',
       expenses: 'id, date, category',
       projects: 'id, status, dueDate',

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -169,6 +170,7 @@ export function PosClient() {
             title: `Receipt #RCL-${saleId.slice(0, 5).toUpperCase()}`,
             generatedDate: saleDate,
             relatedTo: `Sale to ${selectedCustomer.name}`,
+            saleId: saleId, // Strictly link document to sale for reliable lookups
             data: { ...saleData, applyVat },
             createdAt: saleDate,
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
@@ -457,14 +459,23 @@ export function PosClient() {
 
       {/* POS History Section */}
       <RecentSales onViewReceipt={(sale) => {
-          // Find the document associated with this sale to show preview/actions
+          // Robust Lookup: First try searching by saleId, then fallback to formatted title
           const fetchDoc = async () => {
-              const docs = await db.documents.where('title').equals(`Receipt #RCL-${sale.id.slice(0, 5).toUpperCase()}`).toArray();
+              let docs = await db.documents.where('saleId').equals(sale.id).toArray();
+              
+              if (docs.length === 0) {
+                  docs = await db.documents.where('title').equals(`Receipt #RCL-${sale.id.slice(0, 5).toUpperCase()}`).toArray();
+              }
+
               if (docs.length > 0) {
                   setLastSaleDoc(docs[0]);
                   setIsSuccessOpen(true);
               } else {
-                  toast({ variant: 'destructive', title: 'Receipt Not Found', description: 'This sale was recorded before document sync was active.' });
+                  toast({ 
+                    variant: 'destructive', 
+                    title: 'Receipt Not Found', 
+                    description: 'This sale was recorded before robust document linking was active.' 
+                  });
               }
           };
           fetchDoc();
