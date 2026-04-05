@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useUser, useAuth, useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useUser, useAuth, useFirestore } from '@/firebase/provider';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarSeparator, SidebarTrigger } from '@/components/ui/sidebar';
@@ -19,7 +18,7 @@ import type { User as AppUser } from '@/types';
 
 const LOADING_SCREEN = (
     <div className="flex h-screen w-full items-center justify-center">
-        <p>Loading...</p>
+        <p>Syncing identity...</p>
     </div>
 );
 
@@ -33,7 +32,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
 
     useEffect(() => {
-      if (user) {
+      if (user && firestore) {
         setProfileAvatar(user.photoURL);
         const userRef = doc(firestore, 'users', user.uid);
         const unsub = onSnapshot(userRef, (doc) => {
@@ -57,7 +56,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         <SidebarHeader className="p-4">
             <Link href="/" className="flex items-center gap-2">
             <Image src="/picture1.png" alt="System Logo" width={40} height={40} className="rounded-md" />
-            <h1 className="text-xl font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+            <h1 className="text-lg font-bold tracking-tight text-sidebar-foreground group-data-[collapsible=icon]:hidden">
                 {APP_NAME}
             </h1>
             </Link>
@@ -71,7 +70,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
                 <Button onClick={handleLogout} variant="ghost" size="icon" className="text-sidebar-foreground/70 hover:text-sidebar-foreground" aria-label="Log Out">
                     <LogOut className="h-5 w-5"/>
                 </Button>
-                <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Logout</span>
+                <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Logout session</span>
             </div>
         </SidebarFooter>
       </Sidebar>
@@ -79,9 +78,9 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6">
           <div className="flex items-center gap-4">
             <SidebarTrigger />
-            <Link href="/" className="flex items-center gap-2 font-semibold text-lg md:hidden">
-               <Image src="/picture1.png" alt="System Logo" width={30} height={30} className="rounded-md" />
-              <span className="">{APP_NAME}</span>
+            <Link href="/" className="flex items-center gap-2 font-bold text-lg md:hidden">
+               <Image src="/picture1.png" alt="Logo" width={30} height={30} className="rounded-md" />
+              <span>{APP_NAME}</span>
             </Link>
           </div>
           
@@ -90,7 +89,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10 border border-border">
+                    <Avatar className="h-10 w-10 border border-border shadow-sm">
                       <AvatarImage src={profileAvatar || `https://picsum.photos/seed/${user.uid}/40/40`} alt="User" />
                       <AvatarFallback>{user.displayName?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
                     </Avatar>
@@ -107,13 +106,13 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
                   <Link href="/profile">
                     <DropdownMenuItem>
                       <User className="mr-2 h-4 w-4" />
-                      <span>Profile</span>
+                      <span>Workspace Profile</span>
                     </DropdownMenuItem>
                   </Link>
                   <Link href="/settings">
                     <DropdownMenuItem>
                       <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
+                      <span>App Preferences</span>
                     </DropdownMenuItem>
                   </Link>
                   <DropdownMenuSeparator />
@@ -171,7 +170,5 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return <AuthenticatedLayout>{children}</AuthenticatedLayout>;
   }
 
-  // If there's no user and we're not on a public path yet, we are in the process of redirecting.
-  // Show a loading screen to prevent flashing any content.
   return LOADING_SCREEN;
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -30,12 +29,18 @@ export default function SignUpPage() {
   const auth = useAuth();
 
   useEffect(() => {
+    // If the user becomes authenticated, immediately send them to home (where setup happens)
     if (!isUserLoading && user) {
       router.push('/');
     }
   }, [user, isUserLoading, router]);
 
   const handleSignUp = async () => {
+    if (!email || !password || !name) {
+        toast({ variant: 'destructive', title: 'Missing Info', description: 'Please fill in all fields.' });
+        return;
+    }
+
     setIsLoading(true);
 
     let role: 'admin' | 'user' = 'user';
@@ -64,11 +69,10 @@ export default function SignUpPage() {
             });
 
             toast({
-                title: 'Account Created!',
-                description: 'Welcome to your new workspace.',
+                title: 'Welcome!',
+                description: 'Your account is ready. Let\'s setup your business workspace.',
             });
-            // Redirect to home which will trigger the onboarding guard
-            router.push('/');
+            // The useEffect will handle the redirect automatically now
         })
         .catch((error) => {
             let description = "An unknown error occurred.";
@@ -99,7 +103,7 @@ export default function SignUpPage() {
   if (isUserLoading || user) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
-            <p>Loading...</p>
+            <p>Redirecting to your workspace...</p>
         </div>
     );
   }
@@ -110,7 +114,7 @@ export default function SignUpPage() {
         <CardHeader className="text-center items-center">
           <Image src="/picture1.png" alt="Platform Logo" width={60} height={60} className="rounded-md mb-4" />
           <CardTitle className="text-2xl">Create an Account</CardTitle>
-          <CardDescription>Join {APP_NAME} to manage your business.</CardDescription>
+          <CardDescription>Join the {APP_NAME} to manage your business.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -118,7 +122,7 @@ export default function SignUpPage() {
             <Input
               id="name-signup"
               type="text"
-              placeholder="John Doe"
+              placeholder="e.g. John Doe"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -126,11 +130,11 @@ export default function SignUpPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email-signup">Email</Label>
+            <Label htmlFor="email-signup">Email Address</Label>
             <Input
               id="email-signup"
               type="email"
-              placeholder="m@example.com"
+              placeholder="name@example.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -153,12 +157,12 @@ export default function SignUpPage() {
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-4">
-          <Button onClick={handleSignUp} className="w-full" disabled={isLoading}>
-            {isLoading ? 'Creating Account...' : 'Sign Up'}
+          <Button onClick={handleSignUp} className="w-full h-11" disabled={isLoading}>
+            {isLoading ? 'Creating Account...' : 'Get Started'}
           </Button>
           <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
-            <Link href="/login" className="underline">
+            <Link href="/login" className="underline font-semibold">
               Sign in
             </Link>
           </div>

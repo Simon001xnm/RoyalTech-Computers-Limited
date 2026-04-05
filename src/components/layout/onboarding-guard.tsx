@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
@@ -20,6 +19,7 @@ const COLOR_PRESETS = [
   { name: 'Royal', primary: '#1e40af', secondary: '#eff6ff' },
   { name: 'Maroon', primary: '#7f1d1d', secondary: '#fef2f2' },
   { name: 'Slate', primary: '#334155', secondary: '#f8fafc' },
+  { name: 'Teal', primary: '#0d9488', secondary: '#f0fdfa' },
 ];
 
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
@@ -28,6 +28,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // We check if a company exists for this session
   const company = useLiveQuery(() => db.companies.toArray());
   const [isSaving, setIsSaving] = useState(false);
   
@@ -73,12 +74,10 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         createdAt: new Date().toISOString(),
         createdBy: { uid: user.uid, name: user.displayName || 'Owner' }
       });
-      toast({ title: 'Welcome!', description: 'Your business profile has been set up successfully.' });
-      // Minor delay to allow the state to refresh
-      setTimeout(() => {
-        setIsSaving(false);
-        router.refresh();
-      }, 500);
+      toast({ title: 'Workspace Ready!', description: 'Your business suite is now configured with your branding.' });
+      
+      // Force a re-render so useLiveQuery picks up the company and clears the guard
+      setIsSaving(false);
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
       setIsSaving(false);
@@ -89,6 +88,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     return <div className="h-screen w-full flex items-center justify-center">Loading workspace...</div>;
   }
 
+  // If no business profile is found, show the introduction setup screen
   if (company.length === 0) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 py-12">
@@ -97,15 +97,15 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
             <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
               <Building2 className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Setup Your Workspace</CardTitle>
-            <CardDescription>Enter your company details to brand your documents and interface.</CardDescription>
+            <CardTitle className="text-2xl">Setup Your Business Workspace</CardTitle>
+            <CardDescription>Welcome! Enter your business details to customize your dashboard and professional documents.</CardDescription>
           </CardHeader>
           <form onSubmit={handleSetup}>
             <CardContent className="space-y-8">
               {/* Logo Section */}
               <div className="flex flex-col items-center gap-4">
                 <div 
-                  className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:bg-muted/50 overflow-hidden"
+                  className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:bg-muted/50 overflow-hidden relative"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {logoUrl ? (
@@ -118,24 +118,25 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                   )}
                 </div>
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+                <p className="text-[10px] text-muted-foreground">Upload your brand logo for documents and receipts.</p>
               </div>
 
               {/* Basic Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Business Name</Label>
-                  <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Acme Tech Solutions" required />
+                  <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Quest Tech Solutions" required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Business Email</Label>
-                  <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="office@company.com" required />
+                  <Label htmlFor="email">Public Business Email</Label>
+                  <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="info@company.com" required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
+                  <Label htmlFor="phone">Contact Phone</Label>
                   <Input id="phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+..." required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="location">City / Location</Label>
+                  <Label htmlFor="location">City / Town</Label>
                   <Input id="location" value={location} onChange={e => setLocation(e.target.value)} placeholder="Nairobi, KE" />
                 </div>
               </div>
@@ -148,11 +149,11 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
               <div className="space-y-4 pt-4 border-t">
                 <div className="flex items-center gap-2">
                   <Palette className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-semibold">Brand Identity</h3>
+                  <h3 className="font-semibold">System Appearance</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
-                    <Label>Theme Presets</Label>
+                    <Label>Brand Palette</Label>
                     <div className="flex flex-wrap gap-2">
                       {COLOR_PRESETS.map((preset) => (
                         <button
@@ -173,7 +174,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <Label>Custom Colors</Label>
+                    <Label>Custom Identity</Label>
                     <div className="flex gap-4">
                       <div className="flex-1">
                         <Label htmlFor="p-color" className="text-[10px] uppercase text-muted-foreground">Primary</Label>
@@ -196,7 +197,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full h-12 text-lg" disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Complete Setup'}
+                {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Finish Setup'}
               </Button>
             </CardFooter>
           </form>
@@ -205,5 +206,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If company exists, release the guard
   return <>{children}</>;
 }

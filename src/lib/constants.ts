@@ -42,4 +42,4 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
-export const APP_NAME = "Cloud ERP Suite";
+export const APP_NAME = "Professional ERP Suite";
