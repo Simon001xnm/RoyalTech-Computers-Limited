@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { Applicant, JobPosting } from "@/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, UserPlus } from "lucide-react";
@@ -55,9 +55,10 @@ export function ApplicantList() {
     
     const filteredApplicants = useMemo(() => {
         if (!applicants) return [];
+        const term = searchTerm.toLowerCase();
         return applicants.filter(applicant =>
-            applicant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            applicant.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase())
+            (applicant.name || "").toLowerCase().includes(term) ||
+            (applicant.jobTitle || "").toLowerCase().includes(term)
         );
     }, [applicants, searchTerm]);
 
@@ -66,15 +67,15 @@ export function ApplicantList() {
         setIsFormOpen(true);
     };
 
-    const handleEditApplicant = (applicant: Applicant) => {
+    const handleEditApplicant = useCallback((applicant: Applicant) => {
         setEditingApplicant(applicant);
         setIsFormOpen(true);
-    };
+    }, []);
 
-    const handleDeleteApplicant = (applicant: Applicant) => {
+    const handleDeleteApplicant = useCallback((applicant: Applicant) => {
         setApplicantToDelete(applicant);
         setIsDeleteConfirmOpen(true);
-    };
+    }, []);
 
     const confirmDelete = async () => {
         if (applicantToDelete) {
@@ -108,10 +109,10 @@ export function ApplicantList() {
         }
     };
 
-    const columnActions: ApplicantColumnActions = {
+    const columnActions: ApplicantColumnActions = useMemo(() => ({
         onEdit: handleEditApplicant,
         onDelete: handleDeleteApplicant,
-    };
+    }), [handleEditApplicant, handleDeleteApplicant]);
 
     const columns = useMemo<ColumnDef<Applicant, any>[]>(() => getApplicantColumns(columnActions), [columnActions]);
 

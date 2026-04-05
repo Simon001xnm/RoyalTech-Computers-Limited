@@ -39,6 +39,7 @@ export function ApplicantForm({ applicant, jobPostings, onSubmit, onCancel, isLo
       name: "",
       email: "",
       phone: "",
+      jobId: "",
       status: "New",
       resumeUrl: "",
       notes: ""

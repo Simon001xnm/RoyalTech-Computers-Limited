@@ -11,7 +11,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { JobPostingForm } from "./job-posting-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -73,6 +73,12 @@ export function JobPostingList() {
         }
     };
 
+    const safeFormatDate = (dateStr: string | undefined) => {
+        if (!dateStr) return "N/A";
+        const date = new Date(dateStr);
+        return isValid(date) ? format(date, "MMM d, yyyy") : "N/A";
+    };
+
     return (
         <Card>
             <CardHeader>
@@ -122,7 +128,7 @@ export function JobPostingList() {
                                 <div>
                                     <Badge variant={posting.status === 'Open' ? 'default' : 'secondary'}>{posting.status}</Badge>
                                 </div>
-                                <span>Created: {format(new Date(posting.createdAt), 'MMM d, yyyy')}</span>
+                                <span>Created: {safeFormatDate(posting.createdAt)}</span>
                             </CardFooter>
                         </Card>
                     ))}
