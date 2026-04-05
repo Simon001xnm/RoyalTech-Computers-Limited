@@ -1,12 +1,13 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Laptop } from "@/types";
+import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, PackageSearch, Upload } from "lucide-react";
-import { LaptopForm } from "./laptop-form";
-import { getLaptopColumns, type LaptopColumnActions } from "./laptop-columns";
+import { AssetForm } from "./asset-form";
+import { getAssetColumns, type AssetColumnActions } from "./asset-columns";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -47,9 +48,9 @@ export function StockClient() {
   const [isBulkFormOpen, setIsBulkFormOpen] = useState(false);
   const [bulkData, setBulkData] = useState("");
   const [isBulkImporting, setIsBulkImporting] = useState(false);
-  const [editingLaptop, setEditingLaptop] = useState<Laptop | null>(null);
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [laptopToDelete, setLaptopToDelete] = useState<Laptop | null>(null);
+  const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({
@@ -57,20 +58,19 @@ export function StockClient() {
     pageSize: 10,
   });
   
-  // DEXIE LOCAL QUERY
-  const laptops = useLiveQuery(() => db.laptops.toArray());
-  const isLoading = laptops === undefined;
+  const assets = useLiveQuery(() => db.assets.toArray());
+  const isLoading = assets === undefined;
 
-  const filteredLaptops = useMemo(() => {
-    if (!laptops) return [];
-    return laptops.filter((laptop) =>
-      laptop.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      laptop.serialNumber.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredAssets = useMemo(() => {
+    if (!assets) return [];
+    return assets.filter((asset) =>
+      asset.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      asset.serialNumber.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [laptops, searchTerm]);
+  }, [assets, searchTerm]);
 
-  const handleAddLaptop = () => {
-    setEditingLaptop(null);
+  const handleAddAsset = () => {
+    setEditingAsset(null);
     setIsFormOpen(true);
   };
   
@@ -88,7 +88,7 @@ export function StockClient() {
     const lines = bulkData.trim().split('\n').filter(line => line.trim() !== '');
     
     try {
-        const newLaptops: Laptop[] = lines.map((line) => {
+        const newAssets: Asset[] = lines.map((line) => {
             const parts = line.split(',').map(p => p.trim());
             const [model, serialNumber, purchaseDateStr, quantityStr, status, purchasePriceStr, leasePriceStr, ram, storage, processor] = parts;
             
@@ -98,7 +98,7 @@ export function StockClient() {
                 serialNumber,
                 purchaseDate: new Date(purchaseDateStr).toISOString(),
                 quantity: parseInt(quantityStr, 10) || 1,
-                status: (status as Laptop['status']) || 'Available',
+                status: (status as Asset['status']) || 'Available',
                 purchasePrice: parseFloat(purchasePriceStr) || 0,
                 leasePrice: parseFloat(leasePriceStr) || 0,
                 specifications: {
@@ -110,8 +110,8 @@ export function StockClient() {
             };
         });
 
-        await db.laptops.bulkAdd(newLaptops);
-        toast({ title: 'Import Successful', description: `${newLaptops.length} laptops added to local database.` });
+        await db.assets.bulkAdd(newAssets);
+        toast({ title: 'Import Successful', description: `${newAssets.length} assets added to local database.` });
         setIsBulkFormOpen(false);
         setBulkData("");
     } catch (error: any) {
@@ -121,37 +121,37 @@ export function StockClient() {
     }
   }
 
-  const handleEditLaptop = (laptop: Laptop) => {
-    setEditingLaptop(laptop);
+  const handleEditAsset = (asset: Asset) => {
+    setEditingAsset(asset);
     setIsFormOpen(true);
   };
 
-  const handleDeleteLaptop = (laptop: Laptop) => {
-    if (laptop.status === 'Leased') {
+  const handleDeleteAsset = (asset: Asset) => {
+    if (asset.status === 'Leased') {
         toast({
             variant: "destructive",
             title: "Deletion Failed",
-            description: "Cannot delete a laptop that is currently leased.",
+            description: "Cannot delete an asset that is currently leased.",
         });
         return;
     }
-    setLaptopToDelete(laptop);
+    setAssetToDelete(asset);
     setIsDeleteConfirmOpen(true);
   };
 
   const confirmDelete = async () => {
-    if (laptopToDelete) {
-      await db.laptops.delete(laptopToDelete.id);
-      toast({ title: "Laptop Deleted", description: `${laptopToDelete.model} has been removed.` });
-      setLaptopToDelete(null);
+    if (assetToDelete) {
+      await db.assets.delete(assetToDelete.id);
+      toast({ title: "Asset Deleted", description: `${assetToDelete.model} has been removed.` });
+      setAssetToDelete(null);
     }
     setIsDeleteConfirmOpen(false);
   };
   
   const handleFormSubmit = async (data: any) => {
-    const laptopData: Laptop = {
+    const assetData: Asset = {
       ...data,
-      id: editingLaptop?.id || crypto.randomUUID(),
+      id: editingAsset?.id || crypto.randomUUID(),
       purchaseDate: data.purchaseDate.toISOString(), 
       specifications: { 
         ram: data.ram || '', 
@@ -162,29 +162,29 @@ export function StockClient() {
     };
 
     try {
-        if (editingLaptop) {
-            await db.laptops.put(laptopData);
-            toast({ title: "Laptop Updated" });
+        if (editingAsset) {
+            await db.assets.put(assetData);
+            toast({ title: "Asset Updated" });
         } else {
-            await db.laptops.add({ ...laptopData, createdAt: new Date().toISOString() });
-            toast({ title: "Laptop Added" });
+            await db.assets.add({ ...assetData, createdAt: new Date().toISOString() });
+            toast({ title: "Asset Added" });
         }
         setIsFormOpen(false);
-        setEditingLaptop(null);
+        setEditingAsset(null);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not save laptop. Check for duplicate Serial Numbers.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save asset. Check for duplicate Serial Numbers.' });
     }
   };
 
-  const columnActions: LaptopColumnActions = {
-    onEdit: handleEditLaptop,
-    onDelete: handleDeleteLaptop,
+  const columnActions: AssetColumnActions = {
+    onEdit: handleEditAsset,
+    onDelete: handleDeleteAsset,
   };
 
-  const columns = useMemo<ColumnDef<Laptop, any>[]>(() => getLaptopColumns(columnActions), [columnActions]);
+  const columns = useMemo<ColumnDef<Asset, any>[]>(() => getAssetColumns(columnActions), [columnActions]);
 
   const table = useReactTable({
-    data: filteredLaptops,
+    data: filteredAssets,
     columns,
     state: {
       rowSelection,
@@ -202,8 +202,8 @@ export function StockClient() {
       <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
          <div className="flex-grow">
             <PageHeader
-                title="Laptop Inventory (Local)"
-                description="Manage your laptop inventory stored locally on this device."
+                title="Asset Inventory (Local)"
+                description="Manage your assets (Phones, Laptops, Devices) stored locally on this device."
             />
         </div>
         <div className="flex-shrink-0 flex gap-2">
@@ -211,9 +211,9 @@ export function StockClient() {
                 <Upload className="mr-2 h-4 w-4" />
                 Bulk Add
             </Button>
-            <Button onClick={handleAddLaptop}>
+            <Button onClick={handleAddAsset}>
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Add New Laptop
+                Add New Asset
             </Button>
         </div>
       </div>
@@ -227,29 +227,29 @@ export function StockClient() {
         />
       </div>
       
-      {isLoading && <p>Loading laptops from local database...</p>}
+      {isLoading && <p>Loading assets from local database...</p>}
 
-      {!isLoading && filteredLaptops.length === 0 && searchTerm && (
+      {!isLoading && filteredAssets.length === 0 && searchTerm && (
         <Alert variant="default" className="mb-4 bg-card">
           <PackageSearch className="h-4 w-4" />
-          <AlertTitle>No Laptops Found</AlertTitle>
+          <AlertTitle>No Assets Found</AlertTitle>
           <AlertDescription>
-            Your search for "{searchTerm}" did not match any laptops.
+            Your search for "{searchTerm}" did not match any assets in your inventory.
           </AlertDescription>
         </Alert>
       )}
       
-      {!isLoading && laptops && laptops.length === 0 && !searchTerm && (
+      {!isLoading && assets && assets.length === 0 && !searchTerm && (
          <Alert variant="default" className="mb-4 bg-card">
           <PackageSearch className="h-4 w-4" />
-          <AlertTitle>No Laptops in Stock</AlertTitle>
+          <AlertTitle>No Assets in Stock</AlertTitle>
           <AlertDescription>
-            Your local inventory is empty. Start adding laptops or use Bulk Add.
+            Your local inventory is empty. Start adding assets or use Bulk Add.
           </AlertDescription>
         </Alert>
       )}
 
-      {!isLoading && filteredLaptops.length > 0 && (
+      {!isLoading && filteredAssets.length > 0 && (
         <div className="rounded-lg border shadow-sm bg-card">
           <Table>
             <TableHeader>
@@ -285,7 +285,7 @@ export function StockClient() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results.
+                    No results found.
                   </TableCell>
                 </TableRow>
               )}
@@ -295,15 +295,15 @@ export function StockClient() {
         </div>
       )}
 
-      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingLaptop(null); } else { setIsFormOpen(true); }}}>
+      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingAsset(null); } else { setIsFormOpen(true); }}}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingLaptop ? "Edit Laptop" : "Add New Laptop"}</DialogTitle>
+            <DialogTitle>{editingAsset ? "Edit Asset" : "Add New Asset"}</DialogTitle>
           </DialogHeader>
-          <LaptopForm
-            laptop={editingLaptop}
+          <AssetForm
+            asset={editingAsset}
             onSubmit={handleFormSubmit}
-            onCancel={() => { setIsFormOpen(false); setEditingLaptop(null); }}
+            onCancel={() => { setIsFormOpen(false); setEditingAsset(null); }}
           />
         </DialogContent>
       </Dialog>
@@ -311,14 +311,14 @@ export function StockClient() {
       <Dialog open={isBulkFormOpen} onOpenChange={setIsBulkFormOpen}>
         <DialogContent className="sm:max-w-3xl">
             <DialogHeader>
-                <DialogTitle>Bulk Add Laptops</DialogTitle>
+                <DialogTitle>Bulk Add Assets</DialogTitle>
                 <DialogDescription>
                     Paste CSV data. Format: Model,Serial,Date(YYYY-MM-DD),Qty,Status,Price,Lease,RAM,SSD,CPU
                 </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
                 <Textarea 
-                    placeholder="HP Probook,SN123,2026-01-01,1,Available,1200,75,8GB,256GB,i5"
+                    placeholder="iPhone 15 Pro,SN123,2026-01-01,1,Available,1200,75,8GB,256GB,A17"
                     value={bulkData}
                     onChange={(e) => setBulkData(e.target.value)}
                     rows={10}
@@ -339,12 +339,12 @@ export function StockClient() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Delete <strong>{laptopToDelete?.model}</strong>? This will remove it from this device and synced devices.
+              Are you sure you want to delete <strong>{assetToDelete?.model}</strong>? This will remove it from this device and synced records.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Delete Asset</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

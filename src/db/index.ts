@@ -2,7 +2,7 @@
 import Dexie, { type Table } from 'dexie';
 import dexieCloud from 'dexie-cloud-addon';
 import type { 
-  Laptop, 
+  Asset, 
   Accessory, 
   Customer, 
   Lease, 
@@ -22,12 +22,11 @@ import type {
 } from '@/types';
 
 /**
- * RoyalTech Local Database
+ * Professional ERP Suite Local Database
  * Powered by Dexie.js and IndexedDB for local-first storage.
- * Synchronized via Dexie Cloud instance: z1xwh7v7u
  */
 export class RoyalTechDB extends Dexie {
-  laptops!: Table<Laptop>;
+  assets!: Table<Asset>;
   accessories!: Table<Accessory>;
   customers!: Table<Customer>;
   leases!: Table<Lease>;
@@ -50,10 +49,10 @@ export class RoyalTechDB extends Dexie {
     
     // Define tables and indexes
     this.version(1).stores({
-      laptops: 'id, model, serialNumber, status, purchaseDate',
+      assets: 'id, model, serialNumber, status, purchaseDate',
       accessories: 'id, name, serialNumber, status',
       customers: 'id, name, email, phone',
-      leases: 'id, customerId, laptopId, status, endDate',
+      leases: 'id, customerId, assetId, status, endDate',
       documents: 'id, type, title, generatedDate',
       sales: 'id, date, customerId, resellerId',
       expenses: 'id, date, category',
@@ -71,7 +70,7 @@ export class RoyalTechDB extends Dexie {
 
     this.cloud.configure({
       databaseUrl: 'https://z1xwh7v7u.dexie.cloud',
-      requireAuth: false // User is authenticated via Firebase, sync runs in background
+      requireAuth: false 
     });
   }
 }

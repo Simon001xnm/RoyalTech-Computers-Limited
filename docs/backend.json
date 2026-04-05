@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -13,8 +14,8 @@
       },
       "required": ["id", "email", "role"]
     },
-    "Laptop": {
-      "title": "Laptop",
+    "Asset": {
+      "title": "Asset",
       "type": "object",
       "properties": {
         "model": { "type": "string" },
@@ -72,15 +73,15 @@
       "properties": {
         "customerId": { "type": "string" },
         "customerName": { "type": "string" },
-        "laptopId": { "type": "string" },
-        "laptopModel": { "type": "string" },
+        "assetId": { "type": "string" },
+        "assetModel": { "type": "string" },
         "startDate": { "type": "string", "format": "date-time" },
         "endDate": { "type": "string", "format": "date-time" },
         "monthlyPayment": { "type": "number" },
         "paymentStatus": { "type": "string", "enum": ["Paid", "Pending", "Overdue"] },
         "status": { "type": "string", "enum": ["Active", "Expired", "Terminated", "Upcoming"] }
       },
-      "required": ["customerId", "laptopId", "startDate", "endDate", "paymentStatus", "status"]
+      "required": ["customerId", "assetId", "startDate", "endDate", "paymentStatus", "status"]
     },
     "Document": {
         "title": "Document",
@@ -119,7 +120,7 @@
                       "name": { "type": "string" },
                       "serialNumber": { "type": "string" },
                       "price": { "type": "number" },
-                      "type": { "type": "string", "enum": ["laptop", "accessory"] }
+                      "type": { "type": "string", "enum": ["asset", "accessory"] }
                   },
                    "required": ["id", "name", "price", "type"]
               }
@@ -137,155 +138,6 @@
             "notes": { "type": "string" }
         },
         "required": ["date", "category", "amount"]
-    },
-    "Report": {
-        "title": "Report",
-        "type": "object",
-        "properties": {
-            "type": { "type": "string", "enum": ["ProfitAndLoss", "BalanceSheet"]},
-            "generatedDate": { "type": "string", "format": "date-time" },
-            "startDate": { "type": "string", "format": "date-time" },
-            "endDate": { "type": "string", "format": "date-time" },
-            "data": { "type": "object" }
-        },
-        "required": ["type", "generatedDate", "startDate", "endDate", "data"]
-    },
-    "Payment": {
-        "title": "Payment",
-        "type": "object",
-        "properties": {
-            "date": { "type": "string", "format": "date-time" },
-            "amount": { "type": "number" },
-            "method": { "type": "string", "enum": ["Till", "M-Pesa", "Bank", "Paybill"] }
-        },
-        "required": ["date", "amount", "method"]
-    },
-     "Campaign": {
-      "title": "Campaign",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "subject": { "type": "string" },
-        "body": { "type": "string" },
-        "status": { "type": "string", "enum": ["Draft", "Sent", "Archived"] },
-        "audience": { "type": "object" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "sentAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["name", "subject", "body", "status", "createdAt"]
-    },
-    "Project": {
-      "title": "Project",
-      "type": "object",
-      "properties": {
-        "title": { "type": "string" },
-        "description": { "type": "string" },
-        "status": { "type": "string", "enum": ["Todo", "In Progress", "Done"] },
-        "dueDate": { "type": "string", "format": "date-time" }
-      },
-      "required": ["title", "status"]
-    },
-    "Ticket": {
-      "title": "Ticket",
-      "type": "object",
-      "properties": {
-        "subject": { "type": "string" },
-        "description": { "type": "string" },
-        "status": { "type": "string", "enum": ["Open", "In Progress", "Closed"] },
-        "priority": { "type": "string", "enum": ["Low", "Medium", "High"] },
-        "customerId": { "type": "string" },
-        "customerName": { "type": "string" },
-        "leaseId": { "type": "string" },
-        "leaseIdentifier": { "type": "string" }
-      },
-      "required": ["subject", "status", "priority", "customerId"]
-    },
-     "Employee": {
-      "title": "Employee",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "position": { "type": "string" },
-        "department": { "type": "string" },
-        "hireDate": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["Active", "On Leave", "Terminated"] },
-        "avatarUrl": { "type": "string", "format": "data-uri" },
-        "role": { "type": "string", "description": "The user's role.", "enum": ["admin", "user"] }
-      },
-      "required": ["name", "email", "position", "department", "hireDate", "status", "role"]
-    },
-    "JobPosting": {
-      "title": "Job Posting",
-      "type": "object",
-      "properties": {
-        "title": { "type": "string" },
-        "description": { "type": "string" },
-        "department": { "type": "string" },
-        "status": { "type": "string", "enum": ["Open", "Closed", "Archived"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["title", "description", "department", "status", "createdAt"]
-    },
-    "Applicant": {
-      "title": "Applicant",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "phone": { "type": "string" },
-        "jobId": { "type": "string" },
-        "jobTitle": { "type": "string" },
-        "status": { "type": "string", "enum": ["New", "Screening", "Interview", "Offered", "Hired", "Rejected"] },
-        "resumeUrl": { "type": "string", "format": "uri" },
-        "notes": { "type": "string" },
-        "appliedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["name", "email", "jobId", "status", "appliedAt"]
-    },
-    "Message": {
-      "title": "Message",
-      "type": "object",
-      "properties": {
-        "text": { "type": "string" },
-        "userId": { "type": "string" },
-        "userName": { "type": "string" },
-        "userAvatar": { "type": "string", "format": "uri" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["text", "userId", "userName", "createdAt"]
-    },
-    "Reseller": {
-        "title": "Reseller",
-        "type": "object",
-        "properties": {
-            "name": { "type": "string" },
-            "email": { "type": "string", "format": "email" },
-            "phone": { "type": "string" },
-            "company": { "type": "string" },
-            "status": { "type": "string", "enum": ["Active", "Suspended"] },
-            "registrationDate": { "type": "string", "format": "date-time" }
-        },
-        "required": ["name", "email", "status", "registrationDate"]
-    },
-    "ItemIssuance": {
-        "title": "Item Issuance",
-        "type": "object",
-        "properties": {
-            "resellerId": { "type": "string" },
-            "resellerName": { "type": "string" },
-            "itemId": { "type": "string" },
-            "itemType": { "type": "string", "enum": ["laptop", "accessory"] },
-            "itemSerialNumber": { "type": "string" },
-            "itemName": { "type": "string" },
-            "costPrice": { "type": "number" },
-            "expectedSellingPrice": { "type": "number" },
-            "dateIssued": { "type": "string", "format": "date-time" },
-            "dateSold": { "type": "string", "format": "date-time" },
-            "dateReturned": { "type": "string", "format": "date-time" },
-            "status": { "type": "string", "enum": ["Issued", "Sold", "Returned"] }
-        },
-        "required": ["resellerId", "itemId", "itemType", "dateIssued", "status", "costPrice"]
     }
   },
   "firestore": {
@@ -293,9 +145,9 @@
       "schema": { "$ref": "#/entities/User" },
       "description": "Stores user profile information."
     },
-    "/laptops/{laptopId}": {
-      "schema": { "$ref": "#/entities/Laptop" },
-      "description": "Stores inventory of all laptops."
+    "/assets/{assetId}": {
+      "schema": { "$ref": "#/entities/Asset" },
+      "description": "Stores inventory of all primary assets (phones, laptops, etc)."
     },
     "/accessories/{accessoryId}": {
       "schema": { "$ref": "#/entities/Accessory" },
@@ -320,50 +172,6 @@
     "/expenses/{expenseId}": {
         "schema": { "$ref": "#/entities/Expense" },
         "description": "Stores records of business expenses."
-    },
-    "/reports/{reportId}": {
-        "schema": { "$ref": "#/entities/Report" },
-        "description": "Stores generated financial reports."
-    },
-    "/payments/{paymentId}": {
-        "schema": { "$ref": "#/entities/Payment" },
-        "description": "Stores records of payments received."
-    },
-     "/campaigns/{campaignId}": {
-      "schema": { "$ref": "#/entities/Campaign" },
-      "description": "Stores marketing campaign data."
-    },
-    "/tickets/{ticketId}": {
-      "schema": { "$ref": "#/entities/Ticket" },
-      "description": "Stores customer support tickets."
-    },
-    "/projects/{projectId}": {
-      "schema": { "$ref": "#/entities/Project" },
-      "description": "Stores project management data."
-    },
-    "/employees/{employeeId}": {
-      "schema": { "$ref": "#/entities/Employee" },
-      "description": "Stores employee records."
-    },
-    "/jobPostings/{jobPostingId}": {
-      "schema": { "$ref": "#/entities/JobPosting" },
-      "description": "Stores job posting information."
-    },
-    "/applicants/{applicantId}": {
-      "schema": { "$ref": "#/entities/Applicant" },
-      "description": "Stores applicant information for job postings."
-    },
-    "/messages/{messageId}": {
-      "schema": { "$ref": "#/entities/Message" },
-      "description": "Stores messages for the group chat."
-    },
-    "/resellers/{resellerId}": {
-      "schema": { "$ref": "#/entities/Reseller" },
-      "description": "Stores reseller information."
-    },
-    "/itemIssuances/{issuanceId}": {
-      "schema": { "$ref": "#/entities/ItemIssuance" },
-      "description": "Tracks items (laptops or accessories) issued to resellers."
     }
   },
   "auth": {

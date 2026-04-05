@@ -36,13 +36,13 @@ export interface User {
   avatarUrl?: string;
 }
 
-export interface Laptop extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
+export interface Asset extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   id: string;
   model: string;
   serialNumber: string;
   purchaseDate: string; // ISO string date
   status: 'Available' | 'Leased' | 'Repair' | 'Sold' | 'With Reseller';
-  quantity: number; // For stock items if not uniquely tracked by serial
+  quantity: number; 
   location?: { lat: number; lng: number }; // For map tracking
   specifications?: {
     ram: string;
@@ -85,8 +85,8 @@ export interface Lease extends Auditable {
   id:string;
   customerId: string;
   customerName?: string; // Denormalized for display
-  laptopId: string;
-  laptopModel?: string; // Denormalized for display
+  assetId: string;
+  assetModel?: string; // Denormalized for display
   startDate: string; // ISO string date
   endDate: string; // ISO string date
   monthlyPayment?: number;
@@ -108,7 +108,7 @@ export interface Document extends Auditable {
   type: DocumentType;
   title: string;
   generatedDate: string; // ISO string date
-  relatedTo?: string; // e.g., Customer Name, Laptop S/N
+  relatedTo?: string; // e.g., Customer Name, Asset S/N
   data: any; // Data used to generate the document
 }
 
@@ -119,7 +119,7 @@ export interface SaleItem {
     price: number; // Represents Unit Price
     quantity: number;
     discount?: number;
-    type: 'laptop' | 'accessory';
+    type: 'asset' | 'accessory';
     specifications?: {
         ram: string;
         storage: string;
@@ -159,30 +159,13 @@ export interface Expense extends Auditable {
   notes?: string;
 }
 
-export interface Report extends Auditable {
-  id: string;
-  type: 'ProfitAndLoss' | 'BalanceSheet';
-  generatedDate: string; // ISO string date
-  startDate: string; // ISO string date
-  endDate: string; // ISO string date
-  data: any; // The processed data for the report
-}
-
-export interface Payment extends Auditable {
-  id: string;
-  date: string; // ISO string date
-  amount: number;
-  method: 'Till' | 'M-Pesa' | 'Bank' | 'Paybill';
-}
-
-
 export interface Campaign extends Auditable {
   id: string;
   name: string;
   subject: string;
   body: string;
   status: 'Draft' | 'Sent' | 'Archived';
-  audience: { // Example of how you might store audience info
+  audience: {
     type: 'all' | 'segment';
     customerIds?: string[];
   };
@@ -209,41 +192,6 @@ export interface Project extends Auditable {
     dueDate?: string; // ISO string date
 }
 
-export interface Employee extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
-  id: string;
-  name: string;
-  email: string;
-  position: string;
-  department: string;
-  hireDate: string; // ISO string date
-  status: 'Active' | 'On Leave' | 'Terminated';
-  avatarUrl?: string; // This can be a regular URL or a data URI
-  role: 'admin' | 'user';
-  createdAt?: string; // from Auditable
-  updatedAt?: string; // from Auditable
-}
-
-export interface JobPosting extends Auditable {
-  id: string;
-  title: string;
-  description: string;
-  department: string;
-  status: 'Open' | 'Closed' | 'Archived';
-}
-
-export interface Applicant extends Auditable {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  jobId: string;
-  jobTitle?: string; // Denormalized
-  status: 'New' | 'Screening' | 'Interview' | 'Offered' | 'Hired' | 'Rejected';
-  resumeUrl?: string;
-  notes?: string;
-  appliedAt: string; // ISO string date
-}
-
 export interface Message extends Omit<Auditable, 'updatedAt'> {
   id: string;
   text: string;
@@ -267,7 +215,7 @@ export interface ItemIssuance extends Auditable {
   resellerId: string;
   resellerName: string;
   itemId: string;
-  itemType: 'laptop' | 'accessory';
+  itemType: 'asset' | 'accessory';
   itemSerialNumber: string;
   itemName: string;
   costPrice: number;
@@ -276,4 +224,25 @@ export interface ItemIssuance extends Auditable {
   dateSold?: string; // ISO string date
   dateReturned?: string; // ISO string date
   status: 'Issued' | 'Sold' | 'Returned';
+}
+
+export interface JobPosting extends Auditable {
+  id: string;
+  title: string;
+  description: string;
+  department: string;
+  status: 'Open' | 'Closed' | 'Archived';
+}
+
+export interface Applicant extends Auditable {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  jobId: string;
+  jobTitle?: string; // Denormalized
+  status: 'New' | 'Screening' | 'Interview' | 'Offered' | 'Hired' | 'Rejected';
+  resumeUrl?: string;
+  notes?: string;
+  appliedAt: string; // ISO string date
 }

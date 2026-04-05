@@ -4,7 +4,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import type { Lease, Customer, Laptop } from "@/types";
+import type { Lease, Customer, Asset } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ import { SignaturePad } from "@/components/ui/signature-pad";
 
 const leaseFormSchema = z.object({
   customerId: z.string().min(1, "Customer is required."),
-  laptopId: z.string().min(1, "Laptop is required."),
+  assetId: z.string().min(1, "Asset is required."),
   startDate: z.date({ required_error: "Start date is required." }),
   endDate: z.date({ required_error: "End date is required." }),
   monthlyPayment: z.coerce.number().min(0, "Monthly payment must be positive.").optional(),
@@ -37,7 +37,7 @@ type LeaseFormValues = z.infer<typeof leaseFormSchema>;
 interface LeaseFormProps {
   lease?: Lease | null;
   customers: Pick<Customer, 'id' | 'name'>[];
-  laptops: Pick<Laptop, 'id' | 'model' | 'serialNumber'>[];
+  assets: Pick<Asset, 'id' | 'model' | 'serialNumber'>[];
   onSubmit: (data: LeaseFormValues) => void;
   onCancel: () => void;
   isLoading?: boolean;
@@ -46,12 +46,12 @@ interface LeaseFormProps {
 export function LeaseForm({ 
   lease, 
   customers = [], 
-  laptops = [], 
+  assets = [], 
   onSubmit, 
   onCancel, 
   isLoading 
 }: LeaseFormProps) {
-  const [isLaptopComboboxOpen, setIsLaptopComboboxOpen] = React.useState(false);
+  const [isAssetComboboxOpen, setIsAssetComboboxOpen] = React.useState(false);
 
   const defaultValues: Partial<LeaseFormValues> = lease
     ? { ...lease, startDate: new Date(lease.startDate), endDate: new Date(lease.endDate) }
@@ -80,7 +80,7 @@ export function LeaseForm({
             name="customerId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Customer</FormLabel>
+                <FormLabel>Customer/Client</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -97,11 +97,11 @@ export function LeaseForm({
           />
           <FormField
             control={form.control}
-            name="laptopId"
+            name="assetId"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Laptop</FormLabel>
-                 <Popover open={isLaptopComboboxOpen} onOpenChange={setIsLaptopComboboxOpen}>
+                <FormLabel>Inventory Asset</FormLabel>
+                 <Popover open={isAssetComboboxOpen} onOpenChange={setIsAssetComboboxOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -113,8 +113,8 @@ export function LeaseForm({
                           )}
                         >
                           {field.value
-                            ? laptops.find((laptop) => laptop.id === field.value)?.serialNumber
-                            : "Select laptop"}
+                            ? assets.find((asset) => asset.id === field.value)?.serialNumber
+                            : "Select asset"}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
@@ -122,26 +122,26 @@ export function LeaseForm({
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                       <Command>
                         <CommandInput placeholder="Search by S/N or model..." />
-                        <CommandEmpty>No laptop found.</CommandEmpty>
+                        <CommandEmpty>No asset found.</CommandEmpty>
                         <CommandGroup>
-                          {laptops.map((laptop) => (
+                          {assets.map((asset) => (
                             <CommandItem
-                              value={`${laptop.serialNumber} ${laptop.model}`}
-                              key={laptop.id}
+                              value={`${asset.serialNumber} ${asset.model}`}
+                              key={asset.id}
                               onSelect={() => {
-                                form.setValue("laptopId", laptop.id)
-                                setIsLaptopComboboxOpen(false)
+                                form.setValue("assetId", asset.id)
+                                setIsAssetComboboxOpen(false)
                               }}
                             >
                               <Check
                                 className={cn(
                                   "mr-2 h-4 w-4",
-                                  laptop.id === field.value
+                                  asset.id === field.value
                                     ? "opacity-100"
                                     : "opacity-0"
                                 )}
                               />
-                              {laptop.serialNumber} ({laptop.model})
+                              {asset.serialNumber} ({asset.model})
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -160,7 +160,7 @@ export function LeaseForm({
             name="startDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Start Date</FormLabel>
+                <FormLabel>Lease Commencement Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -183,7 +183,7 @@ export function LeaseForm({
             name="endDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>End Date</FormLabel>
+                <FormLabel>Lease Expiry Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -208,9 +208,9 @@ export function LeaseForm({
           name="monthlyPayment"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Monthly Payment (Ksh) (Optional)</FormLabel>
+              <FormLabel>Contractual Monthly Rent</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" placeholder="e.g., 7500.00" {...field} value={field.value ?? ''} />
+                <Input type="number" step="0.01" placeholder="KES 0.00" {...field} value={field.value ?? ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -223,7 +223,7 @@ export function LeaseForm({
             name="paymentStatus"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Payment Status</FormLabel>
+                <FormLabel>Billing Status</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -245,7 +245,7 @@ export function LeaseForm({
             name="status"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Lease Status</FormLabel>
+                <FormLabel>Agreement Status</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -274,7 +274,7 @@ export function LeaseForm({
                 <SignaturePad 
                   onSave={field.onChange} 
                   defaultValue={field.value} 
-                  label="Lessee Digital Signature" 
+                  label="Lessee/Client Digital Signature" 
                 />
               </FormControl>
               <FormMessage />
@@ -287,7 +287,7 @@ export function LeaseForm({
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? (lease ? "Saving..." : "Creating...") : (lease ? "Save Changes" : "Create Lease")}
+            {isLoading ? "Syncing..." : (lease ? "Update Contract" : "Finalize Lease")}
           </Button>
         </div>
       </form>
