@@ -107,7 +107,7 @@ export default function SignUpPage() {
     <div className="flex h-screen w-full items-center justify-center bg-background">
       <Card className="w-[400px]">
         <CardHeader className="text-center items-center">
-          <Image src="/picture1.png" alt="RoyalTech Logo" width={60} height={60} className="rounded-md mb-4" />
+          <Image src="/picture1.png" alt="Platform Logo" width={60} height={60} className="rounded-md mb-4" />
           <CardTitle className="text-2xl">Create an Account</CardTitle>
           <CardDescription>Join {APP_NAME} to manage your business.</CardDescription>
         </CardHeader>

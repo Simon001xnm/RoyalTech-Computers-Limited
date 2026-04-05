@@ -5,6 +5,8 @@ import { format } from 'date-fns';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { PnlData } from './reports-client';
 import type { DateRange } from 'react-day-picker';
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 interface PnlReportProps {
   data: PnlData;
@@ -53,13 +55,20 @@ const ReportRow = ({
 );
 
 export function PnlReport({ data, dateRange }: PnlReportProps) {
+  const company = useLiveQuery(() => db.companies.toCollection().last());
   const { operatingIncome, costOfGoodsSold, operatingExpenses, grossProfit, netIncome } = data;
 
+  const companyName = company?.name || 'YOUR BUSINESS';
+
   return (
-    <Card id="pnl-report" className="print-container shadow-lg bg-white">
+    <Card id="pnl-report" className="print-container shadow-lg bg-white text-gray-900">
       <CardHeader className="text-center p-4">
-        <img src="/picture1.png" alt="Company Logo" className="h-28 w-auto object-contain mx-auto mb-4" />
-        <h1 className="text-2xl font-bold uppercase">ROYALTECH COMPUTERS LIMITED</h1>
+        {company?.logoUrl ? (
+          <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain mx-auto mb-4" />
+        ) : (
+          <div className="h-20 flex items-center justify-center text-muted-foreground italic mb-4">Company Logo</div>
+        )}
+        <h1 className="text-2xl font-bold uppercase">{companyName}</h1>
         <p className="text-xl">Profit and Loss</p>
         <p className="text-sm text-muted-foreground">Basis: Accrual</p>
         {dateRange?.from && dateRange.to && (
@@ -117,6 +126,12 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
         <div className="flex justify-between font-bold text-base py-2 border-t-2 border-black mt-4">
           <span>Net Income</span>
           <span className="text-right">{formatCurrency(netIncome)}</span>
+        </div>
+
+        <div className="mt-12 pt-4 border-t text-center">
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest">
+                powered by simonstyless technologies limited
+            </p>
         </div>
       </CardContent>
     </Card>

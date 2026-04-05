@@ -56,7 +56,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-md">
         <SidebarHeader className="p-4">
             <Link href="/" className="flex items-center gap-2">
-            <Image src="/picture1.png" alt="RoyalTech Logo" width={40} height={40} className="rounded-md" />
+            <Image src="/picture1.png" alt="System Logo" width={40} height={40} className="rounded-md" />
             <h1 className="text-xl font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
                 {APP_NAME}
             </h1>
@@ -80,7 +80,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-4">
             <SidebarTrigger />
             <Link href="/" className="flex items-center gap-2 font-semibold text-lg md:hidden">
-               <Image src="/picture1.png" alt="RoyalTech Logo" width={30} height={30} className="rounded-md" />
+               <Image src="/picture1.png" alt="System Logo" width={30} height={30} className="rounded-md" />
               <span className="">{APP_NAME}</span>
             </Link>
           </div>
