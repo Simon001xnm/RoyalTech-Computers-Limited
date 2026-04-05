@@ -28,7 +28,6 @@ export default function SignUpPage() {
   const auth = useAuth();
 
   useEffect(() => {
-    // If the user becomes authenticated, immediately send them to home (where setup happens)
     if (!isUserLoading && user) {
       router.push('/');
     }
@@ -71,7 +70,6 @@ export default function SignUpPage() {
                 title: 'Welcome!',
                 description: 'Your account is ready. Let\'s setup your business workspace.',
             });
-            // The useEffect will handle the redirect automatically now
         })
         .catch((error) => {
             let description = "An unknown error occurred.";
@@ -108,15 +106,21 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-background">
-      <Card className="w-[400px]">
+    <div className="relative flex h-screen w-full items-center justify-center bg-black overflow-hidden">
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60 scale-105 transition-transform duration-1000 ease-out"
+        style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=2070")' }}
+      />
+
+      <Card className="relative w-[400px] bg-white/10 backdrop-blur-xl border-white/20 shadow-2xl text-white">
         <CardHeader className="text-center items-center">
-          <CardTitle className="text-2xl">Create an Account</CardTitle>
-          <CardDescription>Join the {APP_NAME} to manage your business.</CardDescription>
+          <CardTitle className="text-2xl font-bold tracking-tight">Create an Account</CardTitle>
+          <CardDescription className="text-white/70">Join the {APP_NAME} to manage your business.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name-signup">Full Name</Label>
+            <Label htmlFor="name-signup" className="text-white/90">Full Name</Label>
             <Input
               id="name-signup"
               type="text"
@@ -125,10 +129,11 @@ export default function SignUpPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={isLoading}
+              className="bg-black/40 border-white/10 text-white placeholder:text-white/30 focus:ring-primary/50"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email-signup">Email Address</Label>
+            <Label htmlFor="email-signup" className="text-white/90">Email Address</Label>
             <Input
               id="email-signup"
               type="email"
@@ -137,10 +142,11 @@ export default function SignUpPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
+              className="bg-black/40 border-white/10 text-white placeholder:text-white/30 focus:ring-primary/50"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password-signup">Password</Label>
+            <Label htmlFor="password-signup" className="text-white/90">Password</Label>
             <Input
               id="password-signup"
               type="password"
@@ -150,17 +156,18 @@ export default function SignUpPage() {
               onKeyDown={handlePasswordKeyDown}
               onKeyUp={handlePasswordKeyDown}
               disabled={isLoading}
+              className="bg-black/40 border-white/10 text-white focus:ring-primary/50"
             />
-            {isCapsLockOn && <p className="text-xs text-destructive mt-2">Caps Lock is on</p>}
+            {isCapsLockOn && <p className="text-xs text-red-400 mt-2">Caps Lock is on</p>}
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-4">
-          <Button onClick={handleSignUp} className="w-full h-11" disabled={isLoading}>
+          <Button onClick={handleSignUp} className="w-full h-11 font-semibold shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]" disabled={isLoading}>
             {isLoading ? 'Creating Account...' : 'Get Started'}
           </Button>
-          <div className="mt-4 text-center text-sm">
+          <div className="mt-4 text-center text-sm text-white/60">
             Already have an account?{' '}
-            <Link href="/login" className="underline font-semibold">
+            <Link href="/login" className="underline text-white hover:text-primary-foreground transition-colors font-semibold">
               Sign in
             </Link>
           </div>

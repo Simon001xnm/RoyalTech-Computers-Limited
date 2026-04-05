@@ -49,15 +49,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-background">
-      <Card className="w-[400px]">
+    <div className="relative flex h-screen w-full items-center justify-center bg-black overflow-hidden">
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60 scale-105 transition-transform duration-1000 ease-out"
+        style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=2070")' }}
+      />
+      
+      {/* Glassmorphism Card */}
+      <Card className="relative w-[400px] bg-white/10 backdrop-blur-xl border-white/20 shadow-2xl text-white">
         <CardHeader className="text-center items-center">
-          <CardTitle className="text-2xl">{`Welcome to ${APP_NAME}`}</CardTitle>
-          <CardDescription>Enter your credentials to access your workspace.</CardDescription>
+          <CardTitle className="text-2xl font-bold tracking-tight">{`Welcome to ${APP_NAME}`}</CardTitle>
+          <CardDescription className="text-white/70">Enter your credentials to access your workspace.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email-signin">Email</Label>
+            <Label htmlFor="email-signin" className="text-white/90">Email</Label>
             <Input
               id="email-signin"
               type="email"
@@ -66,10 +73,11 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
+              className="bg-black/40 border-white/10 text-white placeholder:text-white/30 focus:ring-primary/50"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password-signin">Password</Label>
+            <Label htmlFor="password-signin" className="text-white/90">Password</Label>
             <Input
               id="password-signin"
               type="password"
@@ -79,17 +87,18 @@ export default function LoginPage() {
               onKeyDown={handlePasswordKeyDown}
               onKeyUp={handlePasswordKeyDown}
               disabled={isLoading}
+              className="bg-black/40 border-white/10 text-white focus:ring-primary/50"
             />
-             {isCapsLockOn && <p className="text-xs text-destructive mt-2">Caps Lock is on</p>}
+             {isCapsLockOn && <p className="text-xs text-red-400 mt-2">Caps Lock is on</p>}
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-4">
-          <Button onClick={handleSignIn} className="w-full" disabled={isLoading}>
+          <Button onClick={handleSignIn} className="w-full font-semibold shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]" disabled={isLoading}>
             {isLoading ? 'Signing In...' : 'Sign In'}
           </Button>
-          <div className="mt-4 text-center text-sm">
+          <div className="mt-4 text-center text-sm text-white/60">
             Don't have an account?{' '}
-            <Link href="/signup" className="underline">
+            <Link href="/signup" className="underline text-white hover:text-primary-foreground transition-colors">
               Sign up
             </Link>
           </div>
