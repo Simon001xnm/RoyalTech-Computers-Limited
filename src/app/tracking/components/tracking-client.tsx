@@ -8,24 +8,26 @@ import type { Laptop } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { LocateFixed, WifiOff, LaptopIcon } from "lucide-react";
+import { LocateFixed, LaptopIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where } from "firebase/firestore";
+import { useUser } from '@/firebase/provider';
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 
 export function TrackingClient() {
   const [selectedLaptopId, setSelectedLaptopId] = useState<string | null>(null);
-
-  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
-  const laptopsCollection = useMemoFirebase(() => {
-      if (!firestore || !user) return null;
-      return query(collection(firestore, 'laptops'), where('status', 'in', ['Leased', 'Repair']));
-  }, [firestore, user]);
-  const { data: trackableLaptops, isLoading: trackableLaptopsLoading } = useCollection<Laptop>(laptopsCollection);
 
-  const isLoading = isUserLoading || trackableLaptopsLoading;
+  // Fetch trackable laptops from local Dexie database
+  const trackableLaptops = useLiveQuery(async () => {
+    if (!user) return [];
+    // Only track laptops that are leased or in repair
+    return await db.laptops
+      .filter(l => ['Leased', 'Repair'].includes(l.status))
+      .toArray();
+  }, [user]);
+
+  const isLoading = isUserLoading || trackableLaptops === undefined;
 
   const laptopsWithLocation = useMemo(() => 
     trackableLaptops?.filter(laptop => laptop.location), 
@@ -57,7 +59,7 @@ export function TrackingClient() {
   return (
     <>
       <PageHeader
-        title="Laptop Tracking"
+        title="Laptop Tracking (Local)"
         description="View the last known location of leased or in-repair laptops."
       />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -89,7 +91,7 @@ export function TrackingClient() {
                             <LaptopIcon className="h-4 w-4" />
                             <AlertTitle>No Trackable Laptops</AlertTitle>
                             <AlertDescription>
-                                There are no laptops currently marked as 'Leased' or 'Repair' with location data.
+                                There are no laptops currently marked as 'Leased' or 'Repair' with location data in your local records.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -115,7 +117,7 @@ export function TrackingClient() {
                             <span className="text-muted-foreground">Lat: {selectedLaptopDetails.location.lat.toFixed(4)}, Lng: {selectedLaptopDetails.location.lng.toFixed(4)}</span>
                         </div>
                          <p className="text-xs text-muted-foreground pt-2">
-                            Note: Location data is for demonstration and may not be real-time.
+                            Note: Location data is retrieved from your local device database.
                         </p>
                     </CardContent>
                 </Card>
@@ -125,7 +127,7 @@ export function TrackingClient() {
                     <LocateFixed className="h-4 w-4" />
                     <AlertTitle>Location Not Available</AlertTitle>
                     <AlertDescription>
-                        The selected laptop ({selectedLaptopDetails.model}) does not have location data available.
+                        The selected laptop ({selectedLaptopDetails.model}) does not have location data available locally.
                     </AlertDescription>
                 </Alert>
              )}

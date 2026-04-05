@@ -5,13 +5,12 @@ import { useState, useMemo } from "react";
 import type { Applicant, JobPosting } from "@/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, UserPlus } from "lucide-react";
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc } from "firebase/firestore";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useUser } from '@/firebase/provider';
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Table,
@@ -35,15 +34,12 @@ import { Input } from "@/components/ui/input";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 export function ApplicantList() {
-    const firestore = useFirestore();
     const { toast } = useToast();
     const { user, isUserLoading } = useUser();
 
-    const applicantsCollection = useMemoFirebase(() => user ? collection(firestore, 'applicants') : null, [firestore, user]);
-    const { data: applicants, isLoading: isLoadingApplicants } = useCollection<Applicant>(applicantsCollection);
-    
-    const postingsCollection = useMemoFirebase(() => user ? collection(firestore, 'jobPostings') : null, [firestore, user]);
-    const { data: postings, isLoading: isLoadingPostings } = useCollection<JobPosting>(postingsCollection);
+    // Dexie queries
+    const applicants = useLiveQuery(() => db.applicants.toArray());
+    const postings = useLiveQuery(() => db.jobPostings.toArray());
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingApplicant, setEditingApplicant] = useState<Applicant | null>(null);
@@ -55,7 +51,7 @@ export function ApplicantList() {
       pageSize: 10,
     });
     
-    const isLoading = isUserLoading || isLoadingApplicants || isLoadingPostings;
+    const isLoading = isUserLoading || applicants === undefined || postings === undefined;
     
     const filteredApplicants = useMemo(() => {
         if (!applicants) return [];
@@ -80,27 +76,36 @@ export function ApplicantList() {
         setIsDeleteConfirmOpen(true);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (applicantToDelete) {
-            deleteDocumentNonBlocking(doc(firestore, 'applicants', applicantToDelete.id));
-            toast({ title: "Applicant Record Deleted", description: `The record for "${applicantToDelete.name}" has been removed.` });
+            await db.applicants.delete(applicantToDelete.id);
+            toast({ title: "Applicant Record Deleted" });
         }
         setIsDeleteConfirmOpen(false);
     };
     
-    const handleFormSubmit = (data: any) => {
+    const handleFormSubmit = async (data: any) => {
         const selectedPosting = postings?.find(p => p.id === data.jobId);
-        const applicantData = { ...data, jobTitle: selectedPosting?.title };
+        const applicantData = { ...data, jobTitle: selectedPosting?.title, updatedAt: new Date().toISOString() };
 
-        if (editingApplicant) {
-            setDocumentNonBlocking(doc(firestore, 'applicants', editingApplicant.id), applicantData, { merge: true });
-            toast({ title: "Applicant Record Updated" });
-        } else {
-            addDocumentNonBlocking(collection(firestore, 'applicants'), { ...applicantData, appliedAt: new Date().toISOString() });
-            toast({ title: "Applicant Added" });
+        try {
+            if (editingApplicant) {
+                await db.applicants.update(editingApplicant.id, applicantData);
+                toast({ title: "Applicant Record Updated" });
+            } else {
+                await db.applicants.add({ 
+                    ...applicantData, 
+                    id: crypto.randomUUID(),
+                    appliedAt: new Date().toISOString(),
+                    createdAt: new Date().toISOString() 
+                });
+                toast({ title: "Applicant Added" });
+            }
+            setIsFormOpen(false);
+            setEditingApplicant(null);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
         }
-        setIsFormOpen(false);
-        setEditingApplicant(null);
     };
 
     const columnActions: ApplicantColumnActions = {
@@ -126,8 +131,8 @@ export function ApplicantList() {
             <CardHeader>
                  <div className="flex justify-between items-center">
                     <div>
-                        <CardTitle>Applicants</CardTitle>
-                        <CardDescription>View and manage all job applicants.</CardDescription>
+                        <CardTitle>Applicants (Local)</CardTitle>
+                        <CardDescription>View and manage all job applicants locally.</CardDescription>
                     </div>
                     <Button onClick={handleAddApplicant}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Applicant
@@ -146,7 +151,7 @@ export function ApplicantList() {
                     <Alert>
                         <UserPlus className="h-4 w-4" />
                         <AlertTitle>No Applicants Found</AlertTitle>
-                        <AlertDescription>Click "Add Applicant" to create your first candidate record.</AlertDescription>
+                        <AlertDescription>Click "Add Applicant" to create your first candidate record locally.</AlertDescription>
                     </Alert>
                 )}
                  {!isLoading && applicants && applicants.length > 0 && (

@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import type { Campaign } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Send, Inbox } from "lucide-react";
+import { PlusCircle, Inbox } from "lucide-react";
 import { CampaignForm } from "./campaign-form";
 import { getCampaignColumns, type CampaignColumnActions } from "./campaign-columns";
 import { Input } from "@/components/ui/input";
@@ -36,10 +36,9 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc } from "firebase/firestore";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useUser } from '@/firebase/provider';
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 
@@ -56,12 +55,10 @@ export function CampaignsClient() {
     pageSize: 10,
   });
 
-  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
-  const campaignsCollection = useMemoFirebase(() => user ? collection(firestore, 'campaigns') : null, [firestore, user]);
-  const { data: campaigns, isLoading: campaignsLoading } = useCollection<Campaign>(campaignsCollection);
+  const campaigns = useLiveQuery(() => db.campaigns.toArray());
 
-  const isLoading = isUserLoading || campaignsLoading;
+  const isLoading = isUserLoading || campaigns === undefined;
 
   const filteredCampaigns = useMemo(() => {
     if (!campaigns) return [];
@@ -86,37 +83,44 @@ export function CampaignsClient() {
     setIsDeleteConfirmOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (campaignToDelete) {
-      const docRef = doc(firestore, 'campaigns', campaignToDelete.id);
-      deleteDocumentNonBlocking(docRef);
+      await db.campaigns.delete(campaignToDelete.id);
       toast({ title: "Campaign Deleted", description: `Campaign "${campaignToDelete.name}" has been removed.` });
       setCampaignToDelete(null);
     }
     setIsDeleteConfirmOpen(false);
   };
 
-  const handleFormSubmit = (data: any) => { 
+  const handleFormSubmit = async (data: any) => { 
     const campaignData = {
       ...data,
-      audience: { type: 'all' }, // Simplified for now
+      audience: { type: 'all' },
+      updatedAt: new Date().toISOString()
     };
 
-    if (editingCampaign) {
-      const docRef = doc(firestore, 'campaigns', editingCampaign.id);
-      setDocumentNonBlocking(docRef, campaignData, { merge: true });
-      toast({ title: "Campaign Updated", description: `Campaign "${data.name}" has been updated.`});
-    } else {
-      addDocumentNonBlocking(collection(firestore, 'campaigns'), { ...campaignData, createdAt: new Date().toISOString() });
-      toast({ title: "Campaign Created", description: `New campaign "${data.name}" has been drafted.`});
+    try {
+        if (editingCampaign) {
+            await db.campaigns.update(editingCampaign.id, campaignData);
+            toast({ title: "Campaign Updated" });
+        } else {
+            await db.campaigns.add({ 
+                ...campaignData, 
+                id: crypto.randomUUID(), 
+                createdAt: new Date().toISOString(),
+                createdBy: { uid: user?.uid || 'local', name: user?.displayName || 'User' }
+            });
+            toast({ title: "Campaign Created" });
+        }
+        setIsFormOpen(false);
+        setEditingCampaign(null);
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
     }
-    setIsFormOpen(false);
-    setEditingCampaign(null);
   };
 
-  const handleSendCampaign = (campaign: Campaign) => {
-    const docRef = doc(firestore, 'campaigns', campaign.id);
-    updateDocumentNonBlocking(docRef, { status: 'Sent', sentAt: new Date().toISOString() });
+  const handleSendCampaign = async (campaign: Campaign) => {
+    await db.campaigns.update(campaign.id, { status: 'Sent', sentAt: new Date().toISOString() });
     toast({ 
       title: "Campaign Sent (Simulated)", 
       description: `Campaign "${campaign.name}" has been marked as sent.` 
@@ -148,8 +152,8 @@ export function CampaignsClient() {
   return (
     <>
       <PageHeader
-        title="Marketing Campaigns"
-        description="Manage email marketing, social media campaigns, and more."
+        title="Marketing Campaigns (Local)"
+        description="Manage email marketing and social media campaigns stored on this device."
         actionLabel="Create New Campaign"
         onAction={handleAddCampaign}
         ActionIcon={PlusCircle}
@@ -171,7 +175,7 @@ export function CampaignsClient() {
           <Inbox className="h-4 w-4" />
           <AlertTitle>No Campaigns Yet</AlertTitle>
           <AlertDescription>
-            There are currently no campaigns. Click "Create New Campaign" to get started.
+            There are currently no local campaigns. Click "Create New Campaign" to get started.
           </AlertDescription>
         </Alert>
       )}

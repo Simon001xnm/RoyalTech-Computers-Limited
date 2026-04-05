@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -56,6 +57,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
     user: null,
     isUserLoading: true,
+    userError: null
   });
 
   useEffect(() => {
@@ -82,7 +84,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               });
             }
           } catch (e) {
-            console.warn("Failed to sync user to local DB:", e);
+            // Silent failure for local sync to avoid global "Failed to fetch" errors
+            console.debug("Local user profile sync skipped:", e);
           }
         }
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });

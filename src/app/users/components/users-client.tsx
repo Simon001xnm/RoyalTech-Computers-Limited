@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import type { User } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, User as UserIcon, UserX } from "lucide-react";
+import { UserX } from "lucide-react";
 import { UserForm } from "./user-form";
 import { getUserColumns, type UserColumnActions } from "./user-columns";
 import { Input } from "@/components/ui/input";
@@ -36,11 +36,9 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useFirestore, useMemoFirebase, useUser as useAuthUser } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { collection, doc } from "firebase/firestore";
-import { deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useUser as useAuthUser } from '@/firebase/provider';
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 
@@ -57,15 +55,11 @@ export function UsersClient() {
     pageSize: 10,
   });
 
-  const firestore = useFirestore();
   const { user: authUser, isUserLoading: isAuthUserLoading } = useAuthUser();
 
-  const usersCollection = useMemoFirebase(() => authUser ? collection(firestore, 'users') : null, [firestore, authUser]);
-  const { data: users, isLoading: isLoadingUsers } = useCollection<User>(usersCollection);
-  
-  const currentUserDocRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [authUser, firestore]);
-  const { data: currentUser, isLoading: isLoadingCurrentUser } = useDoc<User>(currentUserDocRef);
-
+  // Fetch users from local database
+  const users = useLiveQuery(() => db.users.toArray());
+  const currentUser = useLiveQuery(async () => authUser ? await db.users.get(authUser.uid) : null, [authUser]);
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -74,14 +68,6 @@ export function UsersClient() {
       (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [users, searchTerm]);
-
-  const handleAddUser = () => {
-    // This functionality is removed in favor of the public signup page for simplicity.
-    toast({
-        title: "Action Disabled",
-        description: "Please use the public sign-up page to create new users.",
-    });
-  };
 
   const handleEditUser = (user: User) => {
     setEditingUser(user);
@@ -101,13 +87,10 @@ export function UsersClient() {
     setIsDeleteConfirmOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (userToDelete) {
-      const docRef = doc(firestore, 'users', userToDelete.id);
-      // Note: This only deletes the Firestore record, not the Auth user.
-      // A cloud function would be needed for full user deletion.
-      deleteDocumentNonBlocking(docRef);
-      toast({ title: "User Record Deleted", description: `Record for ${userToDelete.name} has been removed.` });
+      await db.users.delete(userToDelete.id);
+      toast({ title: "User Record Deleted", description: `Record for ${userToDelete.name} has been removed from this device.` });
       setUserToDelete(null);
     }
     setIsDeleteConfirmOpen(false);
@@ -121,15 +104,14 @@ export function UsersClient() {
       return;
     }
     
-    const userDocRef = doc(firestore, 'users', editingUser.id);
-    setDocumentNonBlocking(userDocRef, { role: data.role }, { merge: true });
-    toast({ title: "User Updated", description: `${data.name}'s role has been updated.` });
+    await db.users.update(editingUser.id, { role: data.role });
+    toast({ title: "User Updated", description: `${data.name}'s role has been updated locally.` });
     
     setIsFormOpen(false);
     setEditingUser(null);
   };
   
-  const isLoading = isLoadingUsers || isLoadingCurrentUser || isAuthUserLoading;
+  const isLoading = users === undefined || isAuthUserLoading;
   
   const canManageUsers = !isLoading && currentUser?.role === 'admin';
 
@@ -157,8 +139,8 @@ export function UsersClient() {
   return (
     <>
       <PageHeader
-        title="User Management"
-        description="View and manage user accounts and roles."
+        title="User Management (Local)"
+        description="View and manage user accounts and roles synced to this device."
       />
 
        {!canManageUsers && !isLoading && (
@@ -233,7 +215,7 @@ export function UsersClient() {
           <DialogHeader>
             <DialogTitle>Edit User Role</DialogTitle>
             <DialogDescription>
-              Update the role for the selected user. Other details must be changed by the user on their profile page.
+              Update the role for the selected user locally. Sync will handle updates across other devices.
             </DialogDescription>
           </DialogHeader>
           {isFormOpen && editingUser && (
@@ -251,7 +233,7 @@ export function UsersClient() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the Firestore record for <strong>{userToDelete?.name}</strong>? This will not delete their authentication account but will remove their access and data from the app.
+              Are you sure you want to delete the local record for <strong>{userToDelete?.name}</strong>?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

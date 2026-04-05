@@ -1,28 +1,26 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { PlusCircle } from 'lucide-react';
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useUser } from '@/firebase/provider';
 import type { Project } from '@/types';
-import { collection, doc } from 'firebase/firestore';
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useToast } from '@/hooks/use-toast';
 import { ProjectBoard } from './project-board';
 import { ProjectForm } from './project-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 export function ProjectsClient() {
-  const firestore = useFirestore();
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
   
-  const projectsCollection = useMemoFirebase(() => user ? collection(firestore, 'projects') : null, [firestore, user]);
-  const { data: projects, isLoading: projectsLoading } = useCollection<Project>(projectsCollection);
+  // Use Dexie for local projects
+  const projects = useLiveQuery(() => db.projects.toArray());
   
-  const isLoading = isUserLoading || projectsLoading;
+  const isLoading = isUserLoading || projects === undefined;
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -37,51 +35,48 @@ export function ProjectsClient() {
     setIsFormOpen(true);
   };
 
-  const handleDeleteProject = (projectId: string) => {
-    const docRef = doc(firestore, 'projects', projectId);
-    deleteDocumentNonBlocking(docRef);
+  const handleDeleteProject = async (projectId: string) => {
+    await db.projects.delete(projectId);
     toast({ title: 'Project Deleted' });
   };
 
-  const handleStatusChange = (projectId: string, newStatus: Project['status']) => {
-    const docRef = doc(firestore, 'projects', projectId);
-    setDocumentNonBlocking(docRef, { status: newStatus }, { merge: true });
+  const handleStatusChange = async (projectId: string, newStatus: Project['status']) => {
+    await db.projects.update(projectId, { status: newStatus, updatedAt: new Date().toISOString() });
     toast({ title: 'Project Updated', description: 'Status has been changed.' });
   };
 
-  const handleFormSubmit = (data: any) => {
-    const projectData: { [key: string]: any } = {
+  const handleFormSubmit = async (data: any) => {
+    const projectData: any = {
       ...data,
       dueDate: data.dueDate ? data.dueDate.toISOString() : undefined,
+      updatedAt: new Date().toISOString()
     };
     
-    // Explicitly remove the dueDate key if it is undefined
-    if (projectData.dueDate === undefined) {
-        delete projectData.dueDate;
+    try {
+        if (editingProject) {
+            await db.projects.update(editingProject.id, projectData);
+            toast({ title: 'Project Updated' });
+        } else {
+            await db.projects.add({ 
+                ...projectData, 
+                id: crypto.randomUUID(), 
+                createdAt: new Date().toISOString(),
+                createdBy: { uid: user?.uid || 'local', name: user?.displayName || 'User' }
+            });
+            toast({ title: 'Project Created' });
+        }
+        setIsFormOpen(false);
+        setEditingProject(null);
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
     }
-    
-    if (editingProject) {
-      const docRef = doc(firestore, 'projects', editingProject.id);
-      setDocumentNonBlocking(docRef, projectData, { merge: true });
-      toast({ title: 'Project Updated' });
-    } else {
-      if (!projectsCollection) {
-        toast({ variant: 'destructive', title: 'Error', description: 'User must be authenticated to create a project.' });
-        return;
-      }
-      addDocumentNonBlocking(projectsCollection, projectData);
-      toast({ title: 'Project Created' });
-    }
-    
-    setIsFormOpen(false);
-    setEditingProject(null);
   };
 
   return (
     <>
       <PageHeader
-        title="Projects"
-        description="Plan, track, and collaborate on projects effectively."
+        title="Projects (Local)"
+        description="Plan, track, and collaborate on projects effectively on this device."
         actionLabel="Add New Project"
         onAction={handleAddProject}
         ActionIcon={PlusCircle}

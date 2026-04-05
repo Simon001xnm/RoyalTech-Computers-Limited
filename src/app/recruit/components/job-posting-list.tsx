@@ -1,33 +1,29 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import type { JobPosting } from "@/types";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Briefcase, Archive } from "lucide-react";
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc } from "firebase/firestore";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { PlusCircle, Briefcase } from "lucide-react";
+import { useUser } from '@/firebase/provider';
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { JobPostingForm } from "./job-posting-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Edit, Trash2 } from "lucide-react";
 
 export function JobPostingList() {
-    const firestore = useFirestore();
     const { toast } = useToast();
     const { user, isUserLoading } = useUser();
 
-    const postingsCollection = useMemoFirebase(() => user ? collection(firestore, 'jobPostings') : null, [firestore, user]);
-    const { data: postings, isLoading: postingsLoading } = useCollection<JobPosting>(postingsCollection);
-
-    const isLoading = isUserLoading || postingsLoading;
+    const postings = useLiveQuery(() => db.jobPostings.toArray());
+    const isLoading = isUserLoading || postings === undefined;
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingPosting, setEditingPosting] = useState<JobPosting | null>(null);
@@ -49,25 +45,32 @@ export function JobPostingList() {
         setIsDeleteConfirmOpen(true);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (postingToDelete) {
-            deleteDocumentNonBlocking(doc(firestore, 'jobPostings', postingToDelete.id));
-            toast({ title: "Job Posting Deleted", description: `The posting "${postingToDelete.title}" has been removed.` });
+            await db.jobPostings.delete(postingToDelete.id);
+            toast({ title: "Job Posting Deleted" });
         }
         setIsDeleteConfirmOpen(false);
     };
     
-    const handleFormSubmit = (data: any) => {
-        const postingData = { ...data };
-        if (editingPosting) {
-            setDocumentNonBlocking(doc(firestore, 'jobPostings', editingPosting.id), postingData, { merge: true });
-            toast({ title: "Job Posting Updated" });
-        } else {
-            addDocumentNonBlocking(collection(firestore, 'jobPostings'), { ...postingData, createdAt: new Date().toISOString() });
-            toast({ title: "Job Posting Created" });
+    const handleFormSubmit = async (data: any) => {
+        try {
+            if (editingPosting) {
+                await db.jobPostings.update(editingPosting.id, { ...data, updatedAt: new Date().toISOString() });
+                toast({ title: "Job Posting Updated" });
+            } else {
+                await db.jobPostings.add({ 
+                    ...data, 
+                    id: crypto.randomUUID(), 
+                    createdAt: new Date().toISOString() 
+                });
+                toast({ title: "Job Posting Created" });
+            }
+            setIsFormOpen(false);
+            setEditingPosting(null);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
         }
-        setIsFormOpen(false);
-        setEditingPosting(null);
     };
 
     return (
@@ -75,8 +78,8 @@ export function JobPostingList() {
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <div>
-                        <CardTitle>Job Postings</CardTitle>
-                        <CardDescription>Manage all open, closed, and archived job positions.</CardDescription>
+                        <CardTitle>Job Postings (Local)</CardTitle>
+                        <CardDescription>Manage all job positions stored on this device.</CardDescription>
                     </div>
                     <Button onClick={handleAddPosting}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Posting
@@ -89,7 +92,7 @@ export function JobPostingList() {
                     <Alert>
                         <Briefcase className="h-4 w-4" />
                         <AlertTitle>No Job Postings Found</AlertTitle>
-                        <AlertDescription>Click "Add Posting" to create your first job opening.</AlertDescription>
+                        <AlertDescription>Click "Add Posting" to create your first local job opening.</AlertDescription>
                     </Alert>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -144,7 +147,7 @@ export function JobPostingList() {
                     <DialogHeader>
                         <DialogTitle>Confirm Deletion</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete the posting: <strong>{postingToDelete?.title}</strong>? This will also remove associated applicants.
+                            Are you sure you want to delete the posting: <strong>{postingToDelete?.title}</strong>?
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>

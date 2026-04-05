@@ -6,37 +6,23 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, User, Bot, MessageSquare } from 'lucide-react';
+import { Send, MessageSquare } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { useFirestore, useUser, useMemoFirebase } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, query, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { useUser } from '@/firebase/provider';
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { format } from 'date-fns';
-
-interface ChatMessage {
-  id: string;
-  text: string;
-  userId: string;
-  userName: string;
-  userAvatar?: string;
-  createdAt: Timestamp | Date | null;
-}
 
 export function ChatClient() {
   const [input, setInput] = useState('');
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const messagesCollection = useMemoFirebase(
-    () => user ? query(collection(firestore, 'messages'), orderBy('createdAt', 'asc')) : null,
-    [firestore, user]
-  );
-  const { data: messages, isLoading: messagesLoading } = useCollection<ChatMessage>(messagesCollection);
-  const isLoading = isUserLoading || messagesLoading;
+  // Dexie query for local messages
+  const messages = useLiveQuery(() => db.messages.orderBy('createdAt').toArray());
+  const isLoading = isUserLoading || messages === undefined;
 
   useEffect(() => {
     // Scroll to the bottom when messages change
@@ -53,23 +39,26 @@ export function ChatClient() {
     e.preventDefault();
     if (!input.trim() || !user) return;
 
-    const newMessage = {
-      text: input,
-      userId: user.uid,
-      userName: user.displayName || 'Anonymous',
-      userAvatar: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
-      createdAt: serverTimestamp() 
-    };
-
-    addDocumentNonBlocking(collection(firestore, 'messages'), newMessage);
-    setInput('');
+    try {
+        await db.messages.add({
+            id: crypto.randomUUID(),
+            text: input,
+            userId: user.uid,
+            userName: user.displayName || 'User',
+            userAvatar: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
+            createdAt: new Date().toISOString()
+        });
+        setInput('');
+    } catch (e) {
+        console.error("Failed to add message locally:", e);
+    }
   };
 
   return (
     <>
       <PageHeader
-        title="SalesIQ Live Chat"
-        description="Engage with other registered users in a real-time group chat."
+        title="SalesIQ Live Chat (Local)"
+        description="Engage with team members in real-time. Data is stored locally and synced via Dexie Cloud."
       />
       <Card className="shadow-lg h-[70vh] flex flex-col">
         <CardHeader>
@@ -90,7 +79,7 @@ export function ChatClient() {
                 <div key={message.id} className={cn("flex items-start gap-3", message.userId === user?.uid ? 'justify-end' : 'justify-start')}>
                   {message.userId !== user?.uid && (
                     <Avatar className="h-8 w-8">
-                        <AvatarImage src={message.userAvatar} alt={message.userName} data-ai-hint="person avatar" />
+                        <AvatarImage src={message.userAvatar} alt={message.userName} />
                         <AvatarFallback>{message.userName.substring(0,2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                   )}
@@ -98,12 +87,12 @@ export function ChatClient() {
                     {message.userId !== user?.uid && <p className="text-xs font-semibold mb-1">{message.userName}</p>}
                     <p className="text-sm">{message.text}</p>
                      <p className="text-xs text-right mt-1 opacity-70">
-                        {message.createdAt instanceof Timestamp ? format(message.createdAt.toDate(), 'HH:mm') : 'sending...'}
+                        {format(new Date(message.createdAt as string), 'HH:mm')}
                     </p>
                   </div>
                    {message.userId === user?.uid && (
                     <Avatar className="h-8 w-8">
-                        <AvatarImage src={message.userAvatar} alt={message.userName} data-ai-hint="person avatar" />
+                        <AvatarImage src={message.userAvatar} alt={message.userName} />
                         <AvatarFallback>{message.userName.substring(0,2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                   )}
