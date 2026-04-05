@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Building2, Upload, Loader2, Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 const COLOR_PRESETS = [
   { name: 'Navy', primary: '#1e293b', secondary: '#f1f5f9' },
@@ -22,10 +22,12 @@ const COLOR_PRESETS = [
   { name: 'Teal', primary: '#0d9488', secondary: '#f0fdfa' },
 ];
 
+const PUBLIC_PATHS = ['/login', '/signup'];
+
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
-  const router = useRouter();
+  const pathname = usePathname();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // We check if a company exists for this session
@@ -75,8 +77,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         createdBy: { uid: user.uid, name: user.displayName || 'Owner' }
       });
       toast({ title: 'Workspace Ready!', description: 'Your business suite is now configured with your branding.' });
-      
-      // Force a re-render so useLiveQuery picks up the company and clears the guard
       setIsSaving(false);
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
@@ -84,11 +84,23 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (isUserLoading || company === undefined) {
-    return <div className="h-screen w-full flex items-center justify-center">Loading workspace...</div>;
+  // 1. If we are still loading Auth, show nothing
+  if (isUserLoading) {
+    return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
   }
 
-  // If no business profile is found, show the introduction setup screen
+  // 2. If the user is on a public page or NOT logged in, show the page as is
+  // AuthGuard will handle the logic of forcing them to login.
+  if (!user || PUBLIC_PATHS.includes(pathname)) {
+    return <>{children}</>;
+  }
+
+  // 3. If we are logged in, wait for the company query to resolve
+  if (company === undefined) {
+    return <div className="h-screen w-full flex items-center justify-center">Syncing workspace...</div>;
+  }
+
+  // 4. If no business profile is found, show the introduction setup screen
   if (company.length === 0) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 py-12">
@@ -206,6 +218,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If company exists, release the guard
+  // 5. If company exists, release the guard
   return <>{children}</>;
 }
