@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useAuth, useFirestore } from '@/firebase/provider';
@@ -7,7 +6,6 @@ import { useEffect, useState } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarSeparator, SidebarTrigger } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { APP_NAME } from '@/lib/constants';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -49,7 +47,6 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-md">
         <SidebarHeader className="p-4">
             <Link href="/" className="flex items-center gap-2">
-            <Image src="/picture1.png" alt="System Logo" width={40} height={40} className="rounded-md" />
             <h1 className="text-lg font-bold tracking-tight text-sidebar-foreground group-data-[collapsible=icon]:hidden">
                 {APP_NAME}
             </h1>
@@ -73,7 +70,6 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-4">
             <SidebarTrigger />
             <Link href="/" className="flex items-center gap-2 font-bold text-lg md:hidden">
-               <Image src="/picture1.png" alt="Logo" width={30} height={30} className="rounded-md" />
               <span>{APP_NAME}</span>
             </Link>
           </div>
