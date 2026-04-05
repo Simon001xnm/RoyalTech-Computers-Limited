@@ -227,7 +227,7 @@ export function StockClient() {
         />
       </div>
       
-      {isLoading && <p>Loading laptops from IndexedDB...</p>}
+      {isLoading && <p>Loading laptops from local database...</p>}
 
       {!isLoading && filteredLaptops.length === 0 && searchTerm && (
         <Alert variant="default" className="mb-4 bg-card">

@@ -19,6 +19,7 @@ import {
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { APP_NAME } from '@/lib/constants';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -84,7 +85,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <PageHeader 
         title="Dashboard Overview" 
-        description={`Welcome back, ${user?.displayName || 'User'}! Here's what's happening at ROYALTECH COMPUTERS LIMITED today.`} 
+        description={`Welcome back, ${user?.displayName || 'User'}! Here's what's happening at ${APP_NAME} today.`} 
       />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

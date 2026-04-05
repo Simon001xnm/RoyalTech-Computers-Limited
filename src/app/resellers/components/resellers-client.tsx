@@ -293,9 +293,9 @@ export function ResellersClient() {
   const isLoading = resellers === undefined || allIssuances === undefined || availableLaptops === undefined || availableAccessories === undefined;
 
   const allAvailableItems = useMemo<IssueableItem[]>(() => {
-        const laptops = (availableLaptops || []).map(item => ({ ...item, type: 'laptop' as const }));
-        const accessories = (availableAccessories || []).map(item => ({ ...item, type: 'accessory' as const }));
-        return [...laptops, ...accessories];
+        const mappedLaptops = (availableLaptops || []).map(item => ({ ...item, type: 'laptop' as const }));
+        const mappedAccessories = (availableAccessories || []).map(item => ({ ...item, type: 'accessory' as const }));
+        return [...mappedLaptops, ...mappedAccessories];
     }, [availableLaptops, availableAccessories]);
 
   const filteredResellers = useMemo(() => {
@@ -423,14 +423,14 @@ export function ResellersClient() {
     <>
       <PageHeader 
         title="Resellers" 
-        description="Manage reseller accounts and track issued items."
+        description="Manage reseller accounts and track issued items locally."
         actions={actions}
       />
       <div className="mb-4">
           <Input placeholder="Search by name, email, or company..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm"/>
       </div>
       
-      {isLoading ? <p>Loading resellers...</p> : (
+      {isLoading ? <p>Loading resellers from local database...</p> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredResellers.map(reseller => (
                 <ResellerCard 

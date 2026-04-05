@@ -67,7 +67,7 @@ export class RoyalTechDB extends Dexie {
 
     this.cloud.configure({
       databaseUrl: 'https://z1xwh7v7u.dexie.cloud',
-      requireAuth: false // Use Firebase for primary auth, sync runs in background
+      requireAuth: false // User is authenticated via Firebase, sync runs in background
     });
   }
 }
