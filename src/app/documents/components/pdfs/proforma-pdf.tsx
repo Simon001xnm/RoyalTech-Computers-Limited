@@ -1,10 +1,15 @@
+'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
 import { format } from "date-fns";
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 const VAT_RATE = 0.16;
 
 export function ProformaInvoicePdf({ document }: { document: AppDocument }) {
+  const company = useLiveQuery(() => db.companies.toCollection().last());
+
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
@@ -18,16 +23,21 @@ export function ProformaInvoicePdf({ document }: { document: AppDocument }) {
   };
   
   const isLease = invoiceType === 'lease' && leaseDetails;
+  const companyName = company?.name || 'The Company';
 
   return (
-    <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full">
+    <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full min-h-[1000px] flex flex-col">
       <header className="flex justify-between items-start pb-4 border-b">
         <div className="flex items-center gap-4">
-          <img src="/picture1.png" alt="Company Logo" className="h-28 w-auto object-contain" />
+          {company?.logoUrl ? (
+            <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain" />
+          ) : (
+            <div className="h-28 w-28 bg-muted flex items-center justify-center text-xs text-muted-foreground uppercase font-bold border">No Logo</div>
+          )}
           <div>
-              <p className="font-bold text-lg uppercase text-black">ROYALTECH COMPUTERS LIMITED</p>
-              <p className="text-xs text-gray-500">Revlon Professional Plaza, 2nd Floor, Suite 1, Biashara Street, Nairobi</p>
-              <p className="text-xs text-gray-500">Tel: +254 724404935 | E-mail: info@royaltech.co.ke</p>
+              <p className="font-bold text-lg uppercase text-black">{companyName}</p>
+              <p className="text-xs text-gray-500">{company?.address}</p>
+              <p className="text-xs text-gray-500">Tel: {company?.phone} | E-mail: {company?.email}</p>
           </div>
         </div>
         <div className="text-right">
@@ -40,7 +50,7 @@ export function ProformaInvoicePdf({ document }: { document: AppDocument }) {
           <h3 className="font-bold mb-1">Bill To:</h3>
           {customer ? (
             <>
-              <p>{customer.name}</p>
+              <p className="font-semibold">{customer.name}</p>
               <p>{customer.address || 'Address not specified'}</p>
               <p>{customer.email}</p>
             </>
@@ -111,26 +121,27 @@ export function ProformaInvoicePdf({ document }: { document: AppDocument }) {
       
       {details && (
         <section className="mt-6 border-t pt-4">
-            <h3 className="font-bold mb-1">Notes:</h3>
-            <p className="text-xs text-gray-600">{details}</p>
+            <h3 className="font-bold mb-1 text-xs text-gray-500 uppercase">Notes:</h3>
+            <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded">{details}</p>
         </section>
       )}
+
+      <div className="flex-grow"></div>
 
       <footer className="text-xs text-gray-700 border-t pt-4 mt-8 space-y-4">
         <div className="text-center font-bold">
             <p>This is not a tax invoice. A final invoice will be issued upon payment.</p>
         </div>
         <div>
-            <h4 className="font-bold uppercase mb-1">Payment Details</h4>
-            <div className="grid grid-cols-2 gap-x-4">
+            <h4 className="font-bold uppercase mb-1">Bank Payment Details</h4>
+            <div className="grid grid-cols-2 gap-x-4 text-[11px]">
                 <div>
-                    <p><span className="font-semibold">BANK:</span> KENYA COMMERCIAL BANK</p>
-                    <p><span className="font-semibold">ACC NAME:</span> ROYALTECH COMPUTERS LIMITED.</p>
-                    <p><span className="font-semibold">ACC NO:</span> 1286805015</p>
+                    <p><span className="font-semibold">BANK:</span> Please contact support</p>
+                    <p><span className="font-semibold">ACC NAME:</span> {companyName}</p>
                 </div>
-                 <div>
-                    <p><span className="font-semibold">BRANCH:</span> KCB Gardens Plaza</p>
-                    <p><span className="font-semibold">Bank Code:</span> 01290</p>
+                 <div className="text-right">
+                    <p>Thank you for choosing us!</p>
+                    <p className="text-[9px] text-muted-foreground pt-4 uppercase">powered by simonstyless technologies limited</p>
                 </div>
             </div>
         </div>

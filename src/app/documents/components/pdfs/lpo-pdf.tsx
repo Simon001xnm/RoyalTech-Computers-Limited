@@ -1,8 +1,13 @@
+'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
 import { format } from "date-fns";
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export function LpoPdf({ document }: { document: AppDocument }) {
+  const company = useLiveQuery(() => db.companies.toCollection().last());
+
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
@@ -15,15 +20,21 @@ export function LpoPdf({ document }: { document: AppDocument }) {
     }).format(amount);
   };
 
+  const companyName = company?.name || 'The Company';
+
   return (
-    <div className="p-8 font-sans text-sm bg-white text-gray-800 w-full">
+    <div className="p-8 font-sans text-sm bg-white text-gray-800 w-full min-h-[1000px] flex flex-col">
       <header className="flex justify-between items-start pb-4">
         <div className="flex items-center gap-4">
-          <img src="/picture1.png" alt="Company Logo" className="h-28 w-auto object-contain" />
+          {company?.logoUrl ? (
+            <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain" />
+          ) : (
+            <div className="h-28 w-28 bg-muted flex items-center justify-center text-xs text-muted-foreground uppercase font-bold border">No Logo</div>
+          )}
           <div>
-              <h1 className="text-2xl font-bold text-black">ROYALTECH COMPUTERS LIMITED</h1>
-              <p className="text-xs text-gray-600 mt-1">Revlon Professional Plaza, 2nd Floor, Suite 1, Biashara Street, Nairobi</p>
-              <p className="text-xs text-gray-500">Tel: +254 724404935 | E-mail: info@royaltech.co.ke | Web: www.royaltech.co.ke</p>
+              <h1 className="text-2xl font-bold text-black uppercase">{companyName}</h1>
+              <p className="text-xs text-gray-600 mt-1">{company?.address}</p>
+              <p className="text-xs text-gray-500">Tel: {company?.phone} | E-mail: {company?.email}</p>
           </div>
         </div>
         <div className="text-right">
@@ -106,15 +117,16 @@ export function LpoPdf({ document }: { document: AppDocument }) {
       <div className="flex-grow min-h-[100px]"></div>
 
       <footer className="text-xs text-gray-700 border-t-2 border-gray-300 pt-6 mt-10">
-        <p className="mb-8">This Purchase Order is subject to the terms and conditions agreed upon between RoyalTech and the supplier.</p>
+        <p className="mb-8">This Purchase Order is subject to the terms and conditions agreed upon between {companyName} and the supplier.</p>
         <div className="flex justify-between items-center">
             <div className="w-2/5">
                 <div className="border-b border-gray-400 mt-12"></div>
                 <p className="text-xs text-center mt-1">Authorized Signature</p>
-                <p className="text-xs text-center mt-1 font-semibold">ROYALTECH COMPUTERS LIMITED</p>
+                <p className="text-xs text-center mt-1 font-semibold uppercase">{companyName}</p>
             </div>
-             <div>
+             <div className="text-right">
                 <p>Thank you for your business!</p>
+                <p className="text-[10px] text-muted-foreground mt-4 uppercase">powered by simonstyless technologies limited</p>
             </div>
         </div>
       </footer>

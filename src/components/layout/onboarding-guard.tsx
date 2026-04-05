@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
@@ -59,7 +58,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         createdAt: new Date().toISOString(),
         createdBy: { uid: user.uid, name: user.displayName || 'Owner' }
       });
-      toast({ title: 'Welcome!', description: 'Your company profile has been set up successfully.' });
+      toast({ title: 'Welcome!', description: 'Your business profile has been set up successfully.' });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
     } finally {
@@ -68,7 +67,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   };
 
   if (isUserLoading || company === undefined) {
-    return <div className="h-screen w-full flex items-center justify-center">Loading your workspace...</div>;
+    return <div className="h-screen w-full flex items-center justify-center">Loading workspace...</div>;
   }
 
   // If no company record exists, show onboarding
@@ -80,8 +79,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
             <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
               <Building2 className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Setup Your Business</CardTitle>
-            <CardDescription>Enter your company details to brand your documents and receipts.</CardDescription>
+            <CardTitle className="text-2xl">Setup Your Workspace</CardTitle>
+            <CardDescription>Enter your company details to brand your documents and invoices.</CardDescription>
           </CardHeader>
           <form onSubmit={handleSetup}>
             <CardContent className="space-y-6">
@@ -105,29 +104,29 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Business Name</Label>
-                  <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., RoyalTech Computers" required />
+                  <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Acme Tech Solutions" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Business Email</Label>
-                  <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="info@company.com" required />
+                  <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="office@company.com" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
-                  <Input id="phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+254..." required />
+                  <Input id="phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+..." required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="location">City / Location</Label>
-                  <Input id="location" value={location} onChange={e => setLocation(e.target.value)} placeholder="Nairobi, Kenya" />
+                  <Input id="location" value={location} onChange={e => setLocation(e.target.value)} placeholder="Nairobi, KE" />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="address">Physical Address</Label>
-                <Input id="address" value={address} onChange={e => setAddress(e.target.value)} placeholder="Building, Floor, Street..." required />
+                <Input id="address" value={address} onChange={e => setAddress(e.target.value)} placeholder="Building, Street, Suite..." required />
               </div>
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full h-12 text-lg" disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Finish Setup'}
+                {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Complete Setup'}
               </Button>
             </CardFooter>
           </form>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,7 +10,6 @@ import { useRouter } from 'next/navigation';
 import {
   initiateEmailSignIn,
 } from '@/firebase/non-blocking-login';
-import { useToast } from '@/hooks/use-toast';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -25,7 +23,6 @@ export default function LoginPage() {
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const { toast } = useToast();
 
   useEffect(() => {
     if (!isUserLoading && user) {
@@ -52,14 +49,15 @@ export default function LoginPage() {
     );
   }
 
-
   return (
     <div className="flex h-screen w-full items-center justify-center bg-background">
       <Card className="w-[400px]">
         <CardHeader className="text-center items-center">
-          <Image src="/picture1.png" alt="RoyalTech Logo" width={60} height={60} className="rounded-md mb-4" />
+          <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+            <Image src="/picture1.png" alt="App Logo" width={40} height={40} className="rounded-md" />
+          </div>
           <CardTitle className="text-2xl">{`Welcome to ${APP_NAME}`}</CardTitle>
-          <CardDescription>Enter your credentials to access your account.</CardDescription>
+          <CardDescription>Enter your credentials to access your workspace.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -67,7 +65,7 @@ export default function LoginPage() {
             <Input
               id="email-signin"
               type="email"
-              placeholder="m@example.com"
+              placeholder="name@example.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}

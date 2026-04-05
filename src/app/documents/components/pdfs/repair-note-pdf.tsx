@@ -1,22 +1,32 @@
+'use client';
 
 import type { Document as AppDocument } from "@/types";
 import { format } from "date-fns";
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export function RepairNotePdf({ document }: { document: AppDocument }) {
+  const company = useLiveQuery(() => db.companies.toCollection().last());
+
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
   const { customer, laptop, details } = document.data;
+  const companyName = company?.name || 'The Company';
 
   return (
-    <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full">
+    <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full min-h-[1000px] flex flex-col">
       <header className="flex justify-between items-start pb-4 border-b">
         <div className="flex items-center gap-4">
-          <img src="/picture1.png" alt="Company Logo" className="h-28 w-auto object-contain" />
+          {company?.logoUrl ? (
+            <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain" />
+          ) : (
+            <div className="h-28 w-28 bg-muted flex items-center justify-center text-xs text-muted-foreground uppercase font-bold border">No Logo</div>
+          )}
           <div>
-              <p className="font-bold text-lg uppercase text-black">ROYALTECH COMPUTERS LIMITED</p>
-              <p className="text-xs text-gray-500">Revlon Professional Plaza, 2nd Floor, Suite 1, Biashara Street, Nairobi</p>
-              <p className="text-xs text-gray-500">Tel: +254 724404935 | E-mail: info@royaltech.co.ke</p>
+              <p className="font-bold text-lg uppercase text-black">{companyName}</p>
+              <p className="text-xs text-gray-500">{company?.address}</p>
+              <p className="text-xs text-gray-500">Tel: {company?.phone} | E-mail: {company?.email}</p>
           </div>
         </div>
         <div className="text-right">
@@ -29,7 +39,7 @@ export function RepairNotePdf({ document }: { document: AppDocument }) {
           <h3 className="font-bold mb-1">Customer Details:</h3>
           {customer ? (
             <>
-              <p>{customer.name}</p>
+              <p className="font-semibold">{customer.name}</p>
               <p>{customer.address || 'Address not specified'}</p>
               <p>{customer.email}</p>
             </>
@@ -54,26 +64,34 @@ export function RepairNotePdf({ document }: { document: AppDocument }) {
 
       <section className="mb-8">
         <h3 className="font-bold text-base mb-2">Reported Issue / Repair Details</h3>
-        <p className="text-gray-700 leading-relaxed">
+        <p className="text-gray-700 leading-relaxed bg-gray-50 p-4 rounded min-h-[150px]">
             {details || 'No specific issue details were provided.'}
         </p>
       </section>
       
-      <section className="mt-16 text-xs text-gray-600">
-        <h3 className="font-bold text-base mb-2 text-gray-800">Terms & Conditions</h3>
+      <section className="mt-8 text-xs text-gray-600">
+        <h3 className="font-bold text-base mb-2 text-gray-800 border-b pb-1">Terms & Conditions</h3>
         <ul className="list-disc list-inside space-y-1">
             <li>An estimate for the repair will be provided before any work is carried out.</li>
-            <li>RoyalTech is not responsible for any data loss. Please ensure your data is backed up.</li>
+            <li>The company is not responsible for any data loss. Please ensure your data is backed up.</li>
             <li>Repairs are guaranteed for a period of 90 days from the date of completion.</li>
         </ul>
       </section>
 
-      <section className="mt-12">
-        <div className="border-b border-gray-400 mt-12 w-1/2"></div>
-        <p className="text-xs mt-1">Customer Signature</p>
+      <div className="flex-grow"></div>
+
+      <section className="mt-12 flex justify-between items-end">
+        <div className="w-1/2">
+            <div className="border-b border-gray-400 mt-12 w-3/4"></div>
+            <p className="text-xs mt-1 font-medium">Customer Signature</p>
+        </div>
+        <div className="text-right">
+            <p className="font-bold uppercase">{companyName}</p>
+            <p className="text-[9px] text-muted-foreground mt-4 uppercase">powered by simonstyless technologies limited</p>
+        </div>
       </section>
 
-       <footer className="text-center text-xs text-gray-400 border-t pt-4 mt-16">
+       <footer className="text-center text-xs text-gray-400 border-t pt-4 mt-8">
         <p>We appreciate your patience while we service your device.</p>
       </footer>
     </div>

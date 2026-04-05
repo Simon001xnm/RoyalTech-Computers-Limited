@@ -1,8 +1,13 @@
+'use client';
 
 import type { Document as AppDocument } from "@/types";
 import { format } from "date-fns";
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
+  const company = useLiveQuery(() => db.companies.toCollection().last());
+
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
@@ -15,11 +20,17 @@ export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
     }).format(amount);
   };
 
+  const companyName = company?.name || 'The Company';
+
   return (
-    <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full">
+    <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full flex flex-col min-h-[1000px]">
       <header className="text-center mb-8">
-        <img src="/picture1.png" alt="Company Logo" className="h-28 w-auto object-contain mx-auto mb-4" />
-        <h1 className="text-3xl font-bold text-gray-800 uppercase">ROYALTECH COMPUTERS LIMITED</h1>
+        {company?.logoUrl ? (
+          <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain mx-auto mb-4" />
+        ) : (
+          <div className="h-20 w-full flex items-center justify-center text-muted-foreground italic mb-4">Logo not set</div>
+        )}
+        <h1 className="text-3xl font-bold text-gray-800 uppercase">{companyName}</h1>
         <h2 className="text-xl font-semibold text-gray-600">Lease Agreement</h2>
         <p className="text-gray-500 mt-1">Document No: {document.title}</p>
       </header>
@@ -34,10 +45,10 @@ export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
       <section className="grid grid-cols-2 gap-8 mb-8">
         <div>
           <h2 className="font-bold text-base mb-2 border-b pb-1">LESSOR</h2>
-          <p className="font-semibold">ROYALTECH COMPUTERS LIMITED</p>
-          <p>Revlon Professional Plaza, 2nd Floor, Suite 1</p>
-          <p>Biashara Street, Nairobi</p>
-          <p>info@royaltech.co.ke | +254 724404935</p>
+          <p className="font-semibold">{companyName}</p>
+          <p>{company?.address || 'Address not specified'}</p>
+          <p>{company?.email || 'Email not specified'}</p>
+          <p>{company?.phone || 'Phone not specified'}</p>
         </div>
         <div>
           <h2 className="font-bold text-base mb-2 border-b pb-1">LESSEE</h2>
@@ -91,7 +102,7 @@ export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
                     <div className="w-1/2">
                         <h4 className="font-bold">LESSOR:</h4>
                         <div className="border-b border-gray-400 mt-16"></div>
-                        <p className="text-xs mt-1 uppercase">ROYALTECH COMPUTERS LIMITED</p>
+                        <p className="text-xs mt-1 uppercase">{companyName}</p>
                     </div>
                     <div className="w-1/2">
                         <h4 className="font-bold">LESSEE:</h4>
@@ -111,9 +122,11 @@ export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
         <p className="text-center py-8 bg-gray-100 rounded-md">Full lease, customer, and laptop details are required to generate the agreement.</p>
       )}
 
+      <div className="flex-grow"></div>
 
-      <footer className="text-center text-xs text-gray-400 border-t pt-4 mt-16">
+      <footer className="text-center text-[10px] text-gray-400 border-t pt-4 mt-16 flex flex-col gap-1">
         <p>This is a legally binding document.</p>
+        <p className="uppercase">powered by simonstyless technologies limited</p>
       </footer>
     </div>
   );
