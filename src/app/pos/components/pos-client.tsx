@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -214,7 +213,7 @@ export function PosClient() {
 
   const handleDownloadReceipt = async (doc: AppDocument) => {
     const { default: html2canvas } = await import('html2canvas');
-    const { default: jsPDF } = await import('jsPDF');
+    const { default: jsPDF } = await import('jspdf');
     
     setIsReceiptPreviewOpen(true);
     setTimeout(async () => {
