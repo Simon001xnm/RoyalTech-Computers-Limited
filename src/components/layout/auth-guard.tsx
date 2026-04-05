@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useAuth, useFirestore } from '@/firebase/provider';
@@ -10,20 +11,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings, User as UserIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { User as AppUser } from '@/types';
 
-
-const LOADING_SCREEN = (
-    <div className="flex h-screen w-full items-center justify-center">
-        <p>Syncing identity...</p>
-    </div>
-);
-
 const PUBLIC_PATHS = ['/login', '/signup'];
-
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     const { user } = useUser();
@@ -48,8 +41,9 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     }, [user, firestore]);
 
     const handleLogout = () => {
-        auth.signOut();
+        if (auth) auth.signOut();
     };
+
   return (
     <SidebarProvider defaultOpen={true}>
       <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-md">
@@ -105,7 +99,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
                   <DropdownMenuSeparator />
                   <Link href="/profile">
                     <DropdownMenuItem>
-                      <User className="mr-2 h-4 w-4" />
+                      <UserIcon className="mr-2 h-4 w-4" />
                       <span>Workspace Profile</span>
                     </DropdownMenuItem>
                   </Link>
@@ -133,7 +127,6 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -142,33 +135,34 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
 
   useEffect(() => {
-    if (isUserLoading) {
-      return; 
-    }
-
-    if (!user && !isPublicPath) {
-      router.push('/login');
-    }
-
-    if (user && isPublicPath) {
-      router.push('/');
+    if (!isUserLoading) {
+      if (!user && !isPublicPath) {
+        router.push('/login');
+      } else if (user && isPublicPath) {
+        router.push('/');
+      }
     }
   }, [user, isUserLoading, router, pathname, isPublicPath]);
 
-
   if (isUserLoading) {
-    return LOADING_SCREEN;
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <p>Syncing identity...</p>
+      </div>
+    );
   }
 
-  // If we are on a public page, render it directly without the authenticated layout
+  // If we are on a public page, render it directly
   if (isPublicPath) {
     return <>{children}</>;
   }
 
-  // If we have a user and are on a protected page, render the authenticated layout
+  // If we have a user, render the authenticated layout
   if (user) {
     return <AuthenticatedLayout>{children}</AuthenticatedLayout>;
   }
 
-  return LOADING_SCREEN;
+  // Fallback: if not logged in and not public path, useEffect will redirect.
+  // We return null to avoid flashing authenticated components.
+  return null;
 }

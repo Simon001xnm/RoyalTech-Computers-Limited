@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useUser } from '@/firebase/provider';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -11,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Building2, Upload, Loader2, Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 const COLOR_PRESETS = [
   { name: 'Navy', primary: '#1e293b', secondary: '#f1f5f9' },
@@ -30,7 +31,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // We check if a company exists for this session
+  // Check if a business profile exists in the local database
   const company = useLiveQuery(() => db.companies.toArray());
   const [isSaving, setIsSaving] = useState(false);
   
@@ -78,29 +79,33 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
       });
       toast({ title: 'Workspace Ready!', description: 'Your business suite is now configured with your branding.' });
       setIsSaving(false);
+      // Logic refresh via state/query happens automatically via Dexie hooks
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
       setIsSaving(false);
     }
   };
 
-  // 1. If we are still loading Auth, show nothing
-  if (isUserLoading) {
-    return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
-  }
-
-  // 2. If the user is on a public page or NOT logged in, show the page as is
-  // AuthGuard will handle the logic of forcing them to login.
-  if (!user || PUBLIC_PATHS.includes(pathname)) {
+  // If loading or on public route, don't show setup
+  if (isUserLoading || PUBLIC_PATHS.includes(pathname)) {
     return <>{children}</>;
   }
 
-  // 3. If we are logged in, wait for the company query to resolve
-  if (company === undefined) {
-    return <div className="h-screen w-full flex items-center justify-center">Syncing workspace...</div>;
+  // If not logged in, don't show setup (AuthGuard will handle login)
+  if (!user) {
+    return <>{children}</>;
   }
 
-  // 4. If no business profile is found, show the introduction setup screen
+  // Wait for company query to resolve
+  if (company === undefined) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <p>Verifying workspace...</p>
+      </div>
+    );
+  }
+
+  // If no company record exists, force onboarding setup
   if (company.length === 0) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 py-12">
@@ -114,7 +119,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
           </CardHeader>
           <form onSubmit={handleSetup}>
             <CardContent className="space-y-8">
-              {/* Logo Section */}
               <div className="flex flex-col items-center gap-4">
                 <div 
                   className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:bg-muted/50 overflow-hidden relative"
@@ -133,7 +137,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                 <p className="text-[10px] text-muted-foreground">Upload your brand logo for documents and receipts.</p>
               </div>
 
-              {/* Basic Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Business Name</Label>
@@ -157,7 +160,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                 <Input id="address" value={address} onChange={e => setAddress(e.target.value)} placeholder="Building, Street, Suite..." required />
               </div>
 
-              {/* Branding Section */}
               <div className="space-y-4 pt-4 border-t">
                 <div className="flex items-center gap-2">
                   <Palette className="h-5 w-5 text-muted-foreground" />
@@ -218,6 +220,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // 5. If company exists, release the guard
+  // Release the guard if user is logged in and company exists
   return <>{children}</>;
 }
