@@ -14,96 +14,96 @@ body {
   }
   
   :root {
-    --background: 0 0% 96.1%; /* Light grey (#F5F5F5) */
-    --foreground: 210 29% 24%; /* Dark blue (#2c3e50) */
+    --background: 0 0% 98%; /* Ultra clean white-ish grey */
+    --foreground: 210 29% 12%; /* Deeper blue-black */
 
-    --muted: 0 0% 90%;
-    --muted-foreground: 210 29% 35%;
+    --muted: 210 20% 92%;
+    --muted-foreground: 210 20% 45%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 29% 24%;
+    --popover-foreground: 210 29% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 29% 24%;
+    --card-foreground: 210 29% 12%;
 
-    --border: 0 0% 85%;
-    --input: 0 0% 85%;
+    --border: 210 20% 90%;
+    --input: 210 20% 90%;
 
-    --primary: 220 40% 30%; /* Dark Navy Blue */
-    --primary-foreground: 0 0% 100%; /* White text on navy */
+    --primary: 220 40% 30%; 
+    --primary-foreground: 0 0% 100%; 
 
-    --secondary: 210 40% 95%; /* Lighter grey for secondary elements */
-    --secondary-foreground: 210 29% 24%; /* Dark blue */
+    --secondary: 210 40% 96%; 
+    --secondary-foreground: 210 29% 24%; 
     
-    --accent: 220 40% 30%; /* Dark Navy Blue */
-    --accent-foreground: 0 0% 100%; /* White text on navy */
+    --accent: 220 40% 30%; 
+    --accent-foreground: 0 0% 100%; 
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     
-    --ring: 220 40% 30%; /* Dark Navy Blue for focus rings */
-    --radius: 0.5rem;
+    --ring: 220 40% 30%; 
+    --radius: 0.75rem; /* More modern rounded corners */
 
-    --chart-1: 220 40% 30%; /* Dark Navy Blue */
-    --chart-2: 210 29% 44%; /* Darker Blue */
-    --chart-3: 220 50% 60%; /* Lighter Navy */
-    --chart-4: 210 20% 60%; /* Lighter Blue */
-    --chart-5: 0 0% 60%; /* Grey */
+    --chart-1: 220 40% 30%; 
+    --chart-2: 210 29% 44%; 
+    --chart-3: 220 50% 60%; 
+    --chart-4: 210 20% 60%; 
+    --chart-5: 0 0% 60%; 
 
-    --sidebar-background: 210 29% 18%; /* Darker blue for sidebar */
-    --sidebar-foreground: 0 0% 90%; /* Light grey/white text */
-    --sidebar-primary: 220 40% 40%; /* Lighter Navy */
-    --sidebar-primary-foreground: 0 0% 100%; /* White */
-    --sidebar-accent: 210 29% 25%; /* Slightly lighter dark blue for hover */
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 210 29% 22%;
-    --sidebar-ring: 220 40% 40%;
+    --sidebar-background: 210 29% 14%; /* Sleeker deep navy sidebar */
+    --sidebar-foreground: 210 20% 95%; 
+    --sidebar-primary: 220 40% 45%; 
+    --sidebar-primary-foreground: 0 0% 100%; 
+    --sidebar-accent: 210 29% 20%; 
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 29% 18%;
+    --sidebar-ring: 220 40% 45%;
   }
 
   .dark {
-    --background: 210 29% 12%; /* Very Dark blue */
-    --foreground: 0 0% 90%; /* Light grey text */
+    --background: 210 29% 6%; 
+    --foreground: 210 20% 95%; 
 
-    --muted: 210 29% 18%;
-    --muted-foreground: 0 0% 70%;
+    --muted: 210 20% 12%;
+    --muted-foreground: 210 20% 65%;
 
-    --popover: 210 29% 8%;
-    --popover-foreground: 0 0% 90%;
+    --popover: 210 29% 4%;
+    --popover-foreground: 210 20% 95%;
 
-    --card: 210 29% 8%;
-    --card-foreground: 0 0% 90%;
+    --card: 210 29% 4%;
+    --card-foreground: 210 20% 95%;
 
-    --border: 210 29% 22%;
-    --input: 210 29% 22%;
+    --border: 210 29% 12%;
+    --input: 210 29% 12%;
 
-    --primary: 220 40% 50%; /* Brighter Navy Blue for dark mode */
+    --primary: 220 40% 55%; 
     --primary-foreground: 0 0% 10%; 
 
-    --secondary: 210 29% 22%; 
-    --secondary-foreground: 0 0% 90%;
+    --secondary: 210 29% 10%; 
+    --secondary-foreground: 210 20% 95%;
     
-    --accent: 220 40% 50%;
+    --accent: 220 40% 55%;
     --accent-foreground: 0 0% 10%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 98%;
 
-    --ring: 220 40% 50%;
+    --ring: 220 40% 55%;
     
-    --chart-1: 220 40% 50%;
-    --chart-2: 210 29% 60%;
-    --chart-3: 220 50% 70%;
-    --chart-4: 210 20% 75%;
-    --chart-5: 0 0% 70%;
+    --chart-1: 220 40% 55%;
+    --chart-2: 210 29% 65%;
+    --chart-3: 220 50% 75%;
+    --chart-4: 210 20% 80%;
+    --chart-5: 0 0% 75%;
 
-    --sidebar-background: 0 0% 8%; 
-    --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 220 40% 50%; 
-    --sidebar-primary-foreground: 0 0% 10%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 90%;
-    --sidebar-border: 0 0% 12%;
-    --sidebar-ring: 220 40% 50%;
+    --sidebar-background: 0 0% 2%; 
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 220 40% 55%; 
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 8%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 10%;
+    --sidebar-ring: 220 40% 55%;
   }
 }
 
@@ -115,7 +115,20 @@ body {
     @apply bg-background text-foreground;
     margin: 0;
     padding: 0;
+    -webkit-font-smoothing: antialiased;
   }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-muted/20;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-muted rounded-full hover:bg-muted-foreground/30 transition-colors;
 }
 
 @media print {
@@ -123,10 +136,10 @@ body {
     background: white;
   }
   .print-container {
-      margin: 0;
-      padding: 0;
-      border: none;
-      box-shadow: none;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
   }
   .no-print {
     display: none !important;

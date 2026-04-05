@@ -9,18 +9,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building2, Upload, Loader2, Palette } from 'lucide-react';
+import { Building2, Upload, Loader2, Palette, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 
 const COLOR_PRESETS = [
-  { name: 'Navy', primary: '#1e293b', secondary: '#f1f5f9' },
-  { name: 'Emerald', primary: '#065f46', secondary: '#ecfdf5' },
-  { name: 'Royal', primary: '#1e40af', secondary: '#eff6ff' },
-  { name: 'Maroon', primary: '#7f1d1d', secondary: '#fef2f2' },
-  { name: 'Slate', primary: '#334155', secondary: '#f8fafc' },
-  { name: 'Teal', primary: '#0d9488', secondary: '#f0fdfa' },
+  { name: 'Executive Navy', primary: '#1e293b', secondary: '#f1f5f9' },
+  { name: 'Forest Green', primary: '#064e3b', secondary: '#ecfdf5' },
+  { name: 'Royal Blue', primary: '#1e3a8a', secondary: '#eff6ff' },
+  { name: 'Deep Crimson', primary: '#7f1d1d', secondary: '#fef2f2' },
+  { name: 'Midnight Charcoal', primary: '#0f172a', secondary: '#f8fafc' },
+  { name: 'Modern Teal', primary: '#0d9488', secondary: '#f0fdfa' },
 ];
 
 const PUBLIC_PATHS = ['/login', '/signup'];
@@ -31,11 +31,9 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Check if a business profile exists in the local database
   const company = useLiveQuery(() => db.companies.toArray());
   const [isSaving, setIsSaving] = useState(false);
   
-  // Form state
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
@@ -49,7 +47,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 500000) {
-        toast({ variant: 'destructive', title: 'Logo Too Large', description: 'Please use an image under 500KB.' });
+        toast({ variant: 'destructive', title: 'Logo Too Large', description: 'Please use an image under 500KB for faster syncing.' });
         return;
       }
       const reader = new FileReader();
@@ -77,149 +75,153 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         createdAt: new Date().toISOString(),
         createdBy: { uid: user.uid, name: user.displayName || 'Owner' }
       });
-      toast({ title: 'Workspace Ready!', description: 'Your business suite is now configured with your branding.' });
+      toast({ title: 'Workspace Provisioned!', description: 'Your executive suite is ready.' });
       setIsSaving(false);
-      // Logic refresh via state/query happens automatically via Dexie hooks
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+      toast({ variant: 'destructive', title: 'Setup Failed', description: err.message });
       setIsSaving(false);
     }
   };
 
-  // If loading or on public route, don't show setup
   if (isUserLoading || PUBLIC_PATHS.includes(pathname)) {
     return <>{children}</>;
   }
 
-  // If not logged in, don't show setup (AuthGuard will handle login)
   if (!user) {
     return <>{children}</>;
   }
 
-  // Wait for company query to resolve
   if (company === undefined) {
     return (
-      <div className="h-screen w-full flex items-center justify-center">
-        <p>Verifying workspace...</p>
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
       </div>
     );
   }
 
-  // If no company record exists, force onboarding setup
   if (company.length === 0) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 py-12">
-        <Card className="w-full max-w-2xl shadow-xl">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <Building2 className="h-8 w-8 text-primary" />
-            </div>
-            <CardTitle className="text-2xl">Setup Your Business Workspace</CardTitle>
-            <CardDescription>Welcome! Enter your business details to customize your dashboard and professional documents.</CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSetup}>
-            <CardContent className="space-y-8">
-              <div className="flex flex-col items-center gap-4">
-                <div 
-                  className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:bg-muted/50 overflow-hidden relative"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {logoUrl ? (
-                    <img src={logoUrl} alt="Logo Preview" className="w-full h-full object-contain" />
-                  ) : (
-                    <div className="text-center text-xs text-muted-foreground p-2">
-                      <Upload className="h-6 w-6 mx-auto mb-1" />
-                      Upload Logo
-                    </div>
-                  )}
+      <div className="min-h-screen w-full flex items-center justify-center bg-muted/20 p-4 lg:p-8">
+        <div className="w-full max-w-4xl grid lg:grid-cols-[1fr_350px] gap-8 items-start">
+          <Card className="shadow-2xl border-none ring-1 ring-black/5">
+            <CardHeader className="space-y-1">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="bg-primary/10 p-2 rounded-xl">
+                    <Building2 className="h-6 w-6 text-primary" />
                 </div>
-                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-                <p className="text-[10px] text-muted-foreground">Upload your brand logo for documents and receipts.</p>
+                <Badge variant="secondary" className="font-bold tracking-tight">Step 1: Identity</Badge>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Business Name</Label>
-                  <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Quest Tech Solutions" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Public Business Email</Label>
-                  <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="info@company.com" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Contact Phone</Label>
-                  <Input id="phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+..." required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">City / Town</Label>
-                  <Input id="location" value={location} onChange={e => setLocation(e.target.value)} placeholder="Nairobi, KE" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Physical Address</Label>
-                <Input id="address" value={address} onChange={e => setAddress(e.target.value)} placeholder="Building, Street, Suite..." required />
-              </div>
-
-              <div className="space-y-4 pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <Palette className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-semibold">System Appearance</h3>
-                </div>
+              <CardTitle className="text-3xl font-black tracking-tighter">Setup Your Business Workspace</CardTitle>
+              <CardDescription className="text-base">Configure your professional identity for the platform and documents.</CardDescription>
+            </CardHeader>
+            <form onSubmit={handleSetup}>
+              <CardContent className="space-y-8 pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <Label>Brand Palette</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {COLOR_PRESETS.map((preset) => (
-                        <button
-                          key={preset.name}
-                          type="button"
-                          className={cn(
-                            "w-8 h-8 rounded-full border-2 transition-all",
-                            primaryColor === preset.primary ? "ring-2 ring-primary ring-offset-2" : "border-transparent"
-                          )}
-                          style={{ backgroundColor: preset.primary }}
-                          onClick={() => {
-                            setPrimaryColor(preset.primary);
-                            setSecondaryColor(preset.secondary);
-                          }}
-                          title={preset.name}
-                        />
-                      ))}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="text-xs uppercase font-bold text-muted-foreground">Legal Business Name</Label>
+                      <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Quest Global Solutions" required className="h-11 shadow-sm" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-xs uppercase font-bold text-muted-foreground">Professional Email</Label>
+                      <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contact@company.com" required className="h-11 shadow-sm" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="text-xs uppercase font-bold text-muted-foreground">Office Contact</Label>
+                      <Input id="phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+254 ..." required className="h-11 shadow-sm" />
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    <Label>Custom Identity</Label>
-                    <div className="flex gap-4">
-                      <div className="flex-1">
-                        <Label htmlFor="p-color" className="text-[10px] uppercase text-muted-foreground">Primary</Label>
-                        <div className="flex gap-2 items-center">
-                          <Input type="color" id="p-color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="w-10 h-8 p-0 border-none bg-transparent" />
-                          <Input value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="h-8 font-mono text-xs uppercase" />
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="location" className="text-xs uppercase font-bold text-muted-foreground">City / Region</Label>
+                      <Input id="location" value={location} onChange={e => setLocation(e.target.value)} placeholder="Nairobi, KE" className="h-11 shadow-sm" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="address" className="text-xs uppercase font-bold text-muted-foreground">Full Physical Address</Label>
+                      <Input id="address" value={address} onChange={e => setAddress(e.target.value)} placeholder="Building, Suite, Street..." required className="h-11 shadow-sm" />
+                    </div>
+                    <div className="pt-2">
+                        <Label className="text-xs uppercase font-bold text-muted-foreground mb-3 block">Corporate Branding</Label>
+                        <div className="flex flex-wrap gap-2">
+                        {COLOR_PRESETS.map((preset) => (
+                            <button
+                            key={preset.name}
+                            type="button"
+                            className={cn(
+                                "w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center",
+                                primaryColor === preset.primary ? "ring-2 ring-primary ring-offset-2 border-primary" : "border-transparent"
+                            )}
+                            style={{ backgroundColor: preset.primary }}
+                            onClick={() => {
+                                setPrimaryColor(preset.primary);
+                                setSecondaryColor(preset.secondary);
+                            }}
+                            title={preset.name}
+                            >
+                                {primaryColor === preset.primary && <CheckCircle2 className="h-5 w-5 text-white" />}
+                            </button>
+                        ))}
                         </div>
-                      </div>
-                      <div className="flex-1">
-                        <Label htmlFor="s-color" className="text-[10px] uppercase text-muted-foreground">Secondary</Label>
-                        <div className="flex gap-2 items-center">
-                          <Input type="color" id="s-color" value={secondaryColor} onChange={e => setSecondaryColor(e.target.value)} className="w-10 h-8 p-0 border-none bg-transparent" />
-                          <Input value={secondaryColor} onChange={e => setSecondaryColor(e.target.value)} className="h-8 font-mono text-xs uppercase" />
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full h-12 text-lg" disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Finish Setup'}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
+              </CardContent>
+              <CardFooter className="bg-muted/30 py-6 border-t px-6">
+                <Button type="submit" className="w-full h-12 text-lg font-bold shadow-xl" disabled={isSaving || !name || !email}>
+                  {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Initialize Workspace'}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+
+          <div className="space-y-6">
+            <Card className="shadow-lg border-none bg-primary text-primary-foreground overflow-hidden">
+                <CardHeader>
+                    <CardTitle className="text-sm font-bold uppercase tracking-widest opacity-80">Branding Preview</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center gap-6 pb-8">
+                    <div 
+                        className="w-40 h-40 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-2xl flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all relative group"
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        {logoUrl ? (
+                            <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
+                        ) : (
+                            <div className="text-center text-xs opacity-60 px-4">
+                                <Upload className="h-8 w-8 mx-auto mb-2" />
+                                Drop Logo Here
+                            </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-2xl transition-opacity">
+                            <span className="text-[10px] font-bold">CHANGE LOGO</span>
+                        </div>
+                    </div>
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+                    <div className="text-center space-y-1">
+                        <h4 className="text-xl font-black leading-tight uppercase truncate max-w-[300px]">
+                            {name || 'Your Company Name'}
+                        </h4>
+                        <p className="text-[10px] font-medium opacity-70 tracking-widest">ESTABLISHED {new Date().getFullYear()}</p>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="p-4 rounded-xl bg-muted/50 border border-muted-foreground/10 space-y-3">
+                <h5 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Onboarding Guide</h5>
+                <p className="text-xs leading-relaxed text-muted-foreground/80">
+                    The details provided here will automatically populate your **Executive Dashboard**, **Invoices**, and **System Reports**.
+                </p>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-primary">
+                    <div className="h-1 w-1 rounded-full bg-primary" />
+                    Encrypted Local Storage
+                </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  // Release the guard if user is logged in and company exists
   return <>{children}</>;
 }
