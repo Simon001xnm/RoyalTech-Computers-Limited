@@ -1,4 +1,3 @@
-
 'use client';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -7,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Camera, Edit3, Image as ImageIcon, Check, Loader2, Building2, Upload } from "lucide-react";
+import { Camera, Edit3, Image as ImageIcon, Check, Loader2, Building2, Upload, Palette } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/firebase/provider";
 import { useEffect, useState, useRef } from "react";
@@ -220,30 +219,38 @@ export default function ProfilePage() {
                   </div>
                   <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
                 </div>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Primary Color</Label>
-                      <div className="flex gap-2">
-                        <Input type="color" value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="w-12 h-10 p-1" />
-                        <Input value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="font-mono text-xs uppercase" />
-                      </div>
+                <div className="space-y-6">
+                  <div className="p-4 rounded-xl border bg-muted/30 space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Palette className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Color Palette</span>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Secondary Color</Label>
-                      <div className="flex gap-2">
-                        <Input type="color" value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="w-12 h-10 p-1" />
-                        <Input value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="font-mono text-xs uppercase" />
-                      </div>
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-bold opacity-70">Primary Color</Label>
+                        <div className="flex gap-2">
+                            <Input type="color" value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer" />
+                            <Input value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="font-mono text-xs uppercase" />
+                        </div>
+                        </div>
+                        <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-bold opacity-70">Secondary Color</Label>
+                        <div className="flex gap-2">
+                            <Input type="color" value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer" />
+                            <Input value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="font-mono text-xs uppercase" />
+                        </div>
+                        </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Business Name</Label>
-                    <Input value={compName} onChange={e => setCompName(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Address</Label>
-                    <Input value={compAddress} onChange={e => setCompAddress(e.target.value)} />
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label>Business Name</Label>
+                        <Input value={compName} onChange={e => setCompName(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Address</Label>
+                        <Input value={compAddress} onChange={e => setCompAddress(e.target.value)} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -251,7 +258,7 @@ export default function ProfilePage() {
             <CardFooter className="justify-end">
               <Button onClick={handleSaveCompany} disabled={isSaving}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Branding
+                Save Branding Changes
               </Button>
             </CardFooter>
           </Card>
