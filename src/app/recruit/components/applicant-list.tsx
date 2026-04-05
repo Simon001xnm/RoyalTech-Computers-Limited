@@ -10,7 +10,7 @@ import { db } from "@/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Table,
@@ -96,7 +96,7 @@ export function ApplicantList() {
             } else {
                 await db.applicants.add({ 
                     ...applicantData, 
-                    id: crypto.randomUUID(),
+                    id: crypto.randomUUID(), 
                     appliedAt: new Date().toISOString(),
                     createdAt: new Date().toISOString() 
                 });
