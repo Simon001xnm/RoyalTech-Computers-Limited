@@ -7,7 +7,7 @@ import type { Asset } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { LocateFixed, LaptopIcon } from "lucide-react";
+import { LocateFixed, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from '@/firebase/provider';
 import { db } from "@/db";
@@ -45,13 +45,13 @@ export function TrackingClient() {
 
   if (isLoading) {
     return (
-        <>
+        <div className="space-y-6">
             <PageHeader
                 title="Asset Tracking"
-                description="View the last known location of leased or in-repair assets."
+                description="Syncing trackable device locations..."
             />
-            <p>Loading trackable assets...</p>
-        </>
+            <p className="text-center py-12 text-muted-foreground animate-pulse">Accessing local location data...</p>
+        </div>
     )
   }
 
@@ -63,7 +63,7 @@ export function TrackingClient() {
       />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
-            <MapComponent laptops={trackableAssets || []} selectedLaptopId={selectedAssetId} />
+            <MapComponent assets={trackableAssets || []} selectedAssetId={selectedAssetId} />
         </div>
         <div className="space-y-6">
             <Card className="shadow-lg">
@@ -87,10 +87,10 @@ export function TrackingClient() {
                         </Select>
                     ) : (
                         <Alert>
-                            <LaptopIcon className="h-4 w-4" />
+                            <Package className="h-4 w-4" />
                             <AlertTitle>No Trackable Assets</AlertTitle>
                             <AlertDescription>
-                                There are no assets currently marked as 'Leased' or 'Repair' with location data in your local records.
+                                There are no assets currently marked as 'Leased' or 'Repair' with location data available.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -113,10 +113,12 @@ export function TrackingClient() {
                         </div>
                         <div className="text-sm">
                             <span className="font-medium">Location: </span>
-                            <span className="text-muted-foreground">Lat: {selectedAssetDetails.location.lat.toFixed(4)}, Lng: {selectedAssetDetails.location.lng.toFixed(4)}</span>
+                            <span className="text-muted-foreground font-mono">
+                                {selectedAssetDetails.location.lat.toFixed(4)}, {selectedAssetDetails.location.lng.toFixed(4)}
+                            </span>
                         </div>
                          <p className="text-xs text-muted-foreground pt-2">
-                            Note: Location data is retrieved from your local device database.
+                            Note: Tracking is based on the last recorded synchronization from the field.
                         </p>
                     </CardContent>
                 </Card>
@@ -126,7 +128,7 @@ export function TrackingClient() {
                     <LocateFixed className="h-4 w-4" />
                     <AlertTitle>Location Not Available</AlertTitle>
                     <AlertDescription>
-                        The selected asset ({selectedAssetDetails.model}) does not have location data available locally.
+                        The selected asset ({selectedAssetDetails.model}) does not have active GPS data.
                     </AlertDescription>
                 </Alert>
              )}

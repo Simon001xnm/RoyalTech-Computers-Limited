@@ -58,7 +58,11 @@ export function DeskClient() {
   const leasesWithAssetDetails = useMemo(() => {
     return (leases || []).map(lease => {
       const asset = assets?.find(a => a.id === lease.assetId);
-      return { ...lease, laptopSerialNumber: asset?.serialNumber }; // Keeping field name for compatibility with form
+      return { 
+        ...lease, 
+        assetSerialNumber: asset?.serialNumber || 'N/A', 
+        assetModel: asset?.model || lease.assetModel || 'N/A' 
+      };
     });
   }, [leases, assets]);
 
@@ -78,7 +82,7 @@ export function DeskClient() {
     const ticketData = {
         ...data,
         customerName: selectedCustomer?.name,
-        leaseIdentifier: selectedLease ? `${selectedAsset?.serialNumber} (${selectedLease.assetModel})` : undefined,
+        leaseIdentifier: selectedLease ? `${selectedAsset?.serialNumber || selectedLease.assetId} (${selectedAsset?.model || selectedLease.assetModel})` : undefined,
         updatedAt: new Date().toISOString(),
     };
 
@@ -132,7 +136,7 @@ export function DeskClient() {
         <div className="rounded-lg border shadow-sm bg-card">
           <Table>
             <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
-            <TableBody>{table.getRowModel().rows.map(row => (<TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))}</TableBody>
+            <TableBody>{table.getRowModel().rows.map(row => (<TableRow key={row.id}>{row.getIsSelected() && "selected"} key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))}</TableBody>
           </Table>
           <DataTablePagination table={table} />
         </div>

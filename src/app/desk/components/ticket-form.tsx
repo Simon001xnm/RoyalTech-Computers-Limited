@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import type { Ticket, Customer, Lease, Laptop } from "@/types";
+import type { Ticket, Customer, Lease } from "@/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +33,7 @@ type TicketFormValues = z.infer<typeof ticketFormSchema>;
 interface TicketFormProps {
   ticket?: Ticket | null;
   customers: Customer[];
-  leases: (Lease & { laptopSerialNumber?: string })[];
+  leases: (Lease & { assetSerialNumber?: string; assetModel?: string })[];
   onSubmit: (data: TicketFormValues) => void;
   onCancel: () => void;
   isLoading?: boolean;
@@ -111,7 +110,7 @@ export function TicketForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {customerLeases.map(l => <SelectItem key={l.id} value={l.id}>{l.laptopSerialNumber} ({l.laptopModel})</SelectItem>)}
+                    {customerLeases.map(l => <SelectItem key={l.id} value={l.id}>{l.assetSerialNumber} ({l.assetModel})</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -126,7 +125,7 @@ export function TicketForm({
             <FormItem>
               <FormLabel>Subject</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Laptop won't turn on" {...field} />
+                <Input placeholder="e.g., Device won't turn on" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

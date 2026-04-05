@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useUser } from '@/firebase/provider';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -13,6 +12,7 @@ import { Building2, Upload, Loader2, Palette, CheckCircle2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
 
 const COLOR_PRESETS = [
   { name: 'Executive Navy', primary: '#1e293b', secondary: '#f1f5f9' },
