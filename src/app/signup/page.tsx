@@ -35,7 +35,7 @@ export default function SignUpPage() {
 
   const handleSignUp = async () => {
     if (!email || !password || !name) {
-        toast({ variant: 'destructive', title: 'Missing Info', description: 'Please fill in all fields.' });
+        toast({ variant: 'destructive', title: 'Information Required', description: 'Please fill in all the required fields.' });
         return;
     }
 
@@ -49,7 +49,7 @@ export default function SignUpPage() {
             role = 'admin';
         }
     } catch (e) {
-        console.warn("Could not check for first user, defaulting to 'user' role.", e);
+        console.warn("Role check failed, defaulting to user role.");
     }
     
     createUserWithEmailAndPassword(auth, email, password)
@@ -67,22 +67,22 @@ export default function SignUpPage() {
             });
 
             toast({
-                title: 'Welcome!',
-                description: 'Your account is ready. Let\'s setup your business workspace.',
+                title: 'Account Created',
+                description: 'Welcome aboard! Let\'s configure your workspace now.',
             });
         })
         .catch((error) => {
-            let description = "An unknown error occurred.";
+            let description = "Registration could not be completed.";
             if (error.code === 'auth/email-already-in-use') {
-                description = 'This email address is already in use.';
+                description = 'This email address is already registered.';
             } else if (error.code === 'auth/invalid-email') {
                 description = 'Please enter a valid email address.';
             } else if (error.code === 'auth/weak-password') {
-                description = 'The password must be at least 6 characters long.';
+                description = 'Password must be at least 6 characters.';
             }
             toast({
                 variant: 'destructive',
-                title: 'Sign-up Failed',
+                title: 'Sign-up Error',
                 description: description,
             });
         })
@@ -99,28 +99,29 @@ export default function SignUpPage() {
   
   if (isUserLoading || user) {
     return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <p>Redirecting to your workspace...</p>
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <p className="animate-pulse text-sm font-medium">Redirecting to workspace...</p>
         </div>
     );
   }
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-black overflow-hidden">
-      {/* Background Image */}
+      {/* Immersive Professional Background */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60 scale-105 transition-transform duration-1000 ease-out"
-        style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=2070")' }}
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-70 scale-105 transition-transform duration-[2000ms] ease-out"
+        style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=2070")' }}
       />
 
-      <Card className="relative w-[400px] bg-white/10 backdrop-blur-xl border-white/20 shadow-2xl text-white">
-        <CardHeader className="text-center items-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">Create an Account</CardTitle>
-          <CardDescription className="text-white/70">Join the {APP_NAME} to manage your business.</CardDescription>
+      {/* Blurred Mirror Form (Glassmorphism) */}
+      <Card className="relative w-full max-w-[400px] mx-4 bg-white/5 backdrop-blur-2xl border-white/10 shadow-2xl text-white">
+        <CardHeader className="text-center items-center pt-8">
+          <CardTitle className="text-3xl font-bold tracking-tight mb-2">Join the Suite</CardTitle>
+          <CardDescription className="text-white/60">Create your individual account to start managing your business.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 px-8">
           <div className="space-y-2">
-            <Label htmlFor="name-signup" className="text-white/90">Full Name</Label>
+            <Label htmlFor="name-signup" className="text-white/80 text-xs uppercase tracking-widest font-semibold">Full Name</Label>
             <Input
               id="name-signup"
               type="text"
@@ -129,24 +130,24 @@ export default function SignUpPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={isLoading}
-              className="bg-black/40 border-white/10 text-white placeholder:text-white/30 focus:ring-primary/50"
+              className="h-12 bg-black/40 border-white/5 text-white placeholder:text-white/20 focus:ring-primary/50 focus:bg-black/60 transition-all"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email-signup" className="text-white/90">Email Address</Label>
+            <Label htmlFor="email-signup" className="text-white/80 text-xs uppercase tracking-widest font-semibold">Email Address</Label>
             <Input
               id="email-signup"
               type="email"
-              placeholder="name@example.com"
+              placeholder="name@company.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
-              className="bg-black/40 border-white/10 text-white placeholder:text-white/30 focus:ring-primary/50"
+              className="h-12 bg-black/40 border-white/5 text-white placeholder:text-white/20 focus:ring-primary/50 focus:bg-black/60 transition-all"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password-signup" className="text-white/90">Password</Label>
+            <Label htmlFor="password-signup" className="text-white/80 text-xs uppercase tracking-widest font-semibold">Password</Label>
             <Input
               id="password-signup"
               type="password"
@@ -156,18 +157,18 @@ export default function SignUpPage() {
               onKeyDown={handlePasswordKeyDown}
               onKeyUp={handlePasswordKeyDown}
               disabled={isLoading}
-              className="bg-black/40 border-white/10 text-white focus:ring-primary/50"
+              className="h-12 bg-black/40 border-white/5 text-white focus:ring-primary/50 focus:bg-black/60 transition-all"
             />
-            {isCapsLockOn && <p className="text-xs text-red-400 mt-2">Caps Lock is on</p>}
+            {isCapsLockOn && <p className="text-[10px] text-orange-400 mt-1 font-medium flex items-center gap-1 uppercase">⚠️ Caps Lock is active</p>}
           </div>
         </CardContent>
-        <CardFooter className="flex-col gap-4">
-          <Button onClick={handleSignUp} className="w-full h-11 font-semibold shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]" disabled={isLoading}>
+        <CardFooter className="flex-col gap-6 px-8 pb-10 pt-2">
+          <Button onClick={handleSignUp} className="w-full h-12 text-base font-bold shadow-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-white text-black hover:bg-white/90" disabled={isLoading}>
             {isLoading ? 'Creating Account...' : 'Get Started'}
           </Button>
-          <div className="mt-4 text-center text-sm text-white/60">
+          <div className="text-center text-sm text-white/40">
             Already have an account?{' '}
-            <Link href="/login" className="underline text-white hover:text-primary-foreground transition-colors font-semibold">
+            <Link href="/login" className="text-white hover:underline transition-colors font-semibold">
               Sign in
             </Link>
           </div>

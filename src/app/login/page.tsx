@@ -42,42 +42,42 @@ export default function LoginPage() {
   
   if (isUserLoading || user) {
     return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <p>Loading...</p>
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <p className="animate-pulse">Syncing session...</p>
         </div>
     );
   }
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-black overflow-hidden">
-      {/* Background Image */}
+      {/* Immersive Professional Background */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60 scale-105 transition-transform duration-1000 ease-out"
-        style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=2070")' }}
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-70 scale-105 transition-transform duration-[2000ms] ease-out"
+        style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=2070")' }}
       />
       
-      {/* Glassmorphism Card */}
-      <Card className="relative w-[400px] bg-white/10 backdrop-blur-xl border-white/20 shadow-2xl text-white">
-        <CardHeader className="text-center items-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">{`Welcome to ${APP_NAME}`}</CardTitle>
-          <CardDescription className="text-white/70">Enter your credentials to access your workspace.</CardDescription>
+      {/* Blurred Mirror Form (Glassmorphism) */}
+      <Card className="relative w-full max-w-[400px] mx-4 bg-white/5 backdrop-blur-2xl border-white/10 shadow-2xl text-white">
+        <CardHeader className="text-center items-center pt-8">
+          <CardTitle className="text-3xl font-bold tracking-tight mb-2">{`Welcome to ${APP_NAME}`}</CardTitle>
+          <CardDescription className="text-white/60">Enter your credentials to access your workspace.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6 px-8">
           <div className="space-y-2">
-            <Label htmlFor="email-signin" className="text-white/90">Email</Label>
+            <Label htmlFor="email-signin" className="text-white/80 text-xs uppercase tracking-widest font-semibold">Email Address</Label>
             <Input
               id="email-signin"
               type="email"
-              placeholder="name@example.com"
+              placeholder="name@company.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
-              className="bg-black/40 border-white/10 text-white placeholder:text-white/30 focus:ring-primary/50"
+              className="h-12 bg-black/40 border-white/5 text-white placeholder:text-white/20 focus:ring-primary/50 focus:bg-black/60 transition-all"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password-signin" className="text-white/90">Password</Label>
+            <Label htmlFor="password-signin" className="text-white/80 text-xs uppercase tracking-widest font-semibold">Password</Label>
             <Input
               id="password-signin"
               type="password"
@@ -87,19 +87,19 @@ export default function LoginPage() {
               onKeyDown={handlePasswordKeyDown}
               onKeyUp={handlePasswordKeyDown}
               disabled={isLoading}
-              className="bg-black/40 border-white/10 text-white focus:ring-primary/50"
+              className="h-12 bg-black/40 border-white/5 text-white focus:ring-primary/50 focus:bg-black/60 transition-all"
             />
-             {isCapsLockOn && <p className="text-xs text-red-400 mt-2">Caps Lock is on</p>}
+             {isCapsLockOn && <p className="text-[10px] text-orange-400 mt-1 font-medium flex items-center gap-1 uppercase">⚠️ Caps Lock is active</p>}
           </div>
         </CardContent>
-        <CardFooter className="flex-col gap-4">
-          <Button onClick={handleSignIn} className="w-full font-semibold shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]" disabled={isLoading}>
-            {isLoading ? 'Signing In...' : 'Sign In'}
+        <CardFooter className="flex-col gap-6 px-8 pb-10">
+          <Button onClick={handleSignIn} className="w-full h-12 text-base font-bold shadow-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-white text-black hover:bg-white/90" disabled={isLoading}>
+            {isLoading ? 'Processing...' : 'Sign In'}
           </Button>
-          <div className="mt-4 text-center text-sm text-white/60">
-            Don't have an account?{' '}
-            <Link href="/signup" className="underline text-white hover:text-primary-foreground transition-colors">
-              Sign up
+          <div className="text-center text-sm text-white/40">
+            Don't have a workspace?{' '}
+            <Link href="/signup" className="text-white hover:underline transition-colors font-semibold">
+              Create one now
             </Link>
           </div>
         </CardFooter>
