@@ -1,3 +1,4 @@
+
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -6,6 +7,7 @@ import { APP_NAME } from '@/lib/constants';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { AuthGuard } from '@/components/layout/auth-guard';
 import { PwaRegistration } from '@/components/layout/pwa-registration';
+import { BackgroundErrorGuard } from '@/components/layout/background-error-guard';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -52,7 +54,9 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <FirebaseClientProvider>
           <AuthGuard>
-            {children}
+            <BackgroundErrorGuard>
+                {children}
+            </BackgroundErrorGuard>
           </AuthGuard>
           <Toaster />
           <PwaRegistration />
