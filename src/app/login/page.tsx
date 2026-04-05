@@ -11,7 +11,7 @@ import {
   initiateEmailSignIn,
 } from '@/firebase/non-blocking-login';
 import { APP_NAME } from '@/lib/constants';
-import Link from 'next/link';
+import Link from 'link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -50,10 +50,10 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-black overflow-hidden">
-      {/* Immersive Professional Background */}
+      {/* Dynamic Background Image */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-70 scale-105 transition-transform duration-[2000ms] ease-out"
-        style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=2070")' }}
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 scale-105 transition-transform duration-[2000ms] ease-out"
+        style={{ backgroundImage: 'url("/stimaspt.jpg")' }}
       />
       
       {/* Blurred Mirror Form (Glassmorphism) */}
