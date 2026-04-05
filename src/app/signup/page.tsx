@@ -65,9 +65,10 @@ export default function SignUpPage() {
 
             toast({
                 title: 'Account Created!',
-                description: 'You can now sign in.',
+                description: 'Welcome to your new workspace.',
             });
-            router.push('/login');
+            // Redirect to home which will trigger the onboarding guard
+            router.push('/');
         })
         .catch((error) => {
             let description = "An unknown error occurred.";

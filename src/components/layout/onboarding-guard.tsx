@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Building2, Upload, Loader2, Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 const COLOR_PRESETS = [
   { name: 'Navy', primary: '#1e293b', secondary: '#f1f5f9' },
@@ -24,6 +25,7 @@ const COLOR_PRESETS = [
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const company = useLiveQuery(() => db.companies.toArray());
@@ -72,9 +74,13 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         createdBy: { uid: user.uid, name: user.displayName || 'Owner' }
       });
       toast({ title: 'Welcome!', description: 'Your business profile has been set up successfully.' });
+      // Minor delay to allow the state to refresh
+      setTimeout(() => {
+        setIsSaving(false);
+        router.refresh();
+      }, 500);
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
-    } finally {
       setIsSaving(false);
     }
   };
