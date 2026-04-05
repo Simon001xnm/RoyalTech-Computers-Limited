@@ -1,11 +1,9 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import type { Sale } from '@/types';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore, useUser, useMemoFirebase } from '@/firebase/provider';
-import { collection, query, orderBy, addDoc } from 'firebase/firestore';
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef, getPaginationRowModel, type PaginationState } from "@tanstack/react-table";
@@ -19,25 +17,24 @@ interface RecentSalesProps {
 }
 
 export function RecentSales({ onViewReceipt }: RecentSalesProps) {
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
 
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 5 });
 
-    const salesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'sales'), orderBy('date', 'desc')) : null, [firestore, user]);
-    const { data: sales, isLoading: salesLoading } = useCollection<Sale>(salesQuery);
+    // DEXIE: Fetch sales history locally
+    const sales = useLiveQuery(() => 
+        db.sales.orderBy('date').reverse().toArray()
+    );
     
-    const isLoading = isUserLoading || salesLoading;
+    const isLoading = sales === undefined;
     
     const handleGenerateDelivery = async (sale: Sale) => {
-        if (!user) return;
-
         toast({ title: "Generating Delivery Note..." });
 
         const deliveryData = {
-            type: 'DeliveryNote',
+            id: crypto.randomUUID(),
+            type: 'DeliveryNote' as const,
             title: `Delivery Note #DEL-${sale.id.slice(0, 5).toUpperCase()}`,
             generatedDate: new Date().toISOString(),
             relatedTo: `Sale to ${sale.customerName}`,
@@ -51,16 +48,15 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                 details: `Generated from Sale RCL-${sale.id.slice(0, 4)}`,
             },
             createdAt: new Date().toISOString(),
-            createdBy: { uid: user.uid, name: user.displayName || 'POS System' }
         };
 
         try {
-            await addDoc(collection(firestore, 'documents'), deliveryData);
+            await db.documents.add(deliveryData);
             toast({ title: "Success", description: "Delivery Note generated! Taking you to Documents..." });
             router.push('/documents');
         } catch (error) {
             console.error("Delivery note generation failed:", error);
-            toast({ variant: 'destructive', title: "Error", description: "Failed to generate delivery note." });
+            toast({ variant: 'destructive', title: "Error", description: "Failed to generate delivery note locally." });
         }
     };
 
@@ -82,8 +78,8 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                    <CardTitle>Recent Receipts</CardTitle>
-                    <CardDescription>A log of all completed sales. You can generate delivery notes from here.</CardDescription>
+                    <CardTitle>Recent Local Receipts</CardTitle>
+                    <CardDescription>A log of sales stored on this device.</CardDescription>
                 </div>
             </CardHeader>
             <CardContent>

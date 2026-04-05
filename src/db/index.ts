@@ -22,7 +22,7 @@ import type {
 /**
  * RoyalTech Local Database
  * Powered by Dexie.js and IndexedDB for local-first storage.
- * Synchronized via Dexie Cloud.
+ * Synchronized via Dexie Cloud instance: z1xwh7v7u
  */
 export class RoyalTechDB extends Dexie {
   laptops!: Table<Laptop>;
@@ -67,7 +67,7 @@ export class RoyalTechDB extends Dexie {
 
     this.cloud.configure({
       databaseUrl: 'https://z1xwh7v7u.dexie.cloud',
-      requireAuth: false // Use Firebase for auth, Dexie stays local/syncs silently
+      requireAuth: false // Use Firebase for primary auth, sync runs in background
     });
   }
 }

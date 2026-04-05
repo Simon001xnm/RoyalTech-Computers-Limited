@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -10,20 +9,20 @@ import {
   SidebarMenuButton,
   SidebarMenuSkeleton,
 } from "@/components/ui/sidebar";
-import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider";
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { doc } from 'firebase/firestore';
-import type { User as AppUser } from '@/types';
+import { useUser } from "@/firebase/provider";
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { getPermittedNavItems } from '@/lib/roles';
 
 export function SidebarNav() {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
 
-  // Only try to fetch a user document if the user is *not* anonymous
-  const userDocRef = useMemoFirebase(() => (user && !user.isAnonymous) ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
-  const { data: currentUser, isLoading: isCurrentUserLoading } = useDoc<AppUser>(userDocRef);
+  // DEXIE: Fetch user details locally instead of via useDoc (Firestore)
+  const currentUser = useLiveQuery(
+    async () => user ? await db.users.get(user.uid) : null,
+    [user]
+  );
 
   if (isUserLoading) {
     return (
@@ -33,10 +32,10 @@ export function SidebarNav() {
     );
   }
 
-  if (!user) return null; // Should not happen if AuthGuard is working, but a good safeguard.
+  if (!user) return null;
 
-  // For a non-anonymous user, if their doc is still loading, show a skeleton.
-  if (!user.isAnonymous && isCurrentUserLoading) {
+  // If the local profile hasn't loaded yet, show skeleton
+  if (currentUser === undefined) {
       return (
         <SidebarMenu className="p-2">
             {Array.from({ length: 8 }).map((_, i) => <SidebarMenuSkeleton key={i} />)}
