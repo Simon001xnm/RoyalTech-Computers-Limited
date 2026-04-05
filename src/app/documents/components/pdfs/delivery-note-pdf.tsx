@@ -1,22 +1,32 @@
 
+'use client';
+
 import type { Document as AppDocument } from "@/types";
 import { format } from "date-fns";
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export function DeliveryNotePdf({ document }: { document: AppDocument }) {
+  const company = useLiveQuery(() => db.companies.toCollection().last());
+
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
   const { customer, laptop, items, details, deliveredBy, receivedBy, delivererSignature, recipientSignature } = document.data;
 
   return (
-    <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full">
+    <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full min-h-[1000px] flex flex-col">
       <header className="flex justify-between items-start pb-4 border-b">
         <div className="flex items-center gap-4">
-          <img src="/picture1.png" alt="Company Logo" className="h-28 w-auto object-contain" />
+          {company?.logoUrl ? (
+            <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain" />
+          ) : (
+            <div className="h-28 w-28 bg-muted flex items-center justify-center text-xs text-muted-foreground uppercase font-bold border">No Logo</div>
+          )}
           <div>
-              <p className="font-bold text-lg uppercase text-black">ROYALTECH COMPUTERS LIMITED</p>
-              <p className="text-xs text-gray-500">Revlon Professional Plaza, 2nd Floor, Suite 1, Biashara Street, Nairobi</p>
-              <p className="text-xs text-gray-500">Tel: +254 724404935 | E-mail: info@royaltech.co.ke</p>
+              <p className="font-bold text-lg uppercase text-black">{company?.name || 'Your Company'}</p>
+              <p className="text-xs text-gray-500">{company?.address}</p>
+              <p className="text-xs text-gray-500">Tel: {company?.phone} | E-mail: {company?.email}</p>
           </div>
         </div>
         <div className="text-right">
@@ -83,7 +93,6 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
       )}
 
       <section className="mt-16 grid grid-cols-2 gap-12">
-        {/* Deliverer Side */}
         <div className="space-y-4">
             <h4 className="font-bold border-b pb-1 text-xs uppercase text-gray-500">Delivered By:</h4>
             <div className="h-24 flex flex-col justify-end">
@@ -94,12 +103,11 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
                 )}
             </div>
             <div className="text-center">
-                <p className="font-bold text-sm">{deliveredBy || 'RoyalTech Agent'}</p>
+                <p className="font-bold text-sm">{deliveredBy || 'Authorized Agent'}</p>
                 <p className="text-[10px] text-gray-400 uppercase">Signature & Name</p>
             </div>
         </div>
 
-        {/* Recipient Side */}
         <div className="space-y-4">
             <h4 className="font-bold border-b pb-1 text-xs uppercase text-gray-500">Received In Good Condition By:</h4>
             <div className="h-24 flex flex-col justify-end">
@@ -116,9 +124,16 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
         </div>
       </section>
 
-       <footer className="text-center text-[10px] text-gray-400 border-t pt-4 mt-16 flex justify-between">
-        <p>White: Office Copy | Blue: Customer Copy | Yellow: Delivery Copy</p>
-        <p>Thank you for choosing RoyalTech Computers Limited!</p>
+      <div className="flex-grow"></div>
+
+       <footer className="text-center text-[10px] text-gray-400 border-t pt-4 mt-16 flex flex-col items-center gap-2">
+        <div className="flex justify-between w-full">
+            <p>White: Office Copy | Blue: Customer Copy | Yellow: Delivery Copy</p>
+            <p>Thank you for choosing us!</p>
+        </div>
+        <div className="text-[10px] text-muted-foreground pt-2 border-t w-full">
+            powered by simonstyless technologies limited
+        </div>
       </footer>
     </div>
   );

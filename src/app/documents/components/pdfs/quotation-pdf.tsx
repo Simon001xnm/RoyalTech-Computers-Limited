@@ -1,10 +1,16 @@
 
+'use client';
+
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
 import { format } from "date-fns";
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 const VAT_RATE = 0.16;
 
 export function QuotationPdf({ document }: { document: AppDocument }) {
+  const company = useLiveQuery(() => db.companies.toCollection().last());
+
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
@@ -20,14 +26,18 @@ export function QuotationPdf({ document }: { document: AppDocument }) {
   const isLease = invoiceType === 'lease' && leaseDetails;
 
   return (
-    <div className="p-8 font-sans text-sm bg-white text-gray-800 w-full">
+    <div className="p-8 font-sans text-sm bg-white text-gray-800 w-full min-h-[1000px] flex flex-col">
       <header className="flex justify-between items-start pb-4">
         <div className="flex items-center gap-4">
-          <img src="/picture1.png" alt="Company Logo" className="h-28 w-auto object-contain" />
+          {company?.logoUrl ? (
+            <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain" />
+          ) : (
+            <div className="h-28 w-28 bg-muted flex items-center justify-center text-xs text-muted-foreground uppercase font-bold border">No Logo</div>
+          )}
           <div>
-              <h1 className="text-2xl font-bold text-black">ROYALTECH COMPUTERS LIMITED</h1>
-              <p className="text-xs text-gray-600 mt-1">Revlon Professional Plaza, 2nd Floor, Suite 1, Biashara Street, Nairobi</p>
-              <p className="text-xs text-gray-500">Tel: +254 724404935 | E-mail: info@royaltech.co.ke | Web: www.royaltech.co.ke</p>
+              <h1 className="text-2xl font-bold text-black uppercase">{company?.name || 'Your Company'}</h1>
+              <p className="text-xs text-gray-600 mt-1">{company?.address}</p>
+              <p className="text-xs text-gray-500">Tel: {company?.phone} | E-mail: {company?.email}</p>
           </div>
         </div>
         <div className="text-right">
@@ -43,7 +53,7 @@ export function QuotationPdf({ document }: { document: AppDocument }) {
           {customer ? (
             <>
               <p className="font-medium">{customer.name}</p>
-              <p>{customer.address || 'Nairobi, Kenya'}</p>
+              <p>{customer.address || 'Address not specified'}</p>
               <p>{customer.email}</p>
             </>
           ) : <p>Customer details not available.</p>}
@@ -122,31 +132,24 @@ export function QuotationPdf({ document }: { document: AppDocument }) {
         </div>
       </section>
       
-      <div className="flex-grow min-h-[50px]"></div>
+      <div className="flex-grow"></div>
 
       <footer className="text-xs text-gray-700 border-t-2 border-gray-300 pt-6 mt-10 space-y-5">
         <div>
             <h4 className="font-bold text-xs uppercase text-gray-800 mb-2">Terms & Conditions</h4>
             <ol className="list-decimal list-inside space-y-1 text-gray-600">
                 <li>This quotation is valid for 30 days from the date of issue.</li>
-                <li>Payment terms: 50% upfront, 50% upon completion/delivery unless specified otherwise.</li>
-                <li>All cheques addressed to ROYALTECH COMPUTERS LIMITED.</li>
+                <li>Payment terms as agreed upon.</li>
+                <li>All cheques addressed to {company?.name || 'the company'}.</li>
             </ol>
         </div>
 
-        <div>
-            <h4 className="font-bold text-xs uppercase text-gray-800 mb-2">Payment Details</h4>
-            <div className="flex justify-between">
-                <div>
-                    <p><span className="font-semibold">BANK:</span> KENYA COMMERCIAL BANK</p>
-                    <p><span className="font-semibold">ACC NAME:</span> ROYALTECH COMPUTERS LIMITED.</p>
-                    <p><span className="font-semibold">ACC NO:</span> 1286805015</p>
-                </div>
-                 <div className="text-right">
-                    <p><span className="font-semibold">BRANCH:</span> KCB Gardens Plaza</p>
-                    <p><span className="font-semibold">Bank Code:</span> 01290</p>
-                </div>
-            </div>
+        <div className="text-center font-semibold text-gray-600 pt-4">
+            <p>Thank you for choosing us!</p>
+        </div>
+
+        <div className="text-center text-[10px] text-muted-foreground pt-4 border-t">
+            powered by simonstyless technologies limited
         </div>
       </footer>
     </div>

@@ -1,3 +1,4 @@
+
 import Dexie, { type Table } from 'dexie';
 import dexieCloud from 'dexie-cloud-addon';
 import type { 
@@ -16,7 +17,8 @@ import type {
   User,
   Campaign,
   JobPosting,
-  Applicant
+  Applicant,
+  Company
 } from '@/types';
 
 /**
@@ -41,6 +43,7 @@ export class RoyalTechDB extends Dexie {
   campaigns!: Table<Campaign>;
   jobPostings!: Table<JobPosting>;
   applicants!: Table<Applicant>;
+  companies!: Table<Company>;
 
   constructor() {
     super('RoyalTechDB', { addons: [dexieCloud] });
@@ -62,7 +65,8 @@ export class RoyalTechDB extends Dexie {
       users: 'id, email, role',
       campaigns: 'id, status, createdAt',
       jobPostings: 'id, status, createdAt',
-      applicants: 'id, jobId, status, appliedAt'
+      applicants: 'id, jobId, status, appliedAt',
+      companies: 'id, name'
     });
 
     this.cloud.configure({

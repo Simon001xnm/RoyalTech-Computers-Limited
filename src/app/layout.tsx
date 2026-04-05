@@ -8,6 +8,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { AuthGuard } from '@/components/layout/auth-guard';
 import { PwaRegistration } from '@/components/layout/pwa-registration';
 import { BackgroundErrorGuard } from '@/components/layout/background-error-guard';
+import { OnboardingGuard } from '@/components/layout/onboarding-guard';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -55,7 +56,9 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <AuthGuard>
             <BackgroundErrorGuard>
-                {children}
+                <OnboardingGuard>
+                    {children}
+                </OnboardingGuard>
             </BackgroundErrorGuard>
           </AuthGuard>
           <Toaster />

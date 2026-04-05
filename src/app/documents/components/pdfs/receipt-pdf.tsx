@@ -1,10 +1,16 @@
 
+'use client';
+
 import type { Document as AppDocument, SaleItem } from "@/types";
 import { format } from "date-fns";
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 const VAT_RATE = 0.16;
 
 export function ReceiptPdf({ document }: { document: AppDocument }) {
+  const company = useLiveQuery(() => db.companies.toCollection().last());
+
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
@@ -21,15 +27,19 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
   const finalTotal = amount || subtotal || 0;
 
   return (
-    <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full">
+    <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full min-h-[800px] flex flex-col">
       {/* Header */}
       <header className="flex justify-between items-start pb-6 border-b border-gray-300">
         <div className="flex items-center gap-4">
-          <img src="/picture1.png" alt="Company Logo" className="h-28 w-auto object-contain" />
+          {company?.logoUrl ? (
+            <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain" />
+          ) : (
+            <div className="h-28 w-28 bg-muted flex items-center justify-center text-xs text-muted-foreground uppercase font-bold border">No Logo</div>
+          )}
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">ROYALTECH COMPUTERS LIMITED</h1>
-            <p className="text-xs text-gray-500 mt-1">Revlon Professional Plaza, 2nd Floor, Suite 1, Biashara Street, Nairobi</p>
-            <p className="text-xs text-gray-500">Tel: +254 724404935 | E-mail: info@royaltech.co.ke</p>
+            <h1 className="text-3xl font-bold text-gray-800 uppercase">{company?.name || 'Your Company'}</h1>
+            <p className="text-xs text-gray-500 mt-1">{company?.address}</p>
+            <p className="text-xs text-gray-500">Tel: {company?.phone} | E-mail: {company?.email}</p>
           </div>
         </div>
         <div className="text-right">
@@ -147,12 +157,17 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
         </div>
       </section>
       
+      <div className="flex-grow"></div>
+
       {/* Footer */}
       <footer className="text-xs text-gray-500 border-t pt-6 mt-16 text-center">
          <p className="font-bold text-gray-700">Thank you for your business!</p>
          <p className="mt-4">
-           6 Months warranty on refurbished machines, 1 year warranty on new machines. No warranty on power related issues, RAMs, HDD, Laptop Keyboards and Screens. Software money once received is not refundable and goods once sold cannot be returned.
+           Software money once received is not refundable and goods once sold cannot be returned.
          </p>
+         <div className="text-[10px] text-muted-foreground pt-4 border-t mt-4">
+            powered by simonstyless technologies limited
+        </div>
       </footer>
     </div>
   );

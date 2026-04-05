@@ -14,6 +14,16 @@ interface Auditable {
     updatedAt?: string; // ISO string date
 }
 
+export interface Company extends Auditable {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  address: string;
+  phone: string;
+  email: string;
+  location?: string;
+  website?: string;
+}
 
 export interface User {
   id: string;
