@@ -12,7 +12,6 @@ import {
 } from '@/firebase/non-blocking-login';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
-import Image from 'next/image';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -53,9 +52,6 @@ export default function LoginPage() {
     <div className="flex h-screen w-full items-center justify-center bg-background">
       <Card className="w-[400px]">
         <CardHeader className="text-center items-center">
-          <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-            <Image src="/picture1.png" alt="App Logo" width={40} height={40} className="rounded-md" />
-          </div>
           <CardTitle className="text-2xl">{`Welcome to ${APP_NAME}`}</CardTitle>
           <CardDescription>Enter your credentials to access your workspace.</CardDescription>
         </CardHeader>

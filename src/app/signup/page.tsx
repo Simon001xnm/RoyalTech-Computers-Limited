@@ -10,7 +10,6 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
-import Image from 'next/image';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { collection, doc, getDocs, limit, query, setDoc } from 'firebase/firestore';
 
@@ -112,7 +111,6 @@ export default function SignUpPage() {
     <div className="flex h-screen w-full items-center justify-center bg-background">
       <Card className="w-[400px]">
         <CardHeader className="text-center items-center">
-          <Image src="/picture1.png" alt="Platform Logo" width={60} height={60} className="rounded-md mb-4" />
           <CardTitle className="text-2xl">Create an Account</CardTitle>
           <CardDescription>Join the {APP_NAME} to manage your business.</CardDescription>
         </CardHeader>
