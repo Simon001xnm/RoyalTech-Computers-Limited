@@ -4,34 +4,26 @@ import { useState, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { Laptop, Accessory, SaleItem, Sale, Customer } from '@/types';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import type { Asset, Accessory, SaleItem, Sale, Customer } from '@/types';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, RefreshCw, ChevronsUpDown, Check, PlusCircle, Download, Smartphone, Loader2 } from 'lucide-react';
+import { ShoppingCart, Trash2, ChevronsUpDown, PlusCircle, Smartphone, Loader2, Check } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { initiateStkPush } from '../actions';
-import dynamic from 'next/dynamic';
 
-const ReceiptPdf = dynamic(() => import('@/app/documents/components/pdfs/receipt-pdf').then(mod => mod.ReceiptPdf), {
-  loading: () => <div className="flex items-center justify-center h-full"><p>Loading receipt...</p></div>,
-  ssr: false
-});
+type Product = (Asset | Accessory) & { productType: 'asset' | 'accessory'; displayName: string; price?: number; };
+type CartItem = SaleItem & { productType: 'asset' | 'accessory'; quantity: number; unitPrice: number; discount: number; };
 
-type Product = (Laptop | Accessory) & { productType: 'laptop' | 'accessory'; displayName: string; price?: number; };
-type CartItem = SaleItem & { productType: 'laptop' | 'accessory'; quantity: number; unitPrice: number; discount: number; };
-
-const buildLaptopDisplayName = (laptop: Laptop): string => {
-  return `${laptop.model} (S/N: ${laptop.serialNumber})`;
+const buildAssetDisplayName = (asset: Asset): string => {
+  return `${asset.model} (S/N: ${asset.serialNumber})`;
 };
 
 const VAT_RATE = 0.16;
@@ -58,24 +50,21 @@ export function PosClient() {
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState('');
   const [discount, setDiscount] = useState('0');
-  
-  const [isReceiptPreviewOpen, setIsReceiptPreviewOpen] = useState(false);
-  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
   // DEXIE LOCAL QUERIES
-  const laptops = useLiveQuery(() => db.laptops.filter(l => l.status === 'Available').toArray());
+  const assets = useLiveQuery(() => db.assets.filter(a => a.status === 'Available').toArray());
   const accessories = useLiveQuery(() => db.accessories.filter(a => a.status === 'Available').toArray());
   const customers = useLiveQuery(() => db.customers.toArray());
 
-  const isLoading = laptops === undefined || accessories === undefined;
+  const isLoading = assets === undefined || accessories === undefined;
 
   const allProducts = useMemo<Product[]>(() => {
-    if (!laptops || !accessories) return [];
+    if (!assets || !accessories) return [];
     return [
-      ...laptops.map(item => ({ ...item, productType: 'laptop' as const, displayName: buildLaptopDisplayName(item), price: item.leasePrice })),
+      ...assets.map(item => ({ ...item, productType: 'asset' as const, displayName: buildAssetDisplayName(item), price: item.leasePrice })),
       ...accessories.map(item => ({ ...item, productType: 'accessory' as const, displayName: `${item.name} (S/N: ${item.serialNumber})`, price: item.sellingPrice }))
     ];
-  }, [laptops, accessories]);
+  }, [assets, accessories]);
 
   const { subtotal, totalDiscount, vatAmount, grandTotal, changeDue } = useMemo(() => {
     const subtotal = cart.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
@@ -94,7 +83,7 @@ export function PosClient() {
 
     const newCartItem: CartItem = {
       id: selectedProduct.id,
-      name: selectedProduct.productType === 'laptop' ? (selectedProduct as Laptop).model : (selectedProduct as Accessory).name,
+      name: selectedProduct.productType === 'asset' ? (selectedProduct as Asset).model : (selectedProduct as Accessory).name,
       serialNumber: selectedProduct.serialNumber,
       price: price,
       unitPrice: price,
@@ -124,13 +113,11 @@ export function PosClient() {
     if (result.success) {
         toast({ title: 'STK Push Sent', description: result.customerMessage });
         setReferenceCode(result.checkoutRequestId || '');
-        // In a real app, we would poll for status here. 
-        // For now, we allow the user to proceed manually or wait.
         setTimeout(() => {
             setMpesaStatus('confirmed');
             setAmountPaid(grandTotal.toString());
             toast({ title: 'M-Pesa Verified', description: 'Payment confirmed by user.' });
-        }, 5000); // Simulate verification delay
+        }, 5000); 
     } else {
         toast({ variant: 'destructive', title: 'M-Pesa Error', description: result.error });
         setMpesaStatus('idle');
@@ -143,17 +130,15 @@ export function PosClient() {
     setIsProcessing(true);
 
     try {
-        await db.transaction('rw', [db.laptops, db.accessories, db.sales], async () => {
-            // 1. Update Inventory
+        await db.transaction('rw', [db.assets, db.accessories, db.sales], async () => {
             for (const item of cart) {
-                if (item.productType === 'laptop') {
-                    await db.laptops.update(item.id, { status: 'Sold', quantity: 0 });
+                if (item.productType === 'asset') {
+                    await db.assets.update(item.id, { status: 'Sold', quantity: 0 });
                 } else {
                     await db.accessories.update(item.id, { status: 'Sold', quantity: 0 });
                 }
             }
 
-            // 2. Create Sale Record
             const saleData: Sale = {
                 id: crypto.randomUUID(),
                 date: new Date().toISOString(),

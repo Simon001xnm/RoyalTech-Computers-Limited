@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MapComponent } from "./map-component";
-import type { Laptop } from "@/types";
+import type { Asset } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,43 +14,43 @@ import { db } from "@/db";
 import { useLiveQuery } from "dexie-react-hooks";
 
 export function TrackingClient() {
-  const [selectedLaptopId, setSelectedLaptopId] = useState<string | null>(null);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const { user, isUserLoading } = useUser();
 
-  // Fetch trackable laptops from local Dexie database
-  const trackableLaptops = useLiveQuery(async () => {
+  // Fetch trackable assets from local Dexie database
+  const trackableAssets = useLiveQuery(async () => {
     if (!user) return [];
-    // Only track laptops that are leased or in repair
-    return await db.laptops
-      .filter(l => ['Leased', 'Repair'].includes(l.status))
+    // Only track assets that are leased or in repair
+    return await db.assets
+      .filter(a => ['Leased', 'Repair'].includes(a.status))
       .toArray();
   }, [user]);
 
-  const isLoading = isUserLoading || trackableLaptops === undefined;
+  const isLoading = isUserLoading || trackableAssets === undefined;
 
-  const laptopsWithLocation = useMemo(() => 
-    trackableLaptops?.filter(laptop => laptop.location), 
-  [trackableLaptops]);
+  const assetsWithLocation = useMemo(() => 
+    trackableAssets?.filter(asset => asset.location), 
+  [trackableAssets]);
 
-  const selectedLaptopDetails = useMemo(() => 
-    trackableLaptops?.find(laptop => laptop.id === selectedLaptopId),
-  [trackableLaptops, selectedLaptopId]);
+  const selectedAssetDetails = useMemo(() => 
+    trackableAssets?.find(asset => asset.id === selectedAssetId),
+  [trackableAssets, selectedAssetId]);
   
   useEffect(() => {
-    if (!selectedLaptopId && laptopsWithLocation && laptopsWithLocation.length > 0) {
-      setSelectedLaptopId(laptopsWithLocation[0].id);
+    if (!selectedAssetId && assetsWithLocation && assetsWithLocation.length > 0) {
+      setSelectedAssetId(assetsWithLocation[0].id);
     }
-  }, [laptopsWithLocation, selectedLaptopId]);
+  }, [assetsWithLocation, selectedAssetId]);
 
 
   if (isLoading) {
     return (
         <>
             <PageHeader
-                title="Laptop Tracking"
-                description="View the last known location of leased or in-repair laptops."
+                title="Asset Tracking"
+                description="View the last known location of leased or in-repair assets."
             />
-            <p>Loading trackable laptops...</p>
+            <p>Loading trackable assets...</p>
         </>
     )
   }
@@ -59,29 +58,29 @@ export function TrackingClient() {
   return (
     <>
       <PageHeader
-        title="Laptop Tracking (Local)"
-        description="View the last known location of leased or in-repair laptops."
+        title="Asset Tracking (Local)"
+        description="View the last known location of leased or in-repair assets."
       />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
-            <MapComponent laptops={trackableLaptops || []} selectedLaptopId={selectedLaptopId} />
+            <MapComponent laptops={trackableAssets || []} selectedLaptopId={selectedAssetId} />
         </div>
         <div className="space-y-6">
             <Card className="shadow-lg">
                 <CardHeader>
-                    <CardTitle>Select Laptop</CardTitle>
-                    <CardDescription>Choose a laptop to view its location.</CardDescription>
+                    <CardTitle>Select Asset</CardTitle>
+                    <CardDescription>Choose a device to view its location.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {laptopsWithLocation && laptopsWithLocation.length > 0 ? (
-                        <Select onValueChange={setSelectedLaptopId} value={selectedLaptopId || undefined}>
+                    {assetsWithLocation && assetsWithLocation.length > 0 ? (
+                        <Select onValueChange={setSelectedAssetId} value={selectedAssetId || undefined}>
                             <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select a trackable laptop" />
+                                <SelectValue placeholder="Select a trackable device" />
                             </SelectTrigger>
                             <SelectContent>
-                                {laptopsWithLocation.map((laptop) => (
-                                <SelectItem key={laptop.id} value={laptop.id}>
-                                    {laptop.model} (S/N: {laptop.serialNumber})
+                                {assetsWithLocation.map((asset) => (
+                                <SelectItem key={asset.id} value={asset.id}>
+                                    {asset.model} (S/N: {asset.serialNumber})
                                 </SelectItem>
                                 ))}
                             </SelectContent>
@@ -89,32 +88,32 @@ export function TrackingClient() {
                     ) : (
                         <Alert>
                             <LaptopIcon className="h-4 w-4" />
-                            <AlertTitle>No Trackable Laptops</AlertTitle>
+                            <AlertTitle>No Trackable Assets</AlertTitle>
                             <AlertDescription>
-                                There are no laptops currently marked as 'Leased' or 'Repair' with location data in your local records.
+                                There are no assets currently marked as 'Leased' or 'Repair' with location data in your local records.
                             </AlertDescription>
                         </Alert>
                     )}
                 </CardContent>
             </Card>
 
-            {selectedLaptopDetails && selectedLaptopDetails.location && (
+            {selectedAssetDetails && selectedAssetDetails.location && (
                  <Card className="shadow-lg">
                     <CardHeader>
-                        <CardTitle>Laptop Details</CardTitle>
+                        <CardTitle>Asset Details</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <div>
-                            <h3 className="text-lg font-semibold">{selectedLaptopDetails.model}</h3>
-                            <p className="text-sm text-muted-foreground">S/N: {selectedLaptopDetails.serialNumber}</p>
+                            <h3 className="text-lg font-semibold">{selectedAssetDetails.model}</h3>
+                            <p className="text-sm text-muted-foreground">S/N: {selectedAssetDetails.serialNumber}</p>
                         </div>
                         <div className="text-sm">
                             <span className="font-medium">Status: </span> 
-                            <Badge variant={selectedLaptopDetails.status === 'Leased' ? 'default' : 'destructive'}>{selectedLaptopDetails.status}</Badge>
+                            <Badge variant={selectedAssetDetails.status === 'Leased' ? 'default' : 'destructive'}>{selectedAssetDetails.status}</Badge>
                         </div>
                         <div className="text-sm">
                             <span className="font-medium">Location: </span>
-                            <span className="text-muted-foreground">Lat: {selectedLaptopDetails.location.lat.toFixed(4)}, Lng: {selectedLaptopDetails.location.lng.toFixed(4)}</span>
+                            <span className="text-muted-foreground">Lat: {selectedAssetDetails.location.lat.toFixed(4)}, Lng: {selectedAssetDetails.location.lng.toFixed(4)}</span>
                         </div>
                          <p className="text-xs text-muted-foreground pt-2">
                             Note: Location data is retrieved from your local device database.
@@ -122,12 +121,12 @@ export function TrackingClient() {
                     </CardContent>
                 </Card>
             )}
-             {selectedLaptopDetails && !selectedLaptopDetails.location && (
+             {selectedAssetDetails && !selectedAssetDetails.location && (
                 <Alert variant="default">
                     <LocateFixed className="h-4 w-4" />
                     <AlertTitle>Location Not Available</AlertTitle>
                     <AlertDescription>
-                        The selected laptop ({selectedLaptopDetails.model}) does not have location data available locally.
+                        The selected asset ({selectedAssetDetails.model}) does not have location data available locally.
                     </AlertDescription>
                 </Alert>
              )}

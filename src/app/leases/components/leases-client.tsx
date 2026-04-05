@@ -19,7 +19,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -58,15 +57,15 @@ export function LeasesClient() {
 
   const leases = useLiveQuery(() => db.leases.toArray());
   const customers = useLiveQuery(() => db.customers.toArray());
-  const laptops = useLiveQuery(() => db.laptops.toArray());
+  const assets = useLiveQuery(() => db.assets.toArray());
 
-  const isLoading = isUserLoading || leases === undefined || customers === undefined || laptops === undefined;
+  const isLoading = isUserLoading || leases === undefined || customers === undefined || assets === undefined;
 
   const filteredLeases = useMemo(() => {
     if (!leases) return [];
     return leases.filter((lease) =>
       lease.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lease.laptopModel?.toLowerCase().includes(searchTerm.toLowerCase())
+      lease.assetModel?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [leases, searchTerm]);
 
@@ -88,9 +87,9 @@ export function LeasesClient() {
   const confirmDelete = async () => {
     if (leaseToDelete) {
         try {
-            await db.transaction('rw', [db.leases, db.laptops], async () => {
-                if (leaseToDelete.laptopId) {
-                    await db.laptops.update(leaseToDelete.laptopId, { status: 'Available' });
+            await db.transaction('rw', [db.leases, db.assets], async () => {
+                if (leaseToDelete.assetId) {
+                    await db.assets.update(leaseToDelete.assetId, { status: 'Available' });
                 }
                 await db.leases.delete(leaseToDelete.id);
             });
@@ -106,9 +105,9 @@ export function LeasesClient() {
 
   const handleFormSubmit = async (data: any) => { 
      const selectedCustomer = customers?.find(c => c.id === data.customerId);
-     const selectedLaptop = laptops?.find(l => l.id === data.laptopId);
+     const selectedAsset = assets?.find(a => a.id === data.assetId);
 
-    if (!selectedCustomer || !selectedLaptop || !user) return;
+    if (!selectedCustomer || !selectedAsset || !user) return;
 
     const auditInfo = {
         uid: user.uid,
@@ -120,18 +119,18 @@ export function LeasesClient() {
         startDate: data.startDate.toISOString(),
         endDate: data.endDate.toISOString(),
         customerName: selectedCustomer.name,
-        laptopModel: selectedLaptop.model,
+        assetModel: selectedAsset.model,
         updatedAt: new Date().toISOString(),
         lastModifiedBy: auditInfo,
     };
 
     try {
-        await db.transaction('rw', [db.leases, db.laptops], async () => {
+        await db.transaction('rw', [db.leases, db.assets], async () => {
             if (editingLease) {
                 await db.leases.update(editingLease.id, leaseData);
-                if (editingLease.laptopId !== selectedLaptop.id) {
-                    await db.laptops.update(editingLease.laptopId, { status: 'Available' });
-                    await db.laptops.update(selectedLaptop.id, { status: 'Leased' });
+                if (editingLease.assetId !== selectedAsset.id) {
+                    await db.assets.update(editingLease.assetId, { status: 'Available' });
+                    await db.assets.update(selectedAsset.id, { status: 'Leased' });
                 }
                 toast({ title: "Lease Updated" });
             } else {
@@ -141,7 +140,7 @@ export function LeasesClient() {
                     createdAt: new Date().toISOString(), 
                     createdBy: auditInfo 
                 });
-                await db.laptops.update(selectedLaptop.id, { status: 'Leased' });
+                await db.assets.update(selectedAsset.id, { status: 'Leased' });
                 toast({ title: "Lease Created" });
             }
         });
@@ -160,10 +159,10 @@ export function LeasesClient() {
 
   const handleTerminateLease = async (lease: Lease) => {
      try {
-        await db.transaction('rw', [db.leases, db.laptops], async () => {
+        await db.transaction('rw', [db.leases, db.assets], async () => {
             await db.leases.update(lease.id, { status: 'Terminated', endDate: new Date().toISOString() });
-            if(lease.laptopId) {
-                await db.laptops.update(lease.laptopId, { status: 'Available' });
+            if(lease.assetId) {
+                await db.assets.update(lease.assetId, { status: 'Available' });
             }
         });
         toast({ title: "Lease Terminated" });
@@ -195,17 +194,17 @@ export function LeasesClient() {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  const availableLaptops = useMemo(() => {
-    return laptops?.filter(l => 
-        l.status === 'Available' || (editingLease && l.id === editingLease.laptopId)
+  const availableAssets = useMemo(() => {
+    return assets?.filter(a => 
+        a.status === 'Available' || (editingLease && a.id === editingLease.assetId)
     ) || [];
-  }, [laptops, editingLease]);
+  }, [assets, editingLease]);
 
   return (
     <>
       <PageHeader
         title="Lease Tracking (Local)"
-        description="Manage laptop lease agreements stored on this device."
+        description="Manage asset lease agreements stored on this device."
         actionLabel="Create New Lease"
         onAction={handleAddLease}
         ActionIcon={PlusCircle}
@@ -213,7 +212,7 @@ export function LeasesClient() {
 
       <div className="mb-4">
         <Input
-          placeholder="Search by customer or laptop model..."
+          placeholder="Search by customer or asset model..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm bg-card"
@@ -296,7 +295,7 @@ export function LeasesClient() {
           <LeaseForm
             lease={editingLease}
             customers={customers || []}
-            laptops={availableLaptops || []}
+            assets={availableAssets || []}
             onSubmit={handleFormSubmit}
             onCancel={() => { setIsFormOpen(false); setEditingLease(null); }}
           />
@@ -308,7 +307,7 @@ export function LeasesClient() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the lease for <strong>{leaseToDelete?.laptopModel}</strong>?
+              Are you sure you want to delete the lease for <strong>{leaseToDelete?.assetModel}</strong>?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

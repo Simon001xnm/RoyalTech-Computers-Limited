@@ -3,12 +3,11 @@
 import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Download, FileText, ListChecks, Receipt, FileWarning, Truck, Check, ChevronsUpDown, Trash2, PlusCircle, ShoppingCart, ArrowRightLeft } from "lucide-react";
-import type { DocumentType, Document as AppDocument, Lease, Customer, Laptop, DocumentLineItem } from "@/types";
+import { Trash2, PlusCircle, MoreHorizontal } from "lucide-react";
+import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
 import {
   Table,
   TableBody,
@@ -17,7 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { format } from "date-fns";
 import { useUser } from '@/firebase/provider';
 import { db } from "@/db";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -26,10 +24,8 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
   DialogFooter,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { InvoicePdf } from "./pdfs/invoice-pdf";
 import { ReceiptPdf } from "./pdfs/receipt-pdf";
@@ -39,9 +35,6 @@ import { DeliveryNotePdf } from "./pdfs/delivery-note-pdf";
 import { QuotationPdf } from "./pdfs/quotation-pdf";
 import { LpoPdf } from "./pdfs/lpo-pdf";
 import { LeaseAgreementPdf } from "./pdfs/lease-agreement-pdf";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { cn } from "@/lib/utils";
 import {
   useReactTable,
   getCoreRowModel,
@@ -57,7 +50,6 @@ import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePad } from "@/components/ui/signature-pad";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
 
 const VAT_RATE = 0.16;
 
@@ -69,13 +61,11 @@ export function DocumentsClient() {
   // Local Data fetching with Dexie
   const generatedDocuments = useLiveQuery(() => db.documents.toArray());
   const customers = useLiveQuery(() => db.customers.toArray());
-  const laptops = useLiveQuery(() => db.laptops.toArray());
-  const leases = useLiveQuery(() => db.leases.toArray());
+  const assets = useLiveQuery(() => db.assets.toArray());
 
   // Form State
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
-  const [selectedLaptopId, setSelectedLaptopId] = useState<string>('');
-  const [selectedLeaseId, setSelectedLeaseId] = useState<string>('');
+  const [selectedAssetId, setSelectedAssetId] = useState<string>('');
   const [details, setDetails] = useState('');
   const [amount, setAmount] = useState<string>('');
   const [applyVat, setApplyVat] = useState(false);
@@ -98,15 +88,13 @@ export function DocumentsClient() {
   const [lineItems, setLineItems] = useState<DocumentLineItem[]>([{ description: '', quantity: 1, unitPrice: 0 }]);
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
-  const [isLaptopComboboxOpen, setIsLaptopComboboxOpen] = useState(false);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
-  const anyDataLoading = isUserLoading || generatedDocuments === undefined || customers === undefined || laptops === undefined;
+  const anyDataLoading = isUserLoading || generatedDocuments === undefined || customers === undefined || assets === undefined;
   
   const resetFormState = () => {
     setSelectedCustomerId('');
-    setSelectedLaptopId('');
-    setSelectedLeaseId('');
+    setSelectedAssetId('');
     setDetails('');
     setAmount('');
     setApplyVat(false);
@@ -131,7 +119,7 @@ export function DocumentsClient() {
     const documentData: any = { details, applyVat, signature };
 
     const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
-    let selectedLaptop = laptops?.find(l => l.id === selectedLaptopId);
+    let selectedAsset = assets?.find(a => a.id === selectedAssetId);
     
     if (selectedCustomer) {
         documentData.customer = selectedCustomer;
@@ -169,7 +157,7 @@ export function DocumentsClient() {
         documentData.receivedBy = receivedBy;
         documentData.delivererSignature = delivererSignature;
         documentData.recipientSignature = recipientSignature;
-        if (selectedLaptop) documentData.laptop = selectedLaptop;
+        if (selectedAsset) documentData.laptop = selectedAsset;
         else documentData.items = lineItems.filter(i => i.description.trim() !== '');
     }
 

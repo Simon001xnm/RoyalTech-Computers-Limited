@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -13,15 +12,11 @@ import {
   Component, 
   Users, 
   AlertCircle, 
-  ArrowUpRight, 
-  ArrowDownRight,
   Clock,
   TrendingUp
 } from 'lucide-react';
 import { format, differenceInDays, parseISO, startOfDay, subDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { APP_NAME } from '@/lib/constants';
 import { 
   Area, 
   AreaChart, 

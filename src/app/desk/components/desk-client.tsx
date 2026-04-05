@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import type { Ticket } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Inbox } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import { TicketForm } from "./ticket-form";
 import { getTicketColumns, type TicketColumnActions } from "./ticket-columns";
 import { Input } from "@/components/ui/input";
@@ -19,13 +19,11 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   useReactTable,
   getCoreRowModel,
@@ -53,16 +51,16 @@ export function DeskClient() {
   const tickets = useLiveQuery(() => db.tickets.toArray());
   const customers = useLiveQuery(() => db.customers.toArray());
   const leases = useLiveQuery(() => db.leases.toArray());
-  const laptops = useLiveQuery(() => db.laptops.toArray());
+  const assets = useLiveQuery(() => db.assets.toArray());
 
   const isLoading = tickets === undefined || customers === undefined || leases === undefined;
 
-  const leasesWithLaptopDetails = useMemo(() => {
+  const leasesWithAssetDetails = useMemo(() => {
     return (leases || []).map(lease => {
-      const laptop = laptops?.find(l => l.id === lease.laptopId);
-      return { ...lease, laptopSerialNumber: laptop?.serialNumber };
+      const asset = assets?.find(a => a.id === lease.assetId);
+      return { ...lease, laptopSerialNumber: asset?.serialNumber }; // Keeping field name for compatibility with form
     });
-  }, [leases, laptops]);
+  }, [leases, assets]);
 
   const filteredTickets = useMemo(() => {
     if (!tickets) return [];
@@ -75,12 +73,12 @@ export function DeskClient() {
   const handleFormSubmit = async (data: any) => { 
     const selectedCustomer = customers?.find(c => c.id === data.customerId);
     const selectedLease = leases?.find(l => l.id === data.leaseId);
-    const selectedLaptop = laptops?.find(l => l.id === selectedLease?.laptopId);
+    const selectedAsset = assets?.find(a => a.id === selectedLease?.assetId);
 
     const ticketData = {
         ...data,
         customerName: selectedCustomer?.name,
-        leaseIdentifier: selectedLease ? `${selectedLaptop?.serialNumber} (${selectedLease.laptopModel})` : undefined,
+        leaseIdentifier: selectedLease ? `${selectedAsset?.serialNumber} (${selectedLease.assetModel})` : undefined,
         updatedAt: new Date().toISOString(),
     };
 
@@ -141,12 +139,28 @@ export function DeskClient() {
       )}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-2xl">
-          <DialogHeader><DialogTitle>{editingTicket ? "Edit Ticket" : "Create Ticket"}</DialogTitle></DialogHeader>
-          <TicketForm ticket={editingTicket} customers={customers || []} leases={leasesWithLaptopDetails || []} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} />
+          <DialogHeader>
+            <DialogTitle>{editingTicket ? "Edit Ticket" : "Create Ticket"}</DialogTitle>
+          </DialogHeader>
+          <TicketForm 
+            ticket={editingTicket} 
+            customers={customers || []} 
+            leases={leasesWithAssetDetails || []} 
+            onSubmit={handleFormSubmit} 
+            onCancel={() => setIsFormOpen(false)} 
+          />
         </DialogContent>
       </Dialog>
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <DialogContent><DialogHeader><DialogTitle>Confirm Delete</DialogTitle></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button><Button variant="destructive" onClick={confirmDelete}>Delete</Button></DialogFooter></DialogContent>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Delete</DialogTitle>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </>
   );

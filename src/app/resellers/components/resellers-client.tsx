@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { useUser } from "@/firebase/provider";
-import type { Reseller, Laptop, Accessory, ItemIssuance, Sale } from "@/types";
+import type { Reseller, Asset, Accessory, ItemIssuance, Sale } from "@/types";
 import { db } from "@/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { SummaryCard } from "@/components/dashboard/summary-card";
@@ -28,7 +28,7 @@ import { exportToCsv } from "@/lib/utils";
 import { format } from "date-fns";
 
 type IssueableItem = 
-  | (Laptop & { type: 'laptop' }) 
+  | (Asset & { type: 'laptop' }) 
   | (Accessory & { type: 'accessory' });
 
 // #region Reseller Card
@@ -87,7 +87,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
         if (!user) return;
 
         try {
-            await db.transaction('rw', [db.itemIssuances, db.laptops, db.accessories], async () => {
+            await db.transaction('rw', [db.itemIssuances, db.assets, db.accessories], async () => {
                 for (const item of data.items) {
                     const itemToIssue = allAvailableItems.find(i => i.id === item.id);
                     if (!itemToIssue) continue;
@@ -97,7 +97,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
                         resellerId: reseller.id,
                         resellerName: reseller.name,
                         itemId: itemToIssue.id,
-                        itemType: item.type,
+                        itemType: item.type as 'asset' | 'accessory',
                         itemSerialNumber: itemToIssue.serialNumber,
                         itemName: 'name' in itemToIssue ? itemToIssue.name : itemToIssue.model,
                         costPrice: itemToIssue.purchasePrice || 0,
@@ -109,8 +109,8 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
                     };
                     await db.itemIssuances.add(issuanceData);
                     
-                    if (item.type === 'laptop') {
-                        await db.laptops.update(item.id, { status: 'With Reseller', quantity: 0 });
+                    if (item.type === 'laptop') { // laptop type mapping from IssueItemForm
+                        await db.assets.update(item.id, { status: 'With Reseller', quantity: 0 });
                     } else {
                         await db.accessories.update(item.id, { status: 'With Reseller', quantity: 0 });
                     }
@@ -128,11 +128,11 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
         if (!selectedIssuance || !user) return;
         
         try {
-            await db.transaction('rw', [db.itemIssuances, db.laptops, db.accessories, db.sales], async () => {
+            await db.transaction('rw', [db.itemIssuances, db.assets, db.accessories, db.sales], async () => {
                 await db.itemIssuances.update(selectedIssuance.id, { status: 'Sold', dateSold: new Date().toISOString() });
                 
-                if (selectedIssuance.itemType === 'laptop') {
-                    await db.laptops.update(selectedIssuance.itemId, { status: 'Sold' });
+                if (selectedIssuance.itemType === 'asset') {
+                    await db.assets.update(selectedIssuance.itemId, { status: 'Sold' });
                 } else {
                     await db.accessories.update(selectedIssuance.itemId, { status: 'Sold' });
                 }
@@ -150,7 +150,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
                         serialNumber: selectedIssuance.itemSerialNumber, 
                         price: data.sellingPrice, 
                         quantity: 1, 
-                        type: selectedIssuance.itemType, 
+                        type: selectedIssuance.itemType === 'asset' ? 'asset' : 'accessory', 
                         cogs: selectedIssuance.costPrice 
                     }],
                     resellerId: reseller.id,
@@ -173,11 +173,11 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
     const confirmReturn = async () => {
         if (!selectedIssuance) return;
         try {
-            await db.transaction('rw', [db.itemIssuances, db.laptops, db.accessories], async () => {
+            await db.transaction('rw', [db.itemIssuances, db.assets, db.accessories], async () => {
                 await db.itemIssuances.update(selectedIssuance.id, { status: 'Returned', dateReturned: new Date().toISOString() });
                 
-                if (selectedIssuance.itemType === 'laptop') {
-                    await db.laptops.update(selectedIssuance.itemId, { status: 'Available', quantity: 1 });
+                if (selectedIssuance.itemType === 'asset') {
+                    await db.assets.update(selectedIssuance.itemId, { status: 'Available', quantity: 1 });
                 } else {
                     await db.accessories.update(selectedIssuance.itemId, { status: 'Available', quantity: 1 });
                 }
@@ -283,20 +283,19 @@ export function ResellersClient() {
   const [selectedReseller, setSelectedReseller] = useState<Reseller | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const { toast } = useToast();
-  const { user } = useUser();
 
   const resellers = useLiveQuery(() => db.resellers.toArray());
   const allIssuances = useLiveQuery(() => db.itemIssuances.toArray());
-  const availableLaptops = useLiveQuery(() => db.laptops.filter(l => l.status === 'Available').toArray());
+  const availableAssets = useLiveQuery(() => db.assets.filter(a => a.status === 'Available').toArray());
   const availableAccessories = useLiveQuery(() => db.accessories.filter(a => a.status === 'Available').toArray());
   
-  const isLoading = resellers === undefined || allIssuances === undefined || availableLaptops === undefined || availableAccessories === undefined;
+  const isLoading = resellers === undefined || allIssuances === undefined || availableAssets === undefined || availableAccessories === undefined;
 
   const allAvailableItems = useMemo<IssueableItem[]>(() => {
-        const mappedLaptops = (availableLaptops || []).map(item => ({ ...item, type: 'laptop' as const }));
+        const mappedAssets = (availableAssets || []).map(item => ({ ...item, type: 'laptop' as const })); // type laptop mapped to asset internally in IssueItemForm
         const mappedAccessories = (availableAccessories || []).map(item => ({ ...item, type: 'accessory' as const }));
-        return [...mappedLaptops, ...mappedAccessories];
-    }, [availableLaptops, availableAccessories]);
+        return [...mappedAssets, ...mappedAccessories];
+    }, [availableAssets, availableAccessories]);
 
   const filteredResellers = useMemo(() => {
     if (!resellers) return [];
