@@ -218,19 +218,21 @@ export function PosClient() {
     setIsReceiptPreviewOpen(true);
     setIsGeneratingPdf(true);
 
-    // Simulate high-fidelity desktop capture
+    // Simulate high-fidelity desktop capture to prevent mobile "half-page" issue
     setTimeout(async () => {
         const element = document.getElementById('pos-receipt-preview-target');
         if (element) {
             try {
                 const canvas = await html2canvas(element, { 
-                    scale: 3, 
+                    scale: 3, // High-res capture
                     useCORS: true,
-                    windowWidth: 1200,
+                    windowWidth: 1200, // Simulate desktop viewport
                     logging: false
                 });
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const imgData = canvas.toDataURL('image/png', 1.0);
+                
+                // Standard A4 is 210mm x 297mm
                 pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
                 pdf.save(`${doc.title}.pdf`);
                 toast({ title: "Receipt Downloaded" });
