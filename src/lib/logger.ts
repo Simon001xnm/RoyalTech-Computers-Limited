@@ -2,7 +2,10 @@
 /**
  * @fileOverview Professional Business Event Logger
  * Used for tracking audit trails, sales events, and system errors.
+ * Upgraded to write to the persistent platformLogs table.
  */
+
+import { db } from "@/db";
 
 type LogLevel = 'info' | 'warn' | 'error' | 'business';
 
@@ -33,7 +36,7 @@ class Logger {
     return `${icon} [${entry.timestamp}] [${entry.level.toUpperCase()}] [${entry.module}] ${entry.event}`;
   }
 
-  public log(level: LogLevel, module: string, event: string, metadata?: Record<string, any>) {
+  public async log(level: LogLevel, module: string, event: string, metadata?: Record<string, any>) {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
@@ -42,7 +45,7 @@ class Logger {
       metadata
     };
 
-    // In development, we use console
+    // 1. Console Logging (Dev Environment)
     if (process.env.NODE_ENV === 'development') {
       const message = this.format(entry);
       if (level === 'error') console.error(message, metadata);
@@ -50,7 +53,15 @@ class Logger {
       else console.log(message, metadata);
     }
 
-    // Roadmap: v2.0 will sync these logs to a central Super Admin database
+    // 2. Persistent Local Logging (SaaS Oversight)
+    try {
+      await db.platformLogs.add({
+        id: crypto.randomUUID(),
+        ...entry
+      });
+    } catch (e) {
+      console.debug("Logger: Failed to write to database", e);
+    }
   }
 
   public business(module: string, event: string, metadata?: Record<string, any>) {
@@ -59,6 +70,10 @@ class Logger {
 
   public error(module: string, event: string, error?: any) {
     this.log('error', module, event, { error: error?.message || error });
+  }
+
+  public warn(module: string, event: string, metadata?: Record<string, any>) {
+    this.log('warn', module, event, metadata);
   }
 }
 

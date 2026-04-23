@@ -20,10 +20,21 @@ import type {
   Company
 } from '@/types';
 
+export interface PlatformLog {
+  id: string;
+  timestamp: string;
+  level: 'info' | 'warn' | 'error' | 'business';
+  module: string;
+  event: string;
+  tenantId?: string;
+  userId?: string;
+  metadata?: any;
+}
+
 /**
  * Professional ERP Suite Local Database
  * Powered by Dexie.js and IndexedDB for local-first storage.
- * Version 2: Multi-tenancy Indexing Upgrade.
+ * Version 3: Audit Logging & Platform Insights Upgrade.
  */
 export class RoyalTechDB extends Dexie {
   assets!: Table<Asset>;
@@ -42,12 +53,13 @@ export class RoyalTechDB extends Dexie {
   jobPostings!: Table<JobPosting>;
   applicants!: Table<Applicant>;
   companies!: Table<Company>;
+  platformLogs!: Table<PlatformLog>;
 
   constructor() {
     super('RoyalTechDB', { addons: [dexieCloud] });
     
-    // Version 2: Adding tenantId to all major store indices for SaaS isolation
-    this.version(2).stores({
+    // Version 3: Adding platformLogs for SaaS oversight
+    this.version(3).stores({
       assets: 'id, tenantId, model, serialNumber, status, purchaseDate',
       accessories: 'id, tenantId, name, serialNumber, status',
       customers: 'id, tenantId, name, email, phone',
@@ -63,7 +75,8 @@ export class RoyalTechDB extends Dexie {
       campaigns: 'id, tenantId, status, createdAt',
       jobPostings: 'id, tenantId, status, createdAt',
       applicants: 'id, tenantId, jobId, status, appliedAt',
-      companies: 'id, tenantId, name'
+      companies: 'id, tenantId, name',
+      platformLogs: 'id, level, module, tenantId, timestamp'
     });
 
     this.cloud.configure({

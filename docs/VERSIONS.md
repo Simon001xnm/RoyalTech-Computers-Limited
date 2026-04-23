@@ -9,17 +9,28 @@
 - **Asset Management**: Full lifecycle tracking for Phones, Tablets, and Hardware.
 - **Point of Sale**: Multi-payment checkout (M-Pesa, Bank, Cash) with real-time inventory updates.
 - **Adobe-Grade PDF Engine**: Professional A4 high-fidelity Invoices, Receipts, and Reports.
-- **CRM & Helpdesk**: Customer relationship management and support ticketing.
 - **Local-First Sync**: Powered by Dexie Cloud for offline-ready operations.
 
 ---
 
-## [v2.0.0] - SaaS Evolution (In Development)
-**Status**: PLANNING / FEATURE-FLAGGED
+## [v2.0.0] - SaaS Evolution (Active Build)
+**Status**: STABLE CORE / FEATURE-GUARDED
+**Release Date**: 2024-06-15 (Simulated)
+
+### Implemented Features
+- **Multi-Tenancy**: Data isolation via `tenantId` across all modules.
+- **Subscription Engine**: Tiered access (Free, Basic, Pro) with Legacy Pro protection.
+- **Usage Meters**: Real-time tracking of Assets and Sales volume per workspace.
+- **Super Admin Intelligence**: Platform-wide activity feed and GMV analytics.
+- **Audit Logging**: System-wide event tracking for security and billing.
+
+---
+
+## [v3.0.0] - Custom Backend Migration (Planned)
+**Status**: DESIGN PHASE
 
 ### Roadmap
-- [ ] **Multi-Tenancy**: Introduction of `tenantId` to isolate data between different companies.
-- [ ] **Subscription Engine**: Tiered access (Free, Basic, Pro) based on business volume.
-- [ ] **Super Admin Dashboard**: Global platform control and subscription management.
+- [ ] **Infrastructure Abstraction**: decoupling logic from Firebase/Dexie specific APIs.
+- [ ] **Unified API Layer**: Introduction of a middleware for custom DB communication.
 - [ ] **Advanced Audit Logging**: Business-event tracking for security and analytics.
-- [ ] **Infrastructure Abstraction**: Preparation for v3.0 custom backend migration.
+- [ ] **Tenant Migration Tool**: One-click move from local-first to full cloud-native.
