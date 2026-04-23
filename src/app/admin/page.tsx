@@ -70,10 +70,11 @@ export default function PlatformCommandCenter() {
   }, [tenants, users, globalSales, logs, globalTickets]);
 
   const commercialInsights = useMemo(() => {
-    if (!globalSales || !tenants) return [];
+    if (!globalSales || !tenants || !users) return [];
     
     return tenants.map(t => {
         const tenantSales = globalSales.filter(s => s.tenantId === t.id);
+        const tenantUsers = users.filter(u => u.tenantId === t.id);
         const gmv = tenantSales.reduce((acc, s) => acc + s.amount, 0);
         const lastSaleDate = tenantSales.length > 0 
             ? tenantSales.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date 
@@ -84,11 +85,12 @@ export default function PlatformCommandCenter() {
             id: t.id,
             gmv,
             salesCount: tenantSales.length,
+            userCount: tenantUsers.length,
             lastActive: lastSaleDate,
             plan: t.plan || 'Free'
         };
     }).sort((a, b) => b.gmv - a.gmv);
-  }, [globalSales, tenants]);
+  }, [globalSales, tenants, users]);
 
   const handleUpdateTenantStatus = async (tenantId: string, status: 'active' | 'suspended') => {
     try {
@@ -242,7 +244,11 @@ export default function PlatformCommandCenter() {
                                             <p className="font-black text-lg uppercase tracking-tight">{tenant.name}</p>
                                             <Badge variant="outline" className="text-[8px] font-black uppercase">{tenant.plan}</Badge>
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{tenant.salesCount} Cumulative Transactions</p>
+                                        <div className="flex items-center gap-3">
+                                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{tenant.salesCount} Cumulative Transactions</p>
+                                            <span className="text-muted-foreground/30">&bull;</span>
+                                            <p className="text-[10px] text-primary font-black uppercase tracking-widest">{tenant.userCount} Team Members</p>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="text-right space-y-1">
@@ -264,17 +270,26 @@ export default function PlatformCommandCenter() {
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead className="font-black uppercase text-[10px] py-4 px-6">Business Node</TableHead>
+                                <TableHead className="font-black uppercase text-[10px]">Staff Capacity</TableHead>
                                 <TableHead className="font-black uppercase text-[10px]">Subscription</TableHead>
                                 <TableHead className="font-black uppercase text-[10px]">Operational Status</TableHead>
                                 <TableHead className="text-right font-black uppercase text-[10px] px-6">Privileged Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {tenants?.map(tenant => (
+                            {tenants?.map(tenant => {
+                                const tenantInsight = commercialInsights.find(i => i.id === tenant.id);
+                                return (
                                 <TableRow key={tenant.id} className="hover:bg-muted/5">
                                     <TableCell className="px-6 py-5">
                                         <div className="font-black uppercase text-sm">{tenant.name}</div>
                                         <div className="text-[10px] font-mono text-muted-foreground opacity-60">NODE_ID: {tenant.id.toUpperCase()}</div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <Users className="h-3 w-3 text-muted-foreground" />
+                                            <span className="font-bold text-xs">{tenantInsight?.userCount || 0} Accounts</span>
+                                        </div>
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="outline" className="uppercase text-[9px] font-black tracking-widest h-6 px-3">{tenant.plan || 'Standard'}</Badge>
@@ -310,7 +325,7 @@ export default function PlatformCommandCenter() {
                                         </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            )})}
                         </TableBody>
                     </Table>
                 </CardContent>
@@ -383,6 +398,12 @@ export default function PlatformCommandCenter() {
                     <div className="p-4 bg-muted/20 rounded-2xl border space-y-1">
                         <p className="text-[10px] font-black uppercase opacity-50 tracking-widest">Active Plan</p>
                         <p className="font-black uppercase text-lg tracking-tight text-primary">{diagnosticTenant?.plan || 'Standard'}</p>
+                    </div>
+                    <div className="p-4 bg-muted/20 rounded-2xl border space-y-1">
+                        <p className="text-[10px] font-black uppercase opacity-50 tracking-widest">Active Staff Count</p>
+                        <p className="font-black uppercase text-lg tracking-tight text-foreground">
+                            {commercialInsights.find(i => i.id === diagnosticTenant?.id)?.userCount || 0} Members
+                        </p>
                     </div>
                  </div>
                  
