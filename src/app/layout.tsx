@@ -1,3 +1,4 @@
+
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -16,13 +17,16 @@ const geistSans = Geist({
 });
 
 const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+  variable: '--font-geist_mono',
   subsets: ['latin'],
 });
 
+// SYSTEM VERSION: v1.0.0 (The Golden Version)
+const VERSION = "1.0.0";
+
 export const metadata: Metadata = {
   title: {
-    default: APP_NAME,
+    default: `${APP_NAME} v${VERSION}`,
     template: `%s | ${APP_NAME}`,
   },
   description: `Professional business suite for managing records and operations.`,
@@ -32,6 +36,10 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: APP_NAME,
   },
+  other: {
+    "system-version": VERSION,
+    "system-tier": "v1-core"
+  }
 };
 
 export const viewport: Viewport = {
