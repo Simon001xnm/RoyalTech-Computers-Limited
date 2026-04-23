@@ -45,6 +45,7 @@
     "dexie-react-hooks": "^1.1.1",
     "dotenv": "^16.5.0",
     "firebase": "^11.7.0",
+    "firebase-admin": "^13.2.0",
     "genkit": "^1.31.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1",
