@@ -25,13 +25,17 @@ const COLOR_PRESETS = [
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
+/**
+ * OnboardingGuard: Restricts access to standard tenants who haven't set up their workspace.
+ * CRITICAL: Automatically bypasses for Super Admins (Platform Technicians).
+ */
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const pathname = usePathname();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // USER RECORD: Check if this user already has an active workspace
+  // USER RECORD: Check if this user already has an active workspace or is a Super Admin
   const userProfile = useLiveQuery(async () => user ? await db.users.get(user.uid) : null, [user]);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -106,6 +110,11 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <>{children}</>;
+  }
+
+  // BYPASS LOGIC: Super Admins skip the business onboarding process entirely.
+  if (userProfile?.role === 'super_admin') {
+      return <>{children}</>;
   }
 
   // If user has no active tenantId, show onboarding

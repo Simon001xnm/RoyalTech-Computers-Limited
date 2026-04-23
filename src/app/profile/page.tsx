@@ -53,6 +53,8 @@ export default function ProfilePage() {
     [authUser]
   );
 
+  const isSuperAdmin = localUser?.role === 'super_admin';
+
   const company = useLiveQuery(
     async () => tenant?.id ? await db.companies.get(tenant.id) : null,
     [tenant?.id]
@@ -142,9 +144,7 @@ export default function ProfilePage() {
   };
 
   const handleCreateWorkspace = () => {
-      // Logic for creating new workspace
-      // For the prototype, we just redirect or prompt a fresh onboarding flow
-      window.location.reload(); // Force a fresh state for onboarding guard
+      window.location.reload(); 
   };
 
   if (isUserLoading || !localUser) {
@@ -153,7 +153,10 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      <PageHeader title="Profile & Workspace" description="Manage your personal account and business branding." />
+      <PageHeader 
+        title={isSuperAdmin ? "Platform technician Identity" : "Profile & Workspace"} 
+        description={isSuperAdmin ? "Global system identity and platform technician security." : "Manage your personal account and business branding."} 
+      />
 
       <div className="grid gap-8 md:grid-cols-3">
         {/* User Sidebar */}
@@ -180,7 +183,10 @@ export default function ProfilePage() {
               <div className="mt-4">
                 <CardTitle className="text-xl">{displayName || 'User'}</CardTitle>
                 <CardDescription>{email}</CardDescription>
-                <Badge className="mt-2 capitalize">{localUser.role}</Badge>
+                <Badge className={cn("mt-2 capitalize", isSuperAdmin ? "bg-primary text-primary-foreground" : "")}>
+                    {isSuperAdmin && <ShieldCheck className="h-3 w-3 mr-1" />}
+                    {localUser.role}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -195,145 +201,151 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Portfolio Switcher */}
-          <Card className="shadow-md border-primary/20 bg-muted/20">
-            <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Repeat className="h-4 w-4 text-primary" />
-                        <CardTitle className="text-xs font-bold uppercase tracking-widest">Workspace Portfolio</CardTitle>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsNewWorkspaceOpen(true)}>
-                        <PlusCircle className="h-4 w-4" />
-                    </Button>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-                {availableWorkspaces.map(ws => (
-                    <div 
-                        key={ws.id} 
-                        className={cn(
-                            "flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer",
-                            tenant?.id === ws.id ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
-                        )}
-                        onClick={() => tenant?.id !== ws.id && switchTenant(ws.id)}
-                    >
-                        <div className="flex items-center gap-2 overflow-hidden">
-                            {ws.logoUrl ? (
-                                <img src={ws.logoUrl} className="h-6 w-6 object-contain shrink-0" />
-                            ) : (
-                                <Building2 className="h-4 w-4 shrink-0 opacity-40" />
-                            )}
-                            <span className="text-xs font-bold truncate uppercase">{ws.name}</span>
-                        </div>
-                        {tenant?.id === ws.id && <Check className="h-3 w-3 shrink-0" />}
-                    </div>
-                ))}
-            </CardContent>
-          </Card>
-
-          {/* SaaS Usage & Subscription */}
-          <div className="space-y-6">
-            <Card className="shadow-md border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          {/* Portfolio Switcher - HIDDEN FOR SUPER ADMIN */}
+          {!isSuperAdmin && (
+            <Card className="shadow-md border-primary/20 bg-muted/20">
                 <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                        <Crown className="h-4 w-4 text-primary" />
-                        <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active Subscription</CardTitle>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Repeat className="h-4 w-4 text-primary" />
+                            <CardTitle className="text-xs font-bold uppercase tracking-widest">Workspace Portfolio</CardTitle>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsNewWorkspaceOpen(true)}>
+                            <PlusCircle className="h-4 w-4" />
+                        </Button>
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-1">
-                        <p className="text-lg font-black text-primary uppercase tracking-tight">{plan?.name}</p>
-                        <p className="text-[10px] text-muted-foreground">Status: <span className="text-green-600 font-bold uppercase">{tenant?.status}</span></p>
-                    </div>
-                    <div className="space-y-3 pt-2">
-                        <div className="flex items-center justify-between text-xs p-2 bg-background rounded-lg border border-primary/10">
-                            <span className="text-muted-foreground">Tenant ID</span>
-                            <span className="font-mono font-bold text-[10px] opacity-60">{tenant?.id}</span>
-                        </div>
-                        {isLegacyUser && (
-                            <div className="flex items-start gap-2 p-3 bg-primary text-primary-foreground rounded-xl shadow-lg">
-                                <Zap className="h-4 w-4 shrink-0 fill-white" />
-                                <div className="space-y-0.5">
-                                    <p className="text-[10px] font-black uppercase leading-none">Golden v1.0 Access</p>
-                                    <p className="text-[9px] opacity-90 leading-tight">Full feature set unlocked forever.</p>
-                                </div>
+                <CardContent className="space-y-2">
+                    {availableWorkspaces.map(ws => (
+                        <div 
+                            key={ws.id} 
+                            className={cn(
+                                "flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer",
+                                tenant?.id === ws.id ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                            )}
+                            onClick={() => tenant?.id !== ws.id && switchTenant(ws.id)}
+                        >
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                {ws.logoUrl ? (
+                                    <img src={ws.logoUrl} className="h-6 w-6 object-contain shrink-0" />
+                                ) : (
+                                    <Building2 className="h-4 w-4 shrink-0 opacity-40" />
+                                )}
+                                <span className="text-xs font-bold truncate uppercase">{ws.name}</span>
                             </div>
-                        )}
-                    </div>
+                            {tenant?.id === ws.id && <Check className="h-3 w-3 shrink-0" />}
+                        </div>
+                    ))}
                 </CardContent>
-                <CardFooter>
-                    {!isLegacyUser && <Button variant="outline" className="w-full h-8 text-[10px] uppercase font-bold" disabled>Change Plan</Button>}
-                </CardFooter>
             </Card>
+          )}
 
-            <SaaSUsageMeters />
-          </div>
+          {/* SaaS Usage & Subscription - HIDDEN FOR SUPER ADMIN */}
+          {!isSuperAdmin && (
+            <div className="space-y-6">
+                <Card className="shadow-md border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                    <CardHeader className="pb-3">
+                        <div className="flex items-center gap-2">
+                            <Crown className="h-4 w-4 text-primary" />
+                            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active Subscription</CardTitle>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-1">
+                            <p className="text-lg font-black text-primary uppercase tracking-tight">{plan?.name}</p>
+                            <p className="text-[10px] text-muted-foreground">Status: <span className="text-green-600 font-bold uppercase">{tenant?.status}</span></p>
+                        </div>
+                        <div className="space-y-3 pt-2">
+                            <div className="flex items-center justify-between text-xs p-2 bg-background rounded-lg border border-primary/10">
+                                <span className="text-muted-foreground">Tenant ID</span>
+                                <span className="font-mono font-bold text-[10px] opacity-60">{tenant?.id}</span>
+                            </div>
+                            {isLegacyUser && (
+                                <div className="flex items-start gap-2 p-3 bg-primary text-primary-foreground rounded-xl shadow-lg">
+                                    <Zap className="h-4 w-4 shrink-0 fill-white" />
+                                    <div className="space-y-0.5">
+                                        <p className="text-[10px] font-black uppercase leading-none">Golden v1.0 Access</p>
+                                        <p className="text-[9px] opacity-90 leading-tight">Full feature set unlocked forever.</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        {!isLegacyUser && <Button variant="outline" className="w-full h-8 text-[10px] uppercase font-bold" disabled>Change Plan</Button>}
+                    </CardFooter>
+                </Card>
+
+                <SaaSUsageMeters />
+            </div>
+          )}
         </div>
 
-        {/* Workspace Branding */}
+        {/* Workspace Branding - HIDDEN FOR SUPER ADMIN */}
         <div className="md:col-span-2 space-y-8">
-          <Card className="shadow-md">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
-                <CardTitle>Workspace Branding</CardTitle>
-              </div>
-              <CardDescription>Custom colors and logo for your system and documents.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] gap-8">
-                <div className="space-y-2">
-                  <Label>Company Logo</Label>
-                  <div className="w-full aspect-square border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer overflow-hidden relative group" onClick={() => logoInputRef.current?.click()}>
-                    {compLogo ? <img src={compLogo} className="w-full h-full object-contain" /> : <ImageIcon className="h-8 w-8 text-muted-foreground" />}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><Upload className="text-white h-6 w-6" /></div>
-                  </div>
-                  <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
+          {!isSuperAdmin && (
+            <Card className="shadow-md">
+                <CardHeader>
+                <div className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    <CardTitle>Workspace Branding</CardTitle>
                 </div>
-                <div className="space-y-6">
-                  <div className="p-4 rounded-xl border bg-muted/30 space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Palette className="h-4 w-4 text-primary" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Color Palette</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold opacity-70">Primary Color</Label>
-                        <div className="flex gap-2">
-                            <input type="color" value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer border rounded" />
-                            <Input value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="font-mono text-xs uppercase" />
-                        </div>
-                        </div>
-                        <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-bold opacity-70">Secondary Color</Label>
-                        <div className="flex gap-2">
-                            <input type="color" value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer border rounded" />
-                            <Input value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="font-mono text-xs uppercase" />
-                        </div>
-                        </div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
+                <CardDescription>Custom colors and logo for your system and documents.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] gap-8">
                     <div className="space-y-2">
-                        <Label>Business Name</Label>
-                        <Input value={compName} onChange={e => setCompName(e.target.value)} />
+                    <Label>Company Logo</Label>
+                    <div className="w-full aspect-square border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer overflow-hidden relative group" onClick={() => logoInputRef.current?.click()}>
+                        {compLogo ? <img src={compLogo} className="w-full h-full object-contain" /> : <ImageIcon className="h-8 w-8 text-muted-foreground" />}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><Upload className="text-white h-6 w-6" /></div>
                     </div>
-                    <div className="space-y-2">
-                        <Label>Address</Label>
-                        <Input value={compAddress} onChange={e => setCompAddress(e.target.value)} />
+                    <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
                     </div>
-                  </div>
+                    <div className="space-y-6">
+                    <div className="p-4 rounded-xl border bg-muted/30 space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Palette className="h-4 w-4 text-primary" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Color Palette</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold opacity-70">Primary Color</Label>
+                            <div className="flex gap-2">
+                                <input type="color" value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer border rounded" />
+                                <Input value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="font-mono text-xs uppercase" />
+                            </div>
+                            </div>
+                            <div className="space-y-2">
+                            <Label className="text-[10px] uppercase font-bold opacity-70">Secondary Color</Label>
+                            <div className="flex gap-2">
+                                <input type="color" value={compSecondary} onChange={e => setSecondaryColor(e.target.value)} className="w-12 h-10 p-1 cursor-pointer border rounded" />
+                                <Input value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="font-mono text-xs uppercase" />
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Business Name</Label>
+                            <Input value={compName} onChange={e => setCompName(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Address</Label>
+                            <Input value={compAddress} onChange={e => setCompAddress(e.target.value)} />
+                        </div>
+                    </div>
+                    </div>
                 </div>
-              </div>
-            </CardContent>
-            <CardFooter className="justify-end">
-              <Button onClick={handleSaveCompany} disabled={isSaving}>
-                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Branding Changes
-              </Button>
-            </CardFooter>
-          </Card>
+                </CardContent>
+                <CardFooter className="justify-end">
+                <Button onClick={handleSaveCompany} disabled={isSaving}>
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Branding Changes
+                </Button>
+                </CardFooter>
+            </Card>
+          )}
 
           <Card className="shadow-md">
             <CardHeader><CardTitle>Account Security</CardTitle></CardHeader>
@@ -349,6 +361,26 @@ export default function ProfilePage() {
             </CardContent>
             <CardFooter className="justify-end"><Button variant="outline" onClick={handlePasswordChange}>Change Password</Button></CardFooter>
           </Card>
+          
+          {isSuperAdmin && (
+             <Card className="shadow-md border-primary/20 bg-primary/5">
+                <CardHeader>
+                    <div className="flex items-center gap-2">
+                        <ShieldCheck className="h-5 w-5 text-primary" />
+                        <CardTitle>System Privileges</CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                        As a **Platform Technician**, you have root access to the SaaS infrastructure. You are responsible for global node health, subscription overrides, and commercial intelligence.
+                    </p>
+                    <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-primary">
+                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20">Bypass Onboarding: Active</div>
+                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20">Global Audit: Unlocked</div>
+                    </div>
+                </CardContent>
+             </Card>
+          )}
         </div>
       </div>
 
