@@ -3,7 +3,7 @@
 
 import { useUser } from '@/firebase/provider';
 import { isFeatureEnabled } from '@/lib/feature-flags';
-import { ShieldAlert, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, Lock } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -13,16 +13,14 @@ import { useLiveQuery } from 'dexie-react-hooks';
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   
-  // Get user role from local database for more reliable super-admin resolution
+  // Get user role from local database for strict role-based access control
   const userProfile = useLiveQuery(async () => user ? await db.users.get(user.uid) : null, [user]);
 
   const isPanelEnabled = isFeatureEnabled('SUPER_ADMIN_PANEL');
   
-  // STRICT SECURITY: Only a Super Admin or the platform owner email can access this area.
-  // Regular Tenant Admins are strictly blocked from global platform management.
-  const isSuperAdmin = 
-    userProfile?.role === 'super_admin' || 
-    user?.email?.endsWith('@simonstyless.com');
+  // STRICT SECURITY: Only a Super Admin (Platform Owner) can access this area.
+  // Standard 'admin' roles (Tenant/Shop Owners) are strictly locked out.
+  const isSuperAdmin = userProfile?.role === 'super_admin';
 
   if (!isPanelEnabled) {
     return (
@@ -31,7 +29,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <ShieldAlert className="h-12 w-12 text-muted-foreground opacity-20" />
         </div>
         <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">Layer 2 Hidden</h2>
-        <p className="text-muted-foreground max-w-md"> The Super Admin module is currently disabled via feature flags to protect the platform core.</p>
+        <p className="text-muted-foreground max-w-md"> The Platform Command module is currently disabled via global feature flags.</p>
         <Button asChild className="mt-8" variant="outline">
             <Link href="/">Return to Workspace</Link>
         </Button>
@@ -41,27 +39,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!isSuperAdmin) {
     return (
-        <div className="p-8">
-             <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Access Restricted</AlertTitle>
-                <AlertDescription>
-                    You are attempting to access the SaaS Platform Control. This area is reserved for Global Platform Technicians only. Shop owners cannot manage the platform.
-                </AlertDescription>
-            </Alert>
-             <Button asChild className="mt-4">
-                <Link href="/">Back to Dashboard</Link>
-            </Button>
+        <div className="p-8 h-[80vh] flex flex-col items-center justify-center text-center">
+             <div className="bg-destructive/10 p-6 rounded-full mb-6">
+                <Lock className="h-12 w-12 text-destructive" />
+             </div>
+             <div className="max-w-md space-y-4">
+                <h1 className="text-3xl font-black uppercase tracking-tighter">Access Restricted</h1>
+                <p className="text-muted-foreground">
+                    You are attempting to access the **SaaS Platform Command Center**. This area is reserved for the Global Platform Technician only.
+                </p>
+                <p className="text-xs font-bold text-destructive uppercase bg-destructive/10 p-2 rounded">
+                    Unauthorized access attempts are logged.
+                </p>
+                <Button asChild className="mt-4 w-full h-12 font-bold" variant="outline">
+                    <Link href="/">Back to Shop Dashboard</Link>
+                </Button>
+             </div>
         </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="bg-destructive/10 border-b border-destructive/20 p-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-destructive">
-        Platform Command Console &bull; Use with Caution
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="bg-primary border-b border-primary/20 p-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-primary-foreground shadow-lg">
+        Platform Nerve Center &bull; High Privilege Access
       </div>
-      {children}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        {children}
+      </div>
     </div>
   );
 }
