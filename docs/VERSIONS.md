@@ -30,6 +30,7 @@
 - **Dynamic White-Labeling**: Real-time UI and PDF branding injection based on tenant identity.
 - **Managed Helpdesk**: Consolidate global support tickets for Super Admin oversight.
 - **Enterprise Provisioning**: CSV Template Engine for high-speed bulk inventory onboarding.
+- **Automated Valuation**: Financial auditing tool for real-time Inventory NAV and yield tracking.
 
 ---
 

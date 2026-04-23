@@ -44,6 +44,7 @@ import { useSaaS } from "@/components/saas/saas-provider";
 import { useUser } from "@/firebase/provider";
 import { AssetService } from "@/services/asset-service";
 import { cn, exportToCsv } from "@/lib/utils";
+import { ValuationSummary } from "./valuation-summary";
 
 export function StockClient() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -232,7 +233,7 @@ export function StockClient() {
     <>
       <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
          <div className="flex-grow">
-            <PageHeader title="Asset Inventory (Siloed)" description="Managed high-value hardware service layer." />
+            <PageHeader title="Asset Inventory (Financials)" description="Audited hardware portfolio with automated valuation." />
         </div>
         <div className="flex-shrink-0 flex gap-2">
             <Button onClick={() => setIsBulkFormOpen(true)} variant="outline" className={cn(isAtCapacity && "opacity-50")}>
@@ -244,6 +245,8 @@ export function StockClient() {
             </Button>
         </div>
       </div>
+
+      {!isLoading && assets && <ValuationSummary assets={assets} />}
 
       <div className="mb-4">
         <Input
