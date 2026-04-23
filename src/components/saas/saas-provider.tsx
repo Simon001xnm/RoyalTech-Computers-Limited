@@ -8,6 +8,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier, TenantUsage } from '@/types/saas';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { startOfMonth, endOfMonth } from 'date-fns';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ShieldAlert, Lock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const DEFAULT_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   free: { id: 'plan_free', name: 'Standard Workspace', tier: 'free', maxAssets: 50, maxSalesPerMonth: 100, enableBranding: false, enableTracking: false, priceMonthly: 0, currency: 'KES' },
@@ -73,13 +76,13 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
              id: localCompany.id,
              name: localCompany.name,
              ownerId: localCompany.createdBy?.uid || 'unknown',
-             tier: 'legacy_pro', // v1.0 users are grandfathered
-             status: 'active',
+             tier: (localCompany.plan as SubscriptionTier) || 'legacy_pro', 
+             status: (localCompany.status as any) || 'active',
              createdAt: localCompany.createdAt,
              features: ['all']
          };
          setTenant(t);
-         setPlan(DEFAULT_PLANS.legacy_pro);
+         setPlan(DEFAULT_PLANS[t.tier as SubscriptionTier] || DEFAULT_PLANS.legacy_pro);
       }
       
       setIsLoading(false);
@@ -87,6 +90,29 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
 
     resolveTenant();
   }, [user, isUserLoading, localCompany]);
+
+  if (tenant?.status === 'suspended') {
+    return (
+        <div className="h-screen w-full flex items-center justify-center bg-background p-6">
+            <div className="max-w-md w-full text-center space-y-6">
+                <div className="bg-destructive/10 p-6 rounded-full w-24 h-24 flex items-center justify-center mx-auto">
+                    <Lock className="h-10 w-10 text-destructive" />
+                </div>
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-black tracking-tighter uppercase">Workspace Locked</h1>
+                    <p className="text-muted-foreground leading-relaxed">
+                        Access to <strong>{tenant.name}</strong> has been suspended by the platform administrator. 
+                        This usually occurs due to outstanding subscription fees or policy updates.
+                    </p>
+                </div>
+                <div className="pt-4 flex flex-col gap-3">
+                    <Button variant="outline" className="w-full font-bold" onClick={() => window.location.reload()}>Check Status Again</Button>
+                    <Button variant="ghost" className="w-full text-xs text-muted-foreground">Contact Support (SimonStyless)</Button>
+                </div>
+            </div>
+        </div>
+    );
+  }
 
   const value: SaaSContextState = {
     tenant,
