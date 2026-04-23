@@ -1,4 +1,5 @@
 
+
 # System Version History
 
 ## [v1.0.0] - The Golden Version (Stable)
@@ -27,6 +28,7 @@
 - **Platform Statements**: High-fidelity PDF generation for platform-wide commercial performance.
 - **Portfolio Switching**: Seamless jumping between multiple legal business entities.
 - **Dynamic White-Labeling**: Real-time UI and PDF branding injection based on tenant identity.
+- **Managed Helpdesk**: Consolidate global support tickets for Super Admin oversight.
 
 ---
 

@@ -9,7 +9,7 @@ import {
     Building2, Users, CreditCard, Activity, ShieldCheck, Globe, Database, Server, 
     History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown, BarChart3, 
     TrendingUp, Trophy, Filter, Search, X, Loader2, Download, ActivitySquare, 
-    ChevronRight, AlertCircle, Info, CheckCircle2
+    ChevronRight, AlertCircle, Info, CheckCircle2, MessageSquare, Inbox
 } from 'lucide-react';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -41,6 +41,7 @@ export default function SuperAdminDashboard() {
   const tenants = useLiveQuery(() => db.companies.toArray());
   const users = useLiveQuery(() => db.users.toArray());
   const globalSales = useLiveQuery(() => db.sales.toArray());
+  const globalTickets = useLiveQuery(() => db.tickets.toArray());
   
   // Reactive logs with filtering
   const logs = useLiveQuery(async () => {
@@ -61,9 +62,10 @@ export default function SuperAdminDashboard() {
         totalRevenue: totalRev,
         totalTenants: tenants?.length || 0,
         totalUsers: users?.length || 0,
+        openTickets: globalTickets?.filter(t => t.status !== 'Closed').length || 0,
         activeAlerts: logs?.filter(l => l.level === 'error').length || 0
     };
-  }, [tenants, users, globalSales, logs]);
+  }, [tenants, users, globalSales, logs, globalTickets]);
 
   const commercialInsights = useMemo(() => {
     if (!globalSales || !tenants) return [];
@@ -84,26 +86,6 @@ export default function SuperAdminDashboard() {
         };
     }).sort((a, b) => b.gmv - a.gmv);
   }, [globalSales, tenants]);
-
-  // DIAGNOSTIC DATA: Only runs when a specific tenant is selected
-  const diagnosticData = useLiveQuery(async () => {
-      if (!diagnosticTenantId) return null;
-      
-      const now = new Date();
-      const start = startOfMonth(now).toISOString();
-      const end = endOfMonth(now).toISOString();
-
-      const tenantLogs = await db.platformLogs.where('tenantId').equals(diagnosticTenantId).reverse().limit(50).toArray();
-      const assetCount = await db.assets.where('tenantId').equals(diagnosticTenantId).count();
-      const monthlySales = await db.sales.where('tenantId').equals(diagnosticTenantId).and(s => s.date >= start && s.date <= end).count();
-      const tenantUsers = await db.users.where('tenantId').equals(diagnosticTenantId).toArray();
-
-      return {
-          logs: tenantLogs,
-          usage: { assets: assetCount, sales: monthlySales },
-          team: tenantUsers
-      };
-  }, [diagnosticTenantId]);
 
   const handleUpdateTenantStatus = async (tenantId: string, status: 'active' | 'suspended') => {
     try {
@@ -130,43 +112,6 @@ export default function SuperAdminDashboard() {
       logger.info('System', 'Diagnostic Session Started', { targetTenantId: tenantId });
   };
 
-  const handleDownloadPlatformStatement = async () => {
-    const { default: html2canvas } = await import('html2canvas');
-    const { default: jsPDF } = await import('jspdf');
-
-    const element = document.getElementById('platform-commercial-tab');
-    if (!element) return;
-
-    setIsExporting(true);
-    toast({ title: 'Compiling SaaS Performance Data', description: 'Generating platform statement...' });
-
-    setTimeout(async () => {
-        try {
-            const canvas = await html2canvas(element, { 
-                scale: 2, 
-                useCORS: true,
-                windowWidth: 1200 
-            });
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgData = canvas.toDataURL('image/png', 1.0);
-            
-            pdf.addImage(imgData, 'PNG', 0, 0, 210, 210 * (canvas.height / canvas.width));
-            pdf.save(`SaaS_Platform_Statement_${format(new Date(), 'yyyyMMdd')}.pdf`);
-            
-            toast({ title: 'Statement Ready', description: 'Your commercial export is complete.' });
-        } catch (err) {
-            toast({ variant: 'destructive', title: 'Export Failed' });
-        } finally {
-            setIsExporting(false);
-        }
-    }, 1000);
-  };
-
-  const resetFilters = () => {
-    setLogLevelFilter('all');
-    setTenantFilter('all');
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
       style: "currency",
@@ -174,8 +119,6 @@ export default function SuperAdminDashboard() {
       maximumFractionDigits: 0
     }).format(amount);
   };
-
-  const selectedTenantObj = tenants?.find(t => t.id === diagnosticTenantId);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -199,19 +142,20 @@ export default function SuperAdminDashboard() {
         <SummaryCard title="Platform Users" value={platformStats.totalUsers} icon={Users} description="Registered across all nodes" />
         <SummaryCard title="Gross Volume (GMV)" value={formatCurrency(platformStats.totalRevenue)} icon={CreditCard} description="Cumulative sales volume" />
         <SummaryCard 
-            title="System Alerts" 
-            value={platformStats.activeAlerts} 
-            icon={Activity} 
-            description="Recent critical events"
-            className={platformStats.activeAlerts > 0 ? "border-red-200 bg-red-50/10" : ""}
+            title="Open Tickets" 
+            value={platformStats.openTickets} 
+            icon={Inbox} 
+            description="Active support issues"
+            className={platformStats.openTickets > 0 ? "border-orange-200 bg-orange-50/10" : ""}
         />
       </div>
 
       <Tabs defaultValue="activity" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8 h-12 p-1 bg-muted/30">
-          <TabsTrigger value="activity" className="font-bold">Global Activity Stream</TabsTrigger>
-          <TabsTrigger value="commercial" className="font-bold">Commercial Insights</TabsTrigger>
-          <TabsTrigger value="tenants" className="font-bold">Workspace Management</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 mb-8 h-12 p-1 bg-muted/30">
+          <TabsTrigger value="activity" className="font-bold">Audit Trail</TabsTrigger>
+          <TabsTrigger value="commercial" className="font-bold">Commercial</TabsTrigger>
+          <TabsTrigger value="tenants" className="font-bold">Workspaces</TabsTrigger>
+          <TabsTrigger value="support" className="font-bold">Global Support</TabsTrigger>
         </TabsList>
         
         <TabsContent value="activity">
@@ -221,374 +165,173 @@ export default function SuperAdminDashboard() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <History className="h-5 w-5 text-primary" />
-                                <CardTitle className="text-lg">Real-time Audit Trail</CardTitle>
+                                <CardTitle className="text-lg">Real-time Platform Audit</CardTitle>
                             </div>
-                            {(logLevelFilter !== 'all' || tenantFilter !== 'all') && (
-                                <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8 text-xs gap-1">
-                                    <X className="h-3 w-3" /> Clear Filters
-                                </Button>
-                            )}
                         </div>
-                        
                         <div className="flex flex-wrap gap-3">
-                            <div className="w-40">
-                                <Select value={logLevelFilter} onValueChange={setLogLevelFilter}>
-                                    <SelectTrigger className="h-9 text-xs bg-background">
-                                        <div className="flex items-center gap-2">
-                                            <Filter className="h-3 w-3" />
-                                            <SelectValue placeholder="Log Level" />
-                                        </div>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Levels</SelectItem>
-                                        <SelectItem value="business">Business Only</SelectItem>
-                                        <SelectItem value="error">Errors Only</SelectItem>
-                                        <SelectItem value="warn">Warnings</SelectItem>
-                                        <SelectItem value="info">Info</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            
-                            <div className="w-56">
-                                <Select value={tenantFilter} onValueChange={setTenantFilter}>
-                                    <SelectTrigger className="h-9 text-xs bg-background">
-                                        <div className="flex items-center gap-2">
-                                            <Building2 className="h-3 w-3" />
-                                            <SelectValue placeholder="Filter by Tenant" />
-                                        </div>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Every Workspace</SelectItem>
-                                        {tenants?.map(t => (
-                                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            <Select value={logLevelFilter} onValueChange={setLogLevelFilter}>
+                                <SelectTrigger className="h-9 w-40 text-xs bg-background"><SelectValue placeholder="Level"/></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Levels</SelectItem>
+                                    <SelectItem value="business">Business</SelectItem>
+                                    <SelectItem value="error">Errors</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select value={tenantFilter} onValueChange={setTenantFilter}>
+                                <SelectTrigger className="h-9 w-56 text-xs bg-background"><SelectValue placeholder="Tenant"/></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Workspaces</SelectItem>
+                                    {tenants?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0 flex-grow">
                         <ScrollArea className="h-[500px]">
                             <div className="divide-y divide-muted/40">
-                                {logs && logs.length > 0 ? logs.map(log => (
+                                {logs?.map(log => (
                                     <div key={log.id} className="p-4 hover:bg-muted/20 transition-colors">
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
-                                                    <Badge 
-                                                        variant="outline" 
-                                                        className={
-                                                            log.level === 'error' ? 'border-red-200 bg-red-50 text-red-700' :
-                                                            log.level === 'business' ? 'border-green-200 bg-green-50 text-green-700' :
-                                                            'bg-muted/50'
-                                                        }
-                                                    >
-                                                        {log.level.toUpperCase()}
-                                                    </Badge>
-                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{log.module}</span>
+                                                    <Badge variant="outline" className={log.level === 'error' ? 'bg-red-50 text-red-700' : log.level === 'business' ? 'bg-green-50 text-green-700' : ''}>{log.level.toUpperCase()}</Badge>
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase">{log.module}</span>
                                                 </div>
                                                 <p className="text-sm font-semibold">{log.event}</p>
-                                                <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
-                                                    <span className="flex items-center gap-1">
-                                                        <Building2 className="h-3 w-3" /> 
-                                                        {tenants?.find(t => t.id === log.tenantId)?.name || `Tenant: ${log.tenantId?.slice(0, 8) || 'System'}`}
-                                                    </span>
-                                                    <span>{format(parseISO(log.timestamp), 'MMM d, HH:mm:ss')}</span>
+                                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                                    <Building2 className="h-3 w-3" /> {tenants?.find(t => t.id === log.tenantId)?.name || 'System'}
+                                                    <span className="opacity-40">&bull;</span>
+                                                    {format(parseISO(log.timestamp), 'MMM d, HH:mm:ss')}
                                                 </div>
                                             </div>
-                                            {log.metadata?.amount && (
-                                                <p className="font-mono text-sm font-black text-primary">
-                                                    {formatCurrency(log.metadata.amount)}
-                                                </p>
-                                            )}
                                         </div>
                                     </div>
-                                )) : (
-                                    <div className="flex flex-col items-center justify-center py-20 opacity-20">
-                                        <Search className="h-12 w-12 mb-4" />
-                                        <p className="font-bold uppercase tracking-widest text-xs">No matching logs found</p>
-                                    </div>
-                                )}
+                                ))}
                             </div>
                         </ScrollArea>
                     </CardContent>
                 </Card>
-
-                <Card className="shadow-sm border-muted/40 bg-gradient-to-br from-background to-muted/20">
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <ShieldCheck className="h-5 w-5 text-primary" />
-                            <CardTitle>System Health</CardTitle>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between p-4 bg-background rounded-xl border border-primary/10 shadow-sm">
-                                <div className="flex items-center gap-3">
-                                    <Globe className="h-4 w-4 text-primary opacity-60" />
-                                    <span className="text-xs font-bold uppercase tracking-widest opacity-60">Tenant Isolation</span>
-                                </div>
-                                <span className="text-[10px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100">VERIFIED</span>
-                            </div>
-                            <div className="flex items-center justify-between p-4 bg-background rounded-xl border border-primary/10 shadow-sm">
-                                <div className="flex items-center gap-3">
-                                    <Database className="h-4 w-4 text-primary opacity-60" />
-                                    <span className="text-xs font-bold uppercase tracking-widest opacity-60">Silo Integrity</span>
-                                </div>
-                                <span className="text-[10px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100">HEALTHY</span>
-                            </div>
-                        </div>
-                        <div className="p-4 bg-primary text-primary-foreground rounded-2xl shadow-lg space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Infrastructure Alert</p>
-                            <p className="text-xs font-medium leading-relaxed">
-                                System operating on **v2.0 SaaS Engine**. Deep-dive Diagnostics (Phase 15) active.
-                            </p>
-                        </div>
+                <Card className="shadow-sm border-muted/40 bg-muted/10">
+                    <CardHeader><CardTitle className="text-sm">Infrastructure Health</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                         <div className="flex items-center justify-between p-3 bg-background rounded-lg border">
+                            <span className="text-xs font-bold uppercase opacity-60">Database Integrity</span>
+                            <Badge variant="outline" className="bg-green-50 text-green-600 border-green-100">SYNCED</Badge>
+                         </div>
+                         <div className="p-4 bg-primary text-primary-foreground rounded-xl space-y-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Platform Note</p>
+                            <p className="text-xs font-medium">Monitoring {tenants?.length} active business nodes across Layer 2.</p>
+                         </div>
                     </CardContent>
                 </Card>
             </div>
         </TabsContent>
 
-        <TabsContent value="commercial" id="platform-commercial-tab">
-            <div className="grid gap-6">
-                <Card className="shadow-md border-muted/40 overflow-hidden">
-                    <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <Trophy className="h-5 w-5 text-primary" />
-                                <CardTitle>Tenant GMV Leaderboard</CardTitle>
-                            </div>
-                            <CardDescription>Top business workspaces ranked by cumulative sales volume.</CardDescription>
-                        </div>
-                        <Button 
-                            onClick={handleDownloadPlatformStatement} 
-                            disabled={isExporting} 
-                            className="h-10 gap-2 font-black uppercase tracking-widest text-[10px]"
-                        >
-                            {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                            Platform Statement
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="divide-y">
-                            {commercialInsights.map((tenant, index) => (
-                                <div key={tenant.id} className="p-6 flex items-center justify-between hover:bg-muted/10 transition-colors">
-                                    <div className="flex items-center gap-6">
-                                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-black text-xs">
-                                            #{index + 1}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-base">{tenant.name}</p>
-                                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                                                <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> {tenant.salesCount} Transactions</span>
-                                                {tenant.lastActive && (
-                                                    <span className="flex items-center gap-1"><History className="h-3 w-3" /> Last Active: {format(parseISO(tenant.lastActive), 'MMM d')}</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xl font-black text-primary">{formatCurrency(tenant.gmv)}</p>
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Total Volume</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        </TabsContent>
-
-        <TabsContent value="tenants">
-            <Card className="shadow-md border-muted/40">
-                <CardHeader>
-                    <CardTitle>Workspace Directory</CardTitle>
-                    <CardDescription>Manage lifecycle, subscriptions, and diagnostic traces for all businesses.</CardDescription>
+        <TabsContent value="support">
+            <Card className="shadow-md border-muted/40 overflow-hidden">
+                <CardHeader className="bg-muted/30 border-b">
+                    <CardTitle>Global Helpdesk Oversight</CardTitle>
+                    <CardDescription>Consolidated support tickets from every business workspace.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="rounded-lg border overflow-hidden">
-                        <Table>
-                            <TableHeader className="bg-muted/50">
-                                <TableRow>
-                                    <TableHead className="font-bold">Business Name</TableHead>
-                                    <TableHead className="font-bold">Plan</TableHead>
-                                    <TableHead className="font-bold">Status</TableHead>
-                                    <TableHead className="font-bold">Joined</TableHead>
-                                    <TableHead className="text-right font-bold">Actions</TableHead>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="font-bold">Tenant</TableHead>
+                                <TableHead className="font-bold">Subject</TableHead>
+                                <TableHead className="font-bold">Priority</TableHead>
+                                <TableHead className="font-bold">Status</TableHead>
+                                <TableHead className="font-bold">Reported</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {globalTickets?.map(ticket => (
+                                <TableRow key={ticket.id}>
+                                    <TableCell className="font-bold text-primary">
+                                        {tenants?.find(t => t.id === ticket.tenantId)?.name || 'Unknown'}
+                                    </TableCell>
+                                    <TableCell>
+                                        <p className="font-medium">{ticket.subject}</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase">{ticket.customerName || 'Direct Support'}</p>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={ticket.priority === 'High' ? 'destructive' : 'outline'}>{ticket.priority}</Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant="secondary">{ticket.status}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">
+                                        {format(parseISO(ticket.createdAt), 'MMM d, yyyy')}
+                                    </TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {tenants?.map(tenant => (
-                                    <TableRow key={tenant.id}>
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center font-bold text-primary">
-                                                    {tenant.name[0]}
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-sm">{tenant.name}</p>
-                                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">{tenant.id.slice(0, 8)}</p>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={tenant.plan === 'legacy_pro' ? 'default' : 'outline'} className="uppercase text-[10px]">
-                                                {tenant.plan === 'legacy_pro' ? <Zap className="h-2 w-2 mr-1 fill-white" /> : <Crown className="h-2 w-2 mr-1" />}
-                                                {tenant.plan || 'Free'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={tenant.status === 'suspended' ? 'destructive' : 'secondary'} className="uppercase text-[10px]">
-                                                {tenant.status || 'active'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-xs text-muted-foreground">
-                                            {format(parseISO(tenant.createdAt), 'MMM d, yyyy')}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-56">
-                                                    <DropdownMenuLabel>Tenant Control</DropdownMenuLabel>
-                                                    <DropdownMenuItem onClick={() => handleOpenDiagnostics(tenant.id)}>
-                                                        <ActivitySquare className="h-4 w-4 mr-2" /> Run Diagnostics
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem onClick={() => handleUpdateTenantPlan(tenant.id, 'pro')}>Upgrade to PRO</DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleUpdateTenantPlan(tenant.id, 'basic')}>Downgrade to BASIC</DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleUpdateTenantPlan(tenant.id, 'legacy_pro')}>Grant LEGACY PRO</DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    {tenant.status === 'suspended' ? (
-                                                        <DropdownMenuItem onClick={() => handleUpdateTenantStatus(tenant.id, 'active')} className="text-green-600">
-                                                            <Unlock className="h-4 w-4 mr-2" /> Re-activate Workspace
-                                                        </DropdownMenuItem>
-                                                    ) : (
-                                                        <DropdownMenuItem onClick={() => handleUpdateTenantStatus(tenant.id, 'suspended')} className="text-destructive">
-                                                            <Lock className="h-4 w-4 mr-2" /> Suspend Workspace
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                            ))}
+                            {(!globalTickets || globalTickets.length === 0) && (
+                                <TableRow><TableCell colSpan={5} className="h-40 text-center text-muted-foreground">No active support tickets across the platform.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </TabsContent>
+
+        <TabsContent value="commercial">
+            <Card className="shadow-md border-muted/40 overflow-hidden">
+                <CardHeader className="bg-primary/5 border-b"><CardTitle>Tenant GMV Leaderboard</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                    <div className="divide-y">
+                        {commercialInsights.map((tenant, index) => (
+                            <div key={tenant.id} className="p-6 flex items-center justify-between hover:bg-muted/10">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-black text-xs">#{index + 1}</div>
+                                    <div><p className="font-bold">{tenant.name}</p><p className="text-[10px] text-muted-foreground uppercase">{tenant.salesCount} Transactions</p></div>
+                                </div>
+                                <div className="text-right"><p className="text-lg font-black text-primary">{formatCurrency(tenant.gmv)}</p></div>
+                            </div>
+                        ))}
                     </div>
                 </CardContent>
             </Card>
         </TabsContent>
+
+        <TabsContent value="tenants">
+            <Card className="shadow-md border-muted/40 overflow-hidden">
+                <CardHeader><CardTitle>Workspace Directory</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader className="bg-muted/50">
+                            <TableRow>
+                                <TableHead className="font-bold">Business Name</TableHead>
+                                <TableHead className="font-bold">Plan</TableHead>
+                                <TableHead className="font-bold">Status</TableHead>
+                                <TableHead className="text-right font-bold">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {tenants?.map(tenant => (
+                                <TableRow key={tenant.id}>
+                                    <TableCell><div className="font-bold">{tenant.name}</div><div className="text-[10px] font-mono opacity-40">{tenant.id.slice(0,8)}</div></TableCell>
+                                    <TableCell><Badge variant="outline" className="uppercase text-[10px]">{tenant.plan || 'Free'}</Badge></TableCell>
+                                    <TableCell><Badge variant={tenant.status === 'suspended' ? 'destructive' : 'secondary'} className="uppercase text-[10px]">{tenant.status || 'active'}</Badge></TableCell>
+                                    <TableCell className="text-right">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-56">
+                                                <DropdownMenuItem onClick={() => handleUpdateTenantPlan(tenant.id, 'pro')}>Upgrade to PRO</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleUpdateTenantStatus(tenant.id, tenant.status === 'suspended' ? 'active' : 'suspended')} className={tenant.status === 'suspended' ? "text-green-600" : "text-destructive"}>
+                                                    {tenant.status === 'suspended' ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
+                                                    {tenant.status === 'suspended' ? "Re-activate" : "Suspend"}
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </TabsContent>
       </Tabs>
-
-      {/* DIAGNOSTIC DIALOG */}
-      <Dialog open={!!diagnosticTenantId} onOpenChange={(open) => !open && setDiagnosticTenantId(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
-              <DialogHeader className="p-6 pb-0">
-                  <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-primary/10 p-3 rounded-2xl">
-                            <ActivitySquare className="h-6 w-6 text-primary" />
-                        </div>
-                        <div>
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tighter">{selectedTenantObj?.name} Diagnostics</DialogTitle>
-                            <DialogDescription className="font-mono text-[10px]">{diagnosticTenantId}</DialogDescription>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="h-fit py-1 px-3 bg-muted/50 border-primary/20">
-                          <ShieldCheck className="h-3 w-3 mr-2 text-primary" />
-                          Authorized Deep-Dive Trace
-                      </Badge>
-                  </div>
-              </DialogHeader>
-
-              <div className="flex-grow overflow-y-auto p-6 space-y-8">
-                  {/* Usage Summary */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Card className="bg-muted/10 border-muted-foreground/10">
-                          <CardHeader className="pb-2">
-                              <CardTitle className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                  <Database className="h-3 w-3" /> Asset Utilization
-                              </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                              <p className="text-2xl font-black">{diagnosticData?.usage.assets || 0}</p>
-                              <p className="text-[10px] text-muted-foreground">Capacity slot: {selectedTenantObj?.plan || 'Standard'}</p>
-                          </CardContent>
-                      </Card>
-                      <Card className="bg-muted/10 border-muted-foreground/10">
-                          <CardHeader className="pb-2">
-                              <CardTitle className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                  <TrendingUp className="h-3 w-3" /> Sales Volume (MTD)
-                              </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                              <p className="text-2xl font-black">{diagnosticData?.usage.sales || 0}</p>
-                              <p className="text-[10px] text-muted-foreground">Current monthly quota</p>
-                          </CardContent>
-                      </Card>
-                      <Card className="bg-muted/10 border-muted-foreground/10">
-                          <CardHeader className="pb-2">
-                              <CardTitle className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                                  <Users className="h-3 w-3" /> Team Nodes
-                              </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                              <p className="text-2xl font-black">{diagnosticData?.team.length || 0}</p>
-                              <p className="text-[10px] text-muted-foreground">Registered staff accounts</p>
-                          </CardContent>
-                      </Card>
-                  </div>
-
-                  {/* Tenant Trace Logs */}
-                  <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                            <History className="h-4 w-4" />
-                            Tenant Audit Trace
-                        </h4>
-                        <Badge variant="secondary" className="text-[10px]">LATEST 50 EVENTS</Badge>
-                      </div>
-                      <div className="border rounded-xl overflow-hidden bg-muted/5">
-                          <div className="max-h-[300px] overflow-y-auto font-mono text-[11px] divide-y divide-muted-foreground/10">
-                              {diagnosticData?.logs.map((log) => (
-                                  <div key={log.id} className="p-3 flex items-start gap-4 hover:bg-muted/30 transition-colors">
-                                      <span className="text-muted-foreground shrink-0 w-24">{format(parseISO(log.timestamp), 'HH:mm:ss')}</span>
-                                      <div className="space-y-1 flex-grow">
-                                          <div className="flex items-center gap-2">
-                                              <span className={log.level === 'error' ? 'text-red-500 font-bold' : log.level === 'business' ? 'text-green-500 font-bold' : 'text-blue-500'}>
-                                                  {log.level.toUpperCase()}
-                                              </span>
-                                              <span className="opacity-40">&bull;</span>
-                                              <span className="font-bold">{log.module}</span>
-                                          </div>
-                                          <p className="text-foreground">{log.event}</p>
-                                          {log.metadata && (
-                                              <div className="bg-black/5 p-2 rounded mt-1 border border-black/5 overflow-x-auto">
-                                                  <pre className="text-[10px]">{JSON.stringify(log.metadata, null, 2)}</pre>
-                                              </div>
-                                          )}
-                                      </div>
-                                  </div>
-                              ))}
-                              {(!diagnosticData?.logs || diagnosticData.logs.length === 0) && (
-                                  <div className="p-8 text-center text-muted-foreground italic">No trace logs available for this tenant.</div>
-                              )}
-                          </div>
-                      </div>
-                  </div>
-              </div>
-
-              <div className="p-6 border-t bg-muted/20 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                      <ShieldAlert className="h-3 w-3 text-red-500" />
-                      Platform Integrity Trace Active
-                  </div>
-                  <Button variant="outline" onClick={() => setDiagnosticTenantId(null)}>Close Diagnostics</Button>
-              </div>
-          </DialogContent>
-      </Dialog>
     </div>
   );
 }
