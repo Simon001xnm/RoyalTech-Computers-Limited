@@ -71,17 +71,34 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       async (firebaseUser) => {
         if (firebaseUser) {
           try {
+            // FAIL-SAFE PROMOTION:
+            // Check if there are ANY super_admins in the local database.
+            // If none exist, the current user MUST be the platform owner.
+            const superAdmins = await db.users.where('role').equals('super_admin').count();
             const localUser = await db.users.get(firebaseUser.uid);
-            if (!localUser) {
-              // FIRST USER PROMOTION:
-              // The very first person to register on this fresh installation 
-              // is automatically promoted to Global Super Admin.
-              const userCount = await db.users.count();
+
+            if (superAdmins === 0) {
+              if (localUser) {
+                // If user exists but is not super_admin, promote them.
+                await db.users.update(firebaseUser.uid, { role: 'super_admin' });
+                console.log("Identity System: Fail-safe promotion applied to user:", firebaseUser.email);
+              } else {
+                // If user doesn't exist, create them as super_admin.
+                await db.users.add({
+                  id: firebaseUser.uid,
+                  email: firebaseUser.email || '',
+                  name: firebaseUser.displayName || 'Platform Owner',
+                  role: 'super_admin',
+                  createdAt: new Date().toISOString()
+                });
+              }
+            } else if (!localUser) {
+              // Standard auto-registration for subsequent users (as normal admins/tenants)
               await db.users.add({
                 id: firebaseUser.uid,
                 email: firebaseUser.email || '',
-                name: firebaseUser.displayName || 'Platform Owner',
-                role: userCount === 0 ? 'super_admin' : 'admin',
+                name: firebaseUser.displayName || 'Business Admin',
+                role: 'admin',
                 createdAt: new Date().toISOString()
               });
             }

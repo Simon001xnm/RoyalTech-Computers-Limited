@@ -10,12 +10,13 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, Settings, User as UserIcon } from 'lucide-react';
+import { LogOut, Settings, User as UserIcon, ShieldCheck } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { User as AppUser } from '@/types';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Badge } from '../ui/badge';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
@@ -48,6 +49,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         if (auth) auth.signOut();
     };
 
+    // If profile is still loading, wait to avoid layout shifting or incorrect permission blocks
+    const isProfileLoaded = userProfile !== undefined;
     const isSuperAdmin = userProfile?.role === 'super_admin';
 
   return (
@@ -55,15 +58,18 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-md">
         <SidebarHeader className="p-4">
             <Link href={isSuperAdmin ? "/admin" : "/"} className="flex items-center gap-2">
-            <div className={isSuperAdmin ? "bg-primary p-1 rounded" : ""}>
-                <h1 className="text-lg font-black uppercase tracking-tighter text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+            <div className={isSuperAdmin ? "bg-primary p-1.5 rounded-lg shadow-sm" : ""}>
+                <h1 className={cn(
+                    "text-lg font-black uppercase tracking-tighter text-sidebar-foreground group-data-[collapsible=icon]:hidden",
+                    isSuperAdmin && "text-primary-foreground"
+                )}>
                     {isSuperAdmin ? "PLATFORM" : APP_NAME}
                 </h1>
             </div>
             </Link>
         </SidebarHeader>
         <SidebarContent>
-            <SidebarNav />
+            {isProfileLoaded ? <SidebarNav /> : <div className="p-4 animate-pulse bg-muted rounded-md mx-2 h-20" />}
         </SidebarContent>
         <SidebarSeparator />
         <SidebarFooter className="p-4">
@@ -83,7 +89,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
               <span>{isSuperAdmin ? "PLATFORM COMMAND" : APP_NAME}</span>
             </Link>
             {isSuperAdmin && (
-               <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black uppercase tracking-widest text-[9px] px-3">
+               <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black uppercase tracking-widest text-[9px] px-3 h-6">
+                  <ShieldCheck className="h-3 w-3 mr-1" />
                   Layer 2 Access
                </Badge>
             )}
@@ -171,3 +178,5 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   // We return null to avoid flashing authenticated components.
   return null;
 }
+
+import { cn } from "@/lib/utils";
