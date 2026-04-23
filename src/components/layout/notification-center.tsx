@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -30,28 +31,36 @@ import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
+/**
+ * @fileOverview Notification Center (Recipient View)
+ * Displays platform alerts sent from the Super Admin.
+ */
 export function NotificationCenter() {
   const { user } = useUser();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
+  // REACTIVE QUERY: Get notifications for this specific user or their tenant
   const notifications = useLiveQuery(async () => {
     if (!user) return [];
     
-    // Get current user profile to find their tenant
     const profile = await db.users.get(user.uid);
-    if (!profile?.tenantId) return [];
+    const tid = profile?.tenantId;
 
-    return await db.notifications
-        .where('tenantId').equals(profile.tenantId)
-        .reverse()
-        .sortBy('createdAt');
+    // Fetch all notifications for this tenant
+    // Note: We filter for specifically targeted messages vs group broadcasts in memory for simplicity
+    const all = await db.notifications
+        .where('tenantId').equals(tid || 'platform')
+        .toArray();
+
+    return all
+        .filter(n => !n.userId || n.userId === user.uid)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [user]);
 
   const unreadCount = notifications?.filter(n => !n.read).length || 0;
 
   const handleMarkAsRead = async (id: string) => {
-    // UPDATED: Standardizing read receipt logging for Super Admin oversight
     await db.notifications.update(id, { 
         read: true, 
         updatedAt: new Date().toISOString() 
@@ -76,21 +85,22 @@ export function NotificationCenter() {
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative group">
           {unreadCount > 0 ? (
             <>
-              <BellRing className="h-5 w-5 text-primary animate-pulse" />
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] border-2 border-background">
+              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+              <BellRing className="h-5 w-5 text-primary relative z-10" />
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] border-2 border-background bg-primary text-primary-foreground shadow-sm">
                 {unreadCount}
               </Badge>
             </>
           ) : (
-            <Bell className="h-5 w-5 text-muted-foreground" />
+            <Bell className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent className="sm:max-w-md p-0 flex flex-col">
-        <SheetHeader className="p-6 border-b">
+      <SheetContent className="sm:max-w-md p-0 flex flex-col border-l shadow-2xl">
+        <SheetHeader className="p-6 border-b bg-muted/10">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" />
@@ -103,44 +113,44 @@ export function NotificationCenter() {
             )}
           </div>
           <SheetDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Administrative messages from simonstyless support
+            Official communications from Platform Admin
           </SheetDescription>
         </SheetHeader>
         
         <ScrollArea className="flex-grow">
           {notifications && notifications.length > 0 ? (
-            <div className="divide-y">
+            <div className="divide-y divide-muted/40">
                 {notifications.map(notif => (
                     <div 
                         key={notif.id} 
                         className={cn(
-                            "p-5 transition-colors cursor-pointer group",
-                            notif.read ? "opacity-60" : "bg-primary/5"
+                            "p-5 transition-all cursor-pointer group hover:bg-muted/30",
+                            notif.read ? "opacity-50" : "bg-primary/5 border-l-4 border-l-primary"
                         )}
                         onClick={() => !notif.read && handleMarkAsRead(notif.id)}
                     >
                         <div className="flex items-start gap-4">
-                            <div className="mt-1">
+                            <div className="mt-1 shrink-0">
                                 {getPriorityIcon(notif.priority)}
                             </div>
-                            <div className="space-y-1 flex-grow">
-                                <div className="flex items-center justify-between">
-                                    <p className={cn("text-sm font-bold leading-none", !notif.read && "text-primary")}>
+                            <div className="space-y-1 flex-grow overflow-hidden">
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className={cn("text-sm font-bold truncate", !notif.read && "text-primary")}>
                                         {notif.subject}
                                     </p>
-                                    <span className="text-[10px] font-medium text-muted-foreground">
+                                    <span className="text-[10px] font-medium text-muted-foreground shrink-0">
                                         {format(parseISO(notif.createdAt), 'MMM d, p')}
                                     </span>
                                 </div>
-                                <p className="text-xs text-muted-foreground leading-relaxed pt-1">
+                                <p className="text-xs text-muted-foreground leading-relaxed pt-1 line-clamp-3">
                                     {notif.message}
                                 </p>
-                                <div className="pt-2 flex items-center gap-2">
-                                    <Badge variant="outline" className="text-[8px] font-black uppercase py-0 px-2 h-4">
-                                        FROM: {notif.from}
+                                <div className="pt-3 flex items-center gap-2">
+                                    <Badge variant="secondary" className="text-[8px] font-black uppercase py-0 px-2 h-4 border-none opacity-80">
+                                        REF: {notif.id.slice(0, 8)}
                                     </Badge>
                                     {!notif.read && (
-                                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                                        <Badge variant="default" className="text-[8px] font-black uppercase py-0 px-2 h-4 animate-pulse">NEW</Badge>
                                     )}
                                 </div>
                             </div>
@@ -150,18 +160,20 @@ export function NotificationCenter() {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-32 text-center px-8">
-                <div className="bg-muted p-4 rounded-full mb-4">
-                    <MailOpen className="h-8 w-8 text-muted-foreground opacity-20" />
+                <div className="bg-muted p-6 rounded-full mb-4">
+                    <MailOpen className="h-10 w-10 text-muted-foreground opacity-20" />
                 </div>
                 <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Inbox Empty</p>
-                <p className="text-xs text-muted-foreground mt-1">No platform messages at this time.</p>
+                <p className="text-xs text-muted-foreground mt-2 max-w-[200px] mx-auto">
+                    You have no active notifications from the platform provider at this time.
+                </p>
             </div>
           )}
         </ScrollArea>
         
-        <div className="p-4 border-t bg-muted/20 text-center">
-            <p className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter">
-                verified platform communication node &bull; encrypted sync active
+        <div className="p-4 border-t bg-muted/30 text-center">
+            <p className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter opacity-50">
+                secured endpoint node &bull; realtime synchronization active
             </p>
         </div>
       </SheetContent>
