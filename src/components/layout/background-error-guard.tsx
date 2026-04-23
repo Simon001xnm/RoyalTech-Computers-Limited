@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -8,17 +7,14 @@ import React, { useEffect } from 'react';
  * This prevents transient Dexie Cloud, Firestore, or Next.js Chunk loading errors
  * from triggering the development error overlay.
  * 
- * NOTE: We avoid monkey-patching console.error directly to prevent "Illegal invocation" errors
- * in certain browser environments. We rely on standard event listeners instead.
+ * It uses a combination of event listeners and a safe console interceptor to 
+ * filter out noise while maintaining system stability.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // 1. Intercept Unhandled Promise Rejections (e.g. background fetch failures)
-    const handleRejection = (event: PromiseRejectionEvent) => {
-      const reason = event.reason;
-      const errorMessage = reason?.message || String(reason || '');
-      
-      const isNetworkError = 
+    // 1. Helper to determine if an error message should be silenced
+    const isSuppressible = (errorMessage: string) => {
+      return (
         errorMessage.includes('Failed to fetch') || 
         errorMessage.includes('NetworkError') ||
         errorMessage.includes('Load failed') ||
@@ -27,38 +23,49 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
         errorMessage.includes('Unexpected token') ||
         errorMessage.includes('connection') ||
         errorMessage.includes('offline') ||
-        errorMessage.includes('Network request failed');
+        errorMessage.includes('Network request failed') ||
+        errorMessage.includes('FirebaseError: [code=unavailable]')
+      );
+    };
 
-      if (isNetworkError) {
-        // Silently prevent the error from bubbling up to the browser/overlay
+    // 2. Intercept Unhandled Promise Rejections
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      const errorMessage = reason?.message || String(reason || '');
+      
+      if (isSuppressible(errorMessage)) {
         event.preventDefault();
         event.stopPropagation();
-        // Use debug logging to keep the console clean for the user
-        console.debug('Suppressed background/network error rejection:', errorMessage);
+        console.debug('Suppressed background rejection:', errorMessage);
       }
     };
 
-    // 2. Intercept Global Sync/Runtime Errors
+    // 3. Intercept Global Runtime Errors
     const handleGlobalError = (event: ErrorEvent) => {
       const error = event.error;
       const errorMessage = event.message || error?.message || '';
       
-      const isNetworkError = 
-        errorMessage.includes('Failed to fetch') || 
-        errorMessage.includes('NetworkError') || 
-        errorMessage.includes('Load failed') || 
-        errorMessage.includes('ChunkLoadError') || 
-        errorMessage.includes('timeout') || 
-        errorMessage.includes('connection') || 
-        errorMessage.includes('offline') || 
-        errorMessage.includes('Network request failed');
-
-      if (isNetworkError) {
-        // Prevent the error from triggering the global overlay
+      if (isSuppressible(errorMessage)) {
         event.preventDefault();
         event.stopPropagation();
-        console.debug('Suppressed global network error event:', errorMessage);
+        console.debug('Suppressed global error event:', errorMessage);
       }
+    };
+
+    // 4. Safe Console Interception
+    // This prevents Next.js from capturing "Failed to fetch" logs as critical overlays.
+    // We use .apply(console, args) to avoid "Illegal invocation" errors.
+    const originalConsoleError = console.error;
+    console.error = function(...args: any[]) {
+      const message = args.map(arg => String(arg)).join(' ');
+      
+      if (isSuppressible(message)) {
+        // Silently drop the suppressible network error
+        return;
+      }
+      
+      // Pass through all other legitimate errors
+      return originalConsoleError.apply(console, args);
     };
 
     // Use capture phase to intercept errors as early as possible
@@ -68,6 +75,8 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
     return () => {
       window.removeEventListener('unhandledrejection', handleRejection, true);
       window.removeEventListener('error', handleGlobalError, true);
+      // Restore original console on cleanup
+      console.error = originalConsoleError;
     };
   }, []);
 
