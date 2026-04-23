@@ -7,12 +7,22 @@ import { ShieldAlert, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   
+  // Get user role from local database for more reliable super-admin resolution
+  const userProfile = useLiveQuery(async () => user ? await db.users.get(user.uid) : null, [user]);
+
   const isPanelEnabled = isFeatureEnabled('SUPER_ADMIN_PANEL');
-  const isSuperAdmin = user?.email?.endsWith('@simonstyless.com') || false; // Roadmap: use custom claims
+  
+  // In prototype mode, we allow the primary Workspace Admin to access the panel if enabled
+  const isSuperAdmin = 
+    userProfile?.role === 'super_admin' || 
+    (isPanelEnabled && userProfile?.role === 'admin') ||
+    user?.email?.endsWith('@simonstyless.com');
 
   if (!isPanelEnabled) {
     return (
@@ -36,7 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Access Restricted</AlertTitle>
                 <AlertDescription>
-                    You are attempting to access the SaaS Platform Control. This area is reserved for SimonStyless Technicians only.
+                    You are attempting to access the SaaS Platform Control. This area is reserved for Platform Technicians only.
                 </AlertDescription>
             </Alert>
              <Button asChild className="mt-4">

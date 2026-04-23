@@ -23,7 +23,11 @@ const getRolePermissions = (role: Role): string[] => {
     if (role === 'super_admin') return [...baseNav, '/admin'];
     
     if (role === 'admin') {
-        return baseNav; // Admin sees all standard modules including /audit
+        // If the Super Admin panel is enabled via flags, allow the primary Admin to see it for platform management
+        if (isFeatureEnabled('SUPER_ADMIN_PANEL')) {
+            return [...baseNav, '/admin'];
+        }
+        return baseNav;
     }
     
     // Standard users cannot see User management, Platform Admin, or the Audit Trail
