@@ -56,6 +56,25 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
+    // 3. SAFE console.error patch to suppress "Failed to fetch" from triggering overlay
+    const originalConsoleError = window.console.error;
+    window.console.error = function(...args: any[]) {
+      const msg = String(args[0] || '');
+      const isTransientError = 
+        msg.includes('Failed to fetch') || 
+        msg.includes('NetworkError') || 
+        msg.includes('Load failed') ||
+        msg.includes('ChunkLoadError');
+
+      if (isTransientError) {
+        console.debug('BackgroundErrorGuard: Suppressed console.error artifact:', ...args);
+        return;
+      }
+      
+      // Use apply with window.console to avoid "Illegal invocation"
+      return originalConsoleError.apply(window.console, args);
+    };
+
     // Use capture phase to intercept errors as early as possible
     window.addEventListener('unhandledrejection', handleRejection, true);
     window.addEventListener('error', handleGlobalError, true);
@@ -63,6 +82,8 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
     return () => {
       window.removeEventListener('unhandledrejection', handleRejection, true);
       window.removeEventListener('error', handleGlobalError, true);
+      // Restore original console on unmount
+      window.console.error = originalConsoleError;
     };
   }, []);
 
