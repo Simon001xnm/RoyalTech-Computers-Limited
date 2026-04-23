@@ -10,7 +10,7 @@ import {
     History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown, BarChart3, 
     TrendingUp, Trophy, Filter, Search, X, Loader2, Download, ActivitySquare, 
     ChevronRight, AlertCircle, Info, CheckCircle2, MessageSquare, Inbox, ActivityIcon,
-    Gauge, Eye, User, Phone, Mail, Clock
+    Gauge, Eye, User, Phone, Mail, Clock, Send, SendHorizonal
 } from 'lucide-react';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -26,8 +26,11 @@ import { logger } from '@/lib/logger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 export default function PlatformCommandCenter() {
   const { toast } = useToast();
@@ -40,6 +43,15 @@ export default function PlatformCommandCenter() {
   // Diagnostic & Inspection State
   const [diagnosticTenant, setDiagnosticTenant] = useState<any | null>(null);
   const [inspectingTenantId, setInspectingTenantId] = useState<string | null>(null);
+
+  // Messaging State
+  const [isMessageOpen, setIsMessageOpen] = useState(false);
+  const [msgTargetTenantId, setMsgTargetTenantId] = useState<string>('');
+  const [msgTargetUserId, setMsgTargetUserId] = useState<string>('all');
+  const [msgSubject, setMsgSubject] = useState('');
+  const [msgBody, setMsgBody] = useState('');
+  const [msgPriority, setMsgPriority] = useState<'info' | 'important' | 'alert'>('info');
+  const [isSendingMsg, setIsSendingMsg] = useState(false);
 
   const tenants = useLiveQuery(() => db.companies.toArray());
   const users = useLiveQuery(() => db.users.toArray());
@@ -140,6 +152,35 @@ export default function PlatformCommandCenter() {
     }
   };
 
+  const handleSendPlatformMessage = async () => {
+    if (!msgTargetTenantId || !msgSubject || !msgBody) return;
+    
+    setIsSendingMsg(true);
+    try {
+        await db.notifications.add({
+            id: crypto.randomUUID(),
+            tenantId: msgTargetTenantId,
+            userId: msgTargetUserId === 'all' ? undefined : msgTargetUserId,
+            from: 'Platform Support',
+            subject: msgSubject,
+            message: msgBody,
+            priority: msgPriority,
+            read: false,
+            createdAt: new Date().toISOString()
+        });
+
+        logger.business('System', 'Platform Message Sent', { targetTenantId: msgTargetTenantId, targetUserId: msgTargetUserId });
+        toast({ title: "Message Sent Successfully" });
+        setIsMessageOpen(false);
+        setMsgSubject('');
+        setMsgBody('');
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Transmission Error', description: e.message });
+    } finally {
+        setIsSendingMsg(false);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
       style: "currency",
@@ -159,11 +200,11 @@ export default function PlatformCommandCenter() {
             <p className="text-muted-foreground font-medium mt-1">Global SaaS Oversight & Transaction Intelligence</p>
         </div>
         <div className="flex gap-2">
+            <Button onClick={() => setIsMessageOpen(true)} className="h-9 px-4 font-bold bg-primary text-primary-foreground shadow-lg hover:scale-105 transition-all">
+                <SendHorizonal className="h-4 w-4 mr-2" /> Send Platform Broadcast
+            </Button>
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-9 px-4 font-bold">
                 <Server className="h-3 w-3 mr-2" /> Global Cluster Online
-            </Badge>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 h-9 px-4 font-bold">
-                <Database className="h-3 w-3 mr-2" /> {tenants?.length || 0} Business Nodes
             </Badge>
         </div>
       </div>
@@ -339,6 +380,13 @@ export default function PlatformCommandCenter() {
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-64 p-2 shadow-2xl border-none ring-1 ring-black/5">
                                                 <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-3 py-2">Platform Overrides</DropdownMenuLabel>
+                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => {
+                                                    setMsgTargetTenantId(tenant.id);
+                                                    setMsgTargetUserId('all');
+                                                    setIsMessageOpen(true);
+                                                }}>
+                                                    <MessageSquare className="h-4 w-4 mr-2 text-primary" /> Send Platform Message
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem className="font-bold text-xs" onClick={() => handleUpdateTenantPlan(tenant.id, 'pro')}>
                                                     <Crown className="h-4 w-4 mr-2 text-primary" /> Upgrade to Enterprise
                                                 </DropdownMenuItem>
@@ -599,6 +647,86 @@ export default function PlatformCommandCenter() {
             <CardFooter className="bg-muted/30 p-6 border-t flex justify-end">
                 <Button onClick={() => setDiagnosticTenant(null)} className="font-bold">Close Diagnostic Scan</Button>
             </CardFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Platform Comms: Send Message Dialog */}
+      <Dialog open={isMessageOpen} onOpenChange={setIsMessageOpen}>
+        <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+                <DialogTitle className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
+                    <Send className="h-6 w-6 text-primary" />
+                    Compose Platform Message
+                </DialogTitle>
+                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">
+                    Direct administrative communication to businesses
+                </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-6">
+                <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest">Destination Node</Label>
+                        <Select value={msgTargetTenantId} onValueChange={setMsgTargetTenantId}>
+                            <SelectTrigger className="h-12 font-bold uppercase text-xs">
+                                <SelectValue placeholder="Select Business Node" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {tenants?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {msgTargetTenantId && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <Label className="text-[10px] font-black uppercase tracking-widest">Recipient Identity</Label>
+                            <Select value={msgTargetUserId} onValueChange={setMsgTargetUserId}>
+                                <SelectTrigger className="h-10 text-xs">
+                                    <SelectValue placeholder="All Tenant Staff" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Administrators & Staff</SelectItem>
+                                    {users?.filter(u => u.tenantId === msgTargetTenantId).map(u => (
+                                        <SelectItem key={u.id} value={u.id}>{u.name} ({u.email})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest">Alert Subject</Label>
+                        <Input value={msgSubject} onChange={e => setMsgSubject(e.target.value)} placeholder="e.g. System Maintenance, Subscription Update" className="h-11 font-bold" />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest">Priority Tier</Label>
+                        <Select value={msgPriority} onValueChange={(v: any) => setMsgPriority(v)}>
+                            <SelectTrigger className="h-10 text-xs">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="info">Standard Information</SelectItem>
+                                <SelectItem value="important">Important (Pinned)</SelectItem>
+                                <SelectItem value="alert">Critical Alert (Red)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest">Detailed Content</Label>
+                        <Textarea value={msgBody} onChange={e => setMsgBody(e.target.value)} rows={6} placeholder="Compose your platform communication here..." />
+                    </div>
+                </div>
+            </div>
+
+            <DialogFooter className="border-t pt-6 bg-muted/10">
+                <Button variant="outline" onClick={() => setIsMessageOpen(false)} disabled={isSendingMsg}>Discard</Button>
+                <Button onClick={handleSendPlatformMessage} disabled={isSendingMsg || !msgTargetTenantId || !msgSubject || !msgBody} className="font-black uppercase tracking-widest text-xs px-8">
+                    {isSendingMsg ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                    Broadcast Message
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

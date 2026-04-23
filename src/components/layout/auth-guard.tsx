@@ -17,6 +17,8 @@ import type { User as AppUser } from '@/types';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Badge } from '../ui/badge';
+import { NotificationCenter } from './notification-center';
+import { cn } from "@/lib/utils";
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
@@ -97,6 +99,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
           </div>
           
           <div className="flex items-center gap-4">
+            <NotificationCenter />
             {user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -178,5 +181,3 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   // We return null to avoid flashing authenticated components.
   return null;
 }
-
-import { cn } from "@/lib/utils";

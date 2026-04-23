@@ -237,6 +237,17 @@ export interface Applicant extends Auditable {
   appliedAt: string; 
 }
 
+export interface Notification extends Auditable {
+  id: string;
+  tenantId: string;
+  userId?: string; // Optional: targets specific user, otherwise targets tenant admins
+  from: string;
+  subject: string;
+  message: string;
+  read: boolean;
+  priority: 'info' | 'important' | 'alert';
+}
+
 export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | 'DeliveryNote' | 'Quotation' | 'LPO';
 
 export interface DocumentLineItem {

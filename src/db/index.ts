@@ -17,7 +17,8 @@ import type {
   Campaign,
   JobPosting,
   Applicant,
-  Company
+  Company,
+  Notification
 } from '@/types';
 
 export interface PlatformLog {
@@ -34,7 +35,7 @@ export interface PlatformLog {
 /**
  * Professional ERP Suite Local Database
  * Powered by Dexie.js and IndexedDB for local-first storage.
- * Version 3: Audit Logging & Platform Insights Upgrade.
+ * Version 4: Notification Engine.
  */
 export class RoyalTechDB extends Dexie {
   assets!: Table<Asset>;
@@ -54,12 +55,13 @@ export class RoyalTechDB extends Dexie {
   applicants!: Table<Applicant>;
   companies!: Table<Company>;
   platformLogs!: Table<PlatformLog>;
+  notifications!: Table<Notification>;
 
   constructor() {
     super('RoyalTechDB', { addons: [dexieCloud] });
     
-    // Version 3: Adding platformLogs for SaaS oversight
-    this.version(3).stores({
+    // Version 4: Adding notifications store
+    this.version(4).stores({
       assets: 'id, tenantId, model, serialNumber, status, purchaseDate',
       accessories: 'id, tenantId, name, serialNumber, status',
       customers: 'id, tenantId, name, email, phone',
@@ -76,7 +78,8 @@ export class RoyalTechDB extends Dexie {
       jobPostings: 'id, tenantId, status, createdAt',
       applicants: 'id, tenantId, jobId, status, appliedAt',
       companies: 'id, tenantId, name',
-      platformLogs: 'id, level, module, tenantId, timestamp'
+      platformLogs: 'id, level, module, tenantId, timestamp',
+      notifications: 'id, tenantId, userId, read, createdAt'
     });
 
     this.cloud.configure({
