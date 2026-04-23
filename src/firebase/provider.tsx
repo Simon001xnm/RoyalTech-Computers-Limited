@@ -109,7 +109,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => {
-        console.error("FirebaseProvider: onIdTokenChanged listener error:", error);
+        // Log as warning instead of error for network-related glitches to avoid Next.js overlay
+        console.warn("FirebaseProvider: onIdTokenChanged listener notice:", error);
         setUserAuthState({ user: null, isUserLoading: false, userError: error });
       }
     );
