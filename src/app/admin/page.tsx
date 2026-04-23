@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SummaryCard } from '@/components/dashboard/summary-card';
-import { Building2, Users, CreditCard, Activity, ShieldCheck, Globe, Database, Server, History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown, BarChart3, TrendingUp, Trophy, Filter, Search, X } from 'lucide-react';
+import { Building2, Users, CreditCard, Activity, ShieldCheck, Globe, Database, Server, History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown, BarChart3, TrendingUp, Trophy, Filter, Search, X, Loader2, Download } from 'lucide-react';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,7 @@ import { logger } from '@/lib/logger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 export default function SuperAdminDashboard() {
   const { toast } = useToast();
@@ -27,6 +28,7 @@ export default function SuperAdminDashboard() {
   // State for Log Filtering
   const [logLevelFilter, setLogLevelFilter] = useState<string>('all');
   const [tenantFilter, setTenantFilter] = useState<string>('all');
+  const [isExporting, setIsExporting] = useState(false);
 
   const tenants = useLiveQuery(() => db.companies.toArray());
   const users = useLiveQuery(() => db.users.toArray());
@@ -93,6 +95,39 @@ export default function SuperAdminDashboard() {
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Action Failed', description: e.message });
     }
+  };
+
+  const handleDownloadPlatformStatement = async () => {
+    const { default: html2canvas } = await import('html2canvas');
+    const { default: jsPDF } = await import('jspdf');
+
+    const element = document.getElementById('platform-commercial-tab');
+    if (!element) return;
+
+    setIsExporting(true);
+    toast({ title: 'Compiling SaaS Performance Data', description: 'Generating platform statement...' });
+
+    setTimeout(async () => {
+        try {
+            const canvas = await html2canvas(element, { 
+                scale: 2, 
+                useCORS: true,
+                windowWidth: 1200 
+            });
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            
+            // Standard A4: 210mm x 297mm
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, 210 * (canvas.height / canvas.width));
+            pdf.save(`SaaS_Platform_Statement_${format(new Date(), 'yyyyMMdd')}.pdf`);
+            
+            toast({ title: 'Statement Ready', description: 'Your commercial export is complete.' });
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Export Failed' });
+        } finally {
+            setIsExporting(false);
+        }
+    }, 1000);
   };
 
   const resetFilters = () => {
@@ -272,7 +307,7 @@ export default function SuperAdminDashboard() {
                         <div className="p-4 bg-primary text-primary-foreground rounded-2xl shadow-lg space-y-2">
                             <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Infrastructure Alert</p>
                             <p className="text-xs font-medium leading-relaxed">
-                                System operating on **v2.0 SaaS Engine**. Multi-tenant Commercial Intelligence (Phase 12) is active.
+                                System operating on **v2.0 SaaS Engine**. Multi-tenant Commercial Intelligence (Phase 13) is active.
                             </p>
                         </div>
                     </CardContent>
@@ -280,15 +315,25 @@ export default function SuperAdminDashboard() {
             </div>
         </TabsContent>
 
-        <TabsContent value="commercial">
+        <TabsContent value="commercial" id="platform-commercial-tab">
             <div className="grid gap-6">
                 <Card className="shadow-md border-muted/40 overflow-hidden">
-                    <CardHeader className="bg-primary/5 border-b">
-                        <div className="flex items-center gap-2">
-                            <Trophy className="h-5 w-5 text-primary" />
-                            <CardTitle>Tenant GMV Leaderboard</CardTitle>
+                    <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <Trophy className="h-5 w-5 text-primary" />
+                                <CardTitle>Tenant GMV Leaderboard</CardTitle>
+                            </div>
+                            <CardDescription>Top business workspaces ranked by cumulative sales volume.</CardDescription>
                         </div>
-                        <CardDescription>Top business workspaces ranked by cumulative sales volume.</CardDescription>
+                        <Button 
+                            onClick={handleDownloadPlatformStatement} 
+                            disabled={isExporting} 
+                            className="h-10 gap-2 font-black uppercase tracking-widest text-[10px]"
+                        >
+                            {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                            Platform Statement
+                        </Button>
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="divide-y">
@@ -350,9 +395,13 @@ export default function SuperAdminDashboard() {
                             <p className="text-xs leading-relaxed text-muted-foreground">
                                 High GMV tenants with > 100 transactions are prime candidates for the **Enterprise Elite** subscription override. Use the "Workspace Management" tab to adjust their tier manually if payment is handled offline.
                             </p>
-                            <Button className="mt-4 w-full h-8 text-[10px] uppercase font-bold" variant="outline">Download Platform Statement</Button>
+                            <div className="mt-8 pt-8 border-t border-muted-foreground/10 text-center">
+                                <p className="text-[9px] font-black uppercase text-muted-foreground opacity-40">
+                                    SaaS Platform Statement Engine &bull; Powering SimonStyless Technologies
+                                </p>
+                            </div>
                         </CardContent>
-                    </div>
+                    </Card>
                 </div>
             </div>
         </TabsContent>

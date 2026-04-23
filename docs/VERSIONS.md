@@ -14,7 +14,7 @@
 
 ## [v2.0.0] - SaaS Evolution (Stable Core)
 **Status**: ACTIVE / PRODUCTION READY
-**Release Date**: 2024-06-15
+**Release Date**: 2024-06-25
 
 ### Implemented Features
 - **Multi-Tenancy**: Strict data isolation via `tenantId` across all modules.
@@ -24,6 +24,7 @@
 - **Operational Health**: Automated usage alerts and subscription renewal notifications.
 - **Diagnostic Engine**: Cross-tenant log filtering and audit trail isolation.
 - **Infrastructure Abstraction**: Unified Service Layer (Decoupled UI from DB).
+- **Platform Statements**: High-fidelity PDF generation for platform-wide commercial performance.
 
 ---
 
