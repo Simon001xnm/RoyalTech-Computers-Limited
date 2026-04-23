@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -253,15 +254,17 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-muted/40">
-          <CardHeader>
+        <Card className="shadow-sm border-muted/40 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <History className="h-5 w-5 text-primary" />
               <CardTitle className="text-lg">Recent Activity</CardTitle>
             </div>
-            <CardDescription>Latest sales transactions recorded.</CardDescription>
+            <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-bold text-primary">
+                <Link href="/audit">View All</Link>
+            </Button>
           </CardHeader>
-          <CardContent className="max-h-[320px] overflow-auto">
+          <CardContent className="flex-grow max-h-[320px] overflow-auto">
             {sortedRecentSales && sortedRecentSales.length > 0 ? (
               <div className="space-y-4">
                 {sortedRecentSales.slice(0, 10).map(sale => (
@@ -277,7 +280,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex flex-col items-center justify-center py-12 text-center h-full">
                 <Badge variant="outline" className="mb-2">Quiet</Badge>
                 <p className="text-xs text-muted-foreground">No recent activity detected.</p>
               </div>

@@ -1,5 +1,6 @@
 
 
+
 # System Version History
 
 ## [v1.0.0] - The Golden Version (Stable)
@@ -31,6 +32,7 @@
 - **Managed Helpdesk**: Consolidate global support tickets for Super Admin oversight.
 - **Enterprise Provisioning**: CSV Template Engine for high-speed bulk inventory onboarding.
 - **Automated Valuation**: Financial auditing tool for real-time Inventory NAV and yield tracking.
+- **Self-Service Audit**: Tenant-side activity logs for internal accountability and compliance.
 
 ---
 

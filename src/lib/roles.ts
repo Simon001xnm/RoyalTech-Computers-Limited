@@ -23,10 +23,11 @@ const getRolePermissions = (role: Role): string[] => {
     if (role === 'super_admin') return [...baseNav, '/admin'];
     
     if (role === 'admin') {
-        return baseNav; // Admin sees all standard modules
+        return baseNav; // Admin sees all standard modules including /audit
     }
     
-    return baseNav.filter(href => href !== '/users' && href !== '/admin');
+    // Standard users cannot see User management, Platform Admin, or the Audit Trail
+    return baseNav.filter(href => href !== '/users' && href !== '/admin' && href !== '/audit');
 };
 
 
