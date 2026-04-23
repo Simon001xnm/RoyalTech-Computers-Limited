@@ -9,7 +9,7 @@ import type { Asset, Accessory, SaleItem, Sale, Customer, Document as AppDocumen
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, ChevronsUpDown, PlusCircle, Smartphone, Loader2, Check, Download, Printer, Share2, Mail, MessageSquare } from 'lucide-react';
+import { ShoppingCart, Trash2, ChevronsUpDown, PlusCircle, Smartphone, Loader2, Check, Download, Printer, Share2, Mail, MessageSquare, Lock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,7 @@ import { RecentSales } from './recent-sales';
 import { useUser } from '@/firebase/provider';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { logger } from '@/lib/logger';
+import { cn } from '@/lib/utils';
 
 type Product = (Asset | Accessory) & { productType: 'asset' | 'accessory'; displayName: string; price?: number; };
 type CartItem = SaleItem & { productType: 'asset' | 'accessory'; quantity: number; unitPrice: number; discount: number; };
@@ -38,7 +39,7 @@ const VAT_RATE = 0.16;
 export function PosClient() {
   const { toast } = useToast();
   const { user } = useUser();
-  const { tenant } = useSaaS();
+  const { tenant, plan, usage, isLegacyUser } = useSaaS();
   
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
@@ -89,6 +90,8 @@ export function PosClient() {
     const parsedAmountPaid = parseFloat(amountPaid) || grandTotal;
     return { subtotal, totalDiscount, vatAmount, grandTotal, changeDue: parsedAmountPaid > grandTotal ? parsedAmountPaid - grandTotal : 0 };
   }, [cart, amountPaid, applyVat]);
+
+  const isAtMonthlyLimit = !isLegacyUser && plan && usage && usage.salesThisMonth >= plan.maxSalesPerMonth;
 
   const handleAddToCart = () => {
     if (!selectedProduct || !unitPrice) return;
@@ -141,6 +144,16 @@ export function PosClient() {
 
   const handleFinalizeSale = async () => {
     if (cart.length === 0 || !selectedCustomer || !user) return;
+    
+    if (isAtMonthlyLimit) {
+        toast({ 
+            variant: 'destructive', 
+            title: 'Sales Limit Reached', 
+            description: `Your plan allows ${plan!.maxSalesPerMonth} sales per month. Please upgrade your workspace.` 
+        });
+        return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -473,11 +486,16 @@ export function PosClient() {
             <CardFooter className="flex flex-col gap-3 pb-8">
                 <Button 
                     onClick={handleFinalizeSale} 
-                    className="w-full h-14 text-lg font-black shadow-xl hover:scale-[1.02] transition-transform active:scale-[0.98]" 
+                    className={cn("w-full h-14 text-lg font-black shadow-xl hover:scale-[1.02] transition-transform active:scale-[0.98]", isAtMonthlyLimit && "bg-muted text-muted-foreground hover:bg-muted")} 
                     disabled={isProcessing || !selectedCustomer || cart.length === 0 || (paymentMethod === 'M-Pesa' && mpesaStatus !== 'confirmed')}
                 >
-                    {isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Finalize Sale'}
+                    {isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : isAtMonthlyLimit ? <><Lock className="mr-2 h-5 w-5" /> Limit Reached</> : 'Finalize Sale'}
                 </Button>
+                {isAtMonthlyLimit && (
+                    <p className="text-[10px] text-center text-destructive font-black uppercase tracking-widest">
+                        Monthly transaction limit reached. Upgrade required.
+                    </p>
+                )}
                 <Button variant="ghost" className="w-full text-xs uppercase font-bold text-muted-foreground hover:bg-destructive/5 hover:text-destructive" onClick={() => {
                     if (confirm('Are you sure you want to clear the basket?')) setCart([]);
                 }}>Clear All Items</Button>

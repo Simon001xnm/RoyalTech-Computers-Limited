@@ -1,3 +1,4 @@
+
 'use client';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, update
 import placeholderAvatars from '@/lib/placeholder-images.json';
 import { cn } from "@/lib/utils";
 import { useSaaS } from "@/components/saas/saas-provider";
+import { SaaSUsageMeters } from "@/components/saas/saas-usage-meters";
 
 export default function ProfilePage() {
   const { user: authUser, isUserLoading } = useUser();
@@ -182,39 +184,43 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* SaaS Subscription Info */}
-          <Card className="shadow-md border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-             <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                    <Crown className="h-4 w-4 text-primary" />
-                    <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active Subscription</CardTitle>
-                </div>
-             </CardHeader>
-             <CardContent className="space-y-4">
-                <div className="space-y-1">
-                    <p className="text-lg font-black text-primary uppercase tracking-tight">{plan?.name}</p>
-                    <p className="text-[10px] text-muted-foreground">Status: <span className="text-green-600 font-bold uppercase">{tenant?.status}</span></p>
-                </div>
-                <div className="space-y-3 pt-2">
-                    <div className="flex items-center justify-between text-xs p-2 bg-background rounded-lg border border-primary/10">
-                        <span className="text-muted-foreground">Tenant ID</span>
-                        <span className="font-mono font-bold text-[10px] opacity-60">{tenant?.id}</span>
+          {/* SaaS Usage & Subscription */}
+          <div className="space-y-6">
+            <Card className="shadow-md border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                        <Crown className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active Subscription</CardTitle>
                     </div>
-                    {isLegacyUser && (
-                        <div className="flex items-start gap-2 p-3 bg-primary text-primary-foreground rounded-xl shadow-lg">
-                            <Zap className="h-4 w-4 shrink-0 fill-white" />
-                            <div className="space-y-0.5">
-                                <p className="text-[10px] font-black uppercase leading-none">Golden v1.0 Access</p>
-                                <p className="text-[9px] opacity-90 leading-tight">Full feature set unlocked forever as an original user.</p>
-                            </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-1">
+                        <p className="text-lg font-black text-primary uppercase tracking-tight">{plan?.name}</p>
+                        <p className="text-[10px] text-muted-foreground">Status: <span className="text-green-600 font-bold uppercase">{tenant?.status}</span></p>
+                    </div>
+                    <div className="space-y-3 pt-2">
+                        <div className="flex items-center justify-between text-xs p-2 bg-background rounded-lg border border-primary/10">
+                            <span className="text-muted-foreground">Tenant ID</span>
+                            <span className="font-mono font-bold text-[10px] opacity-60">{tenant?.id}</span>
                         </div>
-                    )}
-                </div>
-             </CardContent>
-             <CardFooter>
-                {!isLegacyUser && <Button variant="outline" className="w-full h-8 text-[10px] uppercase font-bold" disabled>Change Plan</Button>}
-             </CardFooter>
-          </Card>
+                        {isLegacyUser && (
+                            <div className="flex items-start gap-2 p-3 bg-primary text-primary-foreground rounded-xl shadow-lg">
+                                <Zap className="h-4 w-4 shrink-0 fill-white" />
+                                <div className="space-y-0.5">
+                                    <p className="text-[10px] font-black uppercase leading-none">Golden v1.0 Access</p>
+                                    <p className="text-[9px] opacity-90 leading-tight">Full feature set unlocked forever.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    {!isLegacyUser && <Button variant="outline" className="w-full h-8 text-[10px] uppercase font-bold" disabled>Change Plan</Button>}
+                </CardFooter>
+            </Card>
+
+            <SaaSUsageMeters />
+          </div>
 
           <Card className="shadow-md bg-muted/30">
             <CardHeader>

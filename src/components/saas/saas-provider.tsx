@@ -5,8 +5,9 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useUser } from '@/firebase/provider';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier } from '@/types/saas';
+import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier, TenantUsage } from '@/types/saas';
 import { isFeatureEnabled } from '@/lib/feature-flags';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 const DEFAULT_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   free: { id: 'plan_free', name: 'Standard Workspace', tier: 'free', maxAssets: 50, maxSalesPerMonth: 100, enableBranding: false, enableTracking: false, priceMonthly: 0, currency: 'KES' },
@@ -25,6 +26,23 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
 
   // DEXIE: Check if this user is linked to a tenant locally
   const localCompany = useLiveQuery(() => db.companies.toCollection().last());
+
+  // USAGE TRACKING: Live counts for limits
+  const usage = useLiveQuery(async () => {
+    if (!tenant) return { assets: 0, salesThisMonth: 0 };
+    
+    const now = new Date();
+    const start = startOfMonth(now).toISOString();
+    const end = endOfMonth(now).toISOString();
+
+    const assetCount = await db.assets.where('tenantId').equals(tenant.id).count();
+    const salesCount = await db.sales
+        .where('tenantId').equals(tenant.id)
+        .and(s => s.date >= start && s.date <= end)
+        .count();
+
+    return { assets: assetCount, salesThisMonth: salesCount };
+  }, [tenant?.id]);
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -50,13 +68,12 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
       }
 
       // If isolation is ON, look for the user's specific tenant
-      // Roadmap: Fetch from cloud/Firestore in v2.0
       if (localCompany) {
          const t: Tenant = {
              id: localCompany.id,
              name: localCompany.name,
              ownerId: localCompany.createdBy?.uid || 'unknown',
-             tier: 'legacy_pro',
+             tier: 'legacy_pro', // v1.0 users are grandfathered
              status: 'active',
              createdAt: localCompany.createdAt,
              features: ['all']
@@ -74,6 +91,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const value: SaaSContextState = {
     tenant,
     plan,
+    usage: usage || { assets: 0, salesThisMonth: 0 },
     isLoading: isLoading || isUserLoading,
     isLegacyUser: plan?.tier === 'legacy_pro'
   };

@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, PackageSearch, Upload } from "lucide-react";
+import { PlusCircle, PackageSearch, Upload, Lock } from "lucide-react";
 import { AssetForm } from "./asset-form";
 import { getAssetColumns, type AssetColumnActions } from "./asset-columns";
 import { Input } from "@/components/ui/input";
@@ -53,7 +53,7 @@ export function StockClient() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
   const { toast } = useToast();
-  const { tenant } = useSaaS();
+  const { tenant, plan, usage, isLegacyUser } = useSaaS();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -76,23 +76,48 @@ export function StockClient() {
     );
   }, [assets, searchTerm]);
 
+  const isAtCapacity = !isLegacyUser && plan && usage && usage.assets >= plan.maxAssets;
+
   const handleAddAsset = () => {
+    if (isAtCapacity) {
+        toast({ 
+            variant: 'destructive', 
+            title: 'Plan Limit Reached', 
+            description: `You have reached the maximum of ${plan.maxAssets} assets. Please upgrade your plan to add more.` 
+        });
+        return;
+    }
     setEditingAsset(null);
     setIsFormOpen(true);
   };
   
   const handleBulkAdd = () => {
+      if (isAtCapacity) {
+        toast({ variant: 'destructive', title: 'Limit Reached', description: 'Workspace capacity is full.' });
+        return;
+      }
       setIsBulkFormOpen(true);
   }
 
   const handleBulkImport = async () => {
-    if (!bulkData.trim() || !tenant) {
-        toast({ variant: 'destructive', title: 'Error', description: 'The text area is empty or tenant not resolved.' });
+    if (!bulkData.trim() || !tenant || !plan) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Input required.' });
+        return;
+    }
+
+    const lines = bulkData.trim().split('\n').filter(line => line.trim() !== '');
+    const remainingSpace = isLegacyUser ? 9999 : plan.maxAssets - usage.assets;
+
+    if (lines.length > remainingSpace) {
+        toast({ 
+            variant: 'destructive', 
+            title: 'Import Too Large', 
+            description: `You only have space for ${remainingSpace} more assets. Current plan limit: ${plan.maxAssets}.` 
+        });
         return;
     }
 
     setIsBulkImporting(true);
-    const lines = bulkData.trim().split('\n').filter(line => line.trim() !== '');
     
     try {
         const newAssets: Asset[] = lines.map((line) => {
@@ -210,12 +235,12 @@ export function StockClient() {
             />
         </div>
         <div className="flex-shrink-0 flex gap-2">
-            <Button onClick={handleBulkAdd} variant="outline">
+            <Button onClick={handleBulkAdd} variant="outline" className={cn(isAtCapacity && "opacity-50")}>
                 <Upload className="mr-2 h-4 w-4" />
                 Bulk Add
             </Button>
-            <Button onClick={handleAddAsset}>
-                <PlusCircle className="mr-2 h-4 w-4" />
+            <Button onClick={handleAddAsset} className={cn("shadow-md font-bold", isAtCapacity && "bg-muted text-muted-foreground hover:bg-muted")}>
+                {isAtCapacity ? <Lock className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                 Add New Asset
             </Button>
         </div>

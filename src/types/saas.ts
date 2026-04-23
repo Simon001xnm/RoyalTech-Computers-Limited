@@ -29,9 +29,15 @@ export interface Tenant {
   features: string[]; // List of enabled feature IDs
 }
 
+export interface TenantUsage {
+  assets: number;
+  salesThisMonth: number;
+}
+
 export interface SaaSContextState {
   tenant: Tenant | null;
   plan: SubscriptionPlan | null;
+  usage: TenantUsage;
   isLoading: boolean;
   isLegacyUser: boolean;
 }
