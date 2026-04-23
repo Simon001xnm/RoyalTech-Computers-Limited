@@ -42,7 +42,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       const isNetworkError = 
         errorMessage.includes('Failed to fetch') || 
         errorMessage.includes('NetworkError') ||
-        errorMessage.includes('Load failed') ||
+        errorMessage.includes('Load failed') || 
         errorMessage.includes('ChunkLoadError') ||
         errorMessage.includes('timeout') ||
         errorMessage.includes('connection') ||
@@ -56,31 +56,6 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
-    /**
-     * 3. Monkey-patch console.error (Advanced)
-     * Next.js surfaces console.error calls as development overlays.
-     * We temporarily intercept these to filter out the specific "Failed to fetch"
-     * string which is often a low-level browser artifact of interrupted requests.
-     */
-    const originalConsoleError = console.error;
-    console.error = (...args: any[]) => {
-      const firstArg = String(args[0] || '');
-      const isNetworkError = 
-        firstArg.includes('Failed to fetch') || 
-        firstArg.includes('NetworkError') ||
-        firstArg.includes('Load failed') ||
-        firstArg.includes('ChunkLoadError') ||
-        firstArg.includes('Network request failed') ||
-        // Check subsequent args if they contain network error objects
-        args.some(arg => String(arg || '').includes('Failed to fetch'));
-
-      if (isNetworkError) {
-        console.debug('Suppressed console.error (network artifacts):', ...args);
-        return;
-      }
-      originalConsoleError.apply(console, args);
-    };
-
     // Use capture phase to intercept errors as early as possible
     window.addEventListener('unhandledrejection', handleRejection, true);
     window.addEventListener('error', handleGlobalError, true);
@@ -88,8 +63,6 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
     return () => {
       window.removeEventListener('unhandledrejection', handleRejection, true);
       window.removeEventListener('error', handleGlobalError, true);
-      // Restore original console behavior on unmount
-      console.error = originalConsoleError;
     };
   }, []);
 
