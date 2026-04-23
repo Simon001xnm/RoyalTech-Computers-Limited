@@ -10,7 +10,7 @@ import {
     History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown, BarChart3, 
     TrendingUp, Trophy, Filter, Search, X, Loader2, Download, ActivitySquare, 
     ChevronRight, AlertCircle, Info, CheckCircle2, MessageSquare, Inbox, ActivityIcon,
-    Gauge, Eye, User, Phone, Mail, Clock, Send, SendHorizonal
+    Gauge, Eye, User, Phone, Mail, Clock, Send, SendHorizonal, MailCheck, MailQuestion
 } from 'lucide-react';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -38,7 +38,6 @@ export default function PlatformCommandCenter() {
   // State for Log Filtering
   const [logLevelFilter, setLogLevelFilter] = useState<string>('all');
   const [tenantFilter, setTenantFilter] = useState<string>('all');
-  const [isExporting, setIsExporting] = useState(false);
 
   // Diagnostic & Inspection State
   const [diagnosticTenant, setDiagnosticTenant] = useState<any | null>(null);
@@ -57,6 +56,7 @@ export default function PlatformCommandCenter() {
   const users = useLiveQuery(() => db.users.toArray());
   const globalSales = useLiveQuery(() => db.sales.toArray());
   const globalTickets = useLiveQuery(() => db.tickets.toArray());
+  const allNotifications = useLiveQuery(() => db.notifications.orderBy('createdAt').reverse().toArray());
   
   // Node Inspector Data (Computed based on selected ID)
   const inspectionData = useMemo(() => {
@@ -223,11 +223,12 @@ export default function PlatformCommandCenter() {
       </div>
 
       <Tabs defaultValue="activity" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8 h-14 p-1 bg-muted/50 border shadow-inner">
-          <TabsTrigger value="activity" className="font-black uppercase tracking-widest text-xs">Audit Nerve</TabsTrigger>
-          <TabsTrigger value="commercial" className="font-black uppercase tracking-widest text-xs">GMV Insights</TabsTrigger>
-          <TabsTrigger value="tenants" className="font-black uppercase tracking-widest text-xs">Workspace Registry</TabsTrigger>
-          <TabsTrigger value="support" className="font-black uppercase tracking-widest text-xs">Global Helpdesk</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5 mb-8 h-14 p-1 bg-muted/50 border shadow-inner">
+          <TabsTrigger value="activity" className="font-black uppercase tracking-widest text-[10px]">Audit Nerve</TabsTrigger>
+          <TabsTrigger value="commercial" className="font-black uppercase tracking-widest text-[10px]">GMV Insights</TabsTrigger>
+          <TabsTrigger value="tenants" className="font-black uppercase tracking-widest text-[10px]">Workspace Registry</TabsTrigger>
+          <TabsTrigger value="support" className="font-black uppercase tracking-widest text-[10px]">Global Helpdesk</TabsTrigger>
+          <TabsTrigger value="comms" className="font-black uppercase tracking-widest text-[10px]">Comms Log</TabsTrigger>
         </TabsList>
         
         <TabsContent value="activity">
@@ -456,6 +457,70 @@ export default function PlatformCommandCenter() {
                                     </TableCell>
                                 </TableRow>
                             ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </TabsContent>
+
+        <TabsContent value="comms">
+            <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden">
+                <CardHeader className="bg-primary/5 border-b p-6">
+                    <CardTitle className="text-xl font-black uppercase tracking-tight">Platform Communication Log</CardTitle>
+                    <CardDescription className="text-xs uppercase font-bold text-muted-foreground tracking-widest">Tracking delivery and read receipts for all platform alerts</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader className="bg-muted/50">
+                            <TableRow>
+                                <TableHead className="font-black uppercase text-[10px] py-4 px-6">Target Node / User</TableHead>
+                                <TableHead className="font-black uppercase text-[10px]">Subject</TableHead>
+                                <TableHead className="font-black uppercase text-[10px]">Sent At</TableHead>
+                                <TableHead className="font-black uppercase text-[10px]">Read Status</TableHead>
+                                <TableHead className="text-right font-black uppercase text-[10px] px-6">Read At</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {allNotifications?.map(notif => {
+                                const targetTenant = tenants?.find(t => t.id === notif.tenantId);
+                                const targetUser = users?.find(u => u.id === notif.userId);
+                                return (
+                                    <TableRow key={notif.id} className="hover:bg-muted/5 transition-colors">
+                                        <TableCell className="px-6 py-4">
+                                            <div className="font-black uppercase text-xs text-primary">{targetTenant?.name || 'Unknown Node'}</div>
+                                            <div className="text-[10px] text-muted-foreground font-bold italic">
+                                                {notif.userId ? `To: ${targetUser?.name || 'Specific Staff'}` : 'To: All Tenant Staff'}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="font-bold text-sm">{notif.subject}</TableCell>
+                                        <TableCell className="text-[10px] font-medium text-muted-foreground">
+                                            {format(parseISO(notif.createdAt), 'MMM d, HH:mm')}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={notif.read ? "default" : "outline"} className={cn(
+                                                "font-black uppercase text-[9px] h-6 px-3",
+                                                notif.read ? "bg-green-500 hover:bg-green-600 border-none" : "border-orange-200 text-orange-600 bg-orange-50"
+                                            )}>
+                                                {notif.read ? (
+                                                    <><MailCheck className="h-3 w-3 mr-1.5" /> Read</>
+                                                ) : (
+                                                    <><MailQuestion className="h-3 w-3 mr-1.5" /> Sent</>
+                                                )}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right px-6 text-[10px] font-mono text-muted-foreground">
+                                            {notif.read && notif.updatedAt ? format(parseISO(notif.updatedAt), 'HH:mm:ss') : '--:--:--'}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                            {(!allNotifications || allNotifications.length === 0) && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-32 text-center text-muted-foreground font-black uppercase tracking-widest text-xs opacity-40">
+                                        No platform communications logged yet.
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>

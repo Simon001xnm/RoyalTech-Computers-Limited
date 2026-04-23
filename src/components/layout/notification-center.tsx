@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 export function NotificationCenter() {
-  const { user } = useUser();
+  const { user } = userUser();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -52,7 +52,11 @@ export function NotificationCenter() {
   const unreadCount = notifications?.filter(n => !n.read).length || 0;
 
   const handleMarkAsRead = async (id: string) => {
-    await db.notifications.update(id, { read: true, updatedAt: new Date().toISOString() });
+    // UPDATED: Standardizing read receipt logging for Super Admin oversight
+    await db.notifications.update(id, { 
+        read: true, 
+        updatedAt: new Date().toISOString() 
+    });
   };
 
   const handleClearAll = async () => {
