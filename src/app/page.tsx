@@ -16,7 +16,11 @@ import {
   History,
   AlertTriangle,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Bell,
+  CheckCircle2,
+  Info,
+  ShieldCheck
 } from 'lucide-react';
 import { format, startOfDay, subDays, parseISO, differenceInDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +37,7 @@ import { useSaaS } from '@/components/saas/saas-provider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -59,6 +64,23 @@ export default function DashboardPage() {
     return await db.sales.where('tenantId').equals(tenant.id).toArray();
   }, [tenant?.id]);
 
+  // PLATFORM ALERTS: Prominent Dashboard Notifications
+  const platformNotifications = useLiveQuery(async () => {
+    if (!user) return [];
+    
+    const profile = await db.users.get(user.uid);
+    const tid = profile?.tenantId || tenant?.id;
+
+    // Get unread notifications for this user or their tenant
+    const all = await db.notifications
+        .where('read').equals(0) // 0 for false in some indexeddb contexts, but Dexie uses booleans
+        .toArray();
+
+    return all
+        .filter(n => !n.read && (n.userId === user.uid || (tid && n.tenantId === tid)))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [user, tenant?.id]);
+
   const stats = useMemo(() => ({
     availableAssets: assets?.filter(l => l.status === 'Available').length || 0,
     accessoryItems: accessories?.reduce((acc, curr) => acc + (curr.quantity || 0), 0) || 0,
@@ -82,7 +104,7 @@ export default function DashboardPage() {
         alerts.push({ type: 'usage', title: 'Sales Limit Approaching', description: `You are close to your monthly limit of ${plan.maxSalesPerMonth} transactions.` });
     }
 
-    // Expiry Alerts (Simulated)
+    // Expiry Alerts
     if (tenant?.expiresAt) {
         const daysLeft = differenceInDays(parseISO(tenant.expiresAt), new Date());
         if (daysLeft <= 7 && daysLeft >= 0) {
@@ -92,6 +114,13 @@ export default function DashboardPage() {
 
     return alerts;
   }, [plan, usage, isLegacyUser, tenant]);
+
+  const handleMarkAsRead = async (id: string) => {
+    await db.notifications.update(id, { 
+        read: true, 
+        updatedAt: new Date().toISOString() 
+    });
+  };
 
   const chartData = useMemo(() => {
     if (!sales) return [];
@@ -150,9 +179,46 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* PLATFORM COMMUNICATION: High-Priority Dashboard Alerts */}
+      {platformNotifications && platformNotifications.length > 0 && (
+          <div className="space-y-4 animate-in slide-in-from-top duration-700">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                <Bell className="h-4 w-4 animate-bounce" />
+                Urgent Platform Communications
+              </h3>
+              <div className="grid grid-cols-1 gap-4">
+                {platformNotifications.map((notif) => (
+                    <Card key={notif.id} className={cn(
+                        "relative overflow-hidden border-l-4 shadow-lg transition-all hover:scale-[1.01]",
+                        notif.priority === 'alert' ? "border-l-red-600 bg-red-50/50" : "border-l-primary bg-primary/5"
+                    )}>
+                        <CardHeader className="pb-2">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-2">
+                                    {notif.priority === 'alert' ? <AlertTriangle className="h-5 w-5 text-red-600" /> : <ShieldCheck className="h-5 w-5 text-primary" />}
+                                    <CardTitle className="text-base font-black uppercase tracking-tight">{notif.subject}</CardTitle>
+                                </div>
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase">{format(parseISO(notif.createdAt), 'MMM d, h:mm a')}</span>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-foreground leading-relaxed font-medium">{notif.message}</p>
+                        </CardContent>
+                        <CardFooter className="pt-2 flex justify-between items-center border-t bg-background/50">
+                            <p className="text-[10px] font-bold text-muted-foreground">From: {notif.from}</p>
+                            <Button variant="ghost" size="sm" onClick={() => handleMarkAsRead(notif.id)} className="h-8 font-bold text-xs hover:bg-primary/10">
+                                <CheckCircle2 className="h-4 w-4 mr-2" /> Mark as Read
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                ))}
+              </div>
+          </div>
+      )}
+
       {/* Workspace Health Section */}
       {healthAlerts.length > 0 && (
-          <div className="space-y-4 animate-in slide-in-from-top duration-500">
+          <div className="space-y-4">
               {healthAlerts.map((alert, idx) => (
                   <Alert key={idx} variant={alert.type === 'usage' ? 'default' : 'destructive'} className="bg-gradient-to-r from-background to-muted/50 border-primary/20 shadow-sm overflow-hidden">
                     <div className="flex items-center justify-between gap-4">

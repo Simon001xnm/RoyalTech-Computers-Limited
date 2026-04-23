@@ -47,14 +47,16 @@ export function NotificationCenter() {
     const profile = await db.users.get(user.uid);
     const tid = profile?.tenantId;
 
-    // Fetch all notifications for this tenant
-    // Note: We filter for specifically targeted messages vs group broadcasts in memory for simplicity
-    const all = await db.notifications
-        .where('tenantId').equals(tid || 'platform')
-        .toArray();
+    // Fetch all notifications from the local store
+    const all = await db.notifications.toArray();
 
+    // Filter for messages targeted at this specific user OR their current tenant
     return all
-        .filter(n => !n.userId || n.userId === user.uid)
+        .filter(n => {
+            const isForMe = n.userId === user.uid;
+            const isForMyTenant = tid && n.tenantId === tid;
+            return isForMe || isForMyTenant;
+        })
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [user]);
 
