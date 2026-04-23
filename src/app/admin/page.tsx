@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SummaryCard } from '@/components/dashboard/summary-card';
-import { Building2, Users, CreditCard, Activity, ShieldCheck, Globe, Database, Server, History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown } from 'lucide-react';
+import { Building2, Users, CreditCard, Activity, ShieldCheck, Globe, Database, Server, History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown, BarChart3, TrendingUp, Trophy } from 'lucide-react';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 
 export default function SuperAdminDashboard() {
   const { toast } = useToast();
@@ -37,6 +38,26 @@ export default function SuperAdminDashboard() {
         recentErrors: errorsCount
     };
   }, [tenants, users, globalSales, logs]);
+
+  const commercialInsights = useMemo(() => {
+    if (!globalSales || !tenants) return [];
+    
+    return tenants.map(t => {
+        const tenantSales = globalSales.filter(s => s.tenantId === t.id);
+        const gmv = tenantSales.reduce((acc, s) => acc + s.amount, 0);
+        const lastSaleDate = tenantSales.length > 0 
+            ? tenantSales.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date 
+            : null;
+            
+        return {
+            name: t.name,
+            id: t.id,
+            gmv,
+            salesCount: tenantSales.length,
+            lastActive: lastSaleDate
+        };
+    }).sort((a, b) => b.gmv - a.gmv);
+  }, [globalSales, tenants]);
 
   const handleUpdateTenantStatus = async (tenantId: string, status: 'active' | 'suspended') => {
     try {
@@ -70,7 +91,7 @@ export default function SuperAdminDashboard() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <PageHeader 
         title="Platform Command" 
-        description="Global SaaS oversight and workspace lifecycle management."
+        description="Global SaaS oversight and workspace commercial intelligence."
         actions={
             <div className="flex gap-2">
                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -97,8 +118,9 @@ export default function SuperAdminDashboard() {
       </div>
 
       <Tabs defaultValue="activity" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8 h-12 p-1 bg-muted/30">
+        <TabsList className="grid w-full grid-cols-3 mb-8 h-12 p-1 bg-muted/30">
           <TabsTrigger value="activity" className="font-bold">Global Activity Stream</TabsTrigger>
+          <TabsTrigger value="commercial" className="font-bold">Commercial Insights</TabsTrigger>
           <TabsTrigger value="tenants" className="font-bold">Workspace Management</TabsTrigger>
         </TabsList>
         
@@ -180,11 +202,88 @@ export default function SuperAdminDashboard() {
                         <div className="p-4 bg-primary text-primary-foreground rounded-2xl shadow-lg space-y-2">
                             <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Infrastructure Alert</p>
                             <p className="text-xs font-medium leading-relaxed">
-                                System operating on **v2.0 SaaS Engine**. Migration to v3.0 (Standalone Backend) is currently in design phase.
+                                System operating on **v2.0 SaaS Engine**. Multi-tenant Commercial Intelligence (Phase 10) is active.
                             </p>
                         </div>
                     </CardContent>
                 </Card>
+            </div>
+        </TabsContent>
+
+        <TabsContent value="commercial">
+            <div className="grid gap-6">
+                <Card className="shadow-md border-muted/40 overflow-hidden">
+                    <CardHeader className="bg-primary/5 border-b">
+                        <div className="flex items-center gap-2">
+                            <Trophy className="h-5 w-5 text-primary" />
+                            <CardTitle>Tenant GMV Leaderboard</CardTitle>
+                        </div>
+                        <CardDescription>Top business workspaces ranked by cumulative sales volume.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="divide-y">
+                            {commercialInsights.map((tenant, index) => (
+                                <div key={tenant.id} className="p-6 flex items-center justify-between hover:bg-muted/10 transition-colors">
+                                    <div className="flex items-center gap-6">
+                                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-black text-xs">
+                                            #{index + 1}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-base">{tenant.name}</p>
+                                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                                                <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> {tenant.salesCount} Transactions</span>
+                                                {tenant.lastActive && (
+                                                    <span className="flex items-center gap-1"><History className="h-3 w-3" /> Last Active: {format(parseISO(tenant.lastActive), 'MMM d')}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xl font-black text-primary">{formatCurrency(tenant.gmv)}</p>
+                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Total Volume</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                     <Card className="shadow-sm border-muted/40">
+                        <CardHeader>
+                            <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Revenue Distribution</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            {commercialInsights.slice(0, 5).map(tenant => {
+                                const percentage = platformStats.totalRevenue > 0 ? (tenant.gmv / platformStats.totalRevenue) * 100 : 0;
+                                return (
+                                    <div key={tenant.id} className="space-y-1.5">
+                                        <div className="flex justify-between text-xs font-bold">
+                                            <span>{tenant.name}</span>
+                                            <span>{percentage.toFixed(1)}%</span>
+                                        </div>
+                                        <Progress value={percentage} className="h-2" />
+                                    </div>
+                                )
+                            })}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="shadow-sm border-muted/40 bg-muted/20">
+                        <CardHeader>
+                            <div className="flex items-center gap-2">
+                                <Zap className="h-4 w-4 text-primary" />
+                                <CardTitle className="text-sm">Commercial Potential</CardTitle>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-xs leading-relaxed text-muted-foreground">
+                                High GMV tenants with > 100 transactions are prime candidates for the **Enterprise Elite** subscription override. Use the "Workspace Management" tab to adjust their tier manually if payment is handled offline.
+                            </p>
+                            <Button className="mt-4 w-full h-8 text-[10px] uppercase font-bold" variant="outline">Download Platform Statement</Button>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </TabsContent>
 

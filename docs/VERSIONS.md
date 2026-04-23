@@ -20,7 +20,7 @@
 - **Multi-Tenancy**: Data isolation via `tenantId` across all modules.
 - **Subscription Engine**: Tiered access (Free, Basic, Pro) with Legacy Pro protection.
 - **Usage Meters**: Real-time tracking of Assets and Sales volume per workspace.
-- **Super Admin Intelligence**: Platform-wide activity feed and GMV analytics.
+- **Super Admin Intelligence**: Platform-wide activity feed and GMV analytics (Phase 10).
 - **Infrastructure Abstraction**: Unified Service Layer (Decoupled UI from DB).
 
 ---
