@@ -26,7 +26,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/stock', label: 'Asset Inventory', icon: PackageIcon },
   { href: '/accessories', label: 'Accessories', icon: Component },
   { href: '/customers', label: 'Customers', icon: Users },
-  { href: '/leases', label: 'Lease Tracking', icon: FileText },
   { href: '/documents', label: 'Documents', icon: Printer },
   { href: '/tracking', label: 'Asset Tracking', icon: MapPin },
   { href: '/crm', label: 'CRM', icon: ClipboardList },

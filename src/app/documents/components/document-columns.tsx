@@ -21,7 +21,6 @@ const documentIcons: Record<DocumentType, React.ElementType> = {
     Proforma: FileText,
     RepairNote: FileWarning,
     DeliveryNote: Truck,
-    LeaseAgreement: FileText,
     Quotation: FilePlus2,
     LPO: ShoppingCart,
 };

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -11,11 +12,10 @@ import {
   Package, 
   Component, 
   Users, 
-  AlertCircle, 
-  Clock,
-  TrendingUp
+  TrendingUp,
+  History
 } from 'lucide-react';
-import { format, differenceInDays, parseISO, startOfDay, subDays } from 'date-fns';
+import { format, startOfDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { 
   Area, 
@@ -33,15 +33,18 @@ export default function DashboardPage() {
   const assets = useLiveQuery(() => db.assets.toArray());
   const accessories = useLiveQuery(() => db.accessories.toArray());
   const customers = useLiveQuery(() => db.customers.toArray());
-  const leases = useLiveQuery(() => db.leases.toArray());
   const sales = useLiveQuery(() => db.sales.orderBy('date').reverse().toArray());
 
   const stats = useMemo(() => ({
     availableAssets: assets?.filter(l => l.status === 'Available').length || 0,
     accessoryItems: accessories?.reduce((acc, curr) => acc + (curr.quantity || 0), 0) || 0,
     totalClients: customers?.length || 0,
-    activeLeases: leases?.filter(l => l.status === 'Active').length || 0
-  }), [assets, accessories, customers, leases]);
+    recentSalesCount: sales?.filter(s => {
+        const saleDate = new Date(s.date);
+        const today = new Date();
+        return saleDate.getMonth() === today.getMonth() && saleDate.getFullYear() === today.getFullYear();
+    }).length || 0
+  }), [assets, accessories, customers, sales]);
 
   const chartData = useMemo(() => {
     if (!sales) return [];
@@ -64,19 +67,6 @@ export default function DashboardPage() {
 
     return last7Days;
   }, [sales]);
-
-  const expiringLeases = useMemo(() => {
-    if (!leases) return [];
-    const today = new Date();
-    return leases
-      .filter(l => l.status === 'Active')
-      .map(l => ({
-        ...l,
-        daysLeft: differenceInDays(parseISO(l.endDate), today)
-      }))
-      .filter(l => l.daysLeft >= 0 && l.daysLeft <= 30)
-      .sort((a, b) => a.daysLeft - b.daysLeft);
-  }, [leases]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
@@ -128,10 +118,10 @@ export default function DashboardPage() {
           description="Active accounts in CRM"
         />
         <SummaryCard 
-          title="Active Leases" 
-          value={stats.activeLeases} 
-          icon={Clock} 
-          description="Ongoing hardware contracts"
+          title="Monthly Sales" 
+          value={stats.recentSalesCount} 
+          icon={TrendingUp} 
+          description="Total transactions this month"
         />
       </div>
 
@@ -187,32 +177,30 @@ export default function DashboardPage() {
         <Card className="shadow-sm border-muted/40">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-orange-500" />
-              <CardTitle className="text-lg">Renewals Pending</CardTitle>
+              <History className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Recent Activity</CardTitle>
             </div>
-            <CardDescription>Contracts ending within 30 days.</CardDescription>
+            <CardDescription>Latest sales transactions recorded.</CardDescription>
           </CardHeader>
           <CardContent className="max-h-[320px] overflow-auto">
-            {expiringLeases.length > 0 ? (
+            {sales && sales.length > 0 ? (
               <div className="space-y-4">
-                {expiringLeases.map(lease => (
-                  <div key={lease.id} className="flex items-center justify-between border-b border-muted/30 pb-3 last:border-0 last:pb-0">
+                {sales.slice(0, 10).map(sale => (
+                  <div key={sale.id} className="flex items-center justify-between border-b border-muted/30 pb-3 last:border-0 last:pb-0">
                     <div className="space-y-1">
-                      <p className="text-sm font-semibold leading-none">{lease.customerName}</p>
-                      <p className="text-xs text-muted-foreground">{lease.assetModel}</p>
+                      <p className="text-sm font-semibold leading-none">{sale.customerName || 'Walk-in'}</p>
+                      <p className="text-xs text-muted-foreground">{format(parseISO(sale.date), 'MMM d, h:mm a')}</p>
                     </div>
                     <div className="text-right">
-                      <Badge variant={lease.daysLeft <= 7 ? "destructive" : "secondary"} className="text-[10px] uppercase font-bold">
-                        {lease.daysLeft} days
-                      </Badge>
+                      <p className="text-sm font-bold">{formatCurrency(sale.amount)}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Badge variant="outline" className="mb-2">Stable</Badge>
-                <p className="text-xs text-muted-foreground">All contracts are currently up to date.</p>
+                <Badge variant="outline" className="mb-2">Quiet</Badge>
+                <p className="text-xs text-muted-foreground">No recent activity detected.</p>
               </div>
             )}
           </CardContent>

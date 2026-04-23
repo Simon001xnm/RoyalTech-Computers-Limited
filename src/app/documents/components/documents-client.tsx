@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -34,7 +35,6 @@ import { RepairNotePdf } from "./pdfs/repair-note-pdf";
 import { DeliveryNotePdf } from "./pdfs/delivery-note-pdf";
 import { QuotationPdf } from "./pdfs/quotation-pdf";
 import { LpoPdf } from "./pdfs/lpo-pdf";
-import { LeaseAgreementPdf } from "./pdfs/lease-agreement-pdf";
 import {
   useReactTable,
   getCoreRowModel,
@@ -47,7 +47,6 @@ import { getDocumentColumns, type DocumentColumnActions } from "./document-colum
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePad } from "@/components/ui/signature-pad";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -76,14 +75,6 @@ export function DocumentsClient() {
   const [delivererSignature, setDelivererDelivererSignature] = useState('');
   const [recipientSignature, setRecipientSignature] = useState('');
   const [signature, setSignature] = useState(''); 
-  
-  // New state for Invoice/Quotation type and lease fields
-  const [invoiceType, setInvoiceType] = useState<'standard' | 'lease'>('standard');
-  const [leaseDescription, setLeaseDescription] = useState('');
-  const [leaseQuantity, setLeaseQuantity] = useState('1');
-  const [leaseDuration, setLeaseDuration] = useState('1');
-  const [leaseDurationUnit, setLeaseDurationUnit] = useState<'Days' | 'Weeks' | 'Months' | 'Years'>('Months');
-  const [leaseRate, setLeaseRate] = useState('');
 
   const [lineItems, setLineItems] = useState<DocumentLineItem[]>([{ description: '', quantity: 1, unitPrice: 0 }]);
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
@@ -104,12 +95,6 @@ export function DocumentsClient() {
     setDelivererDelivererSignature('');
     setRecipientSignature('');
     setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
-    setInvoiceType('standard');
-    setLeaseDescription('');
-    setLeaseQuantity('1');
-    setLeaseDuration('1');
-    setLeaseDurationUnit('Months');
-    setLeaseRate('');
   };
 
   const handleGenerateDocument = async (type: DocumentType) => {
@@ -119,7 +104,6 @@ export function DocumentsClient() {
     const documentData: any = { details, applyVat, signature };
 
     const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
-    let selectedAsset = assets?.find(a => a.id === selectedAssetId);
     
     if (selectedCustomer) {
         documentData.customer = selectedCustomer;
@@ -134,31 +118,19 @@ export function DocumentsClient() {
         }
         documentData.amount = parsedAmount;
     } else if (['Quotation', 'Invoice', 'Proforma'].includes(type)) {
-        if (invoiceType === 'standard') {
-            const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
-            documentData.items = validLineItems;
-            const subtotal = validLineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-            const vat = applyVat ? subtotal * VAT_RATE : 0;
-            documentData.subtotal = subtotal;
-            documentData.vat = vat;
-            documentData.total = subtotal + vat;
-            documentData.invoiceType = 'standard';
-        } else {
-            const subtotal = parseInt(leaseDuration) * parseFloat(leaseRate) * parseInt(leaseQuantity);
-            const vat = applyVat ? subtotal * VAT_RATE : 0;
-            documentData.leaseDetails = { description: leaseDescription, quantity: parseInt(leaseQuantity), duration: parseInt(leaseDuration), durationUnit: leaseDurationUnit, rate: parseFloat(leaseRate) };
-            documentData.subtotal = subtotal;
-            documentData.vat = vat;
-            documentData.total = subtotal + vat;
-            documentData.invoiceType = 'lease';
-        }
+        const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
+        documentData.items = validLineItems;
+        const subtotal = validLineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+        const vat = applyVat ? subtotal * VAT_RATE : 0;
+        documentData.subtotal = subtotal;
+        documentData.vat = vat;
+        documentData.total = subtotal + vat;
     } else if (type === 'DeliveryNote') {
         documentData.deliveredBy = deliveredBy;
         documentData.receivedBy = receivedBy;
         documentData.delivererSignature = delivererSignature;
         documentData.recipientSignature = recipientSignature;
-        if (selectedAsset) documentData.laptop = selectedAsset;
-        else documentData.items = lineItems.filter(i => i.description.trim() !== '');
+        documentData.items = lineItems.filter(i => i.description.trim() !== '');
     }
 
     try {
@@ -212,7 +184,6 @@ export function DocumentsClient() {
     setActiveTab(targetType);
     if (sourceDoc.data.customer) setSelectedCustomerId(sourceDoc.data.customer.id);
     if (sourceDoc.data.items) setLineItems(sourceDoc.data.items);
-    if (sourceDoc.data.invoiceType) setInvoiceType(sourceDoc.data.invoiceType);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -263,7 +234,6 @@ export function DocumentsClient() {
       case 'DeliveryNote': return <DeliveryNotePdf document={selectedDocument} />;
       case 'Quotation': return <QuotationPdf document={selectedDocument} />;
       case 'LPO': return <LpoPdf document={selectedDocument} />;
-      case 'LeaseAgreement': return <LeaseAgreementPdf document={selectedDocument} />;
       default: return null;
     }
   }
@@ -292,7 +262,7 @@ export function DocumentsClient() {
 
   const renderForm = (type: DocumentType) => {
     const isDelivery = type === 'DeliveryNote';
-    const showsInvoiceType = ['Invoice', 'Proforma', 'Quotation'].includes(type);
+    const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'DeliveryNote', 'LPO'].includes(type);
     return (
       <Card className="shadow-lg">
         <CardHeader><CardTitle>Generate {type}</CardTitle></CardHeader>
@@ -310,14 +280,7 @@ export function DocumentsClient() {
           {type === 'Receipt' && (
             <div><Label>Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
           )}
-          {showsInvoiceType && (
-            <RadioGroup value={invoiceType} onValueChange={(v: any) => setInvoiceType(v)} className="grid grid-cols-2 gap-4">
-                <Label htmlFor="t-s" className="border p-4 rounded cursor-pointer"><RadioGroupItem value="standard" id="t-s" className="mr-2" />Standard</Label>
-                <Label htmlFor="t-l" className="border p-4 rounded cursor-pointer"><RadioGroupItem value="lease" id="t-l" className="mr-2" />Lease-based</Label>
-            </RadioGroup>
-          )}
-          {showsInvoiceType && invoiceType === 'standard' && renderManualItemEntry()}
-          {isDelivery && renderManualItemEntry()}
+          {showsItemEntry && renderManualItemEntry()}
           {isDelivery && (
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
                    <div className="space-y-4"><Label>Delivered By</Label><Input value={deliveredBy} onChange={e => setDeliveredBy(e.target.value)} /><SignaturePad onSave={setDelivererDelivererSignature} /></div>

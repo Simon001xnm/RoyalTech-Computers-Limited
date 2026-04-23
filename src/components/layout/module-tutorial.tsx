@@ -24,16 +24,15 @@ interface TutorialContent {
 const TUTORIAL_DATA: Record<string, TutorialContent> = {
   "/": {
     title: "Executive Dashboard",
-    description: "Your business at a glance. This command center provides real-time analytics and alerts for all your assets.",
+    description: "Your business at a glance. This command center provides real-time analytics and activity logs for your workspace.",
     features: [
       "Revenue Analytics: Track your sales trends over the last 7 days.",
-      "KPI Cards: Monitor asset availability, active leases, and client growth.",
-      "Renewal Alerts: See which leases are expiring in the next 30 days.",
-      "Global Activity: A unified feed of every transaction recorded in the system."
+      "KPI Cards: Monitor asset availability, client growth, and monthly volume.",
+      "Recent Activity: A live feed of every transaction recorded in the system."
     ],
     tips: [
       "Hover over the chart points to see exact revenue figures.",
-      "The 'Days Remaining' badges are color-coded: Red means critical (under 7 days)."
+      "Use the summary cards to quickly identify stock shortages."
     ]
   },
   "/pos": {
@@ -55,13 +54,13 @@ const TUTORIAL_DATA: Record<string, TutorialContent> = {
     description: "Manage your high-value hardware assets with serial-number precision.",
     features: [
       "Bulk Import: Paste CSV data to add hundreds of devices at once.",
-      "Status Tracking: Monitor if an asset is Available, Leased, Under Repair, or with a Reseller.",
+      "Status Tracking: Monitor if an asset is Available, Sold, Under Repair, or with a Reseller.",
       "Tech Specs: Store RAM, Storage, and Processor details for every unit.",
-      "Pricing Control: Set standard purchase prices and monthly lease rates."
+      "Pricing Control: Set standard purchase prices and acquisition dates."
     ],
     tips: [
       "Use the search bar to find an asset by its Serial Number instantly.",
-      "Items marked as 'Leased' cannot be deleted to protect your data integrity."
+      "Ensure acquisition dates are accurate for better financial reporting."
     ]
   },
   "/accessories": {
@@ -82,24 +81,10 @@ const TUTORIAL_DATA: Record<string, TutorialContent> = {
     features: [
       "Customer Profiles: Store contact details, addresses, and avatars.",
       "Registration Tracking: See when each client joined your ecosystem.",
-      "Centralized Data: These profiles power your Leases, POS, and Documents."
+      "Centralized Data: These profiles power your POS and Documents."
     ],
     tips: [
       "Ensure emails are accurate, as they are used for generating professional invoices."
-    ]
-  },
-  "/leases": {
-    title: "Lease Tracking",
-    description: "The core engine for hardware-as-a-service providers.",
-    features: [
-      "Automated Status: Leases move from 'Upcoming' to 'Active' to 'Expired' automatically.",
-      "Asset Locking: Assets assigned to a lease are automatically hidden from the POS basket.",
-      "Digital Signatures: Capture the lessee's signature directly on your device.",
-      "Payment Tracking: Mark monthly payments as Paid, Pending, or Overdue."
-    ],
-    tips: [
-      "When a lease is 'Terminated', the associated asset is instantly returned to 'Available' stock.",
-      "Check the 'Days Remaining' column daily to manage renewals."
     ]
   },
   "/documents": {
@@ -113,16 +98,16 @@ const TUTORIAL_DATA: Record<string, TutorialContent> = {
     ],
     tips: [
       "The 'powered by simonstyless' footer is mandatory for professional verification.",
-      "Use the 'Lease-based' invoice type to automatically calculate duration-based totals."
+      "Use the 'Proforma' option to provide billing details before final payment is received."
     ]
   },
   "/tracking": {
     title: "Asset Tracking",
-    description: "Map-based visualization of your leased hardware.",
+    description: "Map-based visualization of your hardware assets in the field.",
     features: [
       "Real-time Map: See the last known GPS coordinates of your assets.",
-      "Asset Selection: Filter the map to focus on a specific leased unit.",
-      "Status Verification: See if a device is currently leased or in the repair shop."
+      "Asset Selection: Filter the map to focus on a specific unit.",
+      "Status Verification: See if a device is currently with a reseller or in the repair shop."
     ],
     tips: [
       "This feature requires a valid Google Maps API key in your system settings."

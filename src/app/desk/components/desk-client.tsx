@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -50,21 +51,8 @@ export function DeskClient() {
   // Local data fetching
   const tickets = useLiveQuery(() => db.tickets.toArray());
   const customers = useLiveQuery(() => db.customers.toArray());
-  const leases = useLiveQuery(() => db.leases.toArray());
-  const assets = useLiveQuery(() => db.assets.toArray());
 
-  const isLoading = tickets === undefined || customers === undefined || leases === undefined;
-
-  const leasesWithAssetDetails = useMemo(() => {
-    return (leases || []).map(lease => {
-      const asset = assets?.find(a => a.id === lease.assetId);
-      return { 
-        ...lease, 
-        assetSerialNumber: asset?.serialNumber || 'N/A', 
-        assetModel: asset?.model || lease.assetModel || 'N/A' 
-      };
-    });
-  }, [leases, assets]);
+  const isLoading = tickets === undefined || customers === undefined;
 
   const filteredTickets = useMemo(() => {
     if (!tickets) return [];
@@ -76,13 +64,10 @@ export function DeskClient() {
 
   const handleFormSubmit = async (data: any) => { 
     const selectedCustomer = customers?.find(c => c.id === data.customerId);
-    const selectedLease = leases?.find(l => l.id === data.leaseId);
-    const selectedAsset = assets?.find(a => a.id === selectedLease?.assetId);
 
     const ticketData = {
         ...data,
         customerName: selectedCustomer?.name,
-        leaseIdentifier: selectedLease ? `${selectedAsset?.serialNumber || selectedLease.assetId} (${selectedAsset?.model || selectedLease.assetModel})` : undefined,
         updatedAt: new Date().toISOString(),
     };
 
@@ -136,7 +121,7 @@ export function DeskClient() {
         <div className="rounded-lg border shadow-sm bg-card">
           <Table>
             <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
-            <TableBody>{table.getRowModel().rows.map(row => (<TableRow key={row.id}>{row.getIsSelected() && "selected"} key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))}</TableBody>
+            <TableBody>{table.getRowModel().rows.map(row => (<TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))}</TableBody>
           </Table>
           <DataTablePagination table={table} />
         </div>
@@ -149,7 +134,6 @@ export function DeskClient() {
           <TicketForm 
             ticket={editingTicket} 
             customers={customers || []} 
-            leases={leasesWithAssetDetails || []} 
             onSubmit={handleFormSubmit} 
             onCancel={() => setIsFormOpen(false)} 
           />

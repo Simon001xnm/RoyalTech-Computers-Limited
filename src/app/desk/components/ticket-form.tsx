@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import type { Ticket, Customer, Lease } from "@/types";
+import type { Ticket, Customer } from "@/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +24,6 @@ const ticketFormSchema = z.object({
   subject: z.string().min(5, "Subject must be at least 5 characters."),
   description: z.string().optional(),
   customerId: z.string().min(1, "Customer is required."),
-  leaseId: z.string().optional(),
   priority: z.enum(["Low", "Medium", "High"]),
   status: z.enum(["Open", "In Progress", "Closed"]),
 });
@@ -33,7 +33,6 @@ type TicketFormValues = z.infer<typeof ticketFormSchema>;
 interface TicketFormProps {
   ticket?: Ticket | null;
   customers: Customer[];
-  leases: (Lease & { assetSerialNumber?: string; assetModel?: string })[];
   onSubmit: (data: TicketFormValues) => void;
   onCancel: () => void;
   isLoading?: boolean;
@@ -42,7 +41,6 @@ interface TicketFormProps {
 export function TicketForm({ 
   ticket, 
   customers = [], 
-  leases = [], 
   onSubmit, 
   onCancel, 
   isLoading 
@@ -62,13 +60,6 @@ export function TicketForm({
     defaultValues,
   });
 
-  const selectedCustomerId = form.watch("customerId");
-
-  const customerLeases = useMemo(() => {
-    if (!selectedCustomerId) return [];
-    return leases.filter(l => l.customerId === selectedCustomerId);
-  }, [selectedCustomerId, leases]);
-
   const handleSubmit = (data: TicketFormValues) => {
     onSubmit(data);
   };
@@ -76,48 +67,26 @@ export function TicketForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
+        <FormField
             control={form.control}
             name="customerId"
             render={({ field }) => (
-              <FormItem>
+                <FormItem>
                 <FormLabel>Customer</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
+                    <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a customer" />
+                        <SelectValue placeholder="Select a customer" />
                     </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
+                    </FormControl>
+                    <SelectContent>
                     {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
+                    </SelectContent>
                 </Select>
                 <FormMessage />
-              </FormItem>
+                </FormItem>
             )}
-          />
-           <FormField
-            control={form.control}
-            name="leaseId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Related Lease (Optional)</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedCustomerId || customerLeases.length === 0}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder={!selectedCustomerId ? "Select a customer first" : "Select a lease"} />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {customerLeases.map(l => <SelectItem key={l.id} value={l.id}>{l.assetSerialNumber} ({l.assetModel})</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        />
         <FormField
           control={form.control}
           name="subject"
