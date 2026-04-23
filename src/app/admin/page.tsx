@@ -3,14 +3,19 @@
 
 import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { SummaryCard } from '@/components/dashboard/summary-card';
-import { Building2, Users, CreditCard, Activity, ShieldCheck, Globe, Database, Server, History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown, BarChart3, TrendingUp, Trophy, Filter, Search, X, Loader2, Download } from 'lucide-react';
+import { 
+    Building2, Users, CreditCard, Activity, ShieldCheck, Globe, Database, Server, 
+    History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown, BarChart3, 
+    TrendingUp, Trophy, Filter, Search, X, Loader2, Download, ActivitySquare, 
+    ChevronRight, AlertCircle, Info, CheckCircle2
+} from 'lucide-react';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -20,7 +25,7 @@ import { logger } from '@/lib/logger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 export default function SuperAdminDashboard() {
   const { toast } = useToast();
@@ -30,6 +35,9 @@ export default function SuperAdminDashboard() {
   const [tenantFilter, setTenantFilter] = useState<string>('all');
   const [isExporting, setIsExporting] = useState(false);
 
+  // Diagnostic State
+  const [diagnosticTenantId, setDiagnosticTenantId] = useState<string | null>(null);
+
   const tenants = useLiveQuery(() => db.companies.toArray());
   const users = useLiveQuery(() => db.users.toArray());
   const globalSales = useLiveQuery(() => db.sales.toArray());
@@ -37,7 +45,7 @@ export default function SuperAdminDashboard() {
   // Reactive logs with filtering
   const logs = useLiveQuery(async () => {
     let collection = db.platformLogs.orderBy('timestamp').reverse();
-    const result = await collection.limit(200).toArray();
+    const result = await collection.limit(500).toArray();
     
     return result.filter(log => {
         const matchesLevel = logLevelFilter === 'all' || log.level === logLevelFilter;
@@ -77,6 +85,26 @@ export default function SuperAdminDashboard() {
     }).sort((a, b) => b.gmv - a.gmv);
   }, [globalSales, tenants]);
 
+  // DIAGNOSTIC DATA: Only runs when a specific tenant is selected
+  const diagnosticData = useLiveQuery(async () => {
+      if (!diagnosticTenantId) return null;
+      
+      const now = new Date();
+      const start = startOfMonth(now).toISOString();
+      const end = endOfMonth(now).toISOString();
+
+      const tenantLogs = await db.platformLogs.where('tenantId').equals(diagnosticTenantId).reverse().limit(50).toArray();
+      const assetCount = await db.assets.where('tenantId').equals(diagnosticTenantId).count();
+      const monthlySales = await db.sales.where('tenantId').equals(diagnosticTenantId).and(s => s.date >= start && s.date <= end).count();
+      const tenantUsers = await db.users.where('tenantId').equals(diagnosticTenantId).toArray();
+
+      return {
+          logs: tenantLogs,
+          usage: { assets: assetCount, sales: monthlySales },
+          team: tenantUsers
+      };
+  }, [diagnosticTenantId]);
+
   const handleUpdateTenantStatus = async (tenantId: string, status: 'active' | 'suspended') => {
     try {
         await db.companies.update(tenantId, { status, updatedAt: new Date().toISOString() });
@@ -95,6 +123,11 @@ export default function SuperAdminDashboard() {
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Action Failed', description: e.message });
     }
+  };
+
+  const handleOpenDiagnostics = (tenantId: string) => {
+      setDiagnosticTenantId(tenantId);
+      logger.info('System', 'Diagnostic Session Started', { targetTenantId: tenantId });
   };
 
   const handleDownloadPlatformStatement = async () => {
@@ -117,7 +150,6 @@ export default function SuperAdminDashboard() {
             const pdf = new jsPDF('p', 'mm', 'a4');
             const imgData = canvas.toDataURL('image/png', 1.0);
             
-            // Standard A4: 210mm x 297mm
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 210 * (canvas.height / canvas.width));
             pdf.save(`SaaS_Platform_Statement_${format(new Date(), 'yyyyMMdd')}.pdf`);
             
@@ -142,6 +174,8 @@ export default function SuperAdminDashboard() {
       maximumFractionDigits: 0
     }).format(amount);
   };
+
+  const selectedTenantObj = tenants?.find(t => t.id === diagnosticTenantId);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -307,7 +341,7 @@ export default function SuperAdminDashboard() {
                         <div className="p-4 bg-primary text-primary-foreground rounded-2xl shadow-lg space-y-2">
                             <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Infrastructure Alert</p>
                             <p className="text-xs font-medium leading-relaxed">
-                                System operating on **v2.0 SaaS Engine**. Multi-tenant Commercial Intelligence (Phase 13) is active.
+                                System operating on **v2.0 SaaS Engine**. Deep-dive Diagnostics (Phase 15) active.
                             </p>
                         </div>
                     </CardContent>
@@ -362,47 +396,6 @@ export default function SuperAdminDashboard() {
                         </div>
                     </CardContent>
                 </Card>
-
-                <div className="grid gap-6 md:grid-cols-2">
-                     <Card className="shadow-sm border-muted/40">
-                        <CardHeader>
-                            <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Revenue Distribution</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            {commercialInsights.slice(0, 5).map(tenant => {
-                                const percentage = platformStats.totalRevenue > 0 ? (tenant.gmv / platformStats.totalRevenue) * 100 : 0;
-                                return (
-                                    <div key={tenant.id} className="space-y-1.5">
-                                        <div className="flex justify-between text-xs font-bold">
-                                            <span>{tenant.name}</span>
-                                            <span>{percentage.toFixed(1)}%</span>
-                                        </div>
-                                        <Progress value={percentage} className="h-2" />
-                                    </div>
-                                )
-                            })}
-                        </CardContent>
-                    </Card>
-
-                    <Card className="shadow-sm border-muted/40 bg-muted/20">
-                        <CardHeader>
-                            <div className="flex items-center gap-2">
-                                <Zap className="h-4 w-4 text-primary" />
-                                <CardTitle className="text-sm">Commercial Potential</CardTitle>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-xs leading-relaxed text-muted-foreground">
-                                High GMV tenants with > 100 transactions are prime candidates for the **Enterprise Elite** subscription override. Use the "Workspace Management" tab to adjust their tier manually if payment is handled offline.
-                            </p>
-                            <div className="mt-8 pt-8 border-t border-muted-foreground/10 text-center">
-                                <p className="text-[9px] font-black uppercase text-muted-foreground opacity-40">
-                                    SaaS Platform Statement Engine &bull; Powering SimonStyless Technologies
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
             </div>
         </TabsContent>
 
@@ -410,7 +403,7 @@ export default function SuperAdminDashboard() {
             <Card className="shadow-md border-muted/40">
                 <CardHeader>
                     <CardTitle>Workspace Directory</CardTitle>
-                    <CardDescription>Manage lifecycle and subscriptions for all businesses on the platform.</CardDescription>
+                    <CardDescription>Manage lifecycle, subscriptions, and diagnostic traces for all businesses.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="rounded-lg border overflow-hidden">
@@ -459,6 +452,9 @@ export default function SuperAdminDashboard() {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="w-56">
                                                     <DropdownMenuLabel>Tenant Control</DropdownMenuLabel>
+                                                    <DropdownMenuItem onClick={() => handleOpenDiagnostics(tenant.id)}>
+                                                        <ActivitySquare className="h-4 w-4 mr-2" /> Run Diagnostics
+                                                    </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem onClick={() => handleUpdateTenantPlan(tenant.id, 'pro')}>Upgrade to PRO</DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleUpdateTenantPlan(tenant.id, 'basic')}>Downgrade to BASIC</DropdownMenuItem>
@@ -485,6 +481,114 @@ export default function SuperAdminDashboard() {
             </Card>
         </TabsContent>
       </Tabs>
+
+      {/* DIAGNOSTIC DIALOG */}
+      <Dialog open={!!diagnosticTenantId} onOpenChange={(open) => !open && setDiagnosticTenantId(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+              <DialogHeader className="p-6 pb-0">
+                  <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-primary/10 p-3 rounded-2xl">
+                            <ActivitySquare className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tighter">{selectedTenantObj?.name} Diagnostics</DialogTitle>
+                            <DialogDescription className="font-mono text-[10px]">{diagnosticTenantId}</DialogDescription>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="h-fit py-1 px-3 bg-muted/50 border-primary/20">
+                          <ShieldCheck className="h-3 w-3 mr-2 text-primary" />
+                          Authorized Deep-Dive Trace
+                      </Badge>
+                  </div>
+              </DialogHeader>
+
+              <div className="flex-grow overflow-y-auto p-6 space-y-8">
+                  {/* Usage Summary */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card className="bg-muted/10 border-muted-foreground/10">
+                          <CardHeader className="pb-2">
+                              <CardTitle className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
+                                  <Database className="h-3 w-3" /> Asset Utilization
+                              </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                              <p className="text-2xl font-black">{diagnosticData?.usage.assets || 0}</p>
+                              <p className="text-[10px] text-muted-foreground">Capacity slot: {selectedTenantObj?.plan || 'Standard'}</p>
+                          </CardContent>
+                      </Card>
+                      <Card className="bg-muted/10 border-muted-foreground/10">
+                          <CardHeader className="pb-2">
+                              <CardTitle className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
+                                  <TrendingUp className="h-3 w-3" /> Sales Volume (MTD)
+                              </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                              <p className="text-2xl font-black">{diagnosticData?.usage.sales || 0}</p>
+                              <p className="text-[10px] text-muted-foreground">Current monthly quota</p>
+                          </CardContent>
+                      </Card>
+                      <Card className="bg-muted/10 border-muted-foreground/10">
+                          <CardHeader className="pb-2">
+                              <CardTitle className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
+                                  <Users className="h-3 w-3" /> Team Nodes
+                              </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                              <p className="text-2xl font-black">{diagnosticData?.team.length || 0}</p>
+                              <p className="text-[10px] text-muted-foreground">Registered staff accounts</p>
+                          </CardContent>
+                      </Card>
+                  </div>
+
+                  {/* Tenant Trace Logs */}
+                  <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <History className="h-4 w-4" />
+                            Tenant Audit Trace
+                        </h4>
+                        <Badge variant="secondary" className="text-[10px]">LATEST 50 EVENTS</Badge>
+                      </div>
+                      <div className="border rounded-xl overflow-hidden bg-muted/5">
+                          <div className="max-h-[300px] overflow-y-auto font-mono text-[11px] divide-y divide-muted-foreground/10">
+                              {diagnosticData?.logs.map((log) => (
+                                  <div key={log.id} className="p-3 flex items-start gap-4 hover:bg-muted/30 transition-colors">
+                                      <span className="text-muted-foreground shrink-0 w-24">{format(parseISO(log.timestamp), 'HH:mm:ss')}</span>
+                                      <div className="space-y-1 flex-grow">
+                                          <div className="flex items-center gap-2">
+                                              <span className={log.level === 'error' ? 'text-red-500 font-bold' : log.level === 'business' ? 'text-green-500 font-bold' : 'text-blue-500'}>
+                                                  {log.level.toUpperCase()}
+                                              </span>
+                                              <span className="opacity-40">&bull;</span>
+                                              <span className="font-bold">{log.module}</span>
+                                          </div>
+                                          <p className="text-foreground">{log.event}</p>
+                                          {log.metadata && (
+                                              <div className="bg-black/5 p-2 rounded mt-1 border border-black/5 overflow-x-auto">
+                                                  <pre className="text-[10px]">{JSON.stringify(log.metadata, null, 2)}</pre>
+                                              </div>
+                                          )}
+                                      </div>
+                                  </div>
+                              ))}
+                              {(!diagnosticData?.logs || diagnosticData.logs.length === 0) && (
+                                  <div className="p-8 text-center text-muted-foreground italic">No trace logs available for this tenant.</div>
+                              )}
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+              <div className="p-6 border-t bg-muted/20 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                      <ShieldAlert className="h-3 w-3 text-red-500" />
+                      Platform Integrity Trace Active
+                  </div>
+                  <Button variant="outline" onClick={() => setDiagnosticTenantId(null)}>Close Diagnostics</Button>
+              </div>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }
