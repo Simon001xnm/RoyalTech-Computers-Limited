@@ -8,8 +8,9 @@ import React, { useEffect } from 'react';
  * This prevents transient Dexie Cloud, Firestore, or Next.js Chunk loading errors
  * from triggering the development error overlay.
  * 
- * It uses capture-phase event listeners and a safe console proxy to intercept 
- * and silence network artifacts before they reach the development error handlers.
+ * It uses capture-phase event listeners to intercept and silence network artifacts 
+ * before they reach the development error handlers. This version avoids monkey-patching
+ * the global console to prevent "Illegal invocation" errors.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -36,6 +37,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       const errorMessage = reason?.message || String(reason || '');
       
       if (isSuppressible(errorMessage)) {
+        // Prevent the error from reaching the global handler (and showing the overlay)
         event.preventDefault();
         event.stopPropagation();
         console.debug('Suppressed background rejection:', errorMessage);
@@ -54,21 +56,6 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
-    // 3. Safe Console Proxy (Prevents "Illegal Invocation" by maintaining context)
-    // NextJS dev server often intercepts console.error to show the overlay.
-    const originalConsoleError = console.error;
-    console.error = function(...args: any[]) {
-      const message = args.map(arg => String(arg)).join(' ');
-      
-      if (isSuppressible(message)) {
-        console.debug('Silenced console error artifact:', message);
-        return;
-      }
-      
-      // Crucial: Use .apply(console, ...) to maintain native execution context
-      originalConsoleError.apply(console, args);
-    };
-
     // Use capture phase (true) to intercept errors as early as possible
     window.addEventListener('unhandledrejection', handleRejection, true);
     window.addEventListener('error', handleGlobalError, true);
@@ -76,8 +63,6 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
     return () => {
       window.removeEventListener('unhandledrejection', handleRejection, true);
       window.removeEventListener('error', handleGlobalError, true);
-      // Restore original console error on unmount
-      console.error = originalConsoleError;
     };
   }, []);
 
