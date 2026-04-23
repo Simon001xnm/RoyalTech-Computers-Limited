@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useUser } from '@/firebase/provider';
 import { db } from "@/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import { SubscriptionGuard } from "@/components/saas/subscription-guard";
 
 export function TrackingClient() {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
@@ -56,7 +57,7 @@ export function TrackingClient() {
   }
 
   return (
-    <>
+    <SubscriptionGuard requiredTier="pro" feature="Live GPS Tracking">
       <PageHeader
         title="Asset Tracking (Local)"
         description="View the last known location of leased or in-repair assets."
@@ -134,6 +135,6 @@ export function TrackingClient() {
              )}
         </div>
       </div>
-    </>
+    </SubscriptionGuard>
   );
 }
