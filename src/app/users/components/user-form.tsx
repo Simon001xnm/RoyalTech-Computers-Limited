@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { USER_ROLES, roleDescriptions } from "@/lib/roles";
+import { Loader2 } from "lucide-react";
 
 // Base schema for fields that are always present
 const baseSchema = z.object({
@@ -35,7 +35,7 @@ const createUserSchema = baseSchema.extend({
 
 // Schema for editing an existing user (password is optional)
 const editUserSchema = baseSchema.extend({
-  password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
+  password: z.string().optional().or(z.literal('')),
 });
 
 
@@ -114,29 +114,31 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
             )}
           />
         
-          <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{user ? 'New Password' : 'Initial Password'}</FormLabel>
-                  <FormControl>
-                    <Input type="password" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    {user ? "Leave blank to keep the current password." : "The new user will be prompted to change this on first login."}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+          {!user && (
+            <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Temporary Password</FormLabel>
+                    <FormControl>
+                        <Input type="password" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                        Set a temporary password for the user. They can change it after their first login.
+                    </FormDescription>
+                    <FormMessage />
+                    </FormItem>
+                )}
             />
+          )}
         
         <FormField
             control={form.control}
             name="role"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Role</FormLabel>
+                <FormLabel>Access Role</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -144,21 +146,22 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {USER_ROLES.map(role => <SelectItem key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</SelectItem>)}
+                    <SelectItem value="admin">Admin (Workspace Owner)</SelectItem>
+                    <SelectItem value="user">Standard User (Staff)</SelectItem>
                   </SelectContent>
                 </Select>
-                 {selectedRole && <FormDescription>{roleDescriptions[selectedRole]}</FormDescription>}
+                 {selectedRole && <FormDescription className="text-xs text-muted-foreground">{roleDescriptions[selectedRole]}</FormDescription>}
                 <FormMessage />
               </FormItem>
             )}
           />
         
-        <div className="flex justify-end space-x-3 pt-4">
+        <div className="flex justify-end space-x-3 pt-4 border-t">
           <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? (user ? "Saving..." : "Creating User...") : (user ? "Save Changes" : "Create User")}
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (user ? "Save Changes" : "Create Account")}
           </Button>
         </div>
       </form>

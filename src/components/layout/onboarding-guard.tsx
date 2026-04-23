@@ -61,8 +61,12 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     setIsSaving(true);
 
     try {
+      const companyId = crypto.randomUUID();
+      
+      // Step 1: Create the workspace record
       await db.companies.add({
-        id: crypto.randomUUID(),
+        id: companyId,
+        tenantId: companyId,
         name,
         address,
         phone,
@@ -74,6 +78,10 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         createdAt: new Date().toISOString(),
         createdBy: { uid: user.uid, name: user.displayName || 'Owner' }
       });
+
+      // Step 2: Link the user to the tenant permanently
+      await db.users.update(user.uid, { tenantId: companyId, role: 'admin' });
+
       toast({ title: 'Workspace Provisioned!', description: 'Your executive suite is ready.' });
       setIsSaving(false);
     } catch (err: any) {

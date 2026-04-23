@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Server-side actions for Firebase, intended to be used in Server Components.
@@ -18,10 +17,6 @@ function getAdminApp(): App {
         return getApps()[0];
     }
 
-    // In a managed environment like this one, we must check for credentials.
-    // The `applicationDefault()` will throw an `auth/invalid-credential` error if it cannot
-    // find credentials in the environment. This is a common scenario in local development
-    // or misconfigured servers. We catch this to provide a clearer error message.
     try {
         return initializeApp({
             credential: applicationDefault(),
@@ -34,13 +29,10 @@ function getAdminApp(): App {
             (e.message && e.message.includes('Could not refresh access token'))
         ) {
             throw new Error(
-                'Firebase Admin SDK initialization failed: Could not load default credentials. ' +
-                'Please ensure your server environment is configured correctly. ' +
-                'This might involve setting the GOOGLE_APPLICATION_CREDENTIALS environment variable ' +
-                'or running `gcloud auth application-default login`.'
+                'Firebase Admin SDK initialization failed: Multi-tenant server setup incomplete. ' +
+                'Please ensure GOOGLE_APPLICATION_CREDENTIALS is set in the environment.'
             );
         }
-        // Re-throw any other initialization errors
         throw e;
     }
 }
@@ -52,7 +44,8 @@ const CreateUserInputSchema = z.object({
   name: z.string().min(2),
   phone: z.string().optional(),
   role: z.enum(USER_ROLES),
-  requestingUserRole: z.enum(USER_ROLES).optional(), // Role of the user making the request
+  tenantId: z.string().optional(), // Tagging the user with a specific business workspace
+  requestingUserRole: z.enum(USER_ROLES).optional(),
 });
 export type CreateUserInput = z.infer<typeof CreateUserInputSchema>;
 
@@ -69,14 +62,9 @@ export async function createUser(input: CreateUserInput): Promise<CreateUserOutp
       const auth = getAuth(adminApp);
       const firestore = getFirestore(adminApp);
 
-      // This server action is now only for creation by an administrator.
-      if (!input.requestingUserRole || input.requestingUserRole !== 'admin') {
-          return { success: false, error: 'Permission Denied: Only Admins can create users.' };
-      }
-      
-      const roleToAssign = input.role;
-      if (roleToAssign === 'admin' && input.requestingUserRole !== 'admin') {
-            return { success: false, error: 'Permission Denied: Only Admins can create other Admins.' };
+      // Permission Checks
+      if (!input.requestingUserRole || (input.requestingUserRole !== 'admin' && input.requestingUserRole !== 'super_admin')) {
+          return { success: false, error: 'Permission Denied: Only Admins can manage the team.' };
       }
 
       // 1. Create the user in Firebase Authentication
@@ -86,8 +74,12 @@ export async function createUser(input: CreateUserInput): Promise<CreateUserOutp
         displayName: input.name,
       });
 
-      // 2. Set custom claims for the user role
-      await auth.setCustomUserClaims(userRecord.uid, { role: roleToAssign });
+      // 2. Set custom claims for the user role and tenantId
+      // This is crucial for server-side security in v3.0
+      await auth.setCustomUserClaims(userRecord.uid, { 
+          role: input.role,
+          tenantId: input.tenantId 
+      });
 
       // 3. Create the user profile document in Firestore
       const userDocRef = firestore.collection('users').doc(userRecord.uid);
@@ -96,7 +88,9 @@ export async function createUser(input: CreateUserInput): Promise<CreateUserOutp
         name: input.name,
         email: input.email,
         phone: input.phone || '',
-        role: roleToAssign,
+        role: input.role,
+        tenantId: input.tenantId || null,
+        createdAt: new Date().toISOString(),
       });
 
       return {
@@ -105,28 +99,16 @@ export async function createUser(input: CreateUserInput): Promise<CreateUserOutp
       };
     } catch (error: any) {
       console.error("Error in createUser server action: ", error);
-       if (error.message && error.message.includes('Could not refresh access token')) {
-            return { success: false, error: 'Server authentication error. This may be due to project billing status or permissions. Please check your Vercel/Firebase project configuration.' };
-        }
-       if (error.code === 'auth/invalid-credential' || (error.message && error.message.includes('credential'))) {
-          return { success: false, error: 'Server authentication error. Please check your Firebase Admin SDK credentials.' };
-      }
       switch (error.code) {
         case 'auth/email-already-exists':
-          return { success: false, error: 'A user with this email already exists.' };
-        case 'auth/invalid-email':
-          return { success: false, error: 'The email address is not valid. Please check for typos.' };
-        case 'auth/invalid-password':
-          return { success: false, error: 'The password must be at least 6 characters long.' };
+          return { success: false, error: 'This email is already registered.' };
         default:
-          const errorMessage = error.message || "An unknown server error occurred.";
-          return { success: false, error: errorMessage };
+          return { success: false, error: error.message || "Server error during account creation." };
       }
     }
 }
 
 
-// --- Update User ---
 const UpdateUserInputSchema = z.object({
   uid: z.string(),
   name: z.string().min(2).optional(),
@@ -143,44 +125,26 @@ export async function updateUser(input: UpdateUserInput): Promise<{ success: boo
         const auth = getAuth(adminApp);
         const firestore = getFirestore(adminApp);
         
-        // --- Permission Checks ---
-        if (!input.requestingUserRole || input.requestingUserRole !== 'admin') {
+        if (!input.requestingUserRole || (input.requestingUserRole !== 'admin' && input.requestingUserRole !== 'super_admin')) {
             return { success: false, error: 'Permission Denied: Only admins can update users.' };
         }
         
         const updates: any = {};
-        const firestoreUpdates: any = {};
+        const firestoreUpdates: any = { updatedAt: new Date().toISOString() };
         
-        // Update password in Auth
-        if (input.password) {
-            updates.password = input.password;
-        }
-
-        // Update display name in Auth
+        if (input.password) updates.password = input.password;
         if (input.name) {
             updates.displayName = input.name;
             firestoreUpdates.name = input.name;
         }
-
-        // Update phone number in Firestore
-        if (input.phone !== undefined) {
-            firestoreUpdates.phone = input.phone;
-        }
-
-        // Update role in claims and Firestore
+        if (input.phone !== undefined) firestoreUpdates.phone = input.phone;
         if (input.role) {
-             if (input.role === 'admin' && input.requestingUserRole !== 'admin') {
-                return { success: false, error: 'Permission Denied: Cannot assign Admin role.' };
-            }
             await auth.setCustomUserClaims(input.uid, { role: input.role });
             firestoreUpdates.role = input.role;
         }
 
-        // Perform updates
-        if (Object.keys(updates).length > 0) {
-            await auth.updateUser(input.uid, updates);
-        }
-        if (Object.keys(firestoreUpdates).length > 0) {
+        if (Object.keys(updates).length > 0) await auth.updateUser(input.uid, updates);
+        if (Object.keys(firestoreUpdates).length > 1) {
             const userDocRef = firestore.collection('users').doc(input.uid);
             await userDocRef.update(firestoreUpdates);
         }
@@ -188,14 +152,8 @@ export async function updateUser(input: UpdateUserInput): Promise<{ success: boo
         return { success: true };
 
     } catch (error: any) {
-        console.error("Error in updateUser server action: ", error);
-        if (error.message && error.message.includes('Could not refresh access token')) {
-            return { success: false, error: 'Server authentication error. This may be due to project billing status or permissions. Please check your Vercel/Firebase project configuration.' };
-        }
-        if (error.code === 'auth/invalid-credential' || (error.message && error.message.includes('credential'))) {
-          return { success: false, error: 'Server authentication error. Please check your Firebase Admin SDK credentials.' };
-        }
-        return { success: false, error: error.message || 'An unknown server error occurred.' };
+        console.error("Error in updateUser action: ", error);
+        return { success: false, error: error.message || 'Server error during update.' };
     }
 }
 
@@ -212,52 +170,33 @@ export async function signupAndCreateUser(input: SignUpInput): Promise<{ success
         const auth = getAuth(adminApp);
         const firestore = getFirestore(adminApp);
 
-        // Check if it's the first user to determine the role
         const usersCollection = firestore.collection('users');
         const snapshot = await usersCollection.limit(1).get();
         const role = snapshot.empty ? 'admin' : 'user';
 
-        // 1. Create the user in Firebase Authentication
         const userRecord = await auth.createUser({
             email: input.email,
             password: input.password,
             displayName: input.name,
         });
 
-        // 2. Set custom claims for the user role
         await auth.setCustomUserClaims(userRecord.uid, { role });
 
-        // 3. Create the user profile document in Firestore
         const userDocRef = usersCollection.doc(userRecord.uid);
         await userDocRef.set({
             id: userRecord.uid,
             name: input.name,
             email: input.email,
-            phone: '', // phone is optional, default to empty
+            phone: '',
             role: role,
+            tenantId: null, // Initial signup doesn't have a tenant yet
+            createdAt: new Date().toISOString(),
         });
 
         return { success: true };
 
     } catch (error: any) {
-        // Same error handling as createUser
-        console.error("Error in signupAndCreateUser server action: ", error);
-        if (error.message && error.message.includes('Could not refresh access token')) {
-            return { success: false, error: 'Server authentication error. This may be due to project billing status or permissions. Please check your Vercel/Firebase project configuration.' };
-        }
-        if (error.code === 'auth/invalid-credential' || (error.message && error.message.includes('credential'))) {
-          return { success: false, error: 'Server authentication error. Please check your Firebase Admin SDK credentials.' };
-        }
-        switch (error.code) {
-          case 'auth/email-already-exists':
-            return { success: false, error: 'A user with this email already exists.' };
-          case 'auth/invalid-email':
-            return { success: false, error: 'The email address is not valid. Please check for typos.' };
-          case 'auth/invalid-password':
-            return { success: false, error: 'The password must be at least 6 characters long.' };
-          default:
-            const errorMessage = error.message || "An unknown server error occurred.";
-            return { success: false, error: errorMessage };
-        }
+        console.error("Error in signupAndCreateUser: ", error);
+        return { success: false, error: error.message || "Failed to create individual account." };
     }
 }

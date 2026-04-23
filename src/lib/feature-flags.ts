@@ -7,8 +7,8 @@
 
 export const FEATURES = {
   // SaaS ENGINE (Layer 2)
-  TENANCY_ISOLATION: false,      // When true, all queries filter by tenantId
-  SUBSCRIPTION_GUARD: false,     // When true, restricts features based on plan
+  TENANCY_ISOLATION: true,       // When true, all queries filter by tenantId
+  SUBSCRIPTION_GUARD: true,      // When true, restricts features based on plan
   SUPER_ADMIN_PANEL: false,      // When true, enables the /admin routes
   
   // CORE IMPROVEMENTS
