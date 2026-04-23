@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -26,7 +25,6 @@ import {
   Dialog,
   DialogContent,
   DialogFooter,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { InvoicePdf } from "./pdfs/invoice-pdf";
 import { ReceiptPdf } from "./pdfs/receipt-pdf";
@@ -55,21 +53,17 @@ const VAT_RATE = 0.16;
 export function DocumentsClient() {
   const [activeTab, setActiveTab] = useState<DocumentType>("Invoice");
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   
-  // Local Data fetching with Dexie
   const generatedDocuments = useLiveQuery(() => db.documents.toArray());
   const customers = useLiveQuery(() => db.customers.toArray());
   const assets = useLiveQuery(() => db.assets.toArray());
 
-  // Form State
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
-  const [selectedAssetId, setSelectedAssetId] = useState<string>('');
   const [details, setDetails] = useState('');
   const [amount, setAmount] = useState<string>('');
   const [applyVat, setApplyVat] = useState(false);
   
-  // Delivery specific fields
   const [deliveredBy, setDeliveredBy] = useState('');
   const [receivedBy, setReceivedBy] = useState('');
   const [delivererSignature, setDelivererDelivererSignature] = useState('');
@@ -80,12 +74,12 @@ export function DocumentsClient() {
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  const anyDataLoading = isUserLoading || generatedDocuments === undefined || customers === undefined || assets === undefined;
+  const anyDataLoading = generatedDocuments === undefined || customers === undefined || assets === undefined;
   
   const resetFormState = () => {
     setSelectedCustomerId('');
-    setSelectedAssetId('');
     setDetails('');
     setAmount('');
     setApplyVat(false);
@@ -162,16 +156,41 @@ export function DocumentsClient() {
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
+    
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
+    setIsDownloading(true);
+
+    // Give the DOM time to render the high-res A4 content
     setTimeout(async () => {
-        const element = document.getElementById('pdf-preview-content')?.firstElementChild as HTMLElement;
-        const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, 190, (canvas.height * 190) / canvas.width);
-        pdf.save(`${docToDownload.title}.pdf`);
-        setIsPdfPreviewOpen(false);
-    }, 500);
+        const element = document.getElementById('pdf-preview-target');
+        if (!element) return;
+
+        try {
+            // Scale up for print quality (3x)
+            const canvas = await html2canvas(element, { 
+                scale: 3, 
+                useCORS: true,
+                logging: false,
+                windowWidth: 1200 // Simulate desktop window to avoid responsive breakage
+            });
+            
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            
+            // Standard A4: 210mm x 297mm
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+            pdf.save(`${docToDownload.title}.pdf`);
+            
+            toast({ title: 'Download Successful', description: 'Your high-fidelity document is ready.' });
+        } catch (err) {
+            console.error(err);
+            toast({ variant: 'destructive', title: 'PDF Error', description: 'Failed to capture full document.' });
+        } finally {
+            setIsPdfPreviewOpen(false);
+            setIsDownloading(false);
+        }
+    }, 1000);
   };
 
   const handleViewPdf = (doc: AppDocument) => {
@@ -264,8 +283,8 @@ export function DocumentsClient() {
     const isDelivery = type === 'DeliveryNote';
     const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'DeliveryNote', 'LPO'].includes(type);
     return (
-      <Card className="shadow-lg">
-        <CardHeader><CardTitle>Generate {type}</CardTitle></CardHeader>
+      <Card className="shadow-lg border-primary/10">
+        <CardHeader><CardTitle>Generate Branded {type}</CardTitle></CardHeader>
         <CardContent className="space-y-6">
           <div>
             <Label>Customer</Label>
@@ -275,10 +294,10 @@ export function DocumentsClient() {
             </Select>
           </div>
           {['Quotation', 'Invoice', 'Proforma'].includes(type) && (
-              <div className="flex items-center space-x-2"><Switch id="vat-switch" checked={applyVat} onCheckedChange={setApplyVat} /><Label htmlFor="vat-switch">Apply 16% VAT</Label></div>
+              <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-lg"><Switch id="vat-switch" checked={applyVat} onCheckedChange={setApplyVat} /><Label htmlFor="vat-switch" className="cursor-pointer">Apply 16% VAT to Subtotal</Label></div>
           )}
           {type === 'Receipt' && (
-            <div><Label>Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+            <div><Label>Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11" /></div>
           )}
           {showsItemEntry && renderManualItemEntry()}
           {isDelivery && (
@@ -288,17 +307,21 @@ export function DocumentsClient() {
                </div>
            )}
         </CardContent>
-        <CardFooter><Button onClick={() => handleGenerateDocument(type)} className="ml-auto" disabled={anyDataLoading}>Generate</Button></CardFooter>
+        <CardFooter><Button onClick={() => handleGenerateDocument(type)} className="ml-auto h-11 px-8 font-bold" disabled={anyDataLoading}>Generate Document</Button></CardFooter>
       </Card>
     );
   };
 
   return (
     <>
-      <PageHeader title="Document Generation (Local)" description="Create receipts and invoices stored on this device." />
+      <PageHeader title="Branded Documents (Local)" description="Professional invoices, quotations, and receipts with executive branding." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 mb-6 overflow-x-auto">
-          <TabsTrigger value="Quotation">Quotation</TabsTrigger><TabsTrigger value="Invoice">Invoice</TabsTrigger><TabsTrigger value="Proforma">Proforma</TabsTrigger><TabsTrigger value="Receipt">Receipt</TabsTrigger><TabsTrigger value="DeliveryNote">Delivery</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-6 overflow-x-auto h-auto p-1 bg-muted/50 border">
+          <TabsTrigger value="Quotation" className="py-2">Quotation</TabsTrigger>
+          <TabsTrigger value="Invoice" className="py-2">Invoice</TabsTrigger>
+          <TabsTrigger value="Proforma" className="py-2">Proforma</TabsTrigger>
+          <TabsTrigger value="Receipt" className="py-2">Receipt</TabsTrigger>
+          <TabsTrigger value="DeliveryNote" className="py-2">Delivery</TabsTrigger>
         </TabsList>
         <TabsContent value="Quotation">{renderForm("Quotation")}</TabsContent>
         <TabsContent value="Invoice">{renderForm("Invoice")}</TabsContent>
@@ -306,19 +329,43 @@ export function DocumentsClient() {
         <TabsContent value="Receipt">{renderForm("Receipt")}</TabsContent>
         <TabsContent value="DeliveryNote">{renderForm("DeliveryNote")}</TabsContent>
       </Tabs>
-      <Card className="mt-8 shadow-lg"><CardContent>
-        <div className="rounded-lg border">
+      <Card className="mt-8 shadow-md"><CardContent className="pt-6">
+        <div className="rounded-lg border overflow-hidden">
             <Table>
-                <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
-                <TableBody>{table.getRowModel().rows.map(row => (<TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))}</TableBody>
+                <TableHeader className="bg-muted/50">
+                    {table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}
+                </TableHeader>
+                <TableBody>
+                    {table.getRowModel().rows.length ? (
+                        table.getRowModel().rows.map(row => (
+                            <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
+                        ))
+                    ) : (
+                        <TableRow><TableCell colSpan={5} className="h-24 text-center">No local documents archived yet.</TableCell></TableRow>
+                    )}
+                </TableBody>
             </Table>
             <DataTablePagination table={table} />
         </div>
       </CardContent></Card>
+
        <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
-        <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
-          <div id="pdf-preview-content" className="flex-grow overflow-y-auto bg-gray-200 p-4">{renderPdfPreview()}</div>
-          <DialogFooter><Button onClick={() => window.print()}>Print</Button></DialogFooter>
+        <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0">
+          <div className="flex-grow overflow-auto bg-gray-300 flex justify-center p-4 py-8">
+            <div id="pdf-preview-target" className="a4-document shrink-0 shadow-2xl relative">
+                {renderPdfPreview()}
+                {isDownloading && (
+                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+                        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                        <p className="font-black text-primary uppercase tracking-widest">Optimizing PDF...</p>
+                    </div>
+                )}
+            </div>
+          </div>
+          <div className="p-4 border-t flex justify-end gap-3 bg-white no-print">
+            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)}>Close Preview</Button>
+            <Button onClick={() => window.print()} className="font-bold">Print Page (A4)</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

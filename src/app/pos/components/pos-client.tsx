@@ -1,5 +1,4 @@
-
-'use client';
+"use client";
 
 import { useState, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
@@ -62,6 +61,7 @@ export function PosClient() {
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [lastSaleDoc, setLastSaleDoc] = useState<AppDocument | null>(null);
   const [isReceiptPreviewOpen, setIsReceiptPreviewOpen] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   // DEXIE LOCAL QUERIES
   const assets = useLiveQuery(() => db.assets.filter(a => a.status === 'Available').toArray());
@@ -123,7 +123,6 @@ export function PosClient() {
     if (result.success) {
         toast({ title: 'STK Push Sent', description: result.customerMessage });
         setReferenceCode(result.checkoutRequestId || '');
-        // Simulate checking for payment confirmation (In real world, you'd poll an API)
         setTimeout(() => {
             setMpesaStatus('confirmed');
             setAmountPaid(grandTotal.toString());
@@ -170,7 +169,7 @@ export function PosClient() {
             title: `Receipt #RCL-${saleId.slice(0, 5).toUpperCase()}`,
             generatedDate: saleDate,
             relatedTo: `Sale to ${selectedCustomer.name}`,
-            saleId: saleId, // Strictly link document to sale for reliable lookups
+            saleId: saleId, 
             data: { ...saleData, applyVat },
             createdAt: saleDate,
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
@@ -199,7 +198,6 @@ export function PosClient() {
         setLastSaleDoc(docData);
         setIsSuccessOpen(true);
         
-        // Reset POS State
         setCart([]);
         setSelectedCustomer(null);
         setAmountPaid('');
@@ -218,16 +216,29 @@ export function PosClient() {
     const { default: jsPDF } = await import('jspdf');
     
     setIsReceiptPreviewOpen(true);
+    setIsGeneratingPdf(true);
+
     setTimeout(async () => {
-        const element = document.getElementById('pos-receipt-preview');
+        const element = document.getElementById('pos-receipt-preview-target');
         if (element) {
-            const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, 190, (canvas.height * 190) / canvas.width);
-            pdf.save(`${doc.title}.pdf`);
-            setIsReceiptPreviewOpen(false);
+            try {
+                const canvas = await html2canvas(element, { 
+                    scale: 3, 
+                    useCORS: true,
+                    windowWidth: 1200
+                });
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgData = canvas.toDataURL('image/png', 1.0);
+                pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+                pdf.save(`${doc.title}.pdf`);
+            } catch (err) {
+                toast({ variant: 'destructive', title: 'Export Error' });
+            } finally {
+                setIsReceiptPreviewOpen(false);
+                setIsGeneratingPdf(false);
+            }
         }
-    }, 500);
+    }, 1000);
   };
 
   const handlePrintReceipt = () => {
@@ -302,7 +313,7 @@ export function PosClient() {
                         <Label className="text-[10px] uppercase font-bold text-muted-foreground">Item (S/N or Model)</Label>
                         <Popover open={searchOpen} onOpenChange={setSearchOpen}>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full justify-between font-normal h-10 truncate text-left">
+                            <Button variant="outline" className="w-full justify-between font-normal h-10 truncate text-left text-sm">
                             {selectedProduct ? selectedProduct.displayName : "Select item..."}
                             </Button>
                         </PopoverTrigger>
@@ -324,13 +335,13 @@ export function PosClient() {
                     </div>
                     <div className="space-y-2">
                         <Label className="text-[10px] uppercase font-bold text-muted-foreground">Qty</Label>
-                        <Input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)} className="h-10" />
+                        <Input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)} className="h-10 text-sm" />
                     </div>
                     <div className="space-y-2">
                         <Label className="text-[10px] uppercase font-bold text-muted-foreground">Unit Price</Label>
-                        <Input type="number" placeholder="Price" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="h-10" />
+                        <Input type="number" placeholder="Price" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="h-10 text-sm" />
                     </div>
-                    <Button onClick={handleAddToCart} disabled={!selectedProduct} className="h-10"><PlusCircle className="h-4 w-4 mr-2" /> Add</Button>
+                    <Button onClick={handleAddToCart} disabled={!selectedProduct} className="h-10 px-6"><PlusCircle className="h-4 w-4 mr-2" /> Add</Button>
                 </div>
                 
                 {cart.length > 0 ? (
@@ -351,8 +362,8 @@ export function PosClient() {
                                             <p className="font-semibold text-sm">{item.name}</p>
                                             <p className="text-[10px] text-muted-foreground font-mono">S/N: {item.serialNumber}</p>
                                         </TableCell>
-                                        <TableCell className="text-center">{item.quantity}</TableCell>
-                                        <TableCell className="text-right font-bold">KES {((item.unitPrice - item.discount) * item.quantity).toLocaleString()}</TableCell>
+                                        <TableCell className="text-center text-sm">{item.quantity}</TableCell>
+                                        <TableCell className="text-right font-bold text-sm">KES {((item.unitPrice - item.discount) * item.quantity).toLocaleString()}</TableCell>
                                         <TableCell>
                                             <Button variant="ghost" size="icon" onClick={() => setCart(cart.filter(c => c.id !== item.id))} className="h-8 w-8">
                                                 <Trash2 className="h-4 w-4 text-destructive"/>
@@ -457,31 +468,22 @@ export function PosClient() {
         </Card>
       </div>
 
-      {/* POS History Section */}
       <RecentSales onViewReceipt={(sale) => {
-          // Robust Lookup: First try searching by saleId, then fallback to formatted title
           const fetchDoc = async () => {
               let docs = await db.documents.where('saleId').equals(sale.id).toArray();
-              
               if (docs.length === 0) {
                   docs = await db.documents.where('title').equals(`Receipt #RCL-${sale.id.slice(0, 5).toUpperCase()}`).toArray();
               }
-
               if (docs.length > 0) {
                   setLastSaleDoc(docs[0]);
                   setIsSuccessOpen(true);
               } else {
-                  toast({ 
-                    variant: 'destructive', 
-                    title: 'Receipt Not Found', 
-                    description: 'This sale was recorded before robust document linking was active.' 
-                  });
+                  toast({ variant: 'destructive', title: 'Receipt Not Found' });
               }
           };
           fetchDoc();
       }} />
 
-      {/* SUCCESS DIALOG */}
       <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
         <DialogContent className="sm:max-w-md text-center p-8">
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
@@ -490,7 +492,7 @@ export function PosClient() {
             <DialogHeader>
                 <DialogTitle className="text-2xl font-black">Sale Completed!</DialogTitle>
                 <DialogDescription className="text-base pt-2">
-                    Transaction <strong>{lastSaleDoc?.title}</strong> has been successfully recorded.
+                    Transaction <strong>{lastSaleDoc?.title}</strong> has been recorded.
                 </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-4 pt-6">
@@ -513,11 +515,16 @@ export function PosClient() {
         </DialogContent>
       </Dialog>
 
-      {/* Hidden Receipt Preview for capturing PDF/Print */}
       <Dialog open={isReceiptPreviewOpen} onOpenChange={setIsReceiptPreviewOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-100">
-              <div id="pos-receipt-preview" className="bg-white mx-auto shadow-2xl">
+          <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto bg-gray-200 p-0 flex justify-center py-10">
+              <div id="pos-receipt-preview-target" className="a4-document shrink-0 shadow-2xl relative">
                   {lastSaleDoc && <ReceiptPdf document={lastSaleDoc} />}
+                  {isGeneratingPdf && (
+                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary mb-2" />
+                        <p className="font-bold text-primary text-xs tracking-widest">CAPTURING PAGE...</p>
+                    </div>
+                  )}
               </div>
           </DialogContent>
       </Dialog>
