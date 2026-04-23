@@ -5,8 +5,8 @@ import React, { useEffect } from 'react';
 
 /**
  * A root-level component that catches and suppresses generic background fetch errors.
- * This prevents transient Dexie Cloud or Firestore "Failed to fetch" errors from
- * triggering the Next.js global error overlay.
+ * This prevents transient Dexie Cloud, Firestore, or Next.js Chunk loading errors
+ * from triggering the development error overlay.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -18,6 +18,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
         errorMessage.includes('NetworkError') ||
         errorMessage.includes('Load failed') ||
         errorMessage.includes('ChunkLoadError') ||
+        errorMessage.includes('timeout') ||
         errorMessage.includes('Unexpected token') || // Often associated with chunk loading failures
         errorMessage.includes('connection') ||
         errorMessage.includes('offline');
@@ -37,6 +38,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
         errorMessage.includes('NetworkError') ||
         errorMessage.includes('Load failed') ||
         errorMessage.includes('ChunkLoadError') ||
+        errorMessage.includes('timeout') ||
         errorMessage.includes('connection') ||
         errorMessage.includes('offline');
 

@@ -62,8 +62,8 @@ export default function RootLayout({
         <link rel="icon" href="/picture1.png" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
-        <FirebaseClientProvider>
-          <BackgroundErrorGuard>
+        <BackgroundErrorGuard>
+          <FirebaseClientProvider>
             <SaaSProvider>
               <DynamicThemeProvider>
                 <AuthGuard>
@@ -73,10 +73,10 @@ export default function RootLayout({
                 </AuthGuard>
               </DynamicThemeProvider>
             </SaaSProvider>
-          </BackgroundErrorGuard>
-          <Toaster />
-          <PwaRegistration />
-        </FirebaseClientProvider>
+          </FirebaseClientProvider>
+        </BackgroundErrorGuard>
+        <Toaster />
+        <PwaRegistration />
       </body>
     </html>
   );
