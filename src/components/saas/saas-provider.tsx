@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -87,6 +88,9 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
          };
          setTenant(t);
          setPlan(DEFAULT_PLANS[t.tier as SubscriptionTier] || DEFAULT_PLANS.legacy_pro);
+      } else {
+        setTenant(null);
+        setPlan(null);
       }
       
       setIsLoading(false);
@@ -95,7 +99,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     resolveTenant();
   }, [user, isUserLoading, localCompany]);
 
-  if (tenant?.status === 'suspended') {
+  if (user && tenant?.status === 'suspended') {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-background p-6">
             <div className="max-w-md w-full text-center space-y-6">

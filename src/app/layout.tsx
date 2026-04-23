@@ -63,17 +63,17 @@ export default function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <FirebaseClientProvider>
-          <AuthGuard>
-            <BackgroundErrorGuard>
-                <SaaSProvider>
-                    <DynamicThemeProvider>
-                        <OnboardingGuard>
-                            {children}
-                        </OnboardingGuard>
-                    </DynamicThemeProvider>
-                </SaaSProvider>
-            </BackgroundErrorGuard>
-          </AuthGuard>
+          <BackgroundErrorGuard>
+            <SaaSProvider>
+              <DynamicThemeProvider>
+                <AuthGuard>
+                  <OnboardingGuard>
+                    {children}
+                  </OnboardingGuard>
+                </AuthGuard>
+              </DynamicThemeProvider>
+            </SaaSProvider>
+          </BackgroundErrorGuard>
           <Toaster />
           <PwaRegistration />
         </FirebaseClientProvider>
