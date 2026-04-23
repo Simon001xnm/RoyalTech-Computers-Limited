@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -38,6 +39,7 @@ import {
 import { db } from "@/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { useSaaS } from "@/components/saas/saas-provider";
 
 export function CustomersClient() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -46,6 +48,7 @@ export function CustomersClient() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const { toast } = useToast();
+  const { tenant } = useSaaS();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -92,6 +95,7 @@ export function CustomersClient() {
     const customerData: Customer = {
       ...data,
       id: editingCustomer?.id || crypto.randomUUID(),
+      tenantId: tenant?.id, // Layer 2 Tenancy Injection
       updatedAt: new Date().toISOString()
     };
 

@@ -41,6 +41,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { useSaaS } from "@/components/saas/saas-provider";
 
 export function StockClient() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -52,6 +53,7 @@ export function StockClient() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
   const { toast } = useToast();
+  const { tenant } = useSaaS();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -94,6 +96,7 @@ export function StockClient() {
             
             return {
                 id: crypto.randomUUID(),
+                tenantId: tenant?.id, // SaaS Injection
                 model,
                 serialNumber,
                 purchaseDate: new Date(purchaseDateStr).toISOString(),
@@ -127,14 +130,6 @@ export function StockClient() {
   };
 
   const handleDeleteAsset = (asset: Asset) => {
-    if (asset.status === 'Leased') {
-        toast({
-            variant: "destructive",
-            title: "Deletion Failed",
-            description: "Cannot delete an asset that is currently leased.",
-        });
-        return;
-    }
     setAssetToDelete(asset);
     setIsDeleteConfirmOpen(true);
   };
@@ -152,6 +147,7 @@ export function StockClient() {
     const assetData: Asset = {
       ...data,
       id: editingAsset?.id || crypto.randomUUID(),
+      tenantId: tenant?.id, // SaaS Injection
       purchaseDate: data.purchaseDate.toISOString(), 
       specifications: { 
         ram: data.ram || '', 
@@ -172,7 +168,7 @@ export function StockClient() {
         setIsFormOpen(false);
         setEditingAsset(null);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not save asset. Check for duplicate Serial Numbers.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save asset.' });
     }
   };
 

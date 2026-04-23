@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -22,6 +23,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 import { RecentSales } from './recent-sales';
 import { useUser } from '@/firebase/provider';
+import { useSaaS } from '@/components/saas/saas-provider';
+import { logger } from '@/lib/logger';
 
 type Product = (Asset | Accessory) & { productType: 'asset' | 'accessory'; displayName: string; price?: number; };
 type CartItem = SaleItem & { productType: 'asset' | 'accessory'; quantity: number; unitPrice: number; discount: number; };
@@ -35,6 +38,7 @@ const VAT_RATE = 0.16;
 export function PosClient() {
   const { toast } = useToast();
   const { user } = useUser();
+  const { tenant } = useSaaS();
   
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
@@ -145,6 +149,7 @@ export function PosClient() {
         
         const saleData: Sale = {
             id: saleId,
+            tenantId: tenant?.id, // Layer 2 Tenancy Injection
             date: saleDate,
             amount: grandTotal,
             subtotal,
@@ -165,6 +170,7 @@ export function PosClient() {
 
         const docData: AppDocument = {
             id: crypto.randomUUID(),
+            tenantId: tenant?.id, // Layer 2 Tenancy Injection
             type: 'Receipt',
             title: `Receipt #RCL-${saleId.slice(0, 5).toUpperCase()}`,
             generatedDate: saleDate,
@@ -194,6 +200,14 @@ export function PosClient() {
             await db.documents.add(docData);
         });
 
+        // Layer 2 Business Logging
+        logger.business('POS', 'Sale Finalized', { 
+            saleId, 
+            amount: grandTotal, 
+            itemsCount: cart.length,
+            tenantId: tenant?.id 
+        });
+
         toast({ title: 'Sale Completed locally!' });
         setLastSaleDoc(docData);
         setIsSuccessOpen(true);
@@ -205,6 +219,7 @@ export function PosClient() {
         setMpesaPhone('');
         setMpesaStatus('idle');
     } catch (e: any) {
+        logger.error('POS', 'Sale Finalization Failed', e);
         toast({ variant: 'destructive', title: 'Sale Failed', description: e.message });
     } finally {
         setIsProcessing(false);
@@ -213,26 +228,23 @@ export function PosClient() {
 
   const handleDownloadReceipt = async (doc: AppDocument) => {
     const { default: html2canvas } = await import('html2canvas');
-    const { default: jsPDF } = await import('jspdf');
+    const { default: jspdf } = await import('jspdf');
     
     setIsReceiptPreviewOpen(true);
     setIsGeneratingPdf(true);
 
-    // Simulate high-fidelity desktop capture to prevent mobile "half-page" issue
     setTimeout(async () => {
         const element = document.getElementById('pos-receipt-preview-target');
         if (element) {
             try {
                 const canvas = await html2canvas(element, { 
-                    scale: 3, // High-res capture
+                    scale: 3, 
                     useCORS: true,
-                    windowWidth: 1200, // Simulate desktop viewport
+                    windowWidth: 1200, 
                     logging: false
                 });
-                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdf = new jspdf('p', 'mm', 'a4');
                 const imgData = canvas.toDataURL('image/png', 1.0);
-                
-                // Standard A4 is 210mm x 297mm
                 pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
                 pdf.save(`${doc.title}.pdf`);
                 toast({ title: "Receipt Downloaded" });
