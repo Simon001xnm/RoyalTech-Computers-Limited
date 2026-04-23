@@ -7,9 +7,8 @@
 
 ### Core Features
 - **Asset Management**: Full lifecycle tracking for Phones, Tablets, and Hardware.
-- **Point of Sale**: Multi-payment checkout (M-Pesa, Bank, Cash) with real-time inventory updates.
-- **Adobe-Grade PDF Engine**: Professional A4 high-fidelity Invoices, Receipts, and Reports.
-- **Local-First Sync**: Powered by Dexie Cloud for offline-ready operations.
+- **Point of Sale**: Multi-payment checkout (M-Pesa, Bank, Cash).
+- **Adobe-Grade PDF Engine**: Professional A4 high-fidelity Invoices and Receipts.
 
 ---
 
@@ -22,7 +21,7 @@
 - **Subscription Engine**: Tiered access (Free, Basic, Pro) with Legacy Pro protection.
 - **Usage Meters**: Real-time tracking of Assets and Sales volume per workspace.
 - **Super Admin Intelligence**: Platform-wide activity feed and GMV analytics.
-- **Audit Logging**: System-wide event tracking for security and billing.
+- **Infrastructure Abstraction**: Unified Service Layer (Decoupled UI from DB).
 
 ---
 
@@ -30,7 +29,6 @@
 **Status**: DESIGN PHASE
 
 ### Roadmap
-- [ ] **Infrastructure Abstraction**: decoupling logic from Firebase/Dexie specific APIs.
-- [ ] **Unified API Layer**: Introduction of a middleware for custom DB communication.
-- [ ] **Advanced Audit Logging**: Business-event tracking for security and analytics.
-- [ ] **Tenant Migration Tool**: One-click move from local-first to full cloud-native.
+- [ ] **Middleware Implementation**: Introducing API routes to replace Dexie Cloud.
+- [ ] **Auth Migration**: Moving from Firebase Client Auth to Server-side JWT.
+- [ ] **Unified API Layer**: Final migration of Service Layer to external REST/GraphQL endpoints.
