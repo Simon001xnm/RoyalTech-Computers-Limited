@@ -20,17 +20,18 @@ export const roleDescriptions: Record<Role, string> = {
 const getRolePermissions = (role: Role): string[] => {
     const baseNav = NAV_ITEMS.map(item => item.href);
     
-    if (role === 'super_admin') return [...baseNav, '/admin'];
-    
-    if (role === 'admin') {
-        // If the Super Admin panel is enabled via flags, allow the primary Admin to see it for platform management
-        if (isFeatureEnabled('SUPER_ADMIN_PANEL')) {
-            return [...baseNav, '/admin'];
-        }
-        return baseNav;
+    // Super Admin: Has access to EVERYTHING, including the platform management panel
+    if (role === 'super_admin') {
+        return [...baseNav, '/admin'];
     }
     
-    // Standard users cannot see User management, Platform Admin, or the Audit Trail
+    // Admin (Tenant Owner): Has access to their business suite, but NOT the platform admin
+    if (role === 'admin') {
+        // Exclude /admin from shop owners to ensure they can't manage other tenants
+        return baseNav.filter(href => href !== '/admin');
+    }
+    
+    // Standard users: Cannot see User management, Platform Admin, or the Audit Trail
     return baseNav.filter(href => href !== '/users' && href !== '/admin' && href !== '/audit');
 };
 

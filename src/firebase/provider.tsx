@@ -74,13 +74,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             // Sync user to local database instead of Firestore to avoid "Failed to fetch"
             const localUser = await db.users.get(firebaseUser.uid);
             if (!localUser) {
-              // Check if it's the first user locally to assign admin
+              // Check if it's the first user locally to assign Platform Owner (super_admin)
               const userCount = await db.users.count();
               await db.users.add({
                 id: firebaseUser.uid,
                 email: firebaseUser.email || '',
                 name: firebaseUser.displayName || 'User',
-                role: userCount === 0 ? 'admin' : 'user',
+                // The very first user to register on the platform becomes the Global Super Admin
+                role: userCount === 0 ? 'super_admin' : 'admin',
               });
             }
           } catch (e) {

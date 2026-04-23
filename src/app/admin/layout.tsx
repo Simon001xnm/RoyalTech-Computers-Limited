@@ -18,10 +18,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isPanelEnabled = isFeatureEnabled('SUPER_ADMIN_PANEL');
   
-  // In prototype mode, we allow the primary Workspace Admin to access the panel if enabled
+  // STRICT SECURITY: Only a Super Admin or the platform owner email can access this area.
+  // Regular Tenant Admins are strictly blocked from global platform management.
   const isSuperAdmin = 
     userProfile?.role === 'super_admin' || 
-    (isPanelEnabled && userProfile?.role === 'admin') ||
     user?.email?.endsWith('@simonstyless.com');
 
   if (!isPanelEnabled) {
@@ -31,7 +31,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <ShieldAlert className="h-12 w-12 text-muted-foreground opacity-20" />
         </div>
         <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">Layer 2 Hidden</h2>
-        <p className="text-muted-foreground max-w-md"> The Super Admin module is currently disabled via feature flags to protect the Golden v1.0 build.</p>
+        <p className="text-muted-foreground max-w-md"> The Super Admin module is currently disabled via feature flags to protect the platform core.</p>
         <Button asChild className="mt-8" variant="outline">
             <Link href="/">Return to Workspace</Link>
         </Button>
@@ -46,7 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Access Restricted</AlertTitle>
                 <AlertDescription>
-                    You are attempting to access the SaaS Platform Control. This area is reserved for Platform Technicians only.
+                    You are attempting to access the SaaS Platform Control. This area is reserved for Global Platform Technicians only. Shop owners cannot manage the platform.
                 </AlertDescription>
             </Alert>
              <Button asChild className="mt-4">
