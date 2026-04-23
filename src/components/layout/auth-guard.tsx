@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useAuth, useFirestore } from '@/firebase/provider';
@@ -13,6 +14,8 @@ import { LogOut, Settings, User as UserIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { User as AppUser } from '@/types';
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
@@ -21,6 +24,9 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     const auth = useAuth();
     const firestore = useFirestore();
     const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+
+    // Get user role from local database for layout decisions
+    const userProfile = useLiveQuery(async () => user ? await db.users.get(user.uid) : null, [user]);
 
     useEffect(() => {
       if (user && firestore) {
@@ -42,14 +48,18 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         if (auth) auth.signOut();
     };
 
+    const isSuperAdmin = userProfile?.role === 'super_admin';
+
   return (
     <SidebarProvider defaultOpen={true}>
       <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-md">
         <SidebarHeader className="p-4">
-            <Link href="/" className="flex items-center gap-2">
-            <h1 className="text-lg font-bold tracking-tight text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-                {APP_NAME}
-            </h1>
+            <Link href={isSuperAdmin ? "/admin" : "/"} className="flex items-center gap-2">
+            <div className={isSuperAdmin ? "bg-primary p-1 rounded" : ""}>
+                <h1 className="text-lg font-black uppercase tracking-tighter text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+                    {isSuperAdmin ? "PLATFORM" : APP_NAME}
+                </h1>
+            </div>
             </Link>
         </SidebarHeader>
         <SidebarContent>
@@ -61,7 +71,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
                 <Button onClick={handleLogout} variant="ghost" size="icon" className="text-sidebar-foreground/70 hover:text-sidebar-foreground" aria-label="Log Out">
                     <LogOut className="h-5 w-5"/>
                 </Button>
-                <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Logout session</span>
+                <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">End Session</span>
             </div>
         </SidebarFooter>
       </Sidebar>
@@ -70,8 +80,13 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-4">
             <SidebarTrigger />
             <Link href="/" className="flex items-center gap-2 font-bold text-lg md:hidden">
-              <span>{APP_NAME}</span>
+              <span>{isSuperAdmin ? "PLATFORM COMMAND" : APP_NAME}</span>
             </Link>
+            {isSuperAdmin && (
+               <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black uppercase tracking-widest text-[9px] px-3">
+                  Layer 2 Access
+               </Badge>
+            )}
           </div>
           
           <div className="flex items-center gap-4">
@@ -96,13 +111,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
                   <Link href="/profile">
                     <DropdownMenuItem>
                       <UserIcon className="mr-2 h-4 w-4" />
-                      <span>Workspace Profile</span>
-                    </DropdownMenuItem>
-                  </Link>
-                  <Link href="/settings">
-                    <DropdownMenuItem>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>App Preferences</span>
+                      <span>{isSuperAdmin ? "System Identity" : "Workspace Profile"}</span>
                     </DropdownMenuItem>
                   </Link>
                   <DropdownMenuSeparator />

@@ -16,23 +16,42 @@ export const roleDescriptions: Record<Role, string> = {
     super_admin: "Platform Technician. Global access for support and SaaS management.",
 };
 
-// Defines which navigation items (modules) each role can see.
+/**
+ * Defines which navigation items (modules) each role can see.
+ * CRITICAL: Super Admin View is now completely distinct from Tenant View.
+ */
 const getRolePermissions = (role: Role): string[] => {
-    const baseNav = NAV_ITEMS.map(item => item.href);
-    
-    // Super Admin: Has access to EVERYTHING, including the platform management panel
+    // 1. SUPER ADMIN: Only sees Platform-level controls. No POS, No Inventory, No Marketing.
     if (role === 'super_admin') {
-        return [...baseNav, '/admin'];
+        return [
+            '/admin',     // Platform Nerve Center
+            '/audit',     // Global Audit Trail
+            '/desk',      // Global Support Oversight
+            '/users',     // System User Management (Global)
+            '/profile',   // Platform Settings
+        ];
     }
     
-    // Admin (Tenant Owner): Has access to their business suite, but NOT the platform admin
+    // 2. ADMIN (Tenant Owner): Full Retail/ERP Suite for their specific workspace.
     if (role === 'admin') {
-        // Exclude /admin from shop owners to ensure they can't manage other tenants
+        const baseNav = NAV_ITEMS.map(item => item.href);
+        // Exclude the Super Admin Command Center
         return baseNav.filter(href => href !== '/admin');
     }
     
-    // Standard users: Cannot see User management, Platform Admin, or the Audit Trail
-    return baseNav.filter(href => href !== '/users' && href !== '/admin' && href !== '/audit');
+    // 3. USER (Staff): Daily Operations only.
+    return [
+        '/',
+        '/pos',
+        '/stock',
+        '/accessories',
+        '/customers',
+        '/documents',
+        '/tracking',
+        '/salesiq',
+        '/projects',
+        '/profile'
+    ];
 };
 
 
