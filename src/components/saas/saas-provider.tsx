@@ -29,11 +29,26 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // USERS: Reactive query for the current user profile (which has tenantId)
+  // USERS: Reactive query for the current user profile (which has tenantId and tenantIds)
   const userProfile = useLiveQuery(async () => user ? await db.users.get(user.uid) : null, [user]);
 
-  // WORKSPACES: All workspaces available on this device
-  const availableWorkspaces = useLiveQuery(() => db.companies.toArray()) || [];
+  // WORKSPACES: Strictly filter by the user's authorized portfolio
+  const availableWorkspaces = useLiveQuery(async () => {
+    if (!userProfile) return [];
+    
+    // If the user has a portfolio array, use it to fetch only authorized companies
+    if (userProfile.tenantIds && userProfile.tenantIds.length > 0) {
+      return await db.companies.where('id').anyOf(userProfile.tenantIds).toArray();
+    }
+    
+    // Fallback to the single primary tenantId if portfolio array is missing
+    if (userProfile.tenantId) {
+      const primary = await db.companies.get(userProfile.tenantId);
+      return primary ? [primary] : [];
+    }
+    
+    return [];
+  }, [userProfile?.tenantIds, userProfile?.tenantId]) || [];
 
   // CURRENT WORKSPACE: The company matching the user's active tenantId
   const activeCompany = useLiveQuery(
@@ -111,7 +126,15 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   }, [user, isUserLoading, activeCompany]);
 
   const switchTenant = async (newTenantId: string) => {
-    if (!user) return;
+    if (!user || !userProfile) return;
+    
+    // SECURITY CHECK: Verify user is authorized for the target workspace
+    const isAuthorized = userProfile.tenantIds?.includes(newTenantId) || userProfile.tenantId === newTenantId;
+    if (!isAuthorized && userProfile.role !== 'super_admin') {
+      toast({ variant: 'destructive', title: 'Access Denied', description: 'You are not authorized for this workspace.' });
+      return;
+    }
+
     try {
         const company = await db.companies.get(newTenantId);
         if (!company) throw new Error("Workspace not found");

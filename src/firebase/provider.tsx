@@ -89,6 +89,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                   email: firebaseUser.email || '',
                   name: firebaseUser.displayName || 'Platform Owner',
                   role: 'super_admin',
+                  tenantIds: [],
                   createdAt: new Date().toISOString()
                 });
               }
@@ -99,6 +100,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                 email: firebaseUser.email || '',
                 name: firebaseUser.displayName || 'Business Admin',
                 role: 'admin',
+                tenantIds: [],
                 createdAt: new Date().toISOString()
               });
             }
