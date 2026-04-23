@@ -10,7 +10,7 @@ import {
     History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown, BarChart3, 
     TrendingUp, Trophy, Filter, Search, X, Loader2, Download, ActivitySquare, 
     ChevronRight, AlertCircle, Info, CheckCircle2, MessageSquare, Inbox, ActivityIcon,
-    Gauge
+    Gauge, Eye, User, Phone, Mail, Clock
 } from 'lucide-react';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -37,14 +37,42 @@ export default function PlatformCommandCenter() {
   const [tenantFilter, setTenantFilter] = useState<string>('all');
   const [isExporting, setIsExporting] = useState(false);
 
-  // Diagnostic State
+  // Diagnostic & Inspection State
   const [diagnosticTenant, setDiagnosticTenant] = useState<any | null>(null);
+  const [inspectingTenantId, setInspectingTenantId] = useState<string | null>(null);
 
   const tenants = useLiveQuery(() => db.companies.toArray());
   const users = useLiveQuery(() => db.users.toArray());
   const globalSales = useLiveQuery(() => db.sales.toArray());
   const globalTickets = useLiveQuery(() => db.tickets.toArray());
   
+  // Node Inspector Data (Computed based on selected ID)
+  const inspectionData = useMemo(() => {
+      if (!inspectingTenantId || !globalSales || !users || !tenants) return null;
+      
+      const tenant = tenants.find(t => t.id === inspectingTenantId);
+      const tenantSales = globalSales
+          .filter(s => s.tenantId === inspectingTenantId)
+          .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          
+      const tenantUsers = users.filter(u => u.tenantId === inspectingTenantId);
+      
+      // Map sales to user identities for staff attribution
+      const attributedSales = tenantSales.map(sale => {
+          const user = tenantUsers.find(u => u.id === sale.createdBy?.uid);
+          return {
+              ...sale,
+              staff: {
+                  name: user?.name || sale.createdBy?.name || 'Unknown',
+                  email: user?.email || 'N/A',
+                  phone: user?.phone || 'N/A'
+              }
+          };
+      });
+
+      return { tenant, sales: attributedSales, users: tenantUsers };
+  }, [inspectingTenantId, globalSales, users, tenants]);
+
   // Reactive logs with filtering
   const logs = useLiveQuery(async () => {
     let collection = db.platformLogs.orderBy('timestamp').reverse();
@@ -229,14 +257,18 @@ export default function PlatformCommandCenter() {
             <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b p-6">
                     <CardTitle className="text-xl font-black uppercase tracking-tight">Tenant GMV Leaderboard</CardTitle>
-                    <CardDescription className="text-xs uppercase font-bold text-muted-foreground">High-performance business nodes ranking</CardDescription>
+                    <CardDescription className="text-xs uppercase font-bold text-muted-foreground">High-performance business nodes ranking &bull; Click to inspect node</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="divide-y divide-muted/30">
                         {commercialInsights.map((tenant, index) => (
-                            <div key={tenant.id} className="p-8 flex items-center justify-between hover:bg-muted/10 transition-colors">
+                            <button 
+                                key={tenant.id} 
+                                className="w-full p-8 flex items-center justify-between hover:bg-primary/5 transition-all group border-l-4 border-transparent hover:border-primary text-left"
+                                onClick={() => setInspectingTenantId(tenant.id)}
+                            >
                                 <div className="flex items-center gap-6">
-                                    <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center font-black text-lg shadow-inner">
+                                    <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center font-black text-lg shadow-inner group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                                         {index + 1}
                                     </div>
                                     <div className="space-y-1">
@@ -251,11 +283,14 @@ export default function PlatformCommandCenter() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="text-right space-y-1">
-                                    <p className="text-2xl font-black text-primary tracking-tighter">{formatCurrency(tenant.gmv)}</p>
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Total Volume</p>
+                                <div className="flex items-center gap-8">
+                                    <div className="text-right space-y-1">
+                                        <p className="text-2xl font-black text-primary tracking-tighter">{formatCurrency(tenant.gmv)}</p>
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Total Volume</p>
+                                    </div>
+                                    <ChevronRight className="h-5 w-5 text-muted-foreground opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                                 </div>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 </CardContent>
@@ -306,6 +341,9 @@ export default function PlatformCommandCenter() {
                                                 <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-3 py-2">Platform Overrides</DropdownMenuLabel>
                                                 <DropdownMenuItem className="font-bold text-xs" onClick={() => handleUpdateTenantPlan(tenant.id, 'pro')}>
                                                     <Crown className="h-4 w-4 mr-2 text-primary" /> Upgrade to Enterprise
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => setInspectingTenantId(tenant.id)}>
+                                                    <Eye className="h-4 w-4 mr-2 text-primary" /> Inspect Node Metrics
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem className="font-bold text-xs" onClick={() => {
                                                     setDiagnosticTenant(tenant);
@@ -377,7 +415,133 @@ export default function PlatformCommandCenter() {
         </TabsContent>
       </Tabs>
 
-      {/* Deep-Dive Diagnostic Dialog */}
+      {/* Node Inspector Dialog */}
+      <Dialog open={!!inspectingTenantId} onOpenChange={(open) => !open && setInspectingTenantId(null)}>
+        <DialogContent className="sm:max-w-5xl max-h-[90vh] flex flex-col p-0 border-none ring-1 ring-black/5 shadow-2xl overflow-hidden bg-background">
+            <DialogHeader className="p-8 bg-primary text-primary-foreground border-b border-white/10 shrink-0">
+                <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                        <DialogTitle className="text-3xl font-black uppercase tracking-tighter flex items-center gap-3">
+                            <Eye className="h-8 w-8" />
+                            Node Inspector: {inspectionData?.tenant?.name}
+                        </DialogTitle>
+                        <DialogDescription className="text-primary-foreground/70 font-bold uppercase text-[10px] tracking-[0.2em] flex items-center gap-4">
+                            <span>SaaS Tenancy ID: {inspectingTenantId?.toUpperCase()}</span>
+                            <span>&bull;</span>
+                            <span>Subscription: {inspectionData?.tenant?.plan || 'Standard'}</span>
+                        </DialogDescription>
+                    </div>
+                    <Badge variant="outline" className="bg-white/10 text-white border-white/20 h-8 px-4 font-black uppercase tracking-widest text-[9px]">
+                        Live Diagnostic Active
+                    </Badge>
+                </div>
+            </DialogHeader>
+            
+            <div className="flex-grow overflow-hidden flex flex-col p-0">
+                <div className="grid grid-cols-3 gap-0 border-b shrink-0">
+                    <div className="p-6 text-center border-r bg-muted/20">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Total Transactions</p>
+                        <p className="text-2xl font-black text-foreground tabular-nums">{inspectionData?.sales.length || 0}</p>
+                    </div>
+                    <div className="p-6 text-center border-r bg-muted/20">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Active Team Size</p>
+                        <p className="text-2xl font-black text-foreground tabular-nums">{inspectionData?.users.length || 0}</p>
+                    </div>
+                    <div className="p-6 text-center bg-muted/20">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Cumulative GMV</p>
+                        <p className="text-2xl font-black text-primary tabular-nums">
+                            {formatCurrency(inspectionData?.sales.reduce((acc, s) => acc + s.amount, 0) || 0)}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex-grow overflow-hidden flex flex-col p-8 space-y-6">
+                    <div className="flex items-center justify-between shrink-0">
+                        <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                            <Activity className="h-4 w-4 text-primary" />
+                            Live Node Transaction Feed
+                        </h3>
+                        <Badge variant="secondary" className="text-[8px] font-black uppercase">Staff Attribution Enabled</Badge>
+                    </div>
+
+                    <div className="flex-grow overflow-hidden rounded-xl border bg-card shadow-sm flex flex-col">
+                        <ScrollArea className="flex-grow">
+                            <Table>
+                                <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead className="font-black uppercase text-[9px] w-[150px]">Timestamp</TableHead>
+                                        <TableHead className="font-black uppercase text-[9px]">Staff Identity (Primary ID)</TableHead>
+                                        <TableHead className="font-black uppercase text-[9px] text-right">Volume</TableHead>
+                                        <TableHead className="font-black uppercase text-[9px]">Method</TableHead>
+                                        <TableHead className="font-black uppercase text-[9px] text-right">Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {inspectionData?.sales.map((sale) => (
+                                        <TableRow key={sale.id} className="hover:bg-muted/10 transition-colors group">
+                                            <TableCell className="text-[10px] font-mono opacity-60">
+                                                <div className="flex items-center gap-1.5">
+                                                    <Clock className="h-3 w-3 opacity-40" />
+                                                    {format(parseISO(sale.date), 'MMM d, HH:mm:ss')}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="space-y-1 py-1">
+                                                    <p className="text-xs font-black uppercase tracking-tight">{sale.staff.name}</p>
+                                                    <div className="flex flex-col gap-0.5 opacity-70">
+                                                        <p className="text-[10px] font-mono flex items-center gap-1">
+                                                            <Mail className="h-2.5 w-2.5" /> {sale.staff.email}
+                                                        </p>
+                                                        <p className="text-[10px] font-mono flex items-center gap-1">
+                                                            <Phone className="h-2.5 w-2.5" /> {sale.staff.phone}
+                                                        </p>
+                                                    </div>
+                                                    <p className="text-[8px] font-mono text-muted-foreground tracking-tighter opacity-40 group-hover:opacity-100 transition-opacity">
+                                                        UID: {sale.createdBy?.uid}
+                                                    </p>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <span className="font-black text-xs tabular-nums text-primary">{formatCurrency(sale.amount)}</span>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest bg-muted/20">
+                                                    {sale.paymentMethod}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Badge variant="default" className="text-[8px] font-black uppercase bg-green-500 hover:bg-green-600">
+                                                    {sale.status}
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {inspectionData?.sales.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="h-48 text-center text-muted-foreground font-black uppercase tracking-widest text-xs opacity-20">
+                                                No transactions logged in this node.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                    </div>
+                </div>
+            </div>
+
+            <CardFooter className="bg-muted/30 p-6 border-t flex justify-between shrink-0">
+                <p className="text-[9px] font-bold text-muted-foreground uppercase italic max-w-sm">
+                    "This oversight module provides cryptographically attributed transaction data. All staff actions are logged for platform-level accountability."
+                </p>
+                <Button onClick={() => setInspectingTenantId(null)} className="font-black uppercase tracking-widest text-xs px-8 h-10 shadow-lg">
+                    Terminate Inspection
+                </Button>
+            </CardFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deep-Dive Diagnostic Dialog (Technical Audit) */}
       <Dialog open={!!diagnosticTenant} onOpenChange={(open) => !open && setDiagnosticTenant(null)}>
         <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col p-0 border-none ring-1 ring-black/5 shadow-2xl">
             <DialogHeader className="p-8 bg-muted/30 border-b">
