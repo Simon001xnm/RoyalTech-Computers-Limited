@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -7,7 +6,7 @@ import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier, TenantUsage } from '@/types/saas';
 import { isFeatureEnabled } from '@/lib/feature-flags';
-import { startOfMonth, endOfMonth } from 'date-fns';
+import { startOfMonth, endOfMonth, addDays, differenceInDays, parseISO } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ShieldAlert, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -72,6 +71,10 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
 
       // If isolation is ON, look for the user's specific tenant
       if (localCompany) {
+         // SIMULATE EXPIRY: 30 days from creation
+         const createdDate = parseISO(localCompany.createdAt);
+         const expiryDate = addDays(createdDate, 30).toISOString();
+
          const t: Tenant = {
              id: localCompany.id,
              name: localCompany.name,
@@ -79,6 +82,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
              tier: (localCompany.plan as SubscriptionTier) || 'legacy_pro', 
              status: (localCompany.status as any) || 'active',
              createdAt: localCompany.createdAt,
+             expiresAt: expiryDate,
              features: ['all']
          };
          setTenant(t);

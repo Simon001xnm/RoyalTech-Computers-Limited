@@ -13,16 +13,35 @@ import { useUser } from "@/firebase/provider";
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getPermittedNavItems } from '@/lib/roles';
+import { useSaaS } from "@/components/saas/saas-provider";
+import { AlertTriangle } from "lucide-react";
+import { parseISO, differenceInDays } from "date-fns";
+import { useMemo } from "react";
 
 export function SidebarNav() {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
+  const { tenant, plan, usage, isLegacyUser } = useSaaS();
 
-  // DEXIE: Fetch user details locally instead of via useDoc (Firestore)
+  // DEXIE: Fetch user details locally
   const currentUser = useLiveQuery(
     async () => user ? await db.users.get(user.uid) : null,
     [user]
   );
+
+  const hasHealthIssue = useMemo(() => {
+    if (!plan || isLegacyUser) return false;
+    
+    // Check if usage > 80% or expiry within 7 days
+    const isHighUsage = usage.assets >= plan.maxAssets * 0.8 || usage.salesThisMonth >= plan.maxSalesPerMonth * 0.8;
+    let isExpiringSoon = false;
+    if (tenant?.expiresAt) {
+        const daysLeft = differenceInDays(parseISO(tenant.expiresAt), new Date());
+        isExpiringSoon = daysLeft <= 7;
+    }
+    
+    return isHighUsage || isExpiringSoon;
+  }, [plan, usage, isLegacyUser, tenant]);
 
   if (isUserLoading) {
     return (
@@ -34,7 +53,6 @@ export function SidebarNav() {
 
   if (!user) return null;
 
-  // If the local profile hasn't loaded yet, show skeleton
   if (currentUser === undefined) {
       return (
         <SidebarMenu className="p-2">
@@ -53,10 +71,15 @@ export function SidebarNav() {
             <SidebarMenuButton
               isActive={pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))}
               tooltip={{ children: item.label, side: "right", align: "center" }}
-              className="justify-start"
+              className="justify-start relative"
             >
               <item.icon className="h-5 w-5" />
               <span>{item.label}</span>
+              {item.href === '/profile' && hasHealthIssue && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <AlertTriangle className="h-3 w-3 text-destructive animate-pulse" />
+                  </div>
+              )}
             </SidebarMenuButton>
           </Link>
         </SidebarMenuItem>

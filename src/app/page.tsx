@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -13,9 +12,12 @@ import {
   Component, 
   Users, 
   TrendingUp,
-  History
+  History,
+  AlertTriangle,
+  Zap,
+  ArrowRight
 } from 'lucide-react';
-import { format, startOfDay, subDays, parseISO } from 'date-fns';
+import { format, startOfDay, subDays, parseISO, differenceInDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { 
   Area, 
@@ -27,10 +29,13 @@ import {
   CartesianGrid 
 } from 'recharts';
 import { useSaaS } from '@/components/saas/saas-provider';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
-  const { tenant } = useSaaS();
+  const { tenant, plan, usage, isLegacyUser } = useSaaS();
 
   // SaaS Isolated Queries
   const assets = useLiveQuery(async () => {
@@ -63,6 +68,29 @@ export default function DashboardPage() {
         return saleDate.getMonth() === today.getMonth() && saleDate.getFullYear() === today.getFullYear();
     }).length || 0
   }), [assets, accessories, customers, sales]);
+
+  const healthAlerts = useMemo(() => {
+    if (!plan || isLegacyUser) return [];
+    const alerts = [];
+    
+    // Usage Alerts
+    if (usage.assets >= plan.maxAssets * 0.8) {
+        alerts.push({ type: 'usage', title: 'Asset Capacity Nearly Full', description: `You have used ${usage.assets} of your ${plan.maxAssets} allowed asset slots.` });
+    }
+    if (usage.salesThisMonth >= plan.maxSalesPerMonth * 0.8) {
+        alerts.push({ type: 'usage', title: 'Sales Limit Approaching', description: `You are close to your monthly limit of ${plan.maxSalesPerMonth} transactions.` });
+    }
+
+    // Expiry Alerts (Simulated)
+    if (tenant?.expiresAt) {
+        const daysLeft = differenceInDays(parseISO(tenant.expiresAt), new Date());
+        if (daysLeft <= 7 && daysLeft >= 0) {
+            alerts.push({ type: 'billing', title: 'Subscription Renewal Soon', description: `Your workspace subscription expires in ${daysLeft} days.` });
+        }
+    }
+
+    return alerts;
+  }, [plan, usage, isLegacyUser, tenant]);
 
   const chartData = useMemo(() => {
     if (!sales) return [];
@@ -117,9 +145,37 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <PageHeader 
           title="Executive Command" 
-          description={`Welcome, ${user?.displayName || 'Administrator'}. Real-time performance for your workspace.`} 
+          description={`Welcome, ${user?.displayName || 'Administrator'}. Real-time performance for ${tenant.name}.`} 
         />
       </div>
+
+      {/* Workspace Health Section */}
+      {healthAlerts.length > 0 && (
+          <div className="space-y-4 animate-in slide-in-from-top duration-500">
+              {healthAlerts.map((alert, idx) => (
+                  <Alert key={idx} variant={alert.type === 'usage' ? 'default' : 'destructive'} className="bg-gradient-to-r from-background to-muted/50 border-primary/20 shadow-sm overflow-hidden">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-primary/10 p-2 rounded-full">
+                                <AlertTriangle className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <AlertTitle className="font-black text-sm uppercase tracking-tight">{alert.title}</AlertTitle>
+                                <AlertDescription className="text-xs text-muted-foreground">{alert.description}</AlertDescription>
+                            </div>
+                        </div>
+                        <Button asChild size="sm" className="font-bold gap-2">
+                            <Link href="/profile">
+                                <Zap className="h-3 w-3 fill-white" />
+                                Upgrade Workspace
+                                <ArrowRight className="h-3 w-3" />
+                            </Link>
+                        </Button>
+                    </div>
+                  </Alert>
+              ))}
+          </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <SummaryCard 
