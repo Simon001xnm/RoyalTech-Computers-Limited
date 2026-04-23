@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -32,7 +31,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 export function NotificationCenter() {
-  const { user } = userUser();
+  const { user } = useUser();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
