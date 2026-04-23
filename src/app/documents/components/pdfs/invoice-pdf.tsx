@@ -4,11 +4,16 @@ import type { Document as AppDocument, DocumentLineItem } from "@/types";
 import { format } from "date-fns";
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSaaS } from '@/components/saas/saas-provider';
 
 const VAT_RATE = 0.16;
 
 export function InvoicePdf({ document }: { document: AppDocument }) {
-  const company = useLiveQuery(() => db.companies.toCollection().last());
+  const { tenant } = useSaaS();
+  const company = useLiveQuery(
+    async () => tenant?.id ? await db.companies.get(tenant.id) : null,
+    [tenant?.id]
+  );
 
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
@@ -22,7 +27,7 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
     }).format(amount);
   };
 
-  const primaryColor = company?.primaryColor || '#2c3e50';
+  const primaryColor = company?.primaryColor || '#22345e';
 
   return (
     <div className="p-[20mm] font-sans text-sm bg-white text-gray-800 w-[210mm] min-h-[297mm] flex flex-col box-border">

@@ -25,6 +25,8 @@
 - **Diagnostic Engine**: Cross-tenant log filtering and audit trail isolation.
 - **Infrastructure Abstraction**: Unified Service Layer (Decoupled UI from DB).
 - **Platform Statements**: High-fidelity PDF generation for platform-wide commercial performance.
+- **Portfolio Switching**: Seamless jumping between multiple legal business entities.
+- **Dynamic White-Labeling**: Real-time UI and PDF branding injection based on tenant identity.
 
 ---
 

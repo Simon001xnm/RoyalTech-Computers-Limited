@@ -1,10 +1,13 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSaaS } from '@/components/saas/saas-provider';
 
+/**
+ * Converts a hex color string to an HSL string compatible with Tailwind CSS variables.
+ */
 function hexToHsl(hex: string): string {
   let r = 0, g = 0, b = 0;
   if (hex.length === 4) {
@@ -34,25 +37,42 @@ function hexToHsl(hex: string): string {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
+/**
+ * Injects CSS variables for branding colors based on the active tenant's settings.
+ */
 export function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
-  const company = useLiveQuery(() => db.companies.toCollection().last());
+  const { tenant } = useSaaS();
+
+  // Fetch the active tenant's company branding info
+  const company = useLiveQuery(
+    async () => tenant?.id ? await db.companies.get(tenant.id) : null,
+    [tenant?.id]
+  );
 
   useEffect(() => {
-    if (company?.primaryColor || company?.secondaryColor) {
-      const root = document.documentElement;
-      
-      if (company.primaryColor) {
-        const primaryHsl = hexToHsl(company.primaryColor);
-        root.style.setProperty('--primary', primaryHsl);
-        root.style.setProperty('--accent', primaryHsl);
-        root.style.setProperty('--ring', primaryHsl);
-      }
-      
-      if (company.secondaryColor) {
-        const secondaryHsl = hexToHsl(company.secondaryColor);
-        root.style.setProperty('--secondary', secondaryHsl);
-      }
+    const root = document.documentElement;
+    
+    if (company?.primaryColor) {
+      const primaryHsl = hexToHsl(company.primaryColor);
+      root.style.setProperty('--primary', primaryHsl);
+      root.style.setProperty('--accent', primaryHsl);
+      root.style.setProperty('--ring', primaryHsl);
+      root.style.setProperty('--sidebar-primary', primaryHsl);
+    } else {
+      // Revert to default if no custom color (Navy Executive)
+      root.style.setProperty('--primary', '220 40% 30%');
+      root.style.setProperty('--accent', '220 40% 30%');
+      root.style.setProperty('--ring', '220 40% 30%');
+      root.style.setProperty('--sidebar-primary', '220 40% 45%');
     }
+    
+    if (company?.secondaryColor) {
+      const secondaryHsl = hexToHsl(company.secondaryColor);
+      root.style.setProperty('--secondary', secondaryHsl);
+    } else {
+      root.style.setProperty('--secondary', '210 40% 96%');
+    }
+
   }, [company]);
 
   return <>{children}</>;

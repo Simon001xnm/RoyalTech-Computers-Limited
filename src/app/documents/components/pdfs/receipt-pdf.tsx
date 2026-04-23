@@ -4,11 +4,16 @@ import type { Document as AppDocument, SaleItem } from "@/types";
 import { format } from "date-fns";
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSaaS } from '@/components/saas/saas-provider';
 
 const VAT_RATE = 0.16;
 
 export function ReceiptPdf({ document }: { document: AppDocument }) {
-  const company = useLiveQuery(() => db.companies.toCollection().last());
+  const { tenant } = useSaaS();
+  const company = useLiveQuery(
+    async () => tenant?.id ? await db.companies.get(tenant.id) : null,
+    [tenant?.id]
+  );
 
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
