@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SummaryCard } from '@/components/dashboard/summary-card';
-import { Building2, Users, CreditCard, Activity, ShieldCheck, Globe, Database, Server, History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown, BarChart3, TrendingUp, Trophy } from 'lucide-react';
+import { Building2, Users, CreditCard, Activity, ShieldCheck, Globe, Database, Server, History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown, BarChart3, TrendingUp, Trophy, Filter, Search, X } from 'lucide-react';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Badge } from '@/components/ui/badge';
@@ -19,23 +19,39 @@ import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function SuperAdminDashboard() {
   const { toast } = useToast();
+  
+  // State for Log Filtering
+  const [logLevelFilter, setLogLevelFilter] = useState<string>('all');
+  const [tenantFilter, setTenantFilter] = useState<string>('all');
+
   const tenants = useLiveQuery(() => db.companies.toArray());
   const users = useLiveQuery(() => db.users.toArray());
   const globalSales = useLiveQuery(() => db.sales.toArray());
-  const logs = useLiveQuery(() => db.platformLogs.orderBy('timestamp').reverse().limit(30).toArray());
+  
+  // Reactive logs with filtering
+  const logs = useLiveQuery(async () => {
+    let collection = db.platformLogs.orderBy('timestamp').reverse();
+    const result = await collection.limit(200).toArray();
+    
+    return result.filter(log => {
+        const matchesLevel = logLevelFilter === 'all' || log.level === logLevelFilter;
+        const matchesTenant = tenantFilter === 'all' || log.tenantId === tenantFilter;
+        return matchesLevel && matchesTenant;
+    }).slice(0, 50);
+  }, [logLevelFilter, tenantFilter]);
   
   const platformStats = useMemo(() => {
     const totalRev = globalSales?.reduce((acc, s) => acc + s.amount, 0) || 0;
-    const errorsCount = logs?.filter(l => l.level === 'error').length || 0;
     
     return {
         totalRevenue: totalRev,
         totalTenants: tenants?.length || 0,
         totalUsers: users?.length || 0,
-        recentErrors: errorsCount
+        activeAlerts: logs?.filter(l => l.level === 'error').length || 0
     };
   }, [tenants, users, globalSales, logs]);
 
@@ -79,6 +95,11 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  const resetFilters = () => {
+    setLogLevelFilter('all');
+    setTenantFilter('all');
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
       style: "currency",
@@ -110,10 +131,10 @@ export default function SuperAdminDashboard() {
         <SummaryCard title="Gross Volume (GMV)" value={formatCurrency(platformStats.totalRevenue)} icon={CreditCard} description="Cumulative sales volume" />
         <SummaryCard 
             title="System Alerts" 
-            value={platformStats.recentErrors} 
+            value={platformStats.activeAlerts} 
             icon={Activity} 
-            description="Events recorded in last cycle"
-            className={platformStats.recentErrors > 0 ? "border-red-200 bg-red-50/10" : ""}
+            description="Recent critical events"
+            className={platformStats.activeAlerts > 0 ? "border-red-200 bg-red-50/10" : ""}
         />
       </div>
 
@@ -126,20 +147,61 @@ export default function SuperAdminDashboard() {
         
         <TabsContent value="activity">
             <div className="grid gap-6 lg:grid-cols-3">
-                <Card className="lg:col-span-2 shadow-sm border-muted/40 overflow-hidden">
-                    <CardHeader className="bg-muted/30 border-b">
+                <Card className="lg:col-span-2 shadow-sm border-muted/40 overflow-hidden flex flex-col">
+                    <CardHeader className="bg-muted/30 border-b space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <History className="h-5 w-5 text-primary" />
                                 <CardTitle className="text-lg">Real-time Audit Trail</CardTitle>
                             </div>
-                            <Badge variant="secondary">Security Level 1</Badge>
+                            {(logLevelFilter !== 'all' || tenantFilter !== 'all') && (
+                                <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8 text-xs gap-1">
+                                    <X className="h-3 w-3" /> Clear Filters
+                                </Button>
+                            )}
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-3">
+                            <div className="w-40">
+                                <Select value={logLevelFilter} onValueChange={setLogLevelFilter}>
+                                    <SelectTrigger className="h-9 text-xs bg-background">
+                                        <div className="flex items-center gap-2">
+                                            <Filter className="h-3 w-3" />
+                                            <SelectValue placeholder="Log Level" />
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Levels</SelectItem>
+                                        <SelectItem value="business">Business Only</SelectItem>
+                                        <SelectItem value="error">Errors Only</SelectItem>
+                                        <SelectItem value="warn">Warnings</SelectItem>
+                                        <SelectItem value="info">Info</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            <div className="w-56">
+                                <Select value={tenantFilter} onValueChange={setTenantFilter}>
+                                    <SelectTrigger className="h-9 text-xs bg-background">
+                                        <div className="flex items-center gap-2">
+                                            <Building2 className="h-3 w-3" />
+                                            <SelectValue placeholder="Filter by Tenant" />
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Every Workspace</SelectItem>
+                                        {tenants?.map(t => (
+                                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 flex-grow">
                         <ScrollArea className="h-[500px]">
                             <div className="divide-y divide-muted/40">
-                                {logs && logs.map(log => (
+                                {logs && logs.length > 0 ? logs.map(log => (
                                     <div key={log.id} className="p-4 hover:bg-muted/20 transition-colors">
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="space-y-1">
@@ -158,7 +220,10 @@ export default function SuperAdminDashboard() {
                                                 </div>
                                                 <p className="text-sm font-semibold">{log.event}</p>
                                                 <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
-                                                    <span className="flex items-center gap-1"><Building2 className="h-3 w-3" /> Tenant: {log.tenantId?.slice(0, 8) || 'System'}</span>
+                                                    <span className="flex items-center gap-1">
+                                                        <Building2 className="h-3 w-3" /> 
+                                                        {tenants?.find(t => t.id === log.tenantId)?.name || `Tenant: ${log.tenantId?.slice(0, 8) || 'System'}`}
+                                                    </span>
                                                     <span>{format(parseISO(log.timestamp), 'MMM d, HH:mm:ss')}</span>
                                                 </div>
                                             </div>
@@ -169,7 +234,12 @@ export default function SuperAdminDashboard() {
                                             )}
                                         </div>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                                        <Search className="h-12 w-12 mb-4" />
+                                        <p className="font-bold uppercase tracking-widest text-xs">No matching logs found</p>
+                                    </div>
+                                )}
                             </div>
                         </ScrollArea>
                     </CardContent>
@@ -202,7 +272,7 @@ export default function SuperAdminDashboard() {
                         <div className="p-4 bg-primary text-primary-foreground rounded-2xl shadow-lg space-y-2">
                             <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Infrastructure Alert</p>
                             <p className="text-xs font-medium leading-relaxed">
-                                System operating on **v2.0 SaaS Engine**. Multi-tenant Commercial Intelligence (Phase 10) is active.
+                                System operating on **v2.0 SaaS Engine**. Multi-tenant Commercial Intelligence (Phase 12) is active.
                             </p>
                         </div>
                     </CardContent>
@@ -282,7 +352,7 @@ export default function SuperAdminDashboard() {
                             </p>
                             <Button className="mt-4 w-full h-8 text-[10px] uppercase font-bold" variant="outline">Download Platform Statement</Button>
                         </CardContent>
-                    </Card>
+                    </div>
                 </div>
             </div>
         </TabsContent>

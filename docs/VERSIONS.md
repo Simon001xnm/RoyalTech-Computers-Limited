@@ -22,6 +22,7 @@
 - **Usage Meters**: Real-time tracking of Assets and Sales volume per workspace.
 - **Super Admin Intelligence**: Platform-wide activity feed and GMV analytics.
 - **Operational Health**: Automated usage alerts and subscription renewal notifications.
+- **Diagnostic Engine**: Cross-tenant log filtering and audit trail isolation.
 - **Infrastructure Abstraction**: Unified Service Layer (Decoupled UI from DB).
 
 ---
