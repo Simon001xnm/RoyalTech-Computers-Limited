@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useUser } from '@/firebase/provider';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -30,7 +31,9 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const company = useLiveQuery(() => db.companies.toArray());
+  // USER RECORD: Check if this user already has an active workspace
+  const userProfile = useLiveQuery(async () => user ? await db.users.get(user.uid) : null, [user]);
+
   const [isSaving, setIsSaving] = useState(false);
   
   const [name, setName] = useState('');
@@ -75,12 +78,19 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         logoUrl,
         primaryColor,
         secondaryColor,
+        plan: 'legacy_pro',
+        status: 'active',
         createdAt: new Date().toISOString(),
         createdBy: { uid: user.uid, name: user.displayName || 'Owner' }
       });
 
-      // Step 2: Link the user to the tenant permanently
-      await db.users.update(user.uid, { tenantId: companyId, role: 'admin' });
+      // Step 2: Add to user's portfolio and set as active
+      const currentIds = userProfile?.tenantIds || [];
+      await db.users.update(user.uid, { 
+        tenantId: companyId, 
+        tenantIds: [...new Set([...currentIds, companyId])],
+        role: 'admin' 
+      });
 
       toast({ title: 'Workspace Provisioned!', description: 'Your executive suite is ready.' });
       setIsSaving(false);
@@ -98,15 +108,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (company === undefined) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
-      </div>
-    );
-  }
-
-  if (company.length === 0) {
+  // If user has no active tenantId, show onboarding
+  if (userProfile && !userProfile.tenantId) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-muted/20 p-4 lg:p-8">
         <div className="w-full max-w-5xl grid lg:grid-cols-[1fr_380px] gap-8 items-start">
@@ -186,12 +189,12 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                 <div className="space-y-2">
                                     <Label htmlFor="primaryColor" className="text-xs">Primary Brand Color</Label>
                                     <div className="flex gap-2">
-                                        <Input 
+                                        <input 
                                             type="color" 
                                             id="primaryColor"
                                             value={primaryColor} 
                                             onChange={e => setPrimaryColor(e.target.value)} 
-                                            className="w-12 h-10 p-1 cursor-pointer" 
+                                            className="w-12 h-10 p-1 cursor-pointer border rounded" 
                                         />
                                         <Input 
                                             value={primaryColor} 
@@ -204,12 +207,12 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                 <div className="space-y-2">
                                     <Label htmlFor="secondaryColor" className="text-xs">Secondary Background Accent</Label>
                                     <div className="flex gap-2">
-                                        <Input 
+                                        <input 
                                             type="color" 
                                             id="secondaryColor"
                                             value={secondaryColor} 
                                             onChange={e => setSecondaryColor(e.target.value)} 
-                                            className="w-12 h-10 p-1 cursor-pointer" 
+                                            className="w-12 h-10 p-1 cursor-pointer border rounded" 
                                         />
                                         <Input 
                                             value={secondaryColor} 

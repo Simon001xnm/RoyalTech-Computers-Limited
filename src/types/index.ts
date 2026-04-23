@@ -24,6 +24,8 @@ export interface Company extends Auditable {
   email: string;
   location?: string;
   website?: string;
+  plan?: string;
+  status?: string;
   primaryColor?: string; // Hex color
   secondaryColor?: string; // Hex color
 }
@@ -35,6 +37,7 @@ export interface User {
   phone?: string;
   role: 'admin' | 'user' | 'super_admin';
   tenantId?: string;
+  tenantIds?: string[]; // Portfolio of workspaces
   avatarUrl?: string;
 }
 

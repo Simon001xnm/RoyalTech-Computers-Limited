@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Camera, Edit3, Image as ImageIcon, Check, Loader2, Building2, Upload, Palette, ShieldCheck, Crown, Zap } from "lucide-react";
+import { Camera, Edit3, Image as ImageIcon, Check, Loader2, Building2, Upload, Palette, ShieldCheck, Crown, Zap, Repeat, PlusCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/firebase/provider";
 import { useEffect, useState, useRef } from "react";
@@ -20,10 +20,11 @@ import placeholderAvatars from '@/lib/placeholder-images.json';
 import { cn } from "@/lib/utils";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { SaaSUsageMeters } from "@/components/saas/saas-usage-meters";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export default function ProfilePage() {
   const { user: authUser, isUserLoading } = useUser();
-  const { tenant, plan, isLegacyUser } = useSaaS();
+  const { tenant, plan, isLegacyUser, availableWorkspaces, switchTenant } = useSaaS();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -40,18 +41,22 @@ export default function ProfilePage() {
   const [compSecondary, setCompSecondary] = useState("");
   const [compLogo, setCompLogo] = useState("");
 
-  // Password fields state
+  // UI States
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isNewWorkspaceOpen, setIsNewWorkspaceOpen] = useState(false);
 
   const localUser = useLiveQuery(
     async () => authUser ? await db.users.get(authUser.uid) : null,
     [authUser]
   );
 
-  const company = useLiveQuery(() => db.companies.toCollection().last());
+  const company = useLiveQuery(
+    async () => tenant?.id ? await db.companies.get(tenant.id) : null,
+    [tenant?.id]
+  );
 
   useEffect(() => {
     if (localUser) {
@@ -136,6 +141,12 @@ export default function ProfilePage() {
     }
   };
 
+  const handleCreateWorkspace = () => {
+      // Logic for creating new workspace
+      // For the prototype, we just redirect or prompt a fresh onboarding flow
+      window.location.reload(); // Force a fresh state for onboarding guard
+  };
+
   if (isUserLoading || !localUser) {
     return <div className="p-12 text-center">Loading profile...</div>;
   }
@@ -184,6 +195,43 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
+          {/* Portfolio Switcher */}
+          <Card className="shadow-md border-primary/20 bg-muted/20">
+            <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Repeat className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-xs font-bold uppercase tracking-widest">Workspace Portfolio</CardTitle>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsNewWorkspaceOpen(true)}>
+                        <PlusCircle className="h-4 w-4" />
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {availableWorkspaces.map(ws => (
+                    <div 
+                        key={ws.id} 
+                        className={cn(
+                            "flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer",
+                            tenant?.id === ws.id ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                        )}
+                        onClick={() => tenant?.id !== ws.id && switchTenant(ws.id)}
+                    >
+                        <div className="flex items-center gap-2 overflow-hidden">
+                            {ws.logoUrl ? (
+                                <img src={ws.logoUrl} className="h-6 w-6 object-contain shrink-0" />
+                            ) : (
+                                <Building2 className="h-4 w-4 shrink-0 opacity-40" />
+                            )}
+                            <span className="text-xs font-bold truncate uppercase">{ws.name}</span>
+                        </div>
+                        {tenant?.id === ws.id && <Check className="h-3 w-3 shrink-0" />}
+                    </div>
+                ))}
+            </CardContent>
+          </Card>
+
           {/* SaaS Usage & Subscription */}
           <div className="space-y-6">
             <Card className="shadow-md border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
@@ -221,24 +269,6 @@ export default function ProfilePage() {
 
             <SaaSUsageMeters />
           </div>
-
-          <Card className="shadow-md bg-muted/30">
-            <CardHeader>
-              <CardTitle className="text-sm">Account Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Full Name</Label>
-                <Input value={displayName} onChange={e => setDisplayName(e.target.value)} />
-              </div>
-              <Button onClick={async () => {
-                if (!authUser) return;
-                await updateProfile(authUser, { displayName });
-                await db.users.update(authUser.uid, { name: displayName });
-                toast({ title: 'Profile Updated' });
-              }} className="w-full">Update Name</Button>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Workspace Branding */}
@@ -271,14 +301,14 @@ export default function ProfilePage() {
                         <div className="space-y-2">
                         <Label className="text-[10px] uppercase font-bold opacity-70">Primary Color</Label>
                         <div className="flex gap-2">
-                            <Input type="color" value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer" />
+                            <input type="color" value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer border rounded" />
                             <Input value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="font-mono text-xs uppercase" />
                         </div>
                         </div>
                         <div className="space-y-2">
                         <Label className="text-[10px] uppercase font-bold opacity-70">Secondary Color</Label>
                         <div className="flex gap-2">
-                            <Input type="color" value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer" />
+                            <input type="color" value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer border rounded" />
                             <Input value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="font-mono text-xs uppercase" />
                         </div>
                         </div>
@@ -306,7 +336,7 @@ export default function ProfilePage() {
           </Card>
 
           <Card className="shadow-md">
-            <CardHeader><CardTitle>Security</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Account Security</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Current Password</Label>
@@ -321,6 +351,28 @@ export default function ProfilePage() {
           </Card>
         </div>
       </div>
+
+       <Dialog open={isNewWorkspaceOpen} onOpenChange={setIsNewWorkspaceOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Workspace</DialogTitle>
+            <DialogDescription>
+              This will reset the setup guard to allow you to create a completely new business entity in your portfolio.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
+                You are currently managing <strong>{availableWorkspaces.length}</strong> workspaces. 
+                Adding another will allow you to maintain separate inventory, sales, and staff records.
+            </p>
+          </div>
+          <CardFooter className="px-0">
+             <Button className="w-full font-bold" onClick={handleCreateWorkspace}>
+                Initialize New Workspace
+             </Button>
+          </CardFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

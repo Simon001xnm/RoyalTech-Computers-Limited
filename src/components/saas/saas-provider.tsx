@@ -9,8 +9,10 @@ import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier, Tena
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { startOfMonth, endOfMonth, addDays, differenceInDays, parseISO } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ShieldAlert, Lock } from 'lucide-react';
+import { ShieldAlert, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { logger } from '@/lib/logger';
+import { toast } from '@/hooks/use-toast';
 
 const DEFAULT_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   free: { id: 'plan_free', name: 'Standard Workspace', tier: 'free', maxAssets: 50, maxSalesPerMonth: 100, enableBranding: false, enableTracking: false, priceMonthly: 0, currency: 'KES' },
@@ -27,8 +29,17 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // DEXIE: Check if this user is linked to a tenant locally
-  const localCompany = useLiveQuery(() => db.companies.toCollection().last());
+  // USERS: Reactive query for the current user profile (which has tenantId)
+  const userProfile = useLiveQuery(async () => user ? await db.users.get(user.uid) : null, [user]);
+
+  // WORKSPACES: All workspaces available on this device
+  const availableWorkspaces = useLiveQuery(() => db.companies.toArray()) || [];
+
+  // CURRENT WORKSPACE: The company matching the user's active tenantId
+  const activeCompany = useLiveQuery(
+    async () => userProfile?.tenantId ? await db.companies.get(userProfile.tenantId) : null,
+    [userProfile?.tenantId]
+  );
 
   // USAGE TRACKING: Live counts for limits
   const usage = useLiveQuery(async () => {
@@ -57,7 +68,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
       if (!isFeatureEnabled('TENANCY_ISOLATION')) {
         const dummyTenant: Tenant = {
           id: 'v1_global',
-          name: localCompany?.name || 'Local Workspace',
+          name: activeCompany?.name || 'Local Workspace',
           ownerId: user?.uid || 'local',
           tier: 'legacy_pro',
           status: 'active',
@@ -71,18 +82,18 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
       }
 
       // If isolation is ON, look for the user's specific tenant
-      if (localCompany) {
+      if (activeCompany) {
          // SIMULATE EXPIRY: 30 days from creation
-         const createdDate = parseISO(localCompany.createdAt);
+         const createdDate = parseISO(activeCompany.createdAt);
          const expiryDate = addDays(createdDate, 30).toISOString();
 
          const t: Tenant = {
-             id: localCompany.id,
-             name: localCompany.name,
-             ownerId: localCompany.createdBy?.uid || 'unknown',
-             tier: (localCompany.plan as SubscriptionTier) || 'legacy_pro', 
-             status: (localCompany.status as any) || 'active',
-             createdAt: localCompany.createdAt,
+             id: activeCompany.id,
+             name: activeCompany.name,
+             ownerId: activeCompany.createdBy?.uid || 'unknown',
+             tier: (activeCompany.plan as SubscriptionTier) || 'legacy_pro', 
+             status: (activeCompany.status as any) || 'active',
+             createdAt: activeCompany.createdAt,
              expiresAt: expiryDate,
              features: ['all']
          };
@@ -97,7 +108,21 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     };
 
     resolveTenant();
-  }, [user, isUserLoading, localCompany]);
+  }, [user, isUserLoading, activeCompany]);
+
+  const switchTenant = async (newTenantId: string) => {
+    if (!user) return;
+    try {
+        const company = await db.companies.get(newTenantId);
+        if (!company) throw new Error("Workspace not found");
+
+        await db.users.update(user.uid, { tenantId: newTenantId });
+        logger.business('System', 'Workspace Context Switched', { from: tenant?.id, to: newTenantId });
+        toast({ title: 'Workspace Switched', description: `Now operating as ${company.name}` });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Switch Failed', description: e.message });
+    }
+  };
 
   if (user && tenant?.status === 'suspended') {
     return (
@@ -127,7 +152,9 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     plan,
     usage: usage || { assets: 0, salesThisMonth: 0 },
     isLoading: isLoading || isUserLoading,
-    isLegacyUser: plan?.tier === 'legacy_pro'
+    isLegacyUser: plan?.tier === 'legacy_pro',
+    availableWorkspaces,
+    switchTenant
   };
 
   return (

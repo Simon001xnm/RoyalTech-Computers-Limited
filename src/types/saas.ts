@@ -4,6 +4,8 @@
  * Definitions for the Multi-tenant Subscription Engine.
  */
 
+import { Company } from "./index";
+
 export type SubscriptionTier = 'free' | 'basic' | 'pro' | 'legacy_pro';
 
 export interface SubscriptionPlan {
@@ -40,4 +42,6 @@ export interface SaaSContextState {
   usage: TenantUsage;
   isLoading: boolean;
   isLegacyUser: boolean;
+  availableWorkspaces: Company[];
+  switchTenant: (tenantId: string) => Promise<void>;
 }
