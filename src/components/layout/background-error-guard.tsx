@@ -7,6 +7,9 @@ import React, { useEffect } from 'react';
  * A root-level component that catches and suppresses generic background fetch errors.
  * This prevents transient Dexie Cloud, Firestore, or Next.js Chunk loading errors
  * from triggering the development error overlay.
+ * 
+ * NOTE: We avoid monkey-patching console.error directly to prevent "Illegal invocation" errors
+ * in certain browser environments. We rely on standard event listeners instead.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -29,6 +32,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       if (isNetworkError) {
         // Silently prevent the error from bubbling up to the browser/overlay
         event.preventDefault();
+        event.stopPropagation();
         // Use debug logging to keep the console clean for the user
         console.debug('Suppressed background/network error rejection:', errorMessage);
       }
@@ -41,38 +45,20 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       
       const isNetworkError = 
         errorMessage.includes('Failed to fetch') || 
-        errorMessage.includes('NetworkError') ||
+        errorMessage.includes('NetworkError') || 
         errorMessage.includes('Load failed') || 
-        errorMessage.includes('ChunkLoadError') ||
-        errorMessage.includes('timeout') ||
-        errorMessage.includes('connection') ||
-        errorMessage.includes('offline') ||
+        errorMessage.includes('ChunkLoadError') || 
+        errorMessage.includes('timeout') || 
+        errorMessage.includes('connection') || 
+        errorMessage.includes('offline') || 
         errorMessage.includes('Network request failed');
 
       if (isNetworkError) {
         // Prevent the error from triggering the global overlay
         event.preventDefault();
+        event.stopPropagation();
         console.debug('Suppressed global network error event:', errorMessage);
       }
-    };
-
-    // 3. SAFE console.error patch to suppress "Failed to fetch" from triggering overlay
-    const originalConsoleError = window.console.error;
-    window.console.error = function(...args: any[]) {
-      const msg = String(args[0] || '');
-      const isTransientError = 
-        msg.includes('Failed to fetch') || 
-        msg.includes('NetworkError') || 
-        msg.includes('Load failed') ||
-        msg.includes('ChunkLoadError');
-
-      if (isTransientError) {
-        console.debug('BackgroundErrorGuard: Suppressed console.error artifact:', ...args);
-        return;
-      }
-      
-      // Use apply with window.console to avoid "Illegal invocation"
-      return originalConsoleError.apply(window.console, args);
     };
 
     // Use capture phase to intercept errors as early as possible
@@ -82,8 +68,6 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
     return () => {
       window.removeEventListener('unhandledrejection', handleRejection, true);
       window.removeEventListener('error', handleGlobalError, true);
-      // Restore original console on unmount
-      window.console.error = originalConsoleError;
     };
   }, []);
 
