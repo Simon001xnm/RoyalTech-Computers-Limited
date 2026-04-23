@@ -16,6 +16,7 @@ interface Auditable {
 
 export interface Company extends Auditable {
   id: string;
+  tenantId?: string; // Link to SaaS tenant
   name: string;
   logoUrl?: string;
   address: string;
@@ -32,18 +33,20 @@ export interface User {
   email: string;
   name?: string;
   phone?: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'super_admin';
+  tenantId?: string;
   avatarUrl?: string;
 }
 
 export interface Asset extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   id: string;
+  tenantId?: string;
   model: string;
   serialNumber: string;
   purchaseDate: string; // ISO string date
   status: 'Available' | 'Leased' | 'Repair' | 'Sold' | 'With Reseller';
   quantity: number; 
-  location?: { lat: number; lng: number }; // For map tracking
+  location?: { lat: number; lng: number }; 
   specifications?: {
     ram: string;
     storage: string;
@@ -52,12 +55,13 @@ export interface Asset extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   };
   purchasePrice?: number;
   leasePrice?: number;
-  createdAt?: string; // from Auditable
-  updatedAt?: string; // from Auditable
+  createdAt?: string; 
+  updatedAt?: string; 
 }
 
 export interface Accessory extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   id: string;
+  tenantId?: string;
   name: string;
   serialNumber: string;
   purchaseDate: string; // ISO string date
@@ -65,75 +69,50 @@ export interface Accessory extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   quantity: number;
   purchasePrice?: number;
   sellingPrice: number;
-  createdAt?: string; // from Auditable
-  updatedAt?: string; // from Auditable
+  createdAt?: string; 
+  updatedAt?: string; 
 }
 
 export interface Customer extends Omit<Auditable, 'createdAt' | 'updatedAt'>{
   id: string;
+  tenantId?: string;
   name: string;
   email: string;
   phone?: string;
   address?: string;
   avatarUrl?: string;
   registrationDate: string; // ISO string date
-  createdAt?: string; // from Auditable
-  updatedAt?: string; // from Auditable
-}
-
-export interface Lease extends Auditable {
-  id:string;
-  customerId: string;
-  customerName?: string; // Denormalized for display
-  assetId: string;
-  assetModel?: string; // Denormalized for display
-  startDate: string; // ISO string date
-  endDate: string; // ISO string date
-  monthlyPayment?: number;
-  paymentStatus: 'Paid' | 'Pending' | 'Overdue';
-  status: 'Active' | 'Expired' | 'Terminated' | 'Upcoming';
-  signature?: string; // Base64 signature image
-}
-
-export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | 'DeliveryNote' | 'LeaseAgreement' | 'Quotation' | 'LPO';
-
-export interface DocumentLineItem {
-  description: string;
-  quantity: number;
-  unitPrice: number;
+  createdAt?: string; 
+  updatedAt?: string; 
 }
 
 export interface Document extends Auditable {
   id: string;
+  tenantId?: string;
   type: DocumentType;
   title: string;
   generatedDate: string; // ISO string date
-  relatedTo?: string; // e.g., Customer Name, Asset S/N
-  saleId?: string; // Direct link to a POS sale
-  data: any; // Data used to generate the document
+  relatedTo?: string; 
+  saleId?: string; 
+  data: any; 
 }
 
 export interface SaleItem {
     id: string;
     name: string;
     serialNumber: string;
-    price: number; // Represents Unit Price
+    price: number; 
     quantity: number;
     discount?: number;
     type: 'asset' | 'accessory';
-    specifications?: {
-        ram: string;
-        storage: string;
-        processor: string;
-        touchscreen?: boolean;
-    };
     cogs?: number;
 }
 
 export interface Sale extends Auditable {
   id: string;
+  tenantId?: string;
   date: string; // ISO string date
-  amount: number; // Represents Grand Total
+  amount: number; 
   paymentMethod: 'Till' | 'M-Pesa' | 'Bank' | 'Paybill' | 'Cash';
   cogs?: number;
   notes?: string;
@@ -154,7 +133,8 @@ export interface Sale extends Auditable {
 
 export interface Expense extends Auditable {
   id: string;
-  date: string; // ISO string date
+  tenantId?: string;
+  date: string; 
   category: string;
   amount: number;
   notes?: string;
@@ -162,6 +142,7 @@ export interface Expense extends Auditable {
 
 export interface Campaign extends Auditable {
   id: string;
+  tenantId?: string;
   name: string;
   subject: string;
   body: string;
@@ -170,31 +151,32 @@ export interface Campaign extends Auditable {
     type: 'all' | 'segment';
     customerIds?: string[];
   };
-  sentAt?: string; // ISO string date
+  sentAt?: string; 
 }
 
 export interface Ticket extends Auditable {
   id: string;
+  tenantId?: string;
   subject: string;
   description: string;
   status: 'Open' | 'In Progress' | 'Closed';
   priority: 'Low' | 'Medium' | 'High';
   customerId: string;
-  customerName?: string; // Denormalized
-  leaseId?: string;
-  leaseIdentifier?: string; // Denormalized
+  customerName?: string; 
 }
 
 export interface Project extends Auditable {
     id: string;
+    tenantId?: string;
     title: string;
     description?: string;
     status: 'Todo' | 'In Progress' | 'Done';
-    dueDate?: string; // ISO string date
+    dueDate?: string; 
 }
 
 export interface Message extends Omit<Auditable, 'updatedAt'> {
   id: string;
+  tenantId?: string;
   text: string;
   userId: string;
   userName: string;
@@ -203,16 +185,18 @@ export interface Message extends Omit<Auditable, 'updatedAt'> {
 
 export interface Reseller extends Auditable {
   id: string;
+  tenantId?: string;
   name: string;
   email: string;
   phone?: string;
   company?: string;
   status: 'Active' | 'Suspended';
-  registrationDate: string; // ISO string date
+  registrationDate: string; 
 }
 
 export interface ItemIssuance extends Auditable {
   id: string;
+  tenantId?: string;
   resellerId: string;
   resellerName: string;
   itemId: string;
@@ -221,14 +205,15 @@ export interface ItemIssuance extends Auditable {
   itemName: string;
   costPrice: number;
   expectedSellingPrice?: number;
-  dateIssued: string; // ISO string date
-  dateSold?: string; // ISO string date
-  dateReturned?: string; // ISO string date
+  dateIssued: string; 
+  dateSold?: string; 
+  dateReturned?: string; 
   status: 'Issued' | 'Sold' | 'Returned';
 }
 
 export interface JobPosting extends Auditable {
   id: string;
+  tenantId?: string;
   title: string;
   description: string;
   department: string;
@@ -237,13 +222,22 @@ export interface JobPosting extends Auditable {
 
 export interface Applicant extends Auditable {
   id: string;
+  tenantId?: string;
   name: string;
   email: string;
   phone?: string;
   jobId: string;
-  jobTitle?: string; // Denormalized
+  jobTitle?: string; 
   status: 'New' | 'Screening' | 'Interview' | 'Offered' | 'Hired' | 'Rejected';
   resumeUrl?: string;
   notes?: string;
-  appliedAt: string; // ISO string date
+  appliedAt: string; 
+}
+
+export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | 'DeliveryNote' | 'Quotation' | 'LPO';
+
+export interface DocumentLineItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
 }

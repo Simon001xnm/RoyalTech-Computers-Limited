@@ -10,14 +10,30 @@
         "email": { "type": "string", "description": "User's email address.", "format": "email" },
         "name": { "type": "string", "description": "User's display name." },
         "phone": { "type": "string", "description": "User's phone number." },
-        "role": { "type": "string", "description": "The user's role.", "enum": ["admin", "user"] }
+        "role": { "type": "string", "description": "The user's role.", "enum": ["admin", "user", "super_admin"] },
+        "tenantId": { "type": "string", "description": "Link to the company/tenant workspace." }
       },
       "required": ["id", "email", "role"]
+    },
+    "Tenant": {
+      "title": "Tenant",
+      "type": "object",
+      "description": "Represents a business workspace in the SaaS environment.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "plan": { "type": "string", "enum": ["free", "basic", "pro", "legacy_pro"] },
+        "status": { "type": "string", "enum": ["active", "suspended", "trial"] },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "plan", "status"]
     },
     "Asset": {
       "title": "Asset",
       "type": "object",
       "properties": {
+        "tenantId": { "type": "string" },
         "model": { "type": "string" },
         "serialNumber": { "type": "string" },
         "purchaseDate": { "type": "string", "format": "date-time" },
@@ -40,104 +56,19 @@
       },
       "required": ["model", "serialNumber", "purchaseDate", "status", "quantity"]
     },
-    "Accessory": {
-      "title": "Accessory",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "serialNumber": { "type": "string" },
-        "purchaseDate": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["Available", "Sold", "With Reseller"] },
-        "quantity": { "type": "number" },
-        "purchasePrice": { "type": "number" },
-        "sellingPrice": { "type": "number" }
-      },
-      "required": ["name", "serialNumber", "purchaseDate", "status", "quantity", "sellingPrice"]
-    },
-    "Customer": {
-      "title": "Customer",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "phone": { "type": "string" },
-        "address": { "type": "string" },
-        "avatarUrl": { "type": "string", "format": "uri" },
-        "registrationDate": { "type": "string", "format": "date-time" }
-      },
-      "required": ["name", "email", "registrationDate"]
-    },
-    "Lease": {
-      "title": "Lease",
-      "type": "object",
-      "properties": {
-        "customerId": { "type": "string" },
-        "customerName": { "type": "string" },
-        "assetId": { "type": "string" },
-        "assetModel": { "type": "string" },
-        "startDate": { "type": "string", "format": "date-time" },
-        "endDate": { "type": "string", "format": "date-time" },
-        "monthlyPayment": { "type": "number" },
-        "paymentStatus": { "type": "string", "enum": ["Paid", "Pending", "Overdue"] },
-        "status": { "type": "string", "enum": ["Active", "Expired", "Terminated", "Upcoming"] }
-      },
-      "required": ["customerId", "assetId", "startDate", "endDate", "paymentStatus", "status"]
-    },
-    "Document": {
-        "title": "Document",
-        "type": "object",
-        "properties": {
-            "type": { "type": "string", "enum": ["Receipt", "Invoice", "Proforma", "RepairNote", "DeliveryNote", "LeaseAgreement", "Quotation", "LPO"]},
-            "title": { "type": "string" },
-            "generatedDate": { "type": "string", "format": "date-time" },
-            "relatedTo": { "type": "string" },
-            "data": { "type": "object" }
-        },
-        "required": ["type", "title", "generatedDate", "data"]
-    },
     "Sale": {
         "title": "Sale",
         "type": "object",
         "properties": {
+            "tenantId": { "type": "string" },
             "date": { "type": "string", "format": "date-time" },
             "amount": { "type": "number" },
             "paymentMethod": { "type": "string", "enum": ["Till", "M-Pesa", "Bank", "Paybill", "Cash"] },
-            "cogs": { "type": "number", "description": "Cost of Goods Sold for this sale" },
-            "notes": { "type": "string" },
             "customerName": { "type": "string" },
             "customerId": { "type": "string" },
-            "resellerId": { "type": "string" },
-            "resellerName": { "type": "string" },
-            "status": { "type": "string", "enum": ["Paid", "Pending", "Void"] },
-            "vat": { "type": "number" },
-            "subtotal": { "type": "number" },
-            "items": {
-              "type": "array",
-              "items": {
-                  "type": "object",
-                  "properties": {
-                      "id": { "type": "string" },
-                      "name": { "type": "string" },
-                      "serialNumber": { "type": "string" },
-                      "price": { "type": "number" },
-                      "type": { "type": "string", "enum": ["asset", "accessory"] }
-                  },
-                   "required": ["id", "name", "price", "type"]
-              }
-            }
+            "status": { "type": "string", "enum": ["Paid", "Pending", "Void"] }
         },
-        "required": ["date", "amount", "paymentMethod", "items", "status"]
-    },
-    "Expense": {
-        "title": "Expense",
-        "type": "object",
-        "properties": {
-            "date": { "type": "string", "format": "date-time" },
-            "category": { "type": "string" },
-            "amount": { "type": "number" },
-            "notes": { "type": "string" }
-        },
-        "required": ["date", "category", "amount"]
+        "required": ["date", "amount", "paymentMethod", "status"]
     }
   },
   "firestore": {
@@ -145,33 +76,17 @@
       "schema": { "$ref": "#/entities/User" },
       "description": "Stores user profile information."
     },
+    "/tenants/{tenantId}": {
+      "schema": { "$ref": "#/entities/Tenant" },
+      "description": "Stores SaaS tenant/company workspace details."
+    },
     "/assets/{assetId}": {
       "schema": { "$ref": "#/entities/Asset" },
-      "description": "Stores inventory of all primary assets (phones, laptops, etc)."
-    },
-    "/accessories/{accessoryId}": {
-      "schema": { "$ref": "#/entities/Accessory" },
-      "description": "Stores inventory of all accessories."
-    },
-    "/customers/{customerId}": {
-      "schema": { "$ref": "#/entities/Customer" },
-      "description": "Stores customer information."
-    },
-    "/leaseAgreements/{leaseId}": {
-      "schema": { "$ref": "#/entities/Lease" },
-      "description": "Stores lease agreement details."
-    },
-     "/documents/{documentId}": {
-      "schema": { "$ref": "#/entities/Document" },
-      "description": "Stores generated documents like invoices and receipts."
+      "description": "Stores inventory of all primary assets."
     },
     "/sales/{saleId}": {
         "schema": { "$ref": "#/entities/Sale" },
         "description": "Stores records of individual sales."
-    },
-    "/expenses/{expenseId}": {
-        "schema": { "$ref": "#/entities/Expense" },
-        "description": "Stores records of business expenses."
     }
   },
   "auth": {

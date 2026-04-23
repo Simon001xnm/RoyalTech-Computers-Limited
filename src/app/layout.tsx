@@ -10,6 +10,7 @@ import { PwaRegistration } from '@/components/layout/pwa-registration';
 import { BackgroundErrorGuard } from '@/components/layout/background-error-guard';
 import { OnboardingGuard } from '@/components/layout/onboarding-guard';
 import { DynamicThemeProvider } from '@/components/layout/dynamic-theme-provider';
+import { SaaSProvider } from '@/components/saas/saas-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -64,11 +65,13 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <AuthGuard>
             <BackgroundErrorGuard>
-                <DynamicThemeProvider>
-                    <OnboardingGuard>
-                        {children}
-                    </OnboardingGuard>
-                </DynamicThemeProvider>
+                <SaaSProvider>
+                    <DynamicThemeProvider>
+                        <OnboardingGuard>
+                            {children}
+                        </OnboardingGuard>
+                    </DynamicThemeProvider>
+                </SaaSProvider>
             </BackgroundErrorGuard>
           </AuthGuard>
           <Toaster />

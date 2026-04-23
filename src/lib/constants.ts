@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Package as PackageIcon, Users, FileText, Printer, MapPin, ClipboardList, BookOpen, Home, Inbox, Phone, ListChecks, Presentation, UserPlus, Briefcase, Component, ShoppingCart, BarChart3, User } from 'lucide-react';
+import { LayoutDashboard, Package as PackageIcon, Users, Printer, MapPin, ClipboardList, BookOpen, Inbox, Phone, ListChecks, Presentation, UserPlus, Briefcase, ShoppingCart, BarChart3, User, ShieldCheck } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
 
@@ -24,7 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/pos', label: 'Point of Sale', icon: ShoppingCart },
   { href: '/stock', label: 'Asset Inventory', icon: PackageIcon },
-  { href: '/accessories', label: 'Accessories', icon: Component },
+  { href: '/accessories', label: 'Accessories', icon: ShoppingCart },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/documents', label: 'Documents', icon: Printer },
   { href: '/tracking', label: 'Asset Tracking', icon: MapPin },
@@ -39,6 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/resellers', label: 'Resellers', icon: Briefcase },
   { href: '/recruit', label: 'Recruitment', icon: Briefcase },
   { href: '/profile', label: 'Settings', icon: User },
+  { href: '/admin', label: 'Platform Admin', icon: ShieldCheck }, // Hidden by role/flag
 ];
 
 export const APP_NAME = "Professional ERP Suite";
