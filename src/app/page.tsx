@@ -26,14 +26,32 @@ import {
   YAxis, 
   CartesianGrid 
 } from 'recharts';
+import { useSaaS } from '@/components/saas/saas-provider';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
+  const { tenant } = useSaaS();
 
-  const assets = useLiveQuery(() => db.assets.toArray());
-  const accessories = useLiveQuery(() => db.accessories.toArray());
-  const customers = useLiveQuery(() => db.customers.toArray());
-  const sales = useLiveQuery(() => db.sales.orderBy('date').reverse().toArray());
+  // SaaS Isolated Queries
+  const assets = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.assets.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
+
+  const accessories = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.accessories.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
+
+  const customers = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.customers.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
+
+  const sales = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.sales.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
 
   const stats = useMemo(() => ({
     availableAssets: assets?.filter(l => l.status === 'Available').length || 0,
@@ -68,6 +86,11 @@ export default function DashboardPage() {
     return last7Days;
   }, [sales]);
 
+  const sortedRecentSales = useMemo(() => {
+      if (!sales) return [];
+      return [...sales].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [sales]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
       style: "currency",
@@ -76,10 +99,10 @@ export default function DashboardPage() {
     }).format(amount);
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || !tenant) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Dashboard" description="Syncing metrics..." />
+        <PageHeader title="Dashboard" description="Syncing workspace metrics..." />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="h-32 animate-pulse bg-muted" />
@@ -183,9 +206,9 @@ export default function DashboardPage() {
             <CardDescription>Latest sales transactions recorded.</CardDescription>
           </CardHeader>
           <CardContent className="max-h-[320px] overflow-auto">
-            {sales && sales.length > 0 ? (
+            {sortedRecentSales && sortedRecentSales.length > 0 ? (
               <div className="space-y-4">
-                {sales.slice(0, 10).map(sale => (
+                {sortedRecentSales.slice(0, 10).map(sale => (
                   <div key={sale.id} className="flex items-center justify-between border-b border-muted/30 pb-3 last:border-0 last:pb-0">
                     <div className="space-y-1">
                       <p className="text-sm font-semibold leading-none">{sale.customerName || 'Walk-in'}</p>

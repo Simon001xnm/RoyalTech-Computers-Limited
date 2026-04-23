@@ -60,7 +60,12 @@ export function StockClient() {
     pageSize: 10,
   });
   
-  const assets = useLiveQuery(() => db.assets.toArray());
+  // SaaS Isolated Query
+  const assets = useLiveQuery(async () => {
+    if (!tenant) return undefined;
+    return await db.assets.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
+
   const isLoading = assets === undefined;
 
   const filteredAssets = useMemo(() => {
@@ -81,8 +86,8 @@ export function StockClient() {
   }
 
   const handleBulkImport = async () => {
-    if (!bulkData.trim()) {
-        toast({ variant: 'destructive', title: 'Error', description: 'The text area is empty.' });
+    if (!bulkData.trim() || !tenant) {
+        toast({ variant: 'destructive', title: 'Error', description: 'The text area is empty or tenant not resolved.' });
         return;
     }
 
@@ -96,7 +101,7 @@ export function StockClient() {
             
             return {
                 id: crypto.randomUUID(),
-                tenantId: tenant?.id, // SaaS Injection
+                tenantId: tenant.id, // SaaS Injection
                 model,
                 serialNumber,
                 purchaseDate: new Date(purchaseDateStr).toISOString(),
@@ -114,7 +119,7 @@ export function StockClient() {
         });
 
         await db.assets.bulkAdd(newAssets);
-        toast({ title: 'Import Successful', description: `${newAssets.length} assets added to local database.` });
+        toast({ title: 'Import Successful', description: `${newAssets.length} assets added to your local business workspace.` });
         setIsBulkFormOpen(false);
         setBulkData("");
     } catch (error: any) {
@@ -144,10 +149,12 @@ export function StockClient() {
   };
   
   const handleFormSubmit = async (data: any) => {
+    if (!tenant) return;
+
     const assetData: Asset = {
       ...data,
       id: editingAsset?.id || crypto.randomUUID(),
-      tenantId: tenant?.id, // SaaS Injection
+      tenantId: tenant.id, // SaaS Injection
       purchaseDate: data.purchaseDate.toISOString(), 
       specifications: { 
         ram: data.ram || '', 
@@ -198,8 +205,8 @@ export function StockClient() {
       <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
          <div className="flex-grow">
             <PageHeader
-                title="Asset Inventory (Local)"
-                description="Manage your assets (Phones, Laptops, Devices) stored locally on this device."
+                title="Asset Inventory (Siloed)"
+                description="Managing high-value hardware restricted to your business workspace."
             />
         </div>
         <div className="flex-shrink-0 flex gap-2">
@@ -223,14 +230,14 @@ export function StockClient() {
         />
       </div>
       
-      {isLoading && <p>Loading assets from local database...</p>}
+      {isLoading && <p className="text-muted-foreground animate-pulse">Accessing tenant inventory...</p>}
 
       {!isLoading && filteredAssets.length === 0 && searchTerm && (
         <Alert variant="default" className="mb-4 bg-card">
           <PackageSearch className="h-4 w-4" />
           <AlertTitle>No Assets Found</AlertTitle>
           <AlertDescription>
-            Your search for "{searchTerm}" did not match any assets in your inventory.
+            Your search for "{searchTerm}" did not match any assets in your workspace.
           </AlertDescription>
         </Alert>
       )}
@@ -238,9 +245,9 @@ export function StockClient() {
       {!isLoading && assets && assets.length === 0 && !searchTerm && (
          <Alert variant="default" className="mb-4 bg-card">
           <PackageSearch className="h-4 w-4" />
-          <AlertTitle>No Assets in Stock</AlertTitle>
+          <AlertTitle>Workspace Empty</AlertTitle>
           <AlertDescription>
-            Your local inventory is empty. Start adding assets or use Bulk Add.
+            No assets registered for this business yet. Use Bulk Add to jumpstart your inventory.
           </AlertDescription>
         </Alert>
       )}
@@ -309,7 +316,7 @@ export function StockClient() {
             <DialogHeader>
                 <DialogTitle>Bulk Add Assets</DialogTitle>
                 <DialogDescription>
-                    Paste CSV data. Format: Model,Serial,Date(YYYY-MM-DD),Qty,Status,Price,Lease,RAM,SSD,CPU
+                    Paste CSV data. Every item will be tagged with your Tenant ID: {tenant?.id}
                 </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
@@ -324,7 +331,7 @@ export function StockClient() {
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsBulkFormOpen(false)} disabled={isBulkImporting}>Cancel</Button>
                 <Button onClick={handleBulkImport} disabled={isBulkImporting}>
-                    {isBulkImporting ? 'Importing...' : 'Import to Local DB'}
+                    {isBulkImporting ? 'Processing Silos...' : 'Import to Workspace'}
                 </Button>
             </DialogFooter>
         </DialogContent>
@@ -335,7 +342,7 @@ export function StockClient() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete <strong>{assetToDelete?.model}</strong>? This will remove it from this device and synced records.
+              Are you sure you want to delete <strong>{assetToDelete?.model}</strong>? This action is permanent within your business workspace.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

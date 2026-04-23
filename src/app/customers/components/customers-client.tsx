@@ -55,8 +55,12 @@ export function CustomersClient() {
     pageSize: 10,
   });
 
-  // DEXIE LOCAL QUERY
-  const customers = useLiveQuery(() => db.customers.toArray());
+  // SaaS Isolated Query
+  const customers = useLiveQuery(async () => {
+    if (!tenant) return undefined;
+    return await db.customers.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
+
   const isLoading = customers === undefined;
 
   const filteredCustomers = useMemo(() => {
@@ -92,10 +96,12 @@ export function CustomersClient() {
   };
 
   const handleFormSubmit = async (data: any) => {
+    if (!tenant) return;
+
     const customerData: Customer = {
       ...data,
       id: editingCustomer?.id || crypto.randomUUID(),
-      tenantId: tenant?.id, // Layer 2 Tenancy Injection
+      tenantId: tenant.id, // Layer 2 Tenancy Injection
       updatedAt: new Date().toISOString()
     };
 
@@ -142,8 +148,8 @@ export function CustomersClient() {
   return (
     <>
       <PageHeader
-        title="Customer Management (Local)"
-        description="Manage your customer records stored on this device."
+        title="Customer CRM (Siloed)"
+        description="Managing client relationships private to your business workspace."
         actionLabel="Add New Customer"
         onAction={handleAddCustomer}
         ActionIcon={PlusCircle}
@@ -158,14 +164,14 @@ export function CustomersClient() {
         />
       </div>
       
-      {isLoading && <p>Loading customers from local storage...</p>}
+      {isLoading && <p className="text-muted-foreground animate-pulse">Syncing client directory...</p>}
 
       {!isLoading && filteredCustomers.length === 0 && searchTerm && (
         <Alert variant="default" className="mb-4 bg-card">
           <UserX className="h-4 w-4" />
-          <AlertTitle>No Customers Found</AlertTitle>
+          <AlertTitle>No Results</AlertTitle>
           <AlertDescription>
-            Your search for "{searchTerm}" did not match any records.
+            Your search for "{searchTerm}" did not match any records in your tenant.
           </AlertDescription>
         </Alert>
       )}
@@ -173,9 +179,9 @@ export function CustomersClient() {
       {!isLoading && customers && customers.length === 0 && !searchTerm && (
          <Alert variant="default" className="mb-4 bg-card">
           <Users className="h-4 w-4" />
-          <AlertTitle>No Customers Yet</AlertTitle>
+          <AlertTitle>CRM Empty</AlertTitle>
           <AlertDescription>
-            Click "Add New Customer" to start your local database.
+            Start building your private customer base for this business.
           </AlertDescription>
         </Alert>
       )}
@@ -216,7 +222,7 @@ export function CustomersClient() {
               ) : (
                  <TableRow>
                   <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results.
+                    No records found.
                   </TableCell>
                 </TableRow>
               )}
@@ -244,12 +250,12 @@ export function CustomersClient() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete <strong>{customerToDelete?.name}</strong>?
+              Are you sure you want to delete <strong>{customerToDelete?.name}</strong> from your business CRM?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Delete Customer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -12,6 +12,7 @@ import { getSaleColumns, type SaleColumnActions } from './sale-columns';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useSaaS } from '@/components/saas/saas-provider';
 
 interface RecentSalesProps {
     onViewReceipt: (sale: Sale) => void;
@@ -20,21 +21,27 @@ interface RecentSalesProps {
 export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const router = useRouter();
     const { toast } = useToast();
+    const { tenant } = useSaaS();
 
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 5 });
 
-    // DEXIE: Fetch sales history locally
-    const sales = useLiveQuery(() => 
-        db.sales.orderBy('date').reverse().toArray()
-    );
+    // SaaS Isolated Query
+    const sales = useLiveQuery(async () => {
+        if (!tenant) return [];
+        // Filter by tenantId and then sort in memory (or use a composite index in production)
+        const tenantSales = await db.sales.where('tenantId').equals(tenant.id).toArray();
+        return tenantSales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [tenant?.id]);
     
     const isLoading = sales === undefined;
     
     const handleGenerateDelivery = async (sale: Sale) => {
+        if (!tenant) return;
         toast({ title: "Generating Delivery Note..." });
 
         const deliveryData = {
             id: crypto.randomUUID(),
+            tenantId: tenant.id, // SaaS Injection
             type: 'DeliveryNote' as const,
             title: `Delivery Note #DEL-${sale.id.slice(0, 5).toUpperCase()}`,
             generatedDate: new Date().toISOString(),
@@ -79,12 +86,12 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                    <CardTitle>Recent Local Receipts</CardTitle>
-                    <CardDescription>A log of sales stored on this device.</CardDescription>
+                    <CardTitle>Workspace Sale History</CardTitle>
+                    <CardDescription>A siloed log of sales transactions for this business.</CardDescription>
                 </div>
             </CardHeader>
             <CardContent>
-                {isLoading && <p>Loading sales history...</p>}
+                {isLoading && <p className="text-muted-foreground animate-pulse">Filtering workspace transactions...</p>}
                 {!isLoading && sales && (
                     <div className="border rounded-md">
                         <Table>
@@ -110,7 +117,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={saleColumns.length} className="h-24 text-center">No sales recorded yet.</TableCell>
+                                        <TableCell colSpan={saleColumns.length} className="h-24 text-center">No sales recorded in this workspace yet.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
