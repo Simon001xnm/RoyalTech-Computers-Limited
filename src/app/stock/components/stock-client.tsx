@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, PackageSearch, Upload, Lock } from "lucide-react";
+import { PlusCircle, PackageSearch, Upload, Lock, Download } from "lucide-react";
 import { AssetForm } from "./asset-form";
 import { getAssetColumns, type AssetColumnActions } from "./asset-columns";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { useUser } from "@/firebase/provider";
 import { AssetService } from "@/services/asset-service";
-import { cn } from "@/lib/utils";
+import { cn, exportToCsv } from "@/lib/utils";
 
 export function StockClient() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -92,6 +92,50 @@ export function StockClient() {
     }
     setEditingAsset(null);
     setIsFormOpen(true);
+  };
+
+  const handleDownloadTemplate = () => {
+    const filename = "RCL_Asset_Import_Template.csv";
+    const data = [
+        {
+            model: "iPhone 15 Pro",
+            serialNumber: "IMEI-123456789",
+            purchaseDate: "2024-01-15",
+            quantity: "1",
+            status: "Available",
+            purchasePrice: "145000",
+            leasePrice: "7500",
+            ram: "8GB",
+            storage: "256GB",
+            processor: "A17 Pro"
+        },
+        {
+            model: "HP EliteBook 840 G8",
+            serialNumber: "SN-ABCD-9876",
+            purchaseDate: "2023-12-01",
+            quantity: "1",
+            status: "Available",
+            purchasePrice: "85000",
+            leasePrice: "4500",
+            ram: "16GB",
+            storage: "512GB SSD",
+            processor: "Core i7"
+        }
+    ];
+    const mapping = {
+        model: "Model",
+        serialNumber: "Serial Number",
+        purchaseDate: "Purchase Date (YYYY-MM-DD)",
+        quantity: "Quantity",
+        status: "Status (Available/Leased/Repair/Sold/With Reseller)",
+        purchasePrice: "Purchase Price",
+        leasePrice: "Lease Rate",
+        ram: "RAM",
+        storage: "Storage",
+        processor: "Processor"
+    };
+    exportToCsv(filename, data, mapping);
+    toast({ title: "Template Downloaded", description: "Open in Excel to fill out your inventory list." });
   };
   
   const handleBulkImport = async () => {
@@ -233,11 +277,37 @@ export function StockClient() {
       
       <Dialog open={isBulkFormOpen} onOpenChange={setIsBulkFormOpen}>
         <DialogContent className="sm:max-w-3xl">
-            <DialogHeader><DialogTitle>Bulk Add Assets</DialogTitle></DialogHeader>
-            <div className="py-4"><Textarea placeholder="Model, SN, Date, Qty, Status..." value={bulkData} onChange={(e) => setBulkData(e.target.value)} rows={10} disabled={isBulkImporting} /></div>
+            <DialogHeader>
+                <DialogTitle>Bulk Add Assets</DialogTitle>
+                <DialogDescription>
+                    Fill out the inventory list and paste it below. Columns must follow the template order.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-dashed">
+                    <div className="space-y-1">
+                        <p className="text-xs font-bold uppercase">Import Helper</p>
+                        <p className="text-[10px] text-muted-foreground">Download our pre-formatted template to ensure valid data entry.</p>
+                    </div>
+                    <Button onClick={handleDownloadTemplate} size="sm" variant="secondary" className="font-bold">
+                        <Download className="mr-2 h-3.3 w-3.5" />
+                        Download CSV Template
+                    </Button>
+                </div>
+                <Textarea 
+                    placeholder="Model, SN, Date(YYYY-MM-DD), Qty, Status(Available/Leased/Repair/Sold/With Reseller), PurchasePrice, LeaseRate, RAM, Storage, Processor" 
+                    value={bulkData} 
+                    onChange={(e) => setBulkData(e.target.value)} 
+                    rows={12} 
+                    disabled={isBulkImporting} 
+                    className="font-mono text-xs"
+                />
+            </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsBulkFormOpen(false)} disabled={isBulkImporting}>Cancel</Button>
-                <Button onClick={handleBulkImport} disabled={isBulkImporting}>{isBulkImporting ? 'Processing Service...' : 'Import to Service'}</Button>
+                <Button onClick={handleBulkImport} disabled={isBulkImporting || !bulkData.trim()}>
+                    {isBulkImporting ? 'Processing Service...' : 'Import to Service'}
+                </Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>

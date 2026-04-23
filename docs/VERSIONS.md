@@ -29,6 +29,7 @@
 - **Portfolio Switching**: Seamless jumping between multiple legal business entities.
 - **Dynamic White-Labeling**: Real-time UI and PDF branding injection based on tenant identity.
 - **Managed Helpdesk**: Consolidate global support tickets for Super Admin oversight.
+- **Enterprise Provisioning**: CSV Template Engine for high-speed bulk inventory onboarding.
 
 ---
 
