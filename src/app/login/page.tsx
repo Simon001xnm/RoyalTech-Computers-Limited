@@ -7,9 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth, useUser } from '@/firebase/provider';
 import { useRouter } from 'next/navigation';
-import {
-  initiateEmailSignIn,
-} from '@/firebase/non-blocking-login';
+import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 
@@ -53,7 +51,8 @@ export default function LoginPage() {
       {/* Custom Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 scale-105 transition-transform duration-[2000ms] ease-out"
-        style={{ backgroundImage: 'url("/stimaspt.jpg")' }}
+        style={{ backgroundImage: 'url("https://picsum.photos/seed/auth/1920/1080")' }}
+        data-ai-hint="business office"
       />
       
       {/* Blurred Mirror Form (Glassmorphism) */}

@@ -147,7 +147,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                         </div>
                         
                         <div className="space-y-3">
-                            <Label className="text-[10px] uppercase font-bold opacity-60">Brand Palette</Label>
+                            <Label className="text-[10px] uppercase font-bold opacity-60">Brand Palette Picker</Label>
                             <div className="flex flex-wrap gap-2">
                                 {COLOR_PRESETS.map((preset) => (
                                     <button
@@ -173,10 +173,10 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                         <Separator className="my-4" />
 
                         <div className="space-y-4">
-                            <Label className="text-[10px] uppercase font-bold opacity-60">Custom Identity</Label>
+                            <Label className="text-[10px] uppercase font-bold opacity-60">Custom Identity Colors</Label>
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="primaryColor" className="text-xs">Primary</Label>
+                                    <Label htmlFor="primaryColor" className="text-xs">Primary Brand Color</Label>
                                     <div className="flex gap-2">
                                         <Input 
                                             type="color" 
@@ -194,7 +194,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="secondaryColor" className="text-xs">Secondary</Label>
+                                    <Label htmlFor="secondaryColor" className="text-xs">Secondary Background Accent</Label>
                                     <div className="flex gap-2">
                                         <Input 
                                             type="color" 
@@ -244,7 +244,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                             </div>
                         )}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-2xl transition-opacity">
-                            <span className="text-[10px] font-bold">REPLACE IMAGE</span>
+                            <span className="text-[10px] font-bold">REPLACE LOGO</span>
                         </div>
                     </div>
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
@@ -252,19 +252,19 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                         <h4 className="text-xl font-black leading-tight uppercase truncate">
                             {name || 'Business Name'}
                         </h4>
-                        <p className="text-[10px] font-medium opacity-70 tracking-widest uppercase">Workspace Live</p>
+                        <p className="text-[10px] font-medium opacity-70 tracking-widest uppercase">Workspace Ready</p>
                     </div>
                 </CardContent>
             </Card>
 
             <div className="p-5 rounded-2xl bg-muted/50 border border-muted-foreground/10 space-y-3">
-                <h5 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Setup Guide</h5>
+                <h5 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Branding Impact</h5>
                 <p className="text-xs leading-relaxed text-muted-foreground/80">
-                    The logo and colors you choose will be applied to all your **Invoices**, **Receipts**, and **Reports**.
+                    Your chosen logo and brand colors will automatically be applied to all **Adobe-grade Invoices**, **Receipts**, and **Financial Reports**.
                 </p>
                 <div className="flex items-center gap-2 text-[10px] font-bold text-primary">
                     <CheckCircle2 className="h-3 w-3" />
-                    Secure Local Storage
+                    Verified Local Database
                 </div>
             </div>
           </div>

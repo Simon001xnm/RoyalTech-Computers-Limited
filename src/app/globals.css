@@ -91,7 +91,7 @@ body {
   }
 }
 
-/* PDF Print Styles for A4 */
+/* PDF Print Styles for High-Fidelity A4 */
 @media print {
   @page {
     size: A4;
@@ -125,7 +125,7 @@ body {
   @apply bg-muted rounded-full hover:bg-muted-foreground/30 transition-colors;
 }
 
-/* Force A4 Preview sizing for snapshots */
+/* Force A4 Preview sizing for full snapshots */
 .a4-document {
     width: 210mm;
     min-height: 297mm;
@@ -133,4 +133,5 @@ body {
     box-shadow: 0 0 20px rgba(0,0,0,0.1);
     margin: auto;
     overflow: hidden;
+    flex-shrink: 0;
 }

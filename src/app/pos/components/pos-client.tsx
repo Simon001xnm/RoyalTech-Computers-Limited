@@ -71,7 +71,7 @@ export function PosClient() {
   const allProducts = useMemo<Product[]>(() => {
     if (!assets || !accessories) return [];
     return [
-      ...assets.map(item => ({ ...item, productType: 'asset' as const, displayName: buildAssetDisplayName(item), price: item.leasePrice })),
+      ...assets.map(item => ({ ...item, productType: 'asset' as const, displayName: buildAssetDisplayName(item), price: item.purchasePrice })),
       ...accessories.map(item => ({ ...item, productType: 'accessory' as const, displayName: `${item.name} (S/N: ${item.serialNumber})`, price: item.sellingPrice }))
     ];
   }, [assets, accessories]);
@@ -218,6 +218,7 @@ export function PosClient() {
     setIsReceiptPreviewOpen(true);
     setIsGeneratingPdf(true);
 
+    // Simulate high-fidelity desktop capture
     setTimeout(async () => {
         const element = document.getElementById('pos-receipt-preview-target');
         if (element) {
@@ -225,14 +226,16 @@ export function PosClient() {
                 const canvas = await html2canvas(element, { 
                     scale: 3, 
                     useCORS: true,
-                    windowWidth: 1200
+                    windowWidth: 1200,
+                    logging: false
                 });
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const imgData = canvas.toDataURL('image/png', 1.0);
                 pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
                 pdf.save(`${doc.title}.pdf`);
+                toast({ title: "Receipt Downloaded" });
             } catch (err) {
-                toast({ variant: 'destructive', title: 'Export Error' });
+                toast({ variant: 'destructive', title: 'Export Error', description: 'Full page capture failed.' });
             } finally {
                 setIsReceiptPreviewOpen(false);
                 setIsGeneratingPdf(false);
@@ -522,7 +525,7 @@ export function PosClient() {
                   {isGeneratingPdf && (
                     <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
                         <Loader2 className="h-10 w-10 animate-spin text-primary mb-2" />
-                        <p className="font-bold text-primary text-xs tracking-widest">CAPTURING PAGE...</p>
+                        <p className="font-bold text-primary text-xs tracking-widest">CAPTURING FULL PAGE...</p>
                     </div>
                   )}
               </div>
