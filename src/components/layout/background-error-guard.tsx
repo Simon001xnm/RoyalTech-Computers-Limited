@@ -5,8 +5,9 @@ import React, { useEffect } from 'react';
 /**
  * BackgroundErrorGuard: Silences transient network error overlays.
  * 
- * This version uses safe, native browser event listeners ONLY.
- * It avoids patching the global console object to prevent "Illegal invocation" crashes.
+ * This version uses a context-safe console interceptor to suppress
+ * "Failed to fetch" messages from appearing in the Next.js dev overlay,
+ * while strictly preserving the execution context to avoid "Illegal invocation" crashes.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -29,7 +30,18 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       return IGNORED_MESSAGES.some(msg => message.includes(msg));
     };
 
-    // 1. Suppress unhandled promise rejections (Common in background sync)
+    // 1. Safe Console Interceptor
+    // We use Function.prototype.apply to ensure 'this' is bound to window.console
+    const originalConsoleError = window.console.error;
+    window.console.error = function(...args: any[]) {
+      const message = args.map(arg => String(arg)).join(' ').toLowerCase();
+      if (IGNORED_MESSAGES.some(msg => message.includes(msg))) {
+        return;
+      }
+      return originalConsoleError.apply(window.console, args);
+    };
+
+    // 2. Suppress unhandled promise rejections
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (shouldSuppress(event.reason)) {
         event.preventDefault();
@@ -37,7 +49,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
-    // 2. Suppress runtime error events (Next.js overlays)
+    // 3. Suppress runtime error events
     const handleError = (event: ErrorEvent) => {
       if (shouldSuppress(event.error || event.message)) {
         event.preventDefault();
@@ -49,6 +61,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
     window.addEventListener('error', handleError, true);
 
     return () => {
+      window.console.error = originalConsoleError;
       window.removeEventListener('unhandledrejection', handleRejection, true);
       window.removeEventListener('error', handleError, true);
     };
