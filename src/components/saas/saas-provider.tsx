@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
@@ -29,17 +28,19 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // SECURE PROFILE QUERY
+  // SECURE PROFILE QUERY: SSR Guarded
   const userProfile = useLiveQuery(
-    async () => user ? await db.users.get(user.uid) : null,
+    async () => {
+        if (typeof window === 'undefined' || !db || !user) return null;
+        return await db.users.get(user.uid);
+    },
     [user]
   );
 
-  // SECURE WORKSPACE PORTFOLIO QUERY: Guaranteed isolation
+  // SECURE WORKSPACE PORTFOLIO QUERY
   const availableWorkspaces = useLiveQuery(async () => {
-    if (!userProfile) return [];
+    if (typeof window === 'undefined' || !db || !userProfile) return [];
     
-    // Only fetch workspaces the user is explicitly authorized to access
     const authorizedIds = Array.from(new Set([
         ...(userProfile.tenantIds || []),
         ...(userProfile.tenantId ? [userProfile.tenantId] : [])
@@ -51,12 +52,15 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   }, [userProfile?.tenantIds, userProfile?.tenantId]) || [];
 
   const activeCompany = useLiveQuery(
-    async () => userProfile?.tenantId ? await db.companies.get(userProfile.tenantId) : null,
+    async () => {
+        if (typeof window === 'undefined' || !db || !userProfile?.tenantId) return null;
+        return await db.companies.get(userProfile.tenantId);
+    },
     [userProfile?.tenantId]
   );
 
   const usageStats = useLiveQuery(async () => {
-    if (!userProfile?.tenantId) return { assets: 0, salesThisMonth: 0 };
+    if (typeof window === 'undefined' || !db || !userProfile?.tenantId) return { assets: 0, salesThisMonth: 0 };
     
     const tid = userProfile.tenantId;
     const now = new Date();
@@ -113,7 +117,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   }, [user, isUserLoading, activeCompany]);
 
   const switchTenant = async (newTenantId: string) => {
-    if (!user || !userProfile) return;
+    if (typeof window === 'undefined' || !db || !user || !userProfile) return;
     
     const isAuthorized = userProfile.tenantIds?.includes(newTenantId) || userProfile.tenantId === newTenantId;
     if (!isAuthorized && userProfile.role !== 'super_admin') {

@@ -1,5 +1,4 @@
-
-import { Firestore, collection, doc, serverTimestamp } from 'firebase/firestore';
+import { Firestore, collection, doc } from 'firebase/firestore';
 import type { Asset } from "@/types";
 import { logger } from "@/lib/logger";
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -7,16 +6,19 @@ import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlo
 /**
  * @fileOverview Asset Service (Firestore Integrated)
  * Abstracts database interactions for hardware inventory using Firebase.
+ * Ensures strict tenancy isolation by stamping every record with tenantId.
  */
 export const AssetService = {
   /**
    * Creates a new asset with automatic tenancy and logging.
    */
   async create(firestore: Firestore, data: Partial<Asset>, tenantId: string, user: { uid: string; name: string }) {
+    if (!tenantId) throw new Error("Tenant ID required for cloud registration.");
+    
     const colRef = collection(firestore, 'laptop_instances');
     const assetData = {
       ...data,
-      tenantId,
+      tenantId, // CRITICAL: SaaS Isolation
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: user,
@@ -45,6 +47,7 @@ export const AssetService = {
     try {
       updateDocumentNonBlocking(docRef, {
         ...updates,
+        tenantId, // Ensure tenancy persists
         updatedAt: new Date().toISOString()
       });
       logger.business('Inventory', 'Asset Updated', { id, tenantId });
@@ -74,6 +77,8 @@ export const AssetService = {
    * Bulk imports assets.
    */
   async bulkImport(firestore: Firestore, assets: Asset[], tenantId: string) {
+    if (!tenantId) throw new Error("Tenant ID required for bulk import.");
+    
     const colRef = collection(firestore, 'laptop_instances');
     try {
       for (const asset of assets) {

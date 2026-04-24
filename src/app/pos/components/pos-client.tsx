@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import type { Asset, Accessory, SaleItem, Sale, Customer, Document as AppDocument } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,9 +42,16 @@ export function PosClient() {
   const [amountPaid, setAmountPaid] = useState('');
   const [applyVat, setApplyVat] = useState(false);
 
-  // Firestore Queries
-  const assetsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'laptop_instances') : null, [firestore]);
-  const customersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
+  // HARDENED QUERIES: Siloed by tenantId
+  const assetsQuery = useMemoFirebase(() => {
+    if (!firestore || !tenant) return null;
+    return query(collection(firestore, 'laptop_instances'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+
+  const customersQuery = useMemoFirebase(() => {
+    if (!firestore || !tenant) return null;
+    return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
   
   const { data: assets } = useCollection<Asset>(assetsQuery);
   const { data: customers } = useCollection<Customer>(customersQuery);

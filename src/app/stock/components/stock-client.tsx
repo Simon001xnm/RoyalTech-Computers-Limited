@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -37,7 +36,7 @@ import {
   type PaginationState,
 } from "@tanstack/react-table";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, query, where } from "firebase/firestore";
 import { Textarea } from "@/components/ui/textarea";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
@@ -67,10 +66,14 @@ export function StockClient() {
     pageSize: 10,
   });
   
+  // HARDENED QUERY: Siloed by tenantId
   const assetsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'laptop_instances');
-  }, [firestore]);
+    if (!firestore || !tenant) return null;
+    return query(
+        collection(firestore, 'laptop_instances'), 
+        where('tenantId', '==', tenant.id)
+    );
+  }, [firestore, tenant?.id]);
 
   const { data: assets, isLoading } = useCollection<Asset>(assetsQuery);
 

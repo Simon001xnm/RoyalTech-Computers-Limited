@@ -1,5 +1,4 @@
-
-import { Firestore, collection, doc, serverTimestamp } from 'firebase/firestore';
+import { Firestore, collection, doc } from 'firebase/firestore';
 import type { Sale, Document as AppDocument } from "@/types";
 import { logger } from "@/lib/logger";
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -7,12 +6,15 @@ import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 /**
  * @fileOverview Sale Service (Firestore Integrated)
  * Abstracts transaction logic and inventory updates via Firebase.
+ * Enforces strict multi-tenant isolation.
  */
 export const SaleService = {
   /**
    * Finalizes a sale, updates inventory, and generates a receipt.
    */
   async finalizeSale(firestore: Firestore, saleData: Sale, receiptDoc: AppDocument) {
+    if (!saleData.tenantId) throw new Error("Tenant ID required for cloud transaction.");
+
     try {
       // 1. Record the Sale
       const salesCol = collection(firestore, 'sales_transactions');
@@ -26,7 +28,12 @@ export const SaleService = {
       for (const item of saleData.items) {
         if (item.type === 'asset') {
           const assetRef = doc(firestore, 'laptop_instances', item.id);
-          updateDocumentNonBlocking(assetRef, { status: 'Sold', quantity: 0 });
+          // Non-blocking update ensures the POS UI stays responsive
+          updateDocumentNonBlocking(assetRef, { 
+            status: 'Sold', 
+            quantity: 0,
+            tenantId: saleData.tenantId // Preserve isolation
+          });
         }
       }
 

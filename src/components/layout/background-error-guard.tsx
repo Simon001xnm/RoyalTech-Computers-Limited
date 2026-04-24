@@ -1,18 +1,16 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
 
 /**
- * BackgroundErrorGuard: Definitive fix for "Failed to fetch" overlays.
+ * BackgroundErrorGuard: Silences transient network error overlays.
  * 
- * Instead of monkey-patching console.error (which causes "Illegal invocation"),
- * this uses native browser event listeners to suppress the Next.js red overlay 
- * for transient network artifacts.
+ * This implementation uses safe, native browser event listeners to suppress
+ * noisy "Failed to fetch" and "FirebaseError" screens during development.
+ * It strictly avoids patching the global console object to prevent "Illegal invocation" crashes.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // Only execute in development browser environment
     if (process.env.NODE_ENV !== 'development' || typeof window === 'undefined') {
       return;
     }
@@ -32,7 +30,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       return IGNORED_MESSAGES.some(msg => message.includes(msg));
     };
 
-    // 1. Suppress unhandled promise rejections (Firebase background sync)
+    // 1. Suppress unhandled promise rejections (Common in Firebase background sync)
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (shouldSuppress(event.reason)) {
         event.preventDefault();

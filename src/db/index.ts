@@ -1,4 +1,3 @@
-
 import Dexie, { type Table } from 'dexie';
 import dexieCloud from 'dexie-cloud-addon';
 import type { 
@@ -34,7 +33,8 @@ export interface PlatformLog {
 
 /**
  * RoyalTechDB: Hardened for Next.js SSR.
- * Initialization of dexie-cloud is deferred to avoid Illegal Invocation errors.
+ * Database instantiation is strictly guarded to prevent "Illegal invocation" errors 
+ * when running in the server environment.
  */
 export class RoyalTechDB extends Dexie {
   assets!: Table<Asset>;
@@ -80,7 +80,6 @@ export class RoyalTechDB extends Dexie {
       notifications: 'id, tenantId, userId, read, createdAt'
     });
 
-    // Only configure cloud if in the browser
     if (typeof window !== 'undefined') {
         this.cloud.configure({
           databaseUrl: 'https://z1xwh7v7u.dexie.cloud',
@@ -90,4 +89,8 @@ export class RoyalTechDB extends Dexie {
   }
 }
 
-export const db = new RoyalTechDB();
+/**
+ * Singleton database instance.
+ * SSR Safe: Returns null on the server, ensuring IndexedDB is never touched during pre-rendering.
+ */
+export const db = typeof window !== 'undefined' ? new RoyalTechDB() : (null as unknown as RoyalTechDB);

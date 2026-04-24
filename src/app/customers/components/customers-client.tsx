@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -37,7 +36,7 @@ import {
   type PaginationState,
 } from "@tanstack/react-table";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
+import { collection, doc, query, where } from "firebase/firestore";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 
@@ -57,11 +56,11 @@ export function CustomersClient() {
     pageSize: 10,
   });
 
-  // Firestore Memoized Query
+  // HARDENED QUERY: Siloed by tenantId
   const customersQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'customers');
-  }, [firestore]);
+    if (!firestore || !tenant) return null;
+    return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
 
   const { data: customers, isLoading } = useCollection<Customer>(customersQuery);
 
@@ -99,10 +98,11 @@ export function CustomersClient() {
   };
 
   const handleFormSubmit = async (data: any) => {
-    if (!firestore) return;
+    if (!firestore || !tenant) return;
 
     const customerData = {
       ...data,
+      tenantId: tenant.id,
       updatedAt: new Date().toISOString()
     };
 
