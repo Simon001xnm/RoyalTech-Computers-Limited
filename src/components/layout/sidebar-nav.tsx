@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -45,6 +46,11 @@ export function SidebarNav() {
     return isHighUsage || isExpiringSoon;
   }, [plan, usage, isLegacyUser, tenant]);
 
+  // Use a stable fallback if loading or missing to keep modules visible
+  const permittedNavItems = useMemo(() => {
+    return getPermittedNavItems(currentUser?.role, !!user?.isAnonymous);
+  }, [currentUser?.role, user?.isAnonymous]);
+
   if (isUserLoading || isProfileLoading) {
     return (
         <SidebarMenu className="p-2">
@@ -53,10 +59,10 @@ export function SidebarNav() {
     );
   }
 
-  if (!user || !currentUser) return null;
+  // If we have no user, don't show anything. But if we HAVE a user, 
+  // getPermittedNavItems now has a safe fallback role.
+  if (!user) return null;
   
-  const permittedNavItems = getPermittedNavItems(currentUser?.role, user.isAnonymous);
-
   return (
     <SidebarMenu>
       {permittedNavItems.map((item) => (

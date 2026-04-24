@@ -20,8 +20,8 @@ export const roleDescriptions: Record<Role, string> = {
  * Defines which navigation items (modules) each role can see.
  * CRITICAL: Super Admin View is now completely distinct from Tenant View.
  */
-const getRolePermissions = (role: Role): string[] => {
-    // 1. SUPER ADMIN: Only sees Platform-level controls. No POS, No Inventory, No Marketing.
+const getRolePermissions = (role: Role | string): string[] => {
+    // 1. SUPER ADMIN: Only sees Platform-level controls.
     if (role === 'super_admin') {
         return [
             '/admin',     // Platform Nerve Center
@@ -39,7 +39,7 @@ const getRolePermissions = (role: Role): string[] => {
         return baseNav.filter(href => href !== '/admin');
     }
     
-    // 3. USER (Staff): Daily Operations only.
+    // 3. USER (Staff) or UNKNOWN: Daily Operations only.
     return [
         '/',
         '/pos',
@@ -58,10 +58,10 @@ const getRolePermissions = (role: Role): string[] => {
 /**
  * Returns the list of navigation items that the user with the given role is permitted to see.
  */
-export const getPermittedNavItems = (role?: Role, isAnonymous: boolean = false): NavItem[] => {
-    if (!role) return [];
-    
-    const permissions = getRolePermissions(role);
+export const getPermittedNavItems = (role?: Role | string, isAnonymous: boolean = false): NavItem[] => {
+    // Robust fallback: if role is missing, treat as 'user' to ensure navbar content
+    const effectiveRole = role || 'user';
+    const permissions = getRolePermissions(effectiveRole);
     
     return NAV_ITEMS.filter(item => {
         // Special check for the Admin Panel which is also feature-flagged

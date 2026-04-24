@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -44,6 +45,28 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const [logoUrl, setLogoUrl] = useState('');
   const [primaryColor, setPrimaryColor] = useState(COLOR_PRESETS[0].primary);
   const [secondaryColor, setSecondaryColor] = useState(COLOR_PRESETS[0].secondary);
+
+  // CRITICAL: Resilient profile provisioning
+  useEffect(() => {
+    if (!isUserLoading && !isProfileLoading && user && !userProfile && !PUBLIC_PATHS.includes(pathname)) {
+        // If user document is completely missing from Firestore, create it automatically
+        const provisionProfile = async () => {
+            if (!userProfileRef) return;
+            try {
+                await setDoc(userProfileRef, {
+                    id: user.uid,
+                    name: user.displayName || 'System User',
+                    email: user.email || '',
+                    role: 'user', // Default role
+                    createdAt: new Date().toISOString()
+                });
+            } catch (e) {
+                console.warn("Auto-provisioning failed", e);
+            }
+        };
+        provisionProfile();
+    }
+  }, [user, userProfile, isUserLoading, isProfileLoading, userProfileRef, pathname]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
