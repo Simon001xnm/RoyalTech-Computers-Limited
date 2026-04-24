@@ -17,7 +17,8 @@ import type {
   JobPosting,
   Applicant,
   Company,
-  Notification
+  Notification,
+  Lease
 } from '@/types';
 
 export interface PlatformLog {
@@ -55,11 +56,12 @@ export class RoyalTechDB extends Dexie {
   companies!: Table<Company>;
   platformLogs!: Table<PlatformLog>;
   notifications!: Table<Notification>;
+  leases!: Table<Lease>;
 
   constructor() {
     super('RoyalTechDB', { addons: [dexieCloud] });
     
-    this.version(4).stores({
+    this.version(5).stores({
       assets: 'id, tenantId, model, serialNumber, status, purchaseDate',
       accessories: 'id, tenantId, name, serialNumber, status',
       customers: 'id, tenantId, name, email, phone',
@@ -77,7 +79,8 @@ export class RoyalTechDB extends Dexie {
       applicants: 'id, tenantId, jobId, status, appliedAt',
       companies: 'id, tenantId, name',
       platformLogs: 'id, level, module, tenantId, timestamp',
-      notifications: 'id, tenantId, userId, read, createdAt'
+      notifications: 'id, tenantId, userId, read, createdAt',
+      leases: 'id, tenantId, status, customerId, assetId'
     });
 
     if (typeof window !== 'undefined') {

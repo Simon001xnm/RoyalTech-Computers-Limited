@@ -1,23 +1,22 @@
-import { Firestore, collection, doc } from 'firebase/firestore';
+import { db } from '@/db';
 import type { Asset } from "@/types";
 import { logger } from "@/lib/logger";
-import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 
 /**
- * @fileOverview Asset Service (Firestore Integrated)
- * Abstracts database interactions for hardware inventory using Firebase.
+ * @fileOverview Asset Service (Consolidated Dexie Storage)
+ * Abstracts database interactions for hardware inventory.
  * Ensures strict tenancy isolation by stamping every record with tenantId.
  */
 export const AssetService = {
   /**
    * Creates a new asset with automatic tenancy and logging.
    */
-  async create(firestore: Firestore, data: Partial<Asset>, tenantId: string, user: { uid: string; name: string }) {
-    if (!tenantId) throw new Error("Tenant ID required for cloud registration.");
+  async create(data: Partial<Asset>, tenantId: string, user: { uid: string; name: string }) {
+    if (!tenantId) throw new Error("Tenant ID required for workspace registration.");
     
-    const colRef = collection(firestore, 'laptop_instances');
-    const assetData = {
+    const assetData: Asset = {
       ...data,
+      id: crypto.randomUUID(),
       tenantId, // CRITICAL: SaaS Isolation
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -27,11 +26,11 @@ export const AssetService = {
         storage: (data as any).storage || '',
         processor: (data as any).processor || ''
       }
-    };
+    } as any;
 
     try {
-      addDocumentNonBlocking(colRef, assetData);
-      logger.business('Inventory', 'Asset Registered', { model: (data as any).model, tenantId });
+      await db.assets.add(assetData);
+      logger.business('Inventory', 'Asset Registered', { model: assetData.model, tenantId });
       return { success: true };
     } catch (error: any) {
       logger.error('Inventory', 'Failed to register asset', error);
@@ -42,10 +41,9 @@ export const AssetService = {
   /**
    * Updates an existing asset.
    */
-  async update(firestore: Firestore, id: string, updates: Partial<Asset>, tenantId: string) {
-    const docRef = doc(firestore, 'laptop_instances', id);
+  async update(id: string, updates: Partial<Asset>, tenantId: string) {
     try {
-      updateDocumentNonBlocking(docRef, {
+      await db.assets.update(id, {
         ...updates,
         tenantId, // Ensure tenancy persists
         updatedAt: new Date().toISOString()
@@ -61,10 +59,9 @@ export const AssetService = {
   /**
    * Deletes an asset.
    */
-  async delete(firestore: Firestore, id: string, tenantId: string) {
-    const docRef = doc(firestore, 'laptop_instances', id);
+  async delete(id: string, tenantId: string) {
     try {
-      deleteDocumentNonBlocking(docRef);
+      await db.assets.delete(id);
       logger.business('Inventory', 'Asset Removed', { id, tenantId });
       return { success: true };
     } catch (error: any) {
@@ -76,15 +73,13 @@ export const AssetService = {
   /**
    * Bulk imports assets.
    */
-  async bulkImport(firestore: Firestore, assets: Asset[], tenantId: string) {
+  async bulkImport(assets: Asset[], tenantId: string) {
     if (!tenantId) throw new Error("Tenant ID required for bulk import.");
     
-    const colRef = collection(firestore, 'laptop_instances');
     try {
-      for (const asset of assets) {
-        addDocumentNonBlocking(colRef, { ...asset, tenantId });
-      }
-      logger.business('Inventory', 'Bulk Import Triggered', { count: assets.length, tenantId });
+      const stampedAssets = assets.map(a => ({ ...a, tenantId }));
+      await db.assets.bulkAdd(stampedAssets);
+      logger.business('Inventory', 'Bulk Import Executed', { count: assets.length, tenantId });
       return { success: true };
     } catch (error: any) {
       logger.error('Inventory', 'Bulk import failed', error);

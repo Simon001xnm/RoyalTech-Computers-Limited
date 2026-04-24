@@ -33,8 +33,9 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from "firebase/firestore";
+import { useUser } from '@/firebase/provider';
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 
@@ -53,35 +54,30 @@ export function LeasesClient() {
 
   const { user } = useUser();
   const { tenant } = useSaaS();
-  const firestore = useFirestore();
 
-  // Firestore Queries (MIGRATED FROM DEXIE)
-  const leasesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'lease_agreements');
-  }, [firestore]);
+  // DEXIE QUERIES: Siloed by tenantId
+  const leases = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.leases.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
 
-  const customersQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'customers');
-  }, [firestore]);
+  const customers = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.customers.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
 
-  const assetsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'laptop_instances');
-  }, [firestore]);
+  const assets = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.assets.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
 
-  const { data: leases, isLoading: isLeasesLoading } = useCollection<Lease>(leasesQuery);
-  const { data: customers } = useCollection<Customer>(customersQuery);
-  const { data: assets } = useCollection<Asset>(assetsQuery);
-
-  const isLoading = isLeasesLoading || customers === null || assets === null;
+  const isLoading = leases === undefined || customers === undefined || assets === undefined;
 
   const filteredLeases = useMemo(() => {
     if (!leases) return [];
     return leases.filter((lease) =>
       lease.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lease.assetModel?.toLowerCase().includes(searchTerm.toLowerCase())
+      lease.laptopModel?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [leases, searchTerm]);
 
@@ -101,27 +97,25 @@ export function LeasesClient() {
   };
 
   const confirmDelete = async () => {
-    if (leaseToDelete && firestore) {
-      const docRef = doc(firestore, 'lease_agreements', leaseToDelete.id);
-      deleteDocumentNonBlocking(docRef);
+    if (leaseToDelete) {
+      await db.leases.delete(leaseToDelete.id);
       
       // Update asset status back to available
       if (leaseToDelete.assetId) {
-        const assetRef = doc(firestore, 'laptop_instances', leaseToDelete.assetId);
-        updateDocumentNonBlocking(assetRef, { status: 'Available' });
+        await db.assets.update(leaseToDelete.assetId, { status: 'Available' });
       }
       
       toast({ title: "Lease Removed" });
       setLeaseToDelete(null);
-      setIsDeleteConfirmOpen(false);
     }
+    setIsDeleteConfirmOpen(false);
   };
 
   const handleFormSubmit = async (data: any) => { 
      const selectedCustomer = customers?.find(c => c.id === data.customerId);
      const selectedAsset = assets?.find(a => a.id === data.assetId);
 
-    if (!selectedCustomer || !selectedAsset || !user || !firestore) return;
+    if (!selectedCustomer || !selectedAsset || !user || !tenant) return;
 
     const auditInfo = {
         uid: user.uid,
@@ -130,36 +124,33 @@ export function LeasesClient() {
 
     const leaseData = {
         ...data,
+        tenantId: tenant.id,
         startDate: data.startDate.toISOString(),
         endDate: data.endDate.toISOString(),
         customerName: selectedCustomer.name,
-        assetModel: selectedAsset.model,
+        laptopModel: selectedAsset.model,
         updatedAt: new Date().toISOString(),
         lastModifiedBy: auditInfo,
     };
 
     try {
         if (editingLease) {
-            const leaseRef = doc(firestore, 'lease_agreements', editingLease.id);
-            updateDocumentNonBlocking(leaseRef, leaseData);
+            await db.leases.update(editingLease.id, leaseData);
             
             if (editingLease.assetId !== selectedAsset.id) {
-                const oldAssetRef = doc(firestore, 'laptop_instances', editingLease.assetId);
-                const newAssetRef = doc(firestore, 'laptop_instances', selectedAsset.id);
-                updateDocumentNonBlocking(oldAssetRef, { status: 'Available' });
-                updateDocumentNonBlocking(newAssetRef, { status: 'Leased' });
+                await db.assets.update(editingLease.assetId, { status: 'Available' });
+                await db.assets.update(selectedAsset.id, { status: 'Leased' });
             }
             toast({ title: "Lease Updated" });
         } else {
-            const leasesCol = collection(firestore, 'lease_agreements');
-            addDocumentNonBlocking(leasesCol, { 
+            await db.leases.add({ 
                 ...leaseData, 
+                id: crypto.randomUUID(),
                 createdAt: new Date().toISOString(), 
                 createdBy: auditInfo 
             });
             
-            const assetRef = doc(firestore, 'laptop_instances', selectedAsset.id);
-            updateDocumentNonBlocking(assetRef, { status: 'Leased' });
+            await db.assets.update(selectedAsset.id, { status: 'Leased' });
             toast({ title: "Lease Created" });
         }
     } catch (error: any) {
@@ -170,21 +161,16 @@ export function LeasesClient() {
     }
   };
   
-  const handleMarkPaid = (lease: Lease) => {
-    if (!firestore) return;
-    const docRef = doc(firestore, 'lease_agreements', lease.id);
-    updateDocumentNonBlocking(docRef, { paymentStatus: 'Paid' });
+  const handleMarkPaid = async (lease: Lease) => {
+    await db.leases.update(lease.id, { paymentStatus: 'Paid' });
     toast({ title: "Payment Recorded" });
   };
 
-  const handleTerminateLease = (lease: Lease) => {
-    if (!firestore) return;
-    const docRef = doc(firestore, 'lease_agreements', lease.id);
-    updateDocumentNonBlocking(docRef, { status: 'Terminated', endDate: new Date().toISOString() });
+  const handleTerminateLease = async (lease: Lease) => {
+    await db.leases.update(lease.id, { status: 'Terminated', endDate: new Date().toISOString() });
     
     if(lease.assetId) {
-        const assetRef = doc(firestore, 'laptop_instances', lease.assetId);
-        updateDocumentNonBlocking(assetRef, { status: 'Available' });
+        await db.assets.update(lease.assetId, { status: 'Available' });
     }
     toast({ title: "Lease Terminated" });
   };
@@ -221,8 +207,8 @@ export function LeasesClient() {
   return (
     <>
       <PageHeader
-        title="Lease Tracking (Cloud)"
-        description="Audited hardware lease agreements managed via Firestore."
+        title="Lease Tracking"
+        description="Hardware lease agreements managed locally with cloud backup."
         actionLabel="Create New Lease"
         onAction={handleAddLease}
         ActionIcon={PlusCircle}
@@ -237,19 +223,19 @@ export function LeasesClient() {
         />
       </div>
 
-      {isLoading ? <p className="text-muted-foreground animate-pulse">Syncing lease directory...</p> : (
+      {isLoading ? <p className="text-muted-foreground animate-pulse">Loading leases...</p> : (
         <>
           {!filteredLeases.length && searchTerm ? (
             <Alert variant="default" className="mb-4 bg-card">
               <FileSearch className="h-4 w-4" />
               <AlertTitle>No Leases Found</AlertTitle>
-              <AlertDescription>Your search for "{searchTerm}" did not match any active cloud records.</AlertDescription>
+              <AlertDescription>Your search for "{searchTerm}" did not match any local records.</AlertDescription>
             </Alert>
           ) : !leases?.length ? (
             <Alert variant="default" className="mb-4 bg-card">
               <FileX className="h-4 w-4" />
               <AlertTitle>No Leases Recorded</AlertTitle>
-              <AlertDescription>Start tracking hardware leases in the cloud.</AlertDescription>
+              <AlertDescription>Start tracking hardware leases locally.</AlertDescription>
             </Alert>
           ) : (
             <div className="rounded-lg border shadow-sm bg-card">

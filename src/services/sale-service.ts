@@ -1,41 +1,38 @@
-import { Firestore, collection, doc } from 'firebase/firestore';
+import { db } from '@/db';
 import type { Sale, Document as AppDocument } from "@/types";
 import { logger } from "@/lib/logger";
-import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 
 /**
- * @fileOverview Sale Service (Firestore Integrated)
- * Abstracts transaction logic and inventory updates via Firebase.
+ * @fileOverview Sale Service (Consolidated Dexie Storage)
+ * Abstracts transaction logic and inventory updates.
  * Enforces strict multi-tenant isolation.
  */
 export const SaleService = {
   /**
    * Finalizes a sale, updates inventory, and generates a receipt.
    */
-  async finalizeSale(firestore: Firestore, saleData: Sale, receiptDoc: AppDocument) {
-    if (!saleData.tenantId) throw new Error("Tenant ID required for cloud transaction.");
+  async finalizeSale(saleData: Sale, receiptDoc: AppDocument) {
+    if (!saleData.tenantId) throw new Error("Tenant ID required for transaction.");
 
     try {
-      // 1. Record the Sale
-      const salesCol = collection(firestore, 'sales_transactions');
-      addDocumentNonBlocking(salesCol, saleData);
+      await db.transaction('rw', [db.sales, db.documents, db.assets], async () => {
+        // 1. Record the Sale
+        await db.sales.add(saleData);
 
-      // 2. Archive the Document
-      const docsCol = collection(firestore, 'documents');
-      addDocumentNonBlocking(docsCol, receiptDoc);
+        // 2. Archive the Document
+        await db.documents.add(receiptDoc);
 
-      // 3. Update Inventory Statuses
-      for (const item of saleData.items) {
-        if (item.type === 'asset') {
-          const assetRef = doc(firestore, 'laptop_instances', item.id);
-          // Non-blocking update ensures the POS UI stays responsive
-          updateDocumentNonBlocking(assetRef, { 
-            status: 'Sold', 
-            quantity: 0,
-            tenantId: saleData.tenantId // Preserve isolation
-          });
+        // 3. Update Inventory Statuses
+        for (const item of saleData.items) {
+          if (item.type === 'asset') {
+            await db.assets.update(item.id, { 
+              status: 'Sold', 
+              quantity: 0,
+              tenantId: saleData.tenantId // Preserve isolation
+            });
+          }
         }
-      }
+      });
 
       logger.business('POS', 'Transaction Finalized', { 
         id: saleData.id, 

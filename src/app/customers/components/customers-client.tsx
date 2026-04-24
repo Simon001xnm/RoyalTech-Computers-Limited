@@ -19,10 +19,8 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -35,8 +33,9 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
-import { collection, doc, query, where } from "firebase/firestore";
+import { useUser } from "@/firebase/provider";
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 
@@ -48,7 +47,7 @@ export function CustomersClient() {
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const { toast } = useToast();
   const { tenant } = useSaaS();
-  const firestore = useFirestore();
+  const { isUserLoading } = useUser();
   
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({
@@ -56,13 +55,13 @@ export function CustomersClient() {
     pageSize: 10,
   });
 
-  // HARDENED QUERY: Siloed by tenantId
-  const customersQuery = useMemoFirebase(() => {
-    if (!firestore || !tenant) return null;
-    return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
-  }, [firestore, tenant?.id]);
+  // DEXIE QUERY: Siloed by tenantId
+  const customers = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.customers.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
 
-  const { data: customers, isLoading } = useCollection<Customer>(customersQuery);
+  const isLoading = isUserLoading || customers === undefined;
 
   const filteredCustomers = useMemo(() => {
     if (!customers) return [];
@@ -88,9 +87,8 @@ export function CustomersClient() {
   };
 
   const confirmDelete = async () => {
-    if (customerToDelete && firestore) {
-      const docRef = doc(firestore, 'customers', customerToDelete.id);
-      deleteDocumentNonBlocking(docRef);
+    if (customerToDelete) {
+      await db.customers.delete(customerToDelete.id);
       toast({ title: "Customer Deleted" });
       setCustomerToDelete(null);
     }
@@ -98,7 +96,7 @@ export function CustomersClient() {
   };
 
   const handleFormSubmit = async (data: any) => {
-    if (!firestore || !tenant) return;
+    if (!tenant) return;
 
     const customerData = {
       ...data,
@@ -108,13 +106,12 @@ export function CustomersClient() {
 
     try {
         if (editingCustomer) {
-            const docRef = doc(firestore, 'customers', editingCustomer.id);
-            updateDocumentNonBlocking(docRef, customerData);
+            await db.customers.update(editingCustomer.id, customerData);
             toast({ title: "Customer Updated" });
         } else {
-            const colRef = collection(firestore, 'customers');
-            addDocumentNonBlocking(colRef, {
+            await db.customers.add({
                 ...customerData,
+                id: crypto.randomUUID(),
                 registrationDate: new Date().toISOString(),
                 createdAt: new Date().toISOString()
             });
@@ -123,7 +120,7 @@ export function CustomersClient() {
         setIsFormOpen(false);
         setEditingCustomer(null);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not save customer.' });
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
     }
   };
 
@@ -151,8 +148,8 @@ export function CustomersClient() {
   return (
     <>
       <PageHeader
-        title="Customer CRM (Cloud)"
-        description="Managing client relationships synced across your entire team."
+        title="Customer CRM"
+        description="Managing client relationships within your business workspace."
         actionLabel="Add New Customer"
         onAction={handleAddCustomer}
         ActionIcon={PlusCircle}
@@ -167,7 +164,7 @@ export function CustomersClient() {
         />
       </div>
       
-      {isLoading && <p className="text-muted-foreground animate-pulse">Syncing client directory...</p>}
+      {isLoading && <p className="text-muted-foreground animate-pulse">Loading clients...</p>}
 
       {!isLoading && filteredCustomers.length === 0 && searchTerm && (
         <Alert variant="default" className="mb-4 bg-card">
@@ -184,7 +181,7 @@ export function CustomersClient() {
           <Users className="h-4 w-4" />
           <AlertTitle>CRM Empty</AlertTitle>
           <AlertDescription>
-            Start building your customer base in the cloud.
+            Start building your customer base locally.
           </AlertDescription>
         </Alert>
       )}
@@ -253,13 +250,13 @@ export function CustomersClient() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete <strong>{customerToDelete?.name}</strong>? This will remove the record from the cloud.
+              Are you sure you want to delete <strong>{customerToDelete?.name}</strong>?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <div className="flex justify-end gap-3 pt-4">
             <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={confirmDelete}>Delete Customer</Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </>

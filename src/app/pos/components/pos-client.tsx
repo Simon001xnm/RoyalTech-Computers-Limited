@@ -2,9 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import type { Asset, Accessory, SaleItem, Sale, Customer, Document as AppDocument } from '@/types';
+import type { Asset, SaleItem, Sale, Customer, Document as AppDocument } from '@/types';
+import { db } from '@/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -22,7 +22,7 @@ import { useUser } from '@/firebase/provider';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { SaleService } from '@/services/sale-service';
 
-type Product = (Asset | Accessory) & { productType: 'asset' | 'accessory'; displayName: string; price?: number; };
+type Product = Asset & { productType: 'asset'; displayName: string; price?: number; };
 type CartItem = SaleItem & { productType: 'asset' | 'accessory'; quantity: number; unitPrice: number; discount: number; };
 
 const VAT_RATE = 0.16;
@@ -31,7 +31,6 @@ export function PosClient() {
   const { toast } = useToast();
   const { user } = useUser();
   const { tenant } = useSaaS();
-  const firestore = useFirestore();
   
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
@@ -42,19 +41,16 @@ export function PosClient() {
   const [amountPaid, setAmountPaid] = useState('');
   const [applyVat, setApplyVat] = useState(false);
 
-  // HARDENED QUERIES: Siloed by tenantId
-  const assetsQuery = useMemoFirebase(() => {
-    if (!firestore || !tenant) return null;
-    return query(collection(firestore, 'laptop_instances'), where('tenantId', '==', tenant.id));
-  }, [firestore, tenant?.id]);
+  // DEXIE QUERIES: Siloed by tenantId
+  const assets = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.assets.where('tenantId').equals(tenant.id).and(a => a.status === 'Available').toArray();
+  }, [tenant?.id]);
 
-  const customersQuery = useMemoFirebase(() => {
-    if (!firestore || !tenant) return null;
-    return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
-  }, [firestore, tenant?.id]);
-  
-  const { data: assets } = useCollection<Asset>(assetsQuery);
-  const { data: customers } = useCollection<Customer>(customersQuery);
+  const customers = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.customers.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -64,14 +60,12 @@ export function PosClient() {
 
   const availableProducts = useMemo<Product[]>(() => {
     if (!assets) return [];
-    return assets
-      .filter(a => a.status === 'Available')
-      .map(item => ({ 
+    return assets.map(item => ({ 
         ...item, 
         productType: 'asset' as const, 
         displayName: `${item.model} (S/N: ${item.serialNumber})`, 
         price: item.purchasePrice 
-      }));
+    }));
   }, [assets]);
 
   const { subtotal, grandTotal, vatAmount, changeDue } = useMemo(() => {
@@ -92,16 +86,16 @@ export function PosClient() {
     const price = parseFloat(unitPrice);
     setCart([...cart, {
       id: selectedProduct.id,
-      name: selectedProduct.productType === 'asset' ? (selectedProduct as Asset).model : (selectedProduct as any).name,
+      name: selectedProduct.model,
       serialNumber: selectedProduct.serialNumber,
       price: price, unitPrice: price, quantity, discount: 0,
-      type: selectedProduct.productType, productType: selectedProduct.productType
+      type: 'asset', productType: 'asset'
     }]);
     setSelectedProduct(null); setUnitPrice(''); setQuantity(1);
   };
 
   const handleFinalizeSale = async () => {
-    if (cart.length === 0 || !selectedCustomer || !user || !tenant || !firestore) return;
+    if (cart.length === 0 || !selectedCustomer || !user || !tenant) return;
 
     setIsProcessing(true);
     try {
@@ -121,9 +115,9 @@ export function PosClient() {
             data: { ...saleData, applyVat }, createdAt: saleDate, createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
-        await SaleService.finalizeSale(firestore, saleData, docData);
+        await SaleService.finalizeSale(saleData, docData);
 
-        toast({ title: 'Sale Finalized in Firestore' });
+        toast({ title: 'Sale Finalized Locally' });
         setIsSuccessOpen(true);
         setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode('');
     } catch (e: any) {
@@ -135,7 +129,7 @@ export function PosClient() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Point of Sale (Firestore)" description="Process cloud-synced transactions instantly." />
+      <PageHeader title="Point of Sale" description="Process workspace transactions instantly with local sync." />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-md">
@@ -169,10 +163,10 @@ export function PosClient() {
             <CardContent className="space-y-5 pt-6">
                 <Select onValueChange={(v: any) => setPaymentMethod(v)} value={paymentMethod}><SelectTrigger className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Cash">Cash</SelectItem><SelectItem value="M-Pesa">M-Pesa</SelectItem><SelectItem value="Bank">Bank</SelectItem></SelectContent></Select>
                 <Input placeholder="Reference..." value={referenceCode} onChange={e => setReferenceCode(e.target.value)} className="h-10 shadow-sm" />
-                <div className="flex items-center space-x-2 pt-2"><Switch id="vat-pos" checked={applyVat} onCheckedChange={setApplyVat} /><Label htmlFor="vat-pos" className="text-xs">Apply 16% VAT</Label></div>
+                <div className="flex items-center space-x-2 pt-2"><Switch id="vat-pos" checked={applyVat} onOpenChange={setApplyVat} /><Label htmlFor="vat-pos" className="text-xs">Apply 16% VAT</Label></div>
                 <div className="space-y-2 p-4 rounded-xl bg-muted/20 border"><div className="flex justify-between text-xl font-black"><span>Total Due:</span><span className="text-primary">KES {grandTotal.toLocaleString()}</span></div></div>
             </CardContent>
-            <CardFooter className="pb-8"><Button onClick={handleFinalizeSale} className="w-full h-14 text-lg font-black" disabled={isProcessing || !selectedCustomer || cart.length === 0}>{isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Finalize in Cloud'}</Button></CardFooter>
+            <CardFooter className="pb-8"><Button onClick={handleFinalizeSale} className="w-full h-14 text-lg font-black" disabled={isProcessing || !selectedCustomer || cart.length === 0}>{isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Finalize Sale'}</Button></CardFooter>
         </Card>
       </div>
 

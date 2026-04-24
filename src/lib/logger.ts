@@ -1,7 +1,7 @@
 /**
  * @fileOverview Professional Business Event Logger
  * Used for tracking audit trails, sales events, and system errors.
- * Upgraded to write to the persistent platformLogs table.
+ * Strictly direct native console calls to avoid "Illegal invocation" errors.
  */
 
 import { db } from "@/db";
@@ -47,18 +47,18 @@ class Logger {
     // 1. Console Logging (Dev Environment)
     if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
       const message = this.format(entry);
-      // FIXED: Directly call methods on console to avoid "Illegal invocation" context loss
+      // CALL DIRECTLY ON CONSOLE OBJECT
       if (level === 'error') {
-        console.error(message, metadata);
+        window.console.error(message, metadata);
       } else if (level === 'warn') {
-        console.warn(message, metadata);
+        window.console.warn(message, metadata);
       } else {
-        console.log(message, metadata);
+        window.console.log(message, metadata);
       }
     }
 
-    // 2. Persistent Local Logging (SaaS Oversight)
-    if (typeof window !== 'undefined') {
+    // 2. Persistent Local Logging
+    if (typeof window !== 'undefined' && db) {
         try {
           await db.platformLogs.add({
             id: crypto.randomUUID(),

@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, PackageSearch, Upload, Lock, Download } from "lucide-react";
+import { PlusCircle, PackageSearch, Upload, Download } from "lucide-react";
 import { AssetForm } from "./asset-form";
 import { getAssetColumns, type AssetColumnActions } from "./asset-columns";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   useReactTable,
   getCoreRowModel,
@@ -35,12 +34,12 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
 import { Textarea } from "@/components/ui/textarea";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { useUser } from "@/firebase/provider";
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { AssetService } from "@/services/asset-service";
 import { cn, exportToCsv } from "@/lib/utils";
 import { ValuationSummary } from "./valuation-summary";
@@ -58,7 +57,6 @@ export function StockClient() {
   const { toast } = useToast();
   const { user } = useUser();
   const { tenant, plan, usage, isLegacyUser } = useSaaS();
-  const firestore = useFirestore();
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({
@@ -66,16 +64,13 @@ export function StockClient() {
     pageSize: 10,
   });
   
-  // HARDENED QUERY: Siloed by tenantId
-  const assetsQuery = useMemoFirebase(() => {
-    if (!firestore || !tenant) return null;
-    return query(
-        collection(firestore, 'laptop_instances'), 
-        where('tenantId', '==', tenant.id)
-    );
-  }, [firestore, tenant?.id]);
+  // DEXIE QUERY: Siloed by tenantId
+  const assets = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.assets.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
 
-  const { data: assets, isLoading } = useCollection<Asset>(assetsQuery);
+  const isLoading = assets === undefined;
 
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
@@ -102,20 +97,18 @@ export function StockClient() {
 
   const handleDownloadTemplate = () => {
     const filename = "RCL_Asset_Import_Template.csv";
-    const data = [
-        {
-            model: "iPhone 15 Pro",
-            serialNumber: "IMEI-123456789",
-            purchaseDate: "2024-01-15",
-            quantity: "1",
-            status: "Available",
-            purchasePrice: "145000",
-            leasePrice: "7500",
-            ram: "8GB",
-            storage: "256GB",
-            processor: "A17 Pro"
-        }
-    ];
+    const data = [{
+        model: "iPhone 15 Pro",
+        serialNumber: "IMEI-123456789",
+        purchaseDate: "2024-01-15",
+        quantity: "1",
+        status: "Available",
+        purchasePrice: "145000",
+        leasePrice: "7500",
+        ram: "8GB",
+        storage: "256GB",
+        processor: "A17 Pro"
+    }];
     const mapping = {
         model: "Model",
         serialNumber: "Serial Number",
@@ -132,7 +125,7 @@ export function StockClient() {
   };
   
   const handleBulkImport = async () => {
-    if (!bulkData.trim() || !tenant || !firestore) return;
+    if (!bulkData.trim() || !tenant) return;
     setIsBulkImporting(true);
     try {
         const lines = bulkData.trim().split('\n').filter(line => line.trim() !== '');
@@ -153,8 +146,8 @@ export function StockClient() {
             } as any;
         });
 
-        await AssetService.bulkImport(firestore, newAssets, tenant.id);
-        toast({ title: 'Import Started', description: `Processing ${newAssets.length} assets.` });
+        await AssetService.bulkImport(newAssets, tenant.id);
+        toast({ title: 'Import Complete', description: `Added ${newAssets.length} assets.` });
         setIsBulkFormOpen(false);
         setBulkData("");
     } catch (error: any) {
@@ -165,9 +158,9 @@ export function StockClient() {
   }
 
   const confirmDelete = async () => {
-    if (assetToDelete && tenant && firestore) {
+    if (assetToDelete && tenant) {
       try {
-        await AssetService.delete(firestore, assetToDelete.id, tenant.id);
+        await AssetService.delete(assetToDelete.id, tenant.id);
         toast({ title: "Asset Deleted" });
       } catch (e: any) {
         toast({ variant: 'destructive', title: 'Error', description: e.message });
@@ -178,14 +171,14 @@ export function StockClient() {
   };
   
   const handleFormSubmit = async (data: any) => {
-    if (!tenant || !user || !firestore) return;
+    if (!tenant || !user) return;
 
     try {
         if (editingAsset) {
-            await AssetService.update(firestore, editingAsset.id, data, tenant.id);
+            await AssetService.update(editingAsset.id, data, tenant.id);
             toast({ title: "Asset Updated" });
         } else {
-            await AssetService.create(firestore, data, tenant.id, { uid: user.uid, name: user.displayName || 'User' });
+            await AssetService.create(data, tenant.id, { uid: user.uid, name: user.displayName || 'User' });
             toast({ title: "Asset Added" });
         }
         setIsFormOpen(false);
@@ -217,7 +210,7 @@ export function StockClient() {
     <>
       <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
          <div className="flex-grow">
-            <PageHeader title="Asset Inventory (Cloud)" description="Global audited hardware portfolio managed via Firestore." />
+            <PageHeader title="Asset Inventory" description="Hardware portfolio belonging to this business workspace." />
         </div>
         <div className="flex-shrink-0 flex gap-2">
             <Button onClick={() => setIsBulkFormOpen(true)} variant="outline">
@@ -241,14 +234,14 @@ export function StockClient() {
         />
       </div>
       
-      {isLoading ? <p className="text-muted-foreground animate-pulse">Accessing cloud inventory...</p> : (
+      {isLoading ? <p className="text-muted-foreground animate-pulse">Syncing local inventory...</p> : (
         <div className="rounded-lg border shadow-sm bg-card">
           <Table>
-            <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
+            <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}> {hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))} </TableRow>))}</TableHeader>
             <TableBody>
               {table.getRowModel().rows.length ? table.getRowModel().rows.map(row => (
                   <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
-              )) : (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No assets found in the cloud.</TableCell></TableRow>)}
+              )) : (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No assets found for this workspace.</TableCell></TableRow>)}
             </TableBody>
           </Table>
           <DataTablePagination table={table} />
@@ -284,7 +277,7 @@ export function StockClient() {
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsBulkFormOpen(false)} disabled={isBulkImporting}>Cancel</Button>
                 <Button onClick={handleBulkImport} disabled={isBulkImporting || !bulkData.trim()}>
-                    {isBulkImporting ? 'Syncing...' : 'Import to Firestore'}
+                    {isBulkImporting ? 'Processing...' : 'Import Locally'}
                 </Button>
             </DialogFooter>
         </DialogContent>
@@ -293,10 +286,10 @@ export function StockClient() {
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Confirm Deletion</DialogTitle></DialogHeader>
-          <DialogFooter>
+          <div className="flex justify-end gap-3 pt-4">
             <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={confirmDelete}>Delete Asset</Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </>
