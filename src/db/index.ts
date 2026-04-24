@@ -33,7 +33,7 @@ export interface PlatformLog {
 }
 
 /**
- * RoyalTechDB: Hardened for Next.js SSR.
+ * RoyalTechDB: Hardened for Next.js SSR with truly lazy initialization.
  */
 export class RoyalTechDB extends Dexie {
   assets!: Table<Asset>;
@@ -83,12 +83,12 @@ export class RoyalTechDB extends Dexie {
   }
 }
 
-// Singleton pattern for the database
+// Singleton pattern for the database (Browser Only)
 let dbInstance: RoyalTechDB | null = null;
 
-export function getDB(): RoyalTechDB {
+export function getDB(): RoyalTechDB | null {
   if (typeof window === 'undefined') {
-    return null as unknown as RoyalTechDB;
+    return null;
   }
 
   if (!dbInstance) {
@@ -101,5 +101,5 @@ export function getDB(): RoyalTechDB {
   return dbInstance;
 }
 
-// Keep the export for compatibility but use getDB() where possible
-export const db = typeof window !== 'undefined' ? getDB() : (null as unknown as RoyalTechDB);
+// Minimal export to prevent top-level initialization during Next.js module pre-scan
+export const db = typeof window !== 'undefined' ? getDB()! : (null as unknown as RoyalTechDB);

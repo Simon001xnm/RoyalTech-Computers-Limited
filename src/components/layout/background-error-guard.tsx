@@ -5,9 +5,8 @@ import React, { useEffect } from 'react';
 /**
  * BackgroundErrorGuard: Silences transient network error overlays.
  * 
- * This implementation uses safe, native browser event listeners to suppress
- * noisy "Failed to fetch" and "FirebaseError" screens during development.
- * It strictly avoids patching the global console object to prevent "Illegal invocation" crashes.
+ * This version uses safe, native browser event listeners ONLY.
+ * It avoids patching the global console object to prevent "Illegal invocation" crashes.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -30,7 +29,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       return IGNORED_MESSAGES.some(msg => message.includes(msg));
     };
 
-    // 1. Suppress unhandled promise rejections (Common in Firebase background sync)
+    // 1. Suppress unhandled promise rejections (Common in background sync)
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (shouldSuppress(event.reason)) {
         event.preventDefault();
