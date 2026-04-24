@@ -5,8 +5,9 @@ import React, { useEffect } from 'react';
 /**
  * BackgroundErrorGuard: Silences transient network artifacts in development.
  * 
- * This version uses ONLY safe event-based interception (unhandledrejection/error).
- * It NO LONGER patches the global console object, which resolves "Illegal invocation" crashes.
+ * CRITICAL: This version uses standard DOM events ONLY. 
+ * It DOES NOT monkey-patch console.error or fetch, which resolves the 
+ * "Illegal invocation" crash common in Next.js development mode.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -29,9 +30,9 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       'timeout'
     ];
 
-    const isSuppressed = (err: any) => {
+    const isSuppressed = (reason: any) => {
       try {
-        const message = String(err?.message || err?.stack || err || '').toLowerCase();
+        const message = String(reason?.message || reason?.stack || reason || '').toLowerCase();
         return SUPPRESS_PATTERNS.some(pattern => message.includes(pattern));
       } catch {
         return false;
@@ -52,6 +53,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
 
     // 2. ERROR EVENT INTERCEPTION (Global Errors)
     const handleError = (event: ErrorEvent) => {
+      // Logic for generic error events
       if (isSuppressed(event.error || event.message)) {
         event.preventDefault();
         event.stopPropagation();

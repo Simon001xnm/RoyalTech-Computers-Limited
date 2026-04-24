@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Professional Business Event Logger
  * Used for tracking audit trails, sales events, and system errors.
@@ -46,21 +45,23 @@ class Logger {
     };
 
     // 1. Console Logging (Dev Environment)
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
       const message = this.format(entry);
-      if (level === 'error') console.error(message, metadata);
-      else if (level === 'warn') console.warn(message, metadata);
-      else console.log(message, metadata);
+      // Safe context-bound logging to avoid "Illegal invocation"
+      const log = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+      log(message, metadata);
     }
 
     // 2. Persistent Local Logging (SaaS Oversight)
-    try {
-      await db.platformLogs.add({
-        id: crypto.randomUUID(),
-        ...entry
-      });
-    } catch (e) {
-      console.debug("Logger: Failed to write to database", e);
+    if (typeof window !== 'undefined') {
+        try {
+          await db.platformLogs.add({
+            id: crypto.randomUUID(),
+            ...entry
+          });
+        } catch (e) {
+          // Silent fail for logging errors
+        }
     }
   }
 
