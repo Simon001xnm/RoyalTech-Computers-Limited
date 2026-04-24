@@ -2,9 +2,8 @@
 
 import { useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
-import { useUser } from '@/firebase/provider';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
@@ -36,27 +35,32 @@ import Link from 'next/link';
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const { tenant, plan, usage, isLegacyUser } = useSaaS();
+  const firestore = useFirestore();
 
-  // SaaS Isolated Queries
-  const assets = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.assets.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  // Firestore Isolated Queries
+  const assetsQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'laptop_instances'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: assets } = useCollection(assetsQuery);
 
-  const accessories = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.accessories.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  const accessoriesQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: accessories } = useCollection(accessoriesQuery);
 
-  const customers = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.customers.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  const customersQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: customers } = useCollection(customersQuery);
 
-  const sales = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.sales.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  const salesQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: sales } = useCollection(salesQuery);
 
   const stats = useMemo(() => ({
     availableAssets: assets?.filter(l => l.status === 'Available').length || 0,

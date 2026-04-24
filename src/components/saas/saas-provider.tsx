@@ -47,7 +47,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
 
   // 4. Usage Metrics
   const assetQuery = useMemoFirebase(() => 
-    userProfile?.tenantId ? query(collection(firestore, 'assets'), where('tenantId', '==', userProfile.tenantId)) : null,
+    userProfile?.tenantId ? query(collection(firestore, 'laptop_instances'), where('tenantId', '==', userProfile.tenantId)) : null,
     [firestore, userProfile?.tenantId]
   );
   const { data: assets } = useCollection(assetQuery);
