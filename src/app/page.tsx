@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -32,10 +31,11 @@ import { useSaaS } from '@/components/saas/saas-provider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
-  const { user, isUserLoading } = useUser();
-  const { tenant, plan, usage, isLegacyUser } = useSaaS();
+  const { user } = useUser();
+  const { tenant, plan, usage, isLegacyUser, isLoading: isSaaSLoading } = useSaaS();
   const firestore = useFirestore();
 
   // Firestore Isolated Queries
@@ -43,25 +43,25 @@ export default function DashboardPage() {
     if (!tenant) return null;
     return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
-  const { data: assets } = useCollection(assetsQuery);
+  const { data: assets, isLoading: assetsLoading } = useCollection(assetsQuery);
 
   const accessoriesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
-  const { data: accessories } = useCollection(accessoriesQuery);
+  const { data: accessories, isLoading: accessoriesLoading } = useCollection(accessoriesQuery);
 
   const customersQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
-  const { data: customers } = useCollection(customersQuery);
+  const { data: customers, isLoading: customersLoading } = useCollection(customersQuery);
 
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
-  const { data: sales } = useCollection(salesQuery);
+  const { data: sales, isLoading: salesLoading } = useCollection(salesQuery);
 
   const stats = useMemo(() => ({
     availableAssets: assets?.filter(l => l.status === 'Available').length || 0,
@@ -78,7 +78,6 @@ export default function DashboardPage() {
     if (!plan || isLegacyUser) return [];
     const alerts = [];
     
-    // Usage Alerts
     if (usage.assets >= plan.maxAssets * 0.8) {
         alerts.push({ type: 'usage', title: 'Asset Capacity Nearly Full', description: `You have used ${usage.assets} of your ${plan.maxAssets} allowed asset slots.` });
     }
@@ -86,7 +85,6 @@ export default function DashboardPage() {
         alerts.push({ type: 'usage', title: 'Sales Limit Approaching', description: `You are close to your monthly limit of ${plan.maxSalesPerMonth} transactions.` });
     }
 
-    // Expiry Alerts
     if (tenant?.expiresAt) {
         const daysLeft = differenceInDays(parseISO(tenant.expiresAt), new Date());
         if (daysLeft <= 7 && daysLeft >= 0) {
@@ -132,25 +130,14 @@ export default function DashboardPage() {
     }).format(amount);
   };
 
-  if (isUserLoading || !tenant) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Dashboard" description="Syncing workspace metrics..." />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="h-32 animate-pulse bg-muted" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const showMetricsLoading = isSaaSLoading || (!!tenant && (assetsLoading || accessoriesLoading || customersLoading || salesLoading));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex items-center justify-between">
         <PageHeader 
           title="Executive Command" 
-          description={`Welcome, ${user?.displayName || 'Administrator'}. Real-time performance for ${tenant.name}.`} 
+          description={tenant ? `Welcome, ${user?.displayName || 'Administrator'}. Real-time performance for ${tenant.name}.` : "Synchronizing your business profile..."} 
         />
       </div>
 
@@ -183,30 +170,27 @@ export default function DashboardPage() {
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard 
-          title="Stock Availability" 
-          value={stats.availableAssets} 
-          icon={Package} 
-          description="Assets ready for distribution"
-        />
-        <SummaryCard 
-          title="Components" 
-          value={stats.accessoryItems} 
-          icon={Component} 
-          description="Total units in inventory"
-        />
-        <SummaryCard 
-          title="Client Base" 
-          value={stats.totalClients} 
-          icon={Users} 
-          description="Active accounts in CRM"
-        />
-        <SummaryCard 
-          title="Monthly Sales" 
-          value={stats.recentSalesCount} 
-          icon={TrendingUp} 
-          description="Total transactions this month"
-        />
+        {showMetricsLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i} className="h-32 shadow-sm border-muted/40">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <Skeleton className="h-3 w-20" />
+                        <Skeleton className="h-8 w-8 rounded-lg" />
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        <Skeleton className="h-8 w-24" />
+                        <Skeleton className="h-3 w-32" />
+                    </CardContent>
+                </Card>
+            ))
+        ) : (
+            <>
+                <SummaryCard title="Stock Availability" value={stats.availableAssets} icon={Package} description="Assets ready for distribution" />
+                <SummaryCard title="Components" value={stats.accessoryItems} icon={Component} description="Total units in inventory" />
+                <SummaryCard title="Client Base" value={stats.totalClients} icon={Users} description="Active accounts in CRM" />
+                <SummaryCard title="Monthly Sales" value={stats.recentSalesCount} icon={TrendingUp} description="Total transactions this month" />
+            </>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -223,37 +207,46 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-0 pt-4">
             <div className="h-[300px] w-full px-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
-                  <XAxis 
-                    dataKey="date" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                    dy={10}
-                  />
-                  <YAxis hide />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                    formatter={(value: number) => [formatCurrency(value), 'Revenue']}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorRev)" 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {salesLoading ? (
+                  <div className="h-full w-full flex items-center justify-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Ingesting Sales Stream...</p>
+                      </div>
+                  </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                    <defs>
+                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
+                    <XAxis 
+                        dataKey="date" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                        dy={10}
+                    />
+                    <YAxis hide />
+                    <Tooltip 
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                        formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                    />
+                    <Area 
+                        type="monotone" 
+                        dataKey="revenue" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={3}
+                        fillOpacity={1} 
+                        fill="url(#colorRev)" 
+                    />
+                    </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -269,7 +262,19 @@ export default function DashboardPage() {
             </Button>
           </CardHeader>
           <CardContent className="flex-grow max-h-[320px] overflow-auto">
-            {sortedRecentSales && sortedRecentSales.length > 0 ? (
+            {salesLoading ? (
+                <div className="space-y-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="flex items-center justify-between border-b border-muted/30 pb-3">
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-24" />
+                                <Skeleton className="h-3 w-16" />
+                            </div>
+                            <Skeleton className="h-4 w-12" />
+                        </div>
+                    ))}
+                </div>
+            ) : sortedRecentSales && sortedRecentSales.length > 0 ? (
               <div className="space-y-4">
                 {sortedRecentSales.slice(0, 10).map(sale => (
                   <div key={sale.id} className="flex items-center justify-between border-b border-muted/30 pb-3 last:border-0 last:pb-0">

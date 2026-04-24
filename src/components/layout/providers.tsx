@@ -8,6 +8,7 @@ import { AuthGuard } from '@/components/layout/auth-guard';
 import { OnboardingGuard } from '@/components/layout/onboarding-guard';
 import { BackgroundErrorGuard } from '@/components/layout/background-error-guard';
 import { Toaster } from "@/components/ui/toaster";
+import { APP_NAME } from '@/lib/constants';
 
 /**
  * Providers: The definitive client-side wrapper.
@@ -23,9 +24,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // During SSR, render a stable loading shell with zero client-side logic.
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="flex h-screen w-full items-center justify-center">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin opacity-10" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <div className="space-y-6 max-w-sm w-full">
+            <div className="relative mx-auto w-12 h-12">
+                <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
+                <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+            <div className="space-y-2">
+                <h1 className="text-xl font-black uppercase tracking-tighter opacity-50">{APP_NAME}</h1>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">
+                    Initializing Cloud Environment...
+                </p>
+            </div>
         </div>
       </div>
     );

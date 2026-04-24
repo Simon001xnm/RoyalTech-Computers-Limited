@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
@@ -30,14 +29,14 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
 
   // 1. Resolve User Profile from Firestore
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile } = useDoc(userRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc(userRef);
 
   // 2. Resolve Active Company
   const companyRef = useMemoFirebase(() => 
     userProfile?.tenantId ? doc(firestore, 'companies', userProfile.tenantId) : null,
     [firestore, userProfile?.tenantId]
   );
-  const { data: activeCompany } = useDoc(companyRef);
+  const { data: activeCompany, isLoading: isCompanyLoading } = useDoc(companyRef);
 
   // 3. Resolve Portfolio
   const portfolioQuery = useMemoFirebase(() => {
@@ -72,6 +71,14 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isUserLoading) return;
 
+    // Fast-path: If no user or user has no tenant, stop initializing immediately
+    if (!user || (userProfile && !userProfile.tenantId)) {
+        setTenant(null);
+        setPlan(null);
+        setIsInitializing(false);
+        return;
+    }
+
     if (activeCompany) {
         const t: Tenant = {
             id: activeCompany.id,
@@ -85,12 +92,9 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
         };
         setTenant(t);
         setPlan(DEFAULT_PLANS[t.tier] || DEFAULT_PLANS.legacy_pro);
-    } else {
-        setTenant(null);
-        setPlan(null);
+        setIsInitializing(false);
     }
-    setIsInitializing(false);
-  }, [isUserLoading, activeCompany]);
+  }, [isUserLoading, user, userProfile, activeCompany]);
 
   const switchTenant = async (newTenantId: string) => {
     if (!user) return;
@@ -106,11 +110,11 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     tenant,
     plan,
     usage: usageStats,
-    isLoading: isInitializing || isUserLoading,
+    isLoading: isInitializing || isUserLoading || (!!user && isProfileLoading),
     isLegacyUser: plan?.tier === 'legacy_pro',
     availableWorkspaces: (availableWorkspaces || []) as any,
     switchTenant
-  }), [tenant, plan, usageStats, isInitializing, isUserLoading, availableWorkspaces]);
+  }), [tenant, plan, usageStats, isInitializing, isUserLoading, isProfileLoading, availableWorkspaces]);
 
   if (user && tenant?.status === 'suspended') {
     return (
