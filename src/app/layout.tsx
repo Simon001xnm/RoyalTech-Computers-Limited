@@ -4,13 +4,8 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { APP_NAME } from '@/lib/constants';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { AuthGuard } from '@/components/layout/auth-guard';
 import { PwaRegistration } from '@/components/layout/pwa-registration';
-import { BackgroundErrorGuard } from '@/components/layout/background-error-guard';
-import { OnboardingGuard } from '@/components/layout/onboarding-guard';
-import { DynamicThemeProvider } from '@/components/layout/dynamic-theme-provider';
-import { SaaSProvider } from '@/components/saas/saas-provider';
+import { Providers } from '@/components/layout/providers';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -62,19 +57,9 @@ export default function RootLayout({
         <link rel="icon" href="/picture1.png" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
-        <BackgroundErrorGuard>
-          <FirebaseClientProvider>
-            <SaaSProvider>
-              <DynamicThemeProvider>
-                <AuthGuard>
-                  <OnboardingGuard>
-                    {children}
-                  </OnboardingGuard>
-                </AuthGuard>
-              </DynamicThemeProvider>
-            </SaaSProvider>
-          </FirebaseClientProvider>
-        </BackgroundErrorGuard>
+        <Providers>
+          {children}
+        </Providers>
         <Toaster />
         <PwaRegistration />
       </body>
