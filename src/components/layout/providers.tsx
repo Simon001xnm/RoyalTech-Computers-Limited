@@ -11,11 +11,6 @@ import { Toaster } from "@/components/ui/toaster";
 
 /**
  * Providers: The definitive client-side wrapper.
- * 
- * HYDRATION GATE (CRITICAL): 
- * To prevent "Illegal invocation" and native browser context loss, this component 
- * returns null until it is fully mounted in the browser. This ensures that 
- * Firebase, Dexie, and other browser APIs NEVER attempt to run on the server.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);

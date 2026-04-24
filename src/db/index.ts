@@ -34,8 +34,6 @@ export interface PlatformLog {
 
 /**
  * RoyalTechDB: Hardened for Next.js SSR.
- * Database instantiation is strictly guarded to prevent "Illegal invocation" errors 
- * when running in the server environment.
  */
 export class RoyalTechDB extends Dexie {
   assets!: Table<Asset>;
@@ -82,18 +80,26 @@ export class RoyalTechDB extends Dexie {
       notifications: 'id, tenantId, userId, read, createdAt',
       leases: 'id, tenantId, status, customerId, assetId'
     });
-
-    if (typeof window !== 'undefined') {
-        this.cloud.configure({
-          databaseUrl: 'https://z1xwh7v7u.dexie.cloud',
-          requireAuth: false 
-        });
-    }
   }
 }
 
-/**
- * Singleton database instance.
- * SSR Safe: Returns null on the server, ensuring IndexedDB is never touched during pre-rendering.
- */
-export const db = typeof window !== 'undefined' ? new RoyalTechDB() : (null as unknown as RoyalTechDB);
+// Singleton pattern for the database
+let dbInstance: RoyalTechDB | null = null;
+
+export function getDB(): RoyalTechDB {
+  if (typeof window === 'undefined') {
+    return null as unknown as RoyalTechDB;
+  }
+
+  if (!dbInstance) {
+    dbInstance = new RoyalTechDB();
+    dbInstance.cloud.configure({
+      databaseUrl: 'https://z1xwh7v7u.dexie.cloud',
+      requireAuth: false 
+    });
+  }
+  return dbInstance;
+}
+
+// Keep the export for compatibility but use getDB() where possible
+export const db = typeof window !== 'undefined' ? getDB() : (null as unknown as RoyalTechDB);

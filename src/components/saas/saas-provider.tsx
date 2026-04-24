@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { useUser } from '@/firebase/provider';
-import { db } from '@/db';
+import { getDB } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier, TenantUsage } from '@/types/saas';
 import { isFeatureEnabled } from '@/lib/feature-flags';
@@ -28,13 +28,16 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // SECURE PROFILE QUERY: SSR Guarded
+  // Use the lazy DB getter
+  const db = useMemo(() => getDB(), []);
+
+  // SECURE PROFILE QUERY
   const userProfile = useLiveQuery(
     async () => {
-        if (typeof window === 'undefined' || !db || !user) return null;
-        return await db.users.get(user.uid);
+      if (typeof window === 'undefined' || !db || !user) return null;
+      return await db.users.get(user.uid);
     },
-    [user]
+    [user, db]
   );
 
   // SECURE WORKSPACE PORTFOLIO QUERY
@@ -49,14 +52,14 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     if (authorizedIds.length === 0) return [];
 
     return await db.companies.where('id').anyOf(authorizedIds).toArray();
-  }, [userProfile?.tenantIds, userProfile?.tenantId]) || [];
+  }, [userProfile?.tenantIds, userProfile?.tenantId, db]) || [];
 
   const activeCompany = useLiveQuery(
     async () => {
         if (typeof window === 'undefined' || !db || !userProfile?.tenantId) return null;
         return await db.companies.get(userProfile.tenantId);
     },
-    [userProfile?.tenantId]
+    [userProfile?.tenantId, db]
   );
 
   const usageStats = useLiveQuery(async () => {
@@ -73,10 +76,10 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
         .count();
 
     return { assets: assetCount, salesThisMonth: salesCount };
-  }, [userProfile?.tenantId]);
+  }, [userProfile?.tenantId, db]);
 
   useEffect(() => {
-    if (isUserLoading) return;
+    if (isUserLoading || typeof window === 'undefined') return;
 
     const resolveTenant = async () => {
       setIsLoading(true);
@@ -144,7 +147,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     switchTenant
   }), [tenant, plan, usageStats, isLoading, isUserLoading, availableWorkspaces]);
 
-  if (user && tenant?.status === 'suspended') {
+  if (typeof window !== 'undefined' && user && tenant?.status === 'suspended') {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-background p-6">
             <div className="max-w-md text-center space-y-6">
