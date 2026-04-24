@@ -6,8 +6,8 @@ import React, { useEffect } from 'react';
  * BackgroundErrorGuard: Silences transient network artifacts in development.
  * 
  * CRITICAL: This version uses standard DOM events ONLY. 
- * It DOES NOT monkey-patch console.error or fetch, which resolves the 
- * "Illegal invocation" crash common in Next.js development mode.
+ * It DOES NOT modify window.console, which is the root cause of 
+ * "Illegal invocation" crashes in Next.js development mode.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -40,20 +40,19 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
     };
 
     // --- SAFE EVENT-BASED SUPPRESSION ---
-    // This intercepts errors before they reach the Next.js development overlay.
+    // These listeners intercept errors before they trigger the Next.js red overlay.
     
-    // 1. UNHANDLED REJECTION INTERCEPTION (Promises)
+    // 1. Intercept Promise Rejections (e.g. Firebase background sync fails)
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (isSuppressed(event.reason)) {
-        // preventDefault stops the Next.js development overlay from appearing
+        // Stop the error from bubbling up to the Next.js overlay
         event.preventDefault();
         event.stopPropagation();
       }
     };
 
-    // 2. ERROR EVENT INTERCEPTION (Global Errors)
+    // 2. Intercept Global Errors (e.g. standard network fetch failures)
     const handleError = (event: ErrorEvent) => {
-      // Logic for generic error events
       if (isSuppressed(event.error || event.message)) {
         event.preventDefault();
         event.stopPropagation();

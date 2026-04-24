@@ -10,8 +10,11 @@ import { BackgroundErrorGuard } from '@/components/layout/background-error-guard
 
 /**
  * Providers: A unified client-side wrapper for the entire application context stack.
- * This component handles the "Hydration Gate" to ensure that browser-only logic
- * (like Firebase, Dexie, and local-first state) does not run during SSR.
+ * 
+ * HYDRATION GATE: 
+ * This component ensures that browser-heavy logic (Firebase, Dexie, Cloud Sync) 
+ * NEVER runs during Server-Side Rendering (SSR). This prevents "Illegal invocation" 
+ * and "window is not defined" errors during initial page load.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
@@ -20,13 +23,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     setIsMounted(true);
   }, []);
 
-  // During Server-Side Rendering or initial hydration, return a safe shell.
-  // This prevents "Illegal invocation" and context-binding errors from third-party SDKs
-  // by ensuring the heavy provider tree only instantiates in the browser.
+  // During Server-Side Rendering, return a safe shell.
+  // This is the definitive fix for "Illegal invocation" occurring on page load.
   if (!isMounted) {
     return (
       <div className="min-h-screen bg-background">
-        {/* Render a minimal shell to maintain layout stability */}
         <div className="flex h-screen w-full items-center justify-center">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin opacity-10" />
         </div>
