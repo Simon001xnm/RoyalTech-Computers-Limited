@@ -1,4 +1,3 @@
-
 'use client';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -7,14 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Camera, Edit3, Image as ImageIcon, Check, Loader2, Building2, Upload, Palette, ShieldCheck, Crown, Zap, Repeat, PlusCircle } from "lucide-react";
+import { Camera, Image as ImageIcon, Check, Loader2, Building2, Upload, Palette, ShieldCheck, Crown, Zap, Repeat, PlusCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/firebase/provider";
 import { useEffect, useState, useRef } from "react";
 import { db } from "@/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/use-toast";
-import type { User as AppUser, Company } from "@/types";
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile } from "firebase/auth";
 import placeholderAvatars from '@/lib/placeholder-images.json';
 import { cn } from "@/lib/utils";
@@ -143,7 +141,12 @@ export default function ProfilePage() {
     }
   };
 
-  const handleCreateWorkspace = () => {
+  const handleCreateWorkspace = async () => {
+      if (!authUser) return;
+      // To create a new workspace, we clear the current tenantId in the profile.
+      // This will trigger the OnboardingGuard setup flow.
+      await db.users.update(authUser.uid, { tenantId: undefined });
+      toast({ title: "Initializing Setup", description: "You can now create a new workspace entity." });
       window.location.reload(); 
   };
 
@@ -154,7 +157,7 @@ export default function ProfilePage() {
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       <PageHeader 
-        title={isSuperAdmin ? "Platform technician Identity" : "Profile & Workspace"} 
+        title={isSuperAdmin ? "Platform Technician Identity" : "Profile & Workspace"} 
         description={isSuperAdmin ? "Global system identity and platform technician security." : "Manage your personal account and business branding."} 
       />
 
@@ -201,7 +204,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Portfolio Switcher - HIDDEN FOR SUPER ADMIN */}
+          {/* Portfolio Switcher - HIDDEN FOR SUPER ADMIN unless they have tenants */}
           {!isSuperAdmin && (
             <Card className="shadow-md border-primary/20 bg-muted/20">
                 <CardHeader className="pb-3">
@@ -216,7 +219,7 @@ export default function ProfilePage() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                    {availableWorkspaces.map(ws => (
+                    {availableWorkspaces.length > 0 ? availableWorkspaces.map(ws => (
                         <div 
                             key={ws.id} 
                             className={cn(
@@ -235,7 +238,9 @@ export default function ProfilePage() {
                             </div>
                             {tenant?.id === ws.id && <Check className="h-3 w-3 shrink-0" />}
                         </div>
-                    ))}
+                    )) : (
+                        <p className="text-[10px] text-center py-4 text-muted-foreground italic">No workspaces active.</p>
+                    )}
                 </CardContent>
             </Card>
           )}
@@ -252,13 +257,13 @@ export default function ProfilePage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-1">
-                            <p className="text-lg font-black text-primary uppercase tracking-tight">{plan?.name}</p>
-                            <p className="text-[10px] text-muted-foreground">Status: <span className="text-green-600 font-bold uppercase">{tenant?.status}</span></p>
+                            <p className="text-lg font-black text-primary uppercase tracking-tight">{plan?.name || 'Loading Plan...'}</p>
+                            <p className="text-[10px] text-muted-foreground">Status: <span className="text-green-600 font-bold uppercase">{tenant?.status || 'Active'}</span></p>
                         </div>
                         <div className="space-y-3 pt-2">
                             <div className="flex items-center justify-between text-xs p-2 bg-background rounded-lg border border-primary/10">
                                 <span className="text-muted-foreground">Tenant ID</span>
-                                <span className="font-mono font-bold text-[10px] opacity-60">{tenant?.id}</span>
+                                <span className="font-mono font-bold text-[10px] opacity-60">{tenant?.id || 'N/A'}</span>
                             </div>
                             {isLegacyUser && (
                                 <div className="flex items-start gap-2 p-3 bg-primary text-primary-foreground rounded-xl shadow-lg">
@@ -271,9 +276,6 @@ export default function ProfilePage() {
                             )}
                         </div>
                     </CardContent>
-                    <CardFooter>
-                        {!isLegacyUser && <Button variant="outline" className="w-full h-8 text-[10px] uppercase font-bold" disabled>Change Plan</Button>}
-                    </CardFooter>
                 </Card>
 
                 <SaaSUsageMeters />
@@ -283,7 +285,7 @@ export default function ProfilePage() {
 
         {/* Workspace Branding - HIDDEN FOR SUPER ADMIN */}
         <div className="md:col-span-2 space-y-8">
-          {!isSuperAdmin && (
+          {!isSuperAdmin && company && (
             <Card className="shadow-md">
                 <CardHeader>
                 <div className="flex items-center gap-2">
@@ -319,7 +321,7 @@ export default function ProfilePage() {
                             <div className="space-y-2">
                             <Label className="text-[10px] uppercase font-bold opacity-70">Secondary Color</Label>
                             <div className="flex gap-2">
-                                <input type="color" value={compSecondary} onChange={e => setSecondaryColor(e.target.value)} className="w-12 h-10 p-1 cursor-pointer border rounded" />
+                                <input type="color" value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer border rounded" />
                                 <Input value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="font-mono text-xs uppercase" />
                             </div>
                             </div>
@@ -371,12 +373,12 @@ export default function ProfilePage() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                         As a **Platform Technician**, you have root access to the SaaS infrastructure. You are responsible for global node health, subscription overrides, and commercial intelligence.
                     </p>
-                    <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-primary">
-                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20">Bypass Onboarding: Active</div>
-                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20">Global Audit: Unlocked</div>
+                    <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-widest text-primary">
+                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 shadow-sm">Bypass Onboarding: Active</div>
+                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 shadow-sm">Global Audit: Unlocked</div>
                     </div>
                 </CardContent>
              </Card>
@@ -387,20 +389,20 @@ export default function ProfilePage() {
        <Dialog open={isNewWorkspaceOpen} onOpenChange={setIsNewWorkspaceOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add New Workspace</DialogTitle>
+            <DialogTitle>Create New Business Entity</DialogTitle>
             <DialogDescription>
-              This will reset the setup guard to allow you to create a completely new business entity in your portfolio.
+              This will pause your current session and take you to the onboarding wizard to initialize a completely new workspace.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
-            <p className="text-sm text-muted-foreground">
-                You are currently managing <strong>{availableWorkspaces.length}</strong> workspaces. 
-                Adding another will allow you to maintain separate inventory, sales, and staff records.
+            <p className="text-sm text-muted-foreground leading-relaxed">
+                You are currently managing <strong>{availableWorkspaces.length}</strong> business workspaces. 
+                Creating another will allow you to maintain separate inventory, sales history, and staff records for a new company.
             </p>
           </div>
           <CardFooter className="px-0">
-             <Button className="w-full font-bold" onClick={handleCreateWorkspace}>
-                Initialize New Workspace
+             <Button className="w-full font-bold h-12" onClick={handleCreateWorkspace}>
+                Initialize New Setup
              </Button>
           </CardFooter>
         </DialogContent>

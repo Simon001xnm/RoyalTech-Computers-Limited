@@ -47,9 +47,14 @@ class Logger {
     // 1. Console Logging (Dev Environment)
     if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
       const message = this.format(entry);
-      // Safe context-bound logging to avoid "Illegal invocation"
-      const log = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
-      log(message, metadata);
+      // FIXED: Directly call methods on console to avoid "Illegal invocation" context loss
+      if (level === 'error') {
+        console.error(message, metadata);
+      } else if (level === 'warn') {
+        console.warn(message, metadata);
+      } else {
+        console.log(message, metadata);
+      }
     }
 
     // 2. Persistent Local Logging (SaaS Oversight)
