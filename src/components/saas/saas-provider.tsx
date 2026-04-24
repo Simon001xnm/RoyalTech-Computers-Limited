@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, updateDoc } from 'firebase/firestore';
 import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier } from '@/types/saas';
@@ -8,6 +8,7 @@ import { startOfMonth, parseISO, addDays } from 'date-fns';
 import { Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import type { User as AppUser } from '@/types';
 
 const DEFAULT_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   free: { id: 'plan_free', name: 'Standard Workspace', tier: 'free', maxAssets: 50, maxSalesPerMonth: 100, enableBranding: false, enableTracking: false, priceMonthly: 0, currency: 'KES' },
@@ -23,13 +24,9 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   
-  const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
-  const [isInitializing, setIsInitializing] = useState(true);
-
   // 1. Resolve User Profile from Firestore
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc(userRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userRef);
 
   // 2. Resolve Active Company
   const companyRef = useMemoFirebase(() => 
@@ -45,7 +42,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   }, [firestore, userProfile?.tenantIds]);
   const { data: availableWorkspaces = [] } = useCollection(portfolioQuery);
 
-  // 4. Usage Metrics
+  // 4. Usage Metrics (Concurrent with profile)
   const assetQuery = useMemoFirebase(() => 
     userProfile?.tenantId ? query(collection(firestore, 'assets'), where('tenantId', '==', userProfile.tenantId)) : null,
     [firestore, userProfile?.tenantId]
@@ -68,38 +65,30 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     salesThisMonth: monthlySales?.length || 0
   }), [assets, monthlySales]);
 
-  useEffect(() => {
-    if (isUserLoading) return;
+  // Derive Tenant and Plan
+  const tenantData = useMemo<Tenant | null>(() => {
+    if (!activeCompany) return null;
+    return {
+        id: activeCompany.id,
+        name: activeCompany.name,
+        ownerId: activeCompany.createdBy?.uid || 'unknown',
+        tier: (activeCompany.plan as SubscriptionTier) || 'legacy_pro',
+        status: (activeCompany.status as any) || 'active',
+        createdAt: activeCompany.createdAt,
+        expiresAt: activeCompany.createdAt ? addDays(parseISO(activeCompany.createdAt), 365).toISOString() : undefined,
+        features: ['all']
+    };
+  }, [activeCompany]);
 
-    // Fast-path: If no user or user has no tenant, stop initializing immediately
-    if (!user || (userProfile && !userProfile.tenantId)) {
-        setTenant(null);
-        setPlan(null);
-        setIsInitializing(false);
-        return;
-    }
-
-    if (activeCompany) {
-        const t: Tenant = {
-            id: activeCompany.id,
-            name: activeCompany.name,
-            ownerId: activeCompany.createdBy?.uid || 'unknown',
-            tier: (activeCompany.plan as SubscriptionTier) || 'legacy_pro',
-            status: (activeCompany.status as any) || 'active',
-            createdAt: activeCompany.createdAt,
-            expiresAt: activeCompany.createdAt ? addDays(parseISO(activeCompany.createdAt), 365).toISOString() : undefined,
-            features: ['all']
-        };
-        setTenant(t);
-        setPlan(DEFAULT_PLANS[t.tier] || DEFAULT_PLANS.legacy_pro);
-        setIsInitializing(false);
-    }
-  }, [isUserLoading, user, userProfile, activeCompany]);
+  const activePlan = useMemo(() => {
+      if (!tenantData) return null;
+      return DEFAULT_PLANS[tenantData.tier] || DEFAULT_PLANS.legacy_pro;
+  }, [tenantData]);
 
   const switchTenant = async (newTenantId: string) => {
-    if (!user) return;
+    if (!user || !userRef) return;
     try {
-        await updateDoc(doc(firestore, 'users', user.uid), { tenantId: newTenantId });
+        await updateDoc(userRef, { tenantId: newTenantId });
         toast({ title: 'Workspace Switched' });
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Switch Failed', description: e.message });
@@ -107,16 +96,20 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   };
 
   const contextValue = useMemo(() => ({
-    tenant,
-    plan,
+    tenant: tenantData,
+    plan: activePlan,
     usage: usageStats,
-    isLoading: isInitializing || isUserLoading || (!!user && isProfileLoading),
-    isLegacyUser: plan?.tier === 'legacy_pro',
+    isLoading: isUserLoading || isProfileLoading || (!!userProfile?.tenantId && isCompanyLoading),
+    isLegacyUser: activePlan?.tier === 'legacy_pro',
     availableWorkspaces: (availableWorkspaces || []) as any,
     switchTenant
-  }), [tenant, plan, usageStats, isInitializing, isUserLoading, isProfileLoading, availableWorkspaces]);
+  }), [tenantData, activePlan, usageStats, isUserLoading, isProfileLoading, isCompanyLoading, availableWorkspaces]);
 
-  if (user && tenant?.status === 'suspended') {
+  // FAST-PATH for Super Admin or Un-onboarded
+  const isSuperAdmin = userProfile?.role === 'super_admin';
+  const needsOnboarding = userProfile && !userProfile.tenantId && !isSuperAdmin;
+
+  if (user && tenantData?.status === 'suspended') {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-background p-6">
             <div className="max-w-md text-center space-y-6">

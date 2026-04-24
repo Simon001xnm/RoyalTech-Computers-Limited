@@ -38,7 +38,7 @@ export default function DashboardPage() {
   const { tenant, plan, usage, isLegacyUser, isLoading: isSaaSLoading } = useSaaS();
   const firestore = useFirestore();
 
-  // Firestore Isolated Queries
+  // Firestore Isolated Queries - Loaded Concurrently
   const assetsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
@@ -137,11 +137,10 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <PageHeader 
           title="Executive Command" 
-          description={tenant ? `Welcome, ${user?.displayName || 'Administrator'}. Real-time performance for ${tenant.name}.` : "Synchronizing your business profile..."} 
+          description={tenant ? `Welcome, ${user?.displayName || 'Administrator'}. Real-time performance for ${tenant.name}.` : "Platform Command Center Active."} 
         />
       </div>
 
-      {/* Workspace Health Section */}
       {healthAlerts.length > 0 && (
           <div className="space-y-4">
               {healthAlerts.map((alert, idx) => (

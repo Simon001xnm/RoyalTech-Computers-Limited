@@ -12,7 +12,7 @@ import { APP_NAME } from '@/lib/constants';
 
 /**
  * Providers: The definitive client-side wrapper.
- * Using strict hydration gating to prevent browser APIs from executing during SSR.
+ * No Dexie Cloud logic here to prevent "Illegal invocation" context crashes.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
@@ -21,7 +21,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     setIsMounted(true);
   }, []);
 
-  // During SSR, render a stable loading shell with zero client-side logic.
   if (!isMounted) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
@@ -33,7 +32,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <div className="space-y-2">
                 <h1 className="text-xl font-black uppercase tracking-tighter opacity-50">{APP_NAME}</h1>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">
-                    Initializing Cloud Environment...
+                    Waking up cloud nodes...
                 </p>
             </div>
         </div>
@@ -41,7 +40,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Once in the browser, wrap everything in the safe error guard and provide contexts.
   return (
     <BackgroundErrorGuard>
       <FirebaseClientProvider>
