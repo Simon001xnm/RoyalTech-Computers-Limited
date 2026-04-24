@@ -1,15 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
-import { useUser } from '@/firebase/provider';
-import { getDB } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, doc, query, where, updateDoc } from 'firebase/firestore';
 import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier, TenantUsage } from '@/types/saas';
-import { isFeatureEnabled } from '@/lib/feature-flags';
 import { startOfMonth, parseISO, addDays } from 'date-fns';
 import { Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { logger } from '@/lib/logger';
 import { useToast } from '@/hooks/use-toast';
 
 const DEFAULT_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
@@ -23,130 +20,96 @@ const SaaSContext = createContext<SaaSContextState | undefined>(undefined);
 
 export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
+  
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
 
-  // Lazy database access to prevent early IDB calls
-  const db = useMemo(() => getDB(), []);
+  // 1. Resolve User Profile from Firestore
+  const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile } = useDoc(userRef);
 
-  // SECURE PROFILE QUERY
-  const userProfile = useLiveQuery(
-    async () => {
-      if (!db || !user) return null;
-      return await db.users.get(user.uid);
-    },
-    [user, db]
+  // 2. Resolve Active Company Branding
+  const companyRef = useMemoFirebase(() => 
+    userProfile?.tenantId ? doc(firestore, 'companies', userProfile.tenantId) : null,
+    [firestore, userProfile?.tenantId]
   );
+  const { data: activeCompany } = useDoc(companyRef);
 
-  // SECURE WORKSPACE PORTFOLIO QUERY: Guaranteed isolation
-  const availableWorkspaces = useLiveQuery(async () => {
-    if (!db || !userProfile) return [];
-    
-    // Only fetch workspaces the user is explicitly authorized to access
-    const authorizedIds = Array.from(new Set([
-        ...(userProfile.tenantIds || []),
-        ...(userProfile.tenantId ? [userProfile.tenantId] : [])
-    ])).filter(id => !!id);
+  // 3. Resolve Available Portfolio
+  const portfolioQuery = useMemoFirebase(() => {
+    if (!userProfile?.tenantIds?.length) return null;
+    return query(collection(firestore, 'companies'), where('id', 'in', userProfile.tenantIds));
+  }, [firestore, userProfile?.tenantIds]);
+  const { data: availableWorkspaces = [] } = useCollection(portfolioQuery);
 
-    if (authorizedIds.length === 0) return [];
-
-    return await db.companies.where('id').anyOf(authorizedIds).toArray();
-  }, [userProfile?.tenantIds, userProfile?.tenantId, db]) || [];
-
-  const activeCompany = useLiveQuery(
-    async () => {
-        if (!db || !userProfile?.tenantId) return null;
-        return await db.companies.get(userProfile.tenantId);
-    },
-    [userProfile?.tenantId, db]
+  // 4. Usage Metrics
+  const assetQuery = useMemoFirebase(() => 
+    userProfile?.tenantId ? query(collection(firestore, 'assets'), where('tenantId', '==', userProfile.tenantId)) : null,
+    [firestore, userProfile?.tenantId]
   );
+  const { data: assets } = useCollection(assetQuery);
 
-  const usageStats = useLiveQuery(async () => {
-    if (!db || !userProfile?.tenantId) return { assets: 0, salesThisMonth: 0 };
-    
-    const tid = userProfile.tenantId;
-    const now = new Date();
-    const start = startOfMonth(now).toISOString();
+  const salesQuery = useMemoFirebase(() => {
+    if (!userProfile?.tenantId) return null;
+    const start = startOfMonth(new Date()).toISOString();
+    return query(
+        collection(firestore, 'sales_transactions'), 
+        where('tenantId', '==', userProfile.tenantId),
+        where('date', '>=', start)
+    );
+  }, [firestore, userProfile?.tenantId]);
+  const { data: monthlySales } = useCollection(salesQuery);
 
-    const assetCount = await db.assets.where('tenantId').equals(tid).count();
-    const salesCount = await db.sales
-        .where('tenantId').equals(tid)
-        .and(s => s.date >= start)
-        .count();
-
-    return { assets: assetCount, salesThisMonth: salesCount };
-  }, [userProfile?.tenantId, db]);
+  const usageStats = useMemo(() => ({
+    assets: assets?.length || 0,
+    salesThisMonth: monthlySales?.length || 0
+  }), [assets, monthlySales]);
 
   useEffect(() => {
     if (isUserLoading) return;
 
-    const resolveTenant = async () => {
-      setIsLoading(true);
-      
-      if (!isFeatureEnabled('TENANCY_ISOLATION')) {
-        setTenant({
-          id: 'v1_global', name: activeCompany?.name || 'Local Workspace',
-          ownerId: user?.uid || 'local', tier: 'legacy_pro', status: 'active',
-          createdAt: new Date().toISOString(), features: ['all']
-        });
-        setPlan(DEFAULT_PLANS.legacy_pro);
-        setIsLoading(false);
-        return;
-      }
-
-      if (activeCompany) {
-         const t: Tenant = {
-             id: activeCompany.id,
-             name: activeCompany.name,
-             ownerId: activeCompany.createdBy?.uid || 'unknown',
-             tier: (activeCompany.plan as SubscriptionTier) || 'legacy_pro', 
-             status: (activeCompany.status as any) || 'active',
-             createdAt: activeCompany.createdAt,
-             expiresAt: addDays(parseISO(activeCompany.createdAt), 365).toISOString(),
-             features: ['all']
-         };
-         setTenant(t);
-         setPlan(DEFAULT_PLANS[t.tier] || DEFAULT_PLANS.legacy_pro);
-      } else {
+    if (activeCompany) {
+        const t: Tenant = {
+            id: activeCompany.id,
+            name: activeCompany.name,
+            ownerId: activeCompany.createdBy?.uid || 'unknown',
+            tier: (activeCompany.plan as SubscriptionTier) || 'legacy_pro',
+            status: (activeCompany.status as any) || 'active',
+            createdAt: activeCompany.createdAt,
+            expiresAt: addDays(parseISO(activeCompany.createdAt), 365).toISOString(),
+            features: ['all']
+        };
+        setTenant(t);
+        setPlan(DEFAULT_PLANS[t.tier] || DEFAULT_PLANS.legacy_pro);
+    } else {
         setTenant(null);
         setPlan(null);
-      }
-      
-      setIsLoading(false);
-    };
-
-    resolveTenant();
-  }, [user, isUserLoading, activeCompany]);
+    }
+    setIsInitializing(false);
+  }, [isUserLoading, activeCompany]);
 
   const switchTenant = async (newTenantId: string) => {
-    if (!db || !user || !userProfile) return;
-    
-    const isAuthorized = userProfile.tenantIds?.includes(newTenantId) || userProfile.tenantId === newTenantId;
-    if (!isAuthorized && userProfile.role !== 'super_admin') {
-      toast({ variant: 'destructive', title: 'Access Denied', description: 'Unauthorized workspace access attempt blocked.' });
-      return;
-    }
-
+    if (!user) return;
     try {
-        await db.users.update(user.uid, { tenantId: newTenantId });
-        logger.business('System', 'Tenant Switch', { to: newTenantId });
+        await updateDoc(doc(firestore, 'users', user.uid), { tenantId: newTenantId });
         toast({ title: 'Workspace Switched' });
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Switch Failed' });
+        toast({ variant: 'destructive', title: 'Switch Failed', description: e.message });
     }
   };
 
   const contextValue = useMemo(() => ({
     tenant,
     plan,
-    usage: usageStats || { assets: 0, salesThisMonth: 0 },
-    isLoading: isLoading || isUserLoading,
+    usage: usageStats,
+    isLoading: isInitializing || isUserLoading,
     isLegacyUser: plan?.tier === 'legacy_pro',
-    availableWorkspaces,
+    availableWorkspaces: (availableWorkspaces || []) as any,
     switchTenant
-  }), [tenant, plan, usageStats, isLoading, isUserLoading, availableWorkspaces]);
+  }), [tenant, plan, usageStats, isInitializing, isUserLoading, availableWorkspaces]);
 
   if (user && tenant?.status === 'suspended') {
     return (
@@ -154,7 +117,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
             <div className="max-w-md text-center space-y-6">
                 <Lock className="h-12 w-12 text-destructive mx-auto" />
                 <h1 className="text-3xl font-black uppercase">Workspace Locked</h1>
-                <p className="text-muted-foreground">Access has been suspended by the platform provider.</p>
+                <p className="text-muted-foreground">Access suspended by provider.</p>
                 <Button variant="outline" className="w-full" onClick={() => window.location.reload()}>Check Status</Button>
             </div>
         </div>

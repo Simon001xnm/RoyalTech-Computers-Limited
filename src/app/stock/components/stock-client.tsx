@@ -1,76 +1,45 @@
-"use client";
+'use client';
 
 import { useState, useMemo } from "react";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, PackageSearch, Upload, Download } from "lucide-react";
+import { PlusCircle, PackageSearch, Upload } from "lucide-react";
 import { AssetForm } from "./asset-form";
 import { getAssetColumns, type AssetColumnActions } from "./asset-columns";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import {
-  useReactTable,
-  getCoreRowModel,
-  getPaginationRowModel,
-  flexRender,
-  type ColumnDef,
-  type RowSelectionState,
-  type PaginationState,
-} from "@tanstack/react-table";
-import { Textarea } from "@/components/ui/textarea";
+import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender, type ColumnDef, type RowSelectionState, type PaginationState } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
-import { useUser } from "@/firebase/provider";
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
-import { AssetService } from "@/services/asset-service";
-import { cn, exportToCsv } from "@/lib/utils";
 import { ValuationSummary } from "./valuation-summary";
 
 export function StockClient() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isBulkFormOpen, setIsBulkFormOpen] = useState(false);
-  const [bulkData, setBulkData] = useState("");
-  const [isBulkImporting, setIsBulkImporting] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
   
   const { toast } = useToast();
   const { user } = useUser();
+  const firestore = useFirestore();
   const { tenant, plan, usage, isLegacyUser } = useSaaS();
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
-  });
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   
-  // DEXIE QUERY: Siloed by tenantId
-  const assets = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.assets.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  // FIRESTORE QUERY: Strictly siloed by tenantId
+  const assetsQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
 
-  const isLoading = assets === undefined;
+  const { data: assets, isLoading } = useCollection(assetsQuery);
 
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
@@ -84,83 +53,17 @@ export function StockClient() {
 
   const handleAddAsset = () => {
     if (isAtCapacity) {
-        toast({ 
-            variant: 'destructive', 
-            title: 'Plan Limit Reached', 
-            description: `You have reached the maximum of ${plan.maxAssets} assets. Please upgrade your plan.` 
-        });
+        toast({ variant: 'destructive', title: 'Limit Reached', description: `Max ${plan.maxAssets} assets allowed.` });
         return;
     }
     setEditingAsset(null);
     setIsFormOpen(true);
   };
 
-  const handleDownloadTemplate = () => {
-    const filename = "RCL_Asset_Import_Template.csv";
-    const data = [{
-        model: "iPhone 15 Pro",
-        serialNumber: "IMEI-123456789",
-        purchaseDate: "2024-01-15",
-        quantity: "1",
-        status: "Available",
-        purchasePrice: "145000",
-        leasePrice: "7500",
-        ram: "8GB",
-        storage: "256GB",
-        processor: "A17 Pro"
-    }];
-    const mapping = {
-        model: "Model",
-        serialNumber: "Serial Number",
-        purchaseDate: "Purchase Date (YYYY-MM-DD)",
-        quantity: "Quantity",
-        status: "Status",
-        purchasePrice: "Purchase Price",
-        leasePrice: "Lease Rate",
-        ram: "RAM",
-        storage: "Storage",
-        processor: "Processor"
-    };
-    exportToCsv(filename, data, mapping);
-  };
-  
-  const handleBulkImport = async () => {
-    if (!bulkData.trim() || !tenant) return;
-    setIsBulkImporting(true);
-    try {
-        const lines = bulkData.trim().split('\n').filter(line => line.trim() !== '');
-        const newAssets: Asset[] = lines.map((line) => {
-            const parts = line.split(',').map(p => p.trim());
-            return {
-                id: crypto.randomUUID(),
-                tenantId: tenant.id,
-                model: parts[0],
-                serialNumber: parts[1],
-                purchaseDate: new Date(parts[2]).toISOString(),
-                quantity: parseInt(parts[3], 10) || 1,
-                status: (parts[4] as any) || 'Available',
-                purchasePrice: parseFloat(parts[5]) || 0,
-                leasePrice: parseFloat(parts[6]) || 0,
-                specifications: { ram: parts[7] || '', storage: parts[8] || '', processor: parts[9] || '' },
-                createdAt: new Date().toISOString()
-            } as any;
-        });
-
-        await AssetService.bulkImport(newAssets, tenant.id);
-        toast({ title: 'Import Complete', description: `Added ${newAssets.length} assets.` });
-        setIsBulkFormOpen(false);
-        setBulkData("");
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Import Failed', description: error.message });
-    } finally {
-        setIsBulkImporting(false);
-    }
-  }
-
   const confirmDelete = async () => {
-    if (assetToDelete && tenant) {
+    if (assetToDelete) {
       try {
-        await AssetService.delete(assetToDelete.id, tenant.id);
+        await deleteDoc(doc(firestore, 'assets', assetToDelete.id));
         toast({ title: "Asset Deleted" });
       } catch (e: any) {
         toast({ variant: 'destructive', title: 'Error', description: e.message });
@@ -173,18 +76,34 @@ export function StockClient() {
   const handleFormSubmit = async (data: any) => {
     if (!tenant || !user) return;
 
+    const assetData = {
+      ...data,
+      tenantId: tenant.id,
+      updatedAt: new Date().toISOString(),
+      purchaseDate: data.purchaseDate.toISOString(),
+      specifications: {
+        ram: data.ram || '',
+        storage: data.storage || '',
+        processor: data.processor || ''
+      }
+    };
+
     try {
         if (editingAsset) {
-            await AssetService.update(editingAsset.id, data, tenant.id);
+            await updateDoc(doc(firestore, 'assets', editingAsset.id), assetData);
             toast({ title: "Asset Updated" });
         } else {
-            await AssetService.create(data, tenant.id, { uid: user.uid, name: user.displayName || 'User' });
+            await addDoc(collection(firestore, 'assets'), {
+                ...assetData,
+                createdAt: new Date().toISOString(),
+                createdBy: { uid: user.uid, name: user.displayName || 'User' }
+            });
             toast({ title: "Asset Added" });
         }
         setIsFormOpen(false);
         setEditingAsset(null);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not save asset.' });
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
     }
   };
 
@@ -208,78 +127,43 @@ export function StockClient() {
 
   return (
     <>
-      <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-         <div className="flex-grow">
-            <PageHeader title="Asset Inventory" description="Hardware portfolio belonging to this business workspace." />
-        </div>
-        <div className="flex-shrink-0 flex gap-2">
-            <Button onClick={() => setIsBulkFormOpen(true)} variant="outline">
-                <Upload className="mr-2 h-4 w-4" /> Bulk Add
-            </Button>
-            <Button onClick={handleAddAsset} className={cn("shadow-md font-bold", isAtCapacity && "opacity-50")}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add New Asset
-            </Button>
-        </div>
-      </div>
+      <PageHeader 
+        title="Inventory" 
+        description="Workspace hardware portfolio."
+        actionLabel="Add New Asset"
+        onAction={handleAddAsset}
+        ActionIcon={PlusCircle}
+      />
 
-      {!isLoading && assets && <ValuationSummary assets={assets} />}
+      {!isLoading && assets && <ValuationSummary assets={assets as any} />}
 
       <div className="mb-4">
         <Input
-          placeholder="Search by model or serial number..."
+          placeholder="Search model or serial..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm bg-card"
         />
       </div>
       
-      {isLoading ? <p className="text-muted-foreground animate-pulse">Syncing local inventory...</p> : (
+      {isLoading ? <p className="animate-pulse">Syncing cloud inventory...</p> : (
         <div className="rounded-lg border shadow-sm bg-card">
           <Table>
-            <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}> {hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))} </TableRow>))}</TableHeader>
+            <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>)}</TableHeader>
             <TableBody>
               {table.getRowModel().rows.length ? table.getRowModel().rows.map(row => (
                   <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
-              )) : (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No assets found for this workspace.</TableCell></TableRow>)}
+              )) : (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No assets found.</TableCell></TableRow>)}
             </TableBody>
           </Table>
           <DataTablePagination table={table} />
         </div>
       )}
 
-      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingAsset(null); }}}>
+      <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingAsset(null); }}}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingAsset ? "Edit Asset" : "Add New Asset"}</DialogTitle></DialogHeader>
           <AssetForm asset={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} />
-        </DialogContent>
-      </Dialog>
-      
-      <Dialog open={isBulkFormOpen} onOpenChange={setIsBulkFormOpen}>
-        <DialogContent className="sm:max-w-3xl">
-            <DialogHeader>
-                <DialogTitle>Bulk Add Assets</DialogTitle>
-                <DialogDescription>Paste inventory CSV data below.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-                <Button onClick={handleDownloadTemplate} size="sm" variant="secondary">
-                    <Download className="mr-2 h-4 w-4" /> Download Template
-                </Button>
-                <Textarea 
-                    placeholder="Model, SN, Date, Qty, Status, Price, LeaseRate, RAM, Storage, Processor" 
-                    value={bulkData} 
-                    onChange={(e) => setBulkData(e.target.value)} 
-                    rows={12} 
-                    disabled={isBulkImporting} 
-                    className="font-mono text-xs"
-                />
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsBulkFormOpen(false)} disabled={isBulkImporting}>Cancel</Button>
-                <Button onClick={handleBulkImport} disabled={isBulkImporting || !bulkData.trim()}>
-                    {isBulkImporting ? 'Processing...' : 'Import Locally'}
-                </Button>
-            </DialogFooter>
         </DialogContent>
       </Dialog>
 
