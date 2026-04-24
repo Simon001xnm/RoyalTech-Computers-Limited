@@ -5,9 +5,9 @@ import React, { useEffect } from 'react';
 /**
  * BackgroundErrorGuard: Silences transient network artifacts in development.
  * 
- * CRITICAL: This version uses standard DOM events ONLY. 
- * It DOES NOT modify window.console, which is the root cause of 
- * "Illegal invocation" crashes in Next.js development mode.
+ * This version uses a context-safe proxy for console.error and standard DOM events.
+ * It strictly targets transient network artifacts to prevent intrusive dev overlays
+ * while ensuring the native console methods remain stable (avoiding "Illegal invocation").
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -27,7 +27,8 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       'connection',
       'unavailable',
       'stream closed',
-      'timeout'
+      'timeout',
+      'auth/network-request-failed'
     ];
 
     const isSuppressed = (reason: any) => {
@@ -39,19 +40,31 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
-    // --- SAFE EVENT-BASED SUPPRESSION ---
-    // These listeners intercept errors before they trigger the Next.js red overlay.
+    // 1. Context-Safe Console Interception
+    // Next.js development overlay often triggers on console.error calls.
+    const originalConsoleError = window.console.error;
     
-    // 1. Intercept Promise Rejections (e.g. Firebase background sync fails)
+    window.console.error = function(...args: any[]) {
+      const combinedMessage = args.map(arg => String(arg)).join(' ').toLowerCase();
+      
+      if (SUPPRESS_PATTERNS.some(p => combinedMessage.includes(p))) {
+        // Silently consume the background network artifact
+        return;
+      }
+      
+      // CRITICAL: Use .apply with window.console to preserve native context and avoid "Illegal invocation"
+      return originalConsoleError.apply(window.console, args);
+    };
+
+    // 2. Intercept Promise Rejections (e.g. Firebase background sync fails)
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (isSuppressed(event.reason)) {
-        // Stop the error from bubbling up to the Next.js overlay
         event.preventDefault();
         event.stopPropagation();
       }
     };
 
-    // 2. Intercept Global Errors (e.g. standard network fetch failures)
+    // 3. Intercept Global Errors
     const handleError = (event: ErrorEvent) => {
       if (isSuppressed(event.error || event.message)) {
         event.preventDefault();
@@ -59,11 +72,11 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
-    // Register listeners using capture phase for early interception
     window.addEventListener('unhandledrejection', handleRejection, true);
     window.addEventListener('error', handleError, true);
 
     return () => {
+      window.console.error = originalConsoleError;
       window.removeEventListener('unhandledrejection', handleRejection, true);
       window.removeEventListener('error', handleError, true);
     };
