@@ -8,8 +8,8 @@ import React, { useEffect } from 'react';
  * Intercepts common "Failed to fetch" and "ChunkLoadError" messages that frequently 
  * trigger the Next.js development error overlay during background sync (Dexie Cloud/Firebase).
  * 
- * This implementation avoids global console monkey-patching to prevent "Illegal invocation"
- * errors, relying instead on standard window event interception.
+ * This implementation avoids "Illegal invocation" errors by correctly using .apply() 
+ * with the original console context.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -37,24 +37,46 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
-    // 1. UNHANDLED REJECTION INTERCEPTION (Promises)
+    // 1. CONSOLE INTERCEPTION
+    // Next.js Dev Overlay often triggers on console.error calls.
+    // We wrap the original console.error to filter out suppressed patterns.
+    const originalConsoleError = window.console.error;
+    
+    // Safe check to avoid multiple wrappings during hot reloads
+    if (!(originalConsoleError as any).__error_guard_wrapped) {
+      const patchedError = function(this: any, ...args: any[]) {
+        if (args.length > 0 && isSuppressed(args[0])) {
+          // Downgrade to debug log so it doesn't trigger the overlay
+          window.console.debug('BackgroundErrorGuard: Suppressed console error:', ...args);
+          return;
+        }
+        // Use .apply with the original 'this' context (or fallback to console)
+        // to avoid the "Illegal invocation" error caused by losing native bindings.
+        return originalConsoleError.apply(this || window.console, args);
+      };
+      
+      (patchedError as any).__error_guard_wrapped = true;
+      window.console.error = patchedError;
+    }
+
+    // 2. UNHANDLED REJECTION INTERCEPTION (Promises)
     // This catches "Failed to fetch" errors from background network requests.
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (isSuppressed(event.reason)) {
         // Silently consume the event so it doesn't trigger the Next.js overlay
         event.preventDefault();
         event.stopPropagation();
-        console.debug('BackgroundErrorGuard: Suppressed unhandled rejection:', event.reason);
+        window.console.debug('BackgroundErrorGuard: Suppressed unhandled rejection:', event.reason);
       }
     };
 
-    // 2. ERROR EVENT INTERCEPTION (Global Errors)
+    // 3. ERROR EVENT INTERCEPTION (Global Errors)
     // This catches synchronous errors or resource loading failures (like chunk loads).
     const handleError = (event: ErrorEvent) => {
       if (isSuppressed(event.error || event.message)) {
         event.preventDefault();
         event.stopPropagation();
-        console.debug('BackgroundErrorGuard: Suppressed global error:', event.message);
+        window.console.debug('BackgroundErrorGuard: Suppressed global error:', event.message);
       }
     };
 
@@ -63,6 +85,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
 
     // CLEANUP
     return () => {
+      // Note: We unregister listeners to avoid memory leaks during HMR.
       window.removeEventListener('unhandledrejection', handleRejection, true);
       window.removeEventListener('error', handleError, true);
     };
