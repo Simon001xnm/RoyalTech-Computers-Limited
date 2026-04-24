@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -9,8 +8,8 @@ import React, { useEffect } from 'react';
  * Intercepts common "Failed to fetch" and "ChunkLoadError" messages that frequently 
  * trigger the Next.js development error overlay during background sync (Dexie Cloud/Firebase).
  * 
- * This implementation avoids monkey-patching global console methods to prevent 
- * "Illegal invocation" errors in certain browser environments.
+ * This implementation uses a context-safe proxy pattern to avoid "Illegal invocation" 
+ * errors by preserving the native console's execution context.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -38,22 +37,33 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
-    // 1. UNHANDLED REJECTION INTERCEPTION (Promises)
+    // 1. SAFE CONSOLE INTERCEPTION
+    // We wrap console.error to prevent network artifacts from reaching the Next.js overlay.
+    // We use .apply(console, args) to ensure the native function maintains its 'this' context.
+    const originalError = console.error;
+    console.error = function(...args: any[]) {
+      if (args.some(arg => isSuppressed(arg))) {
+        // Log to debug instead of error to keep the console clean but informative
+        console.debug('BackgroundErrorGuard: Suppressed network artifact:', ...args);
+        return;
+      }
+      return originalError.apply(console, args);
+    };
+
+    // 2. UNHANDLED REJECTION INTERCEPTION (Promises)
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (isSuppressed(event.reason)) {
         // Silently consume the event so it doesn't trigger the Next.js overlay
         event.preventDefault();
         event.stopPropagation();
-        console.debug('BackgroundErrorGuard: Suppressed unhandled rejection:', event.reason?.message || event.reason);
       }
     };
 
-    // 2. ERROR EVENT INTERCEPTION (Global Errors)
+    // 3. ERROR EVENT INTERCEPTION (Global Errors)
     const handleError = (event: ErrorEvent) => {
       if (isSuppressed(event.error || event.message)) {
         event.preventDefault();
         event.stopPropagation();
-        console.debug('BackgroundErrorGuard: Suppressed global error event:', event.message);
       }
     };
 
@@ -62,6 +72,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
 
     // CLEANUP
     return () => {
+      console.error = originalError;
       window.removeEventListener('unhandledrejection', handleRejection, true);
       window.removeEventListener('error', handleError, true);
     };
