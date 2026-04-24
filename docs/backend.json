@@ -1,95 +1,562 @@
-
 {
   "entities": {
-    "User": {
-      "title": "User",
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
       "type": "object",
-      "description": "Represents a user within the system.",
+      "description": "Represents a customer of Royaltech Limited, storing their contact and demographic information.",
       "properties": {
-        "id": { "type": "string", "description": "Unique identifier for the user (matches auth.uid)." },
-        "email": { "type": "string", "description": "User's email address.", "format": "email" },
-        "name": { "type": "string", "description": "User's display name." },
-        "phone": { "type": "string", "description": "User's phone number." },
-        "role": { "type": "string", "description": "The user's role.", "enum": ["admin", "user", "super_admin"] },
-        "tenantId": { "type": "string", "description": "Link to the company/tenant workspace." }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Customer entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the customer."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the customer."
+        },
+        "email": {
+          "type": "string",
+          "description": "The primary email address of the customer.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "The primary phone number of the customer."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the customer."
+        },
+        "companyName": {
+          "type": "string",
+          "description": "The name of the company the customer is associated with, if applicable."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the customer record was created.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "email", "role"]
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "phone",
+        "address",
+        "createdAt"
+      ]
     },
-    "Tenant": {
-      "title": "Tenant",
+    "LaptopProduct": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LaptopProduct",
       "type": "object",
-      "description": "Represents a business workspace in the SaaS environment.",
+      "description": "Represents a generic laptop product model, e.g., 'Dell Latitude 7420', defining its specifications and general details.",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "plan": { "type": "string", "enum": ["free", "basic", "pro", "legacy_pro"] },
-        "status": { "type": "string", "enum": ["active", "suspended", "trial"] },
-        "ownerId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "name", "plan", "status"]
-    },
-    "Asset": {
-      "title": "Asset",
-      "type": "object",
-      "properties": {
-        "tenantId": { "type": "string" },
-        "model": { "type": "string" },
-        "serialNumber": { "type": "string" },
-        "purchaseDate": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["Available", "Leased", "Repair", "Sold", "With Reseller"] },
-        "quantity": { "type": "number" },
-        "location": {
-          "type": "object",
-          "properties": { "lat": { "type": "number" }, "lng": { "type": "number" } }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the LaptopProduct entity."
+        },
+        "make": {
+          "type": "string",
+          "description": "The manufacturer of the laptop (e.g., Dell, HP, Apple)."
+        },
+        "model": {
+          "type": "string",
+          "description": "The specific model name or number of the laptop (e.g., Latitude 7420, MacBook Pro M2)."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the laptop product, highlighting its features."
         },
         "specifications": {
-          "type": "object",
-          "properties": {
-            "ram": { "type": "string" },
-            "storage": { "type": "string" },
-            "processor": { "type": "string" }
-          }
+          "type": "string",
+          "description": "A JSON string or formatted text detailing the laptop's technical specifications (e.g., CPU, RAM, storage, screen size)."
         },
-        "purchasePrice": { "type": "number" },
-        "leasePrice": { "type": "number" }
+        "productImageUrl": {
+          "type": "string",
+          "description": "URL to an image of the laptop product.",
+          "format": "uri"
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the laptop (e.g., Business, Gaming, Ultrabook, Student)."
+        }
       },
-      "required": ["model", "serialNumber", "purchaseDate", "status", "quantity"]
+      "required": [
+        "id",
+        "make",
+        "model",
+        "description",
+        "specifications",
+        "category"
+      ]
     },
-    "Sale": {
-        "title": "Sale",
-        "type": "object",
-        "properties": {
-            "tenantId": { "type": "string" },
-            "date": { "type": "string", "format": "date-time" },
-            "amount": { "type": "number" },
-            "paymentMethod": { "type": "string", "enum": ["Till", "M-Pesa", "Bank", "Paybill", "Cash"] },
-            "customerName": { "type": "string" },
-            "customerId": { "type": "string" },
-            "status": { "type": "string", "enum": ["Paid", "Pending", "Void"] }
+    "LaptopInstance": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LaptopInstance",
+      "type": "object",
+      "description": "Represents a specific, individual physical laptop unit with its unique serial number and current status.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the LaptopInstance entity."
         },
-        "required": ["date", "amount", "paymentMethod", "status"]
-    }
-  },
-  "firestore": {
-    "/users/{userId}": {
-      "schema": { "$ref": "#/entities/User" },
-      "description": "Stores user profile information."
+        "laptopProductId": {
+          "type": "string",
+          "description": "Reference to the LaptopProduct this instance belongs to. (Relationship: LaptopProduct 1:N LaptopInstance)"
+        },
+        "serialNumber": {
+          "type": "string",
+          "description": "The unique serial number of this specific laptop unit."
+        },
+        "purchaseDate": {
+          "type": "string",
+          "description": "The date Royaltech Limited purchased this laptop instance.",
+          "format": "date"
+        },
+        "warrantyEndDate": {
+          "type": "string",
+          "description": "The end date of the manufacturer's warranty for this laptop instance.",
+          "format": "date"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the laptop instance (e.g., 'In Stock', 'Leased', 'Repair', 'Sold', 'Disposed')."
+        }
+      },
+      "required": [
+        "id",
+        "laptopProductId",
+        "serialNumber",
+        "purchaseDate",
+        "status"
+      ]
     },
-    "/tenants/{tenantId}": {
-      "schema": { "$ref": "#/entities/Tenant" },
-      "description": "Stores SaaS tenant/company workspace details."
+    "LeaseAgreement": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LeaseAgreement",
+      "type": "object",
+      "description": "Tracks the details of a laptop lease agreement between Royaltech Limited and a customer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the LeaseAgreement entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the Customer who is leasing the laptop. (Relationship: Customer 1:N LeaseAgreement)"
+        },
+        "laptopInstanceId": {
+          "type": "string",
+          "description": "Reference to the specific LaptopInstance being leased. (Relationship: LaptopInstance 1:N LeaseAgreement)"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The date the lease agreement begins.",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The scheduled date the lease agreement ends.",
+          "format": "date"
+        },
+        "monthlyPaymentAmount": {
+          "type": "number",
+          "description": "The agreed-upon monthly payment amount for the lease."
+        },
+        "totalLeaseAmount": {
+          "type": "number",
+          "description": "The total financial amount for the entire lease term."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the lease agreement (e.g., 'Active', 'Completed', 'Overdue', 'Cancelled')."
+        },
+        "returnDateActual": {
+          "type": "string",
+          "description": "The actual date the leased laptop was returned, if applicable.",
+          "format": "date"
+        },
+        "leaseTermMonths": {
+          "type": "number",
+          "description": "The duration of the lease agreement in months."
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "laptopInstanceId",
+        "startDate",
+        "endDate",
+        "monthlyPaymentAmount",
+        "totalLeaseAmount",
+        "status",
+        "leaseTermMonths"
+      ]
     },
-    "/assets/{assetId}": {
-      "schema": { "$ref": "#/entities/Asset" },
-      "description": "Stores inventory of all primary assets."
+    "LeasePayment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LeasePayment",
+      "type": "object",
+      "description": "Records individual payments made by a customer towards a lease agreement.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the LeasePayment entity."
+        },
+        "leaseAgreementId": {
+          "type": "string",
+          "description": "Reference to the LeaseAgreement this payment is for. (Relationship: LeaseAgreement 1:N LeasePayment)"
+        },
+        "paymentDate": {
+          "type": "string",
+          "description": "The date the payment was made.",
+          "format": "date"
+        },
+        "amountPaid": {
+          "type": "number",
+          "description": "The amount paid in this transaction."
+        },
+        "expectedPaymentDate": {
+          "type": "string",
+          "description": "The date this payment was originally expected.",
+          "format": "date"
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the payment (e.g., 'Paid', 'Due', 'Overdue', 'Partial')."
+        }
+      },
+      "required": [
+        "id",
+        "leaseAgreementId",
+        "paymentDate",
+        "amountPaid",
+        "expectedPaymentDate",
+        "status"
+      ]
     },
-    "/sales/{saleId}": {
-        "schema": { "$ref": "#/entities/Sale" },
-        "description": "Stores records of individual sales."
+    "Repair": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Repair",
+      "type": "object",
+      "description": "Records details of a laptop repair, including the problem, resolution, and costs.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Repair entity."
+        },
+        "laptopInstanceId": {
+          "type": "string",
+          "description": "Reference to the specific LaptopInstance undergoing repair. (Relationship: LaptopInstance 1:N Repair)"
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the Customer who initiated the repair request. (Relationship: Customer 1:N Repair)"
+        },
+        "reportedProblem": {
+          "type": "string",
+          "description": "A description of the problem reported by the customer."
+        },
+        "repairStartDate": {
+          "type": "string",
+          "description": "The date when the repair work began.",
+          "format": "date"
+        },
+        "repairEndDate": {
+          "type": "string",
+          "description": "The date when the repair work was completed or resolved.",
+          "format": "date"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the repair (e.g., 'Pending', 'In Progress', 'Completed', 'Cancelled')."
+        },
+        "technicianNotes": {
+          "type": "string",
+          "description": "Detailed notes from the technician regarding the diagnosis and repair steps taken."
+        },
+        "cost": {
+          "type": "number",
+          "description": "The total cost associated with the repair."
+        }
+      },
+      "required": [
+        "id",
+        "laptopInstanceId",
+        "customerId",
+        "reportedProblem",
+        "repairStartDate",
+        "status"
+      ]
+    },
+    "LocationTracking": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LocationTracking",
+      "type": "object",
+      "description": "Records the geographical location of a specific laptop instance at a given time.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the LocationTracking entry."
+        },
+        "laptopInstanceId": {
+          "type": "string",
+          "description": "Reference to the LaptopInstance whose location is being tracked. (Relationship: LaptopInstance 1:N LocationTracking)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time when the location data was recorded.",
+          "format": "date-time"
+        },
+        "latitude": {
+          "type": "number",
+          "description": "The latitude coordinate of the laptop's location."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "The longitude coordinate of the laptop's location."
+        },
+        "accuracy": {
+          "type": "number",
+          "description": "The accuracy of the location data in meters, if available."
+        }
+      },
+      "required": [
+        "id",
+        "laptopInstanceId",
+        "timestamp",
+        "latitude",
+        "longitude"
+      ]
+    },
+    "SalesTransaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SalesTransaction",
+      "type": "object",
+      "description": "Records details of a direct sale of one or more laptops or services to a customer, used for generating receipts and invoices.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the SalesTransaction entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the Customer involved in this sales transaction. (Relationship: Customer 1:N SalesTransaction)"
+        },
+        "transactionDate": {
+          "type": "string",
+          "description": "The date and time when the sales transaction occurred.",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The total monetary amount of the sales transaction."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the sales transaction (e.g., 'Completed', 'Pending Payment', 'Cancelled', 'Refunded')."
+        },
+        "invoiceNumber": {
+          "type": "string",
+          "description": "The unique invoice number generated for this transaction."
+        },
+        "soldLaptopInstanceIds": {
+          "type": "array",
+          "description": "An array of references to LaptopInstance entities sold in this transaction. (Relationship: LaptopInstance N:N SalesTransaction)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "transactionDate",
+        "totalAmount",
+        "status",
+        "invoiceNumber"
+      ]
     }
   },
   "auth": {
-    "providers": ["password"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/roles_admin/{adminUid}",
+        "definition": {
+          "entityName": "admin",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Collection for Royaltech Limited's administrator roles. Existence of a document at this path grants administrative privileges. This uses 'Existence over Content' for role-based access control.",
+          "params": [
+            {
+              "name": "adminUid",
+              "description": "The unique Firebase Authentication UID of the administrator."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_staff/{staffUid}",
+        "definition": {
+          "entityName": "staff",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Collection for Royaltech Limited's staff roles. Existence of a document at this path grants staff-level privileges. This uses 'Existence over Content' for role-based access control.",
+          "params": [
+            {
+              "name": "staffUid",
+              "description": "The unique Firebase Authentication UID of the staff member."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores records of customers. The document ID (`customerId`) is expected to be the Firebase Authentication UID of the customer for self-management. Includes the `createdAt` timestamp. Accessible by Royaltech staff/admins and by the customer themselves.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "The unique identifier for the customer, expected to match their Firebase Authentication UID for customer self-access."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/laptop_products/{laptopProductId}",
+        "definition": {
+          "entityName": "LaptopProduct",
+          "schema": {
+            "$ref": "#/backend/entities/LaptopProduct"
+          },
+          "description": "Stores generic laptop product models (e.g., 'Dell Latitude 7420'). This collection is primarily for internal management by Royaltech staff/admins.",
+          "params": [
+            {
+              "name": "laptopProductId",
+              "description": "The unique identifier for a generic laptop product model."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/laptop_instances/{laptopInstanceId}",
+        "definition": {
+          "entityName": "LaptopInstance",
+          "schema": {
+            "$ref": "#/backend/entities/LaptopInstance"
+          },
+          "description": "Stores specific, individual physical laptop units with unique serial numbers and current status (e.g., 'In Stock', 'Leased', 'Sold'). This collection is primarily for internal stock management by Royaltech staff/admins.",
+          "params": [
+            {
+              "name": "laptopInstanceId",
+              "description": "The unique identifier for a specific physical laptop unit."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/lease_agreements/{leaseAgreementId}",
+        "definition": {
+          "entityName": "LeaseAgreement",
+          "schema": {
+            "$ref": "#/backend/entities/LeaseAgreement"
+          },
+          "description": "Records details of lease agreements between Royaltech and customers. Includes `customerId` for authorization independence, allowing customers to view their own agreements directly. Accessible by Royaltech staff/admins and by the customer associated with the agreement.",
+          "params": [
+            {
+              "name": "leaseAgreementId",
+              "description": "The unique identifier for a lease agreement."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/lease_agreements/{leaseAgreementId}/payments/{leasePaymentId}",
+        "definition": {
+          "entityName": "LeasePayment",
+          "schema": {
+            "$ref": "#/backend/entities/LeasePayment"
+          },
+          "description": "Records individual payments made by a customer towards a specific lease agreement. This document includes denormalized 'customerId' from its parent LeaseAgreement for Authorization Independence, enabling direct customer access rules without requiring a 'get()' call to the parent. Accessible by Royaltech staff/admins and by the customer associated with the payment.",
+          "params": [
+            {
+              "name": "leaseAgreementId",
+              "description": "The unique identifier of the parent lease agreement."
+            },
+            {
+              "name": "leasePaymentId",
+              "description": "The unique identifier for an individual lease payment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/repairs/{repairId}",
+        "definition": {
+          "entityName": "Repair",
+          "schema": {
+            "$ref": "#/backend/entities/Repair"
+          },
+          "description": "Records details of laptop repairs, including reported problem, resolution, and costs. Includes `customerId` for authorization independence, allowing customers to view their own repair requests. Accessible by Royaltech staff/admins and by the customer who initiated the repair.",
+          "params": [
+            {
+              "name": "repairId",
+              "description": "The unique identifier for a repair record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/location_tracking/{locationTrackingId}",
+        "definition": {
+          "entityName": "LocationTracking",
+          "schema": {
+            "$ref": "#/backend/entities/LocationTracking"
+          },
+          "description": "Records the geographical location of a specific laptop instance at a given time. This is primarily for internal asset tracking by Royaltech staff/admins due to privacy considerations.",
+          "params": [
+            {
+              "name": "locationTrackingId",
+              "description": "The unique identifier for a location tracking entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/sales_transactions/{salesTransactionId}",
+        "definition": {
+          "entityName": "SalesTransaction",
+          "schema": {
+            "$ref": "#/backend/entities/SalesTransaction"
+          },
+          "description": "Records details of direct sales of laptops or services to a customer. Includes `customerId` for authorization independence, allowing customers to view their own transactions. Accessible by Royaltech staff/admins and by the customer involved in the transaction.",
+          "params": [
+            {
+              "name": "salesTransactionId",
+              "description": "The unique identifier for a sales transaction."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure for Royaltech Limited is designed around stringent security, scalability, and debuggability principles. The primary goal is to ensure Authorization Independence by minimizing `get()` calls in Firestore Security Rules, which enhances atomic operations and simplifies rule debugging. This is achieved through strategic denormalization and structural segregation.\n\n**Authorization Independence (CRITICAL) & Denormalization:**\n*   **Customer-facing Subcollections:** `LeasePayment` documents, residing in the subcollection `/lease_agreements/{leaseAgreementId}/payments/{leasePaymentId}`, will explicitly include a `customerId` field. This `customerId` will be denormalized (copied from its parent `LeaseAgreement` during creation). This allows security rules to evaluate customer ownership (`request.auth.uid == resource.data.customerId`) directly on the `LeasePayment` document, eliminating the need to `get()` the parent `LeaseAgreement`. This is crucial for maintaining atomic operations and efficient rule processing.\n*   **Top-level Customer-owned Collections:** `LeaseAgreement`, `Repair`, and `SalesTransaction` entities already include `customerId` as a top-level field as per their schemas. This design directly supports authorization independence, allowing customers to query and access *their own* data by filtering on `customerId` where `customerId == request.auth.uid`.\n\n**QAPs (Queries as Authorization Primitives):**\nThe structure enables secure and efficient `list` operations (QAPs) by ensuring that necessary authorization fields are directly present in the queried documents:\n*   **Employee Access:** Royaltech staff and administrators, identified by their presence in the `/roles_staff/{uid}` or `/roles_admin/{uid}` collections, have broad read/write access to all core business data collections (`customers`, `laptop_products`, `laptop_instances`, `lease_agreements`, `repairs`, `location_tracking`, `sales_transactions`). They can `list` all documents in these collections, as their role grants them full access.\n*   **Customer Access:** Authenticated customers can securely `list` only their own associated data. This is facilitated by the `customerId` field within `LeaseAgreement`, `Repair`, `SalesTransaction`, and the denormalized `customerId` in `LeasePayment` documents. Customers can query these collections using `db.collection('collection_name').where('customerId', '==', firebase.auth().currentUser.uid)`, and security rules will enforce that only documents matching `request.auth.uid` are returned, preventing data leakage or unauthorized access.\n\n**Structural Segregation (Homogeneous Security Posture):**\nAll documents within a given collection share a consistent security posture. For example:\n*   `/laptop_products` and `/laptop_instances` are exclusively managed by Royaltech employees.\n*   `/customers` allows employees to manage all records, while individual customers can manage their own specific record (identified by their Firebase UID).\n*   Customer-specific financial or service records are structured to allow both employee oversight and customer self-service access based on `customerId`.\n\n**Access Modeling & DBAC:**\n*   **Path-Based Ownership:** For `Customer` entities, the `id` of the `Customer` document is assumed to match the Firebase `uid` of the authenticated customer. This enables simple path-based ownership for self-management (`/customers/{request.auth.uid}`).\n*   **Hierarchical Paths for Nested Data:** `LeasePayment` is structured as a subcollection of `LeaseAgreement` (`/lease_agreements/{leaseAgreementId}/payments/{leasePaymentId}`), which is a natural fit for 1:N relationships and maintains clear data lineage.\n*   **Global Roles (DBAC):** Roles for Royaltech employees (staff and admin) are managed through dedicated collections (`/roles_admin/{uid}`, `/roles_staff/{uid}`). The mere existence of a document at these paths for a given `uid` grants the associated role, adhering to the \"Existence over Content\" principle.\n\n**Data Clarity and Predictability:**\n*   **Explicit State Modeling:** Entities like `LeaseAgreement`, `LaptopInstance`, `Repair`, and `SalesTransaction` utilize a dedicated `status` field to clearly define their current state, making application logic and security rules easier to write and understand.\n*   **Radical Consistency:** Standardized field names (e.g., `customerId`, `laptopInstanceId`) and descriptive wildcards (e.g., `{customerId}`, `{laptopProductId}`) are used across all paths, improving predictability and maintainability.\n\nThis comprehensive approach ensures a secure, scalable, and debuggable Firestore backend for Royaltech Limited, minimizing complexity in security rules and maximizing data integrity."
   }
 }

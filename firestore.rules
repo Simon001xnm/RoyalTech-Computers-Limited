@@ -1,77 +1,196 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /**
+     * CORE PHILOSOPHY
+     * This ruleset enforces a centralized role-based access control (RBAC) model for Royaltech Limited 
+     * staff and administrators, while providing secure self-service access for customers. 
+     * It prioritizes "Authorization Independence" by ensuring that all documents containing 
+     * customer-specific data include a 'customerId' field, allowing for direct authorization 
+     * checks without expensive parent-document lookups.
+     *
+     * DATA STRUCTURE
+     * - Role Management: /roles_admin/{uid} and /roles_staff/{uid} (Existence-based roles).
+     * - Business Assets: /laptop_products, /laptop_instances, /location_tracking (Employee-only).
+     * - Transactional Data: /lease_agreements, /repairs, /sales_transactions (Employee + Customer-specific).
+     * - Nested Data: /lease_agreements/{id}/payments/{id} (Uses denormalized customerId).
+     *
+     * KEY SECURITY DECISIONS
+     * - Employees (Admins/Staff) have broad access to operational data.
+     * - Customers are identified by their Firebase Auth UID.
+     * - The 'customerId' field is treated as immutable once set to prevent record hijacking.
+     * - Public listing is disabled; all lists are filtered by role or ownership.
+     */
+
+    // --- Helper Functions ---
+
+    /** Checks if the user is authenticated. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Users can read and write their own profile.
-    // Admins can read and write any user profile.
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    /** Checks if the user exists in the admin roles collection. */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
-    // The following collections are now read-only for all signed-in users
-    // as their management logic has been simplified or moved.
-    // Write access should be handled by trusted server-side code (Cloud Functions) if needed.
-    match /laptops/{laptopId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn(); // Allowing writes for now for POS etc.
+    /** Checks if the user exists in the staff roles collection. */
+    function isStaff() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_staff/$(request.auth.uid));
     }
-    match /accessories/{accessoryId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+
+    /** Checks if the user is an authorized employee (Admin or Staff). */
+    function isEmployee() {
+      return isAdmin() || isStaff();
     }
+
+    /** Checks if the user's UID matches the provided ID. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** Checks if the authenticated user matches the customerId in the document data. */
+    function isDocOwner(data) {
+      return isSignedIn() && data.customerId == request.auth.uid;
+    }
+
+    /** Enforces that the customerId field is present and matches the authenticated user on create. */
+    function isValidCreate(data) {
+      return data.customerId == request.auth.uid;
+    }
+
+    /** Enforces that the customerId field remains unchanged during an update. */
+    function isImmutableCustomer(resource, requestResource) {
+      return requestResource.data.customerId == resource.data.customerId;
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the admin roles collection. Existence of a document grants admin rights.
+     * @path /roles_admin/{adminUid}
+     * @allow (get) Any signed-in user checking roles. (write) Only existing admins.
+     * @deny (write) Any non-admin user.
+     * @principle Existence-over-content RBAC.
+     */
+    match /roles_admin/{adminUid} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Rules for the staff roles collection.
+     * @path /roles_staff/{staffUid}
+     * @allow (get) Signed-in users. (write) Only admins.
+     * @deny (write) Staff members cannot promote themselves or others.
+     * @principle Administrative control over staff assignments.
+     */
+    match /roles_staff/{staffUid} {
+      allow get: if isSignedIn();
+      allow list: if isEmployee();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Customer profile management. Match path ID to Auth UID.
+     * @path /customers/{customerId}
+     * @allow (read/write) The customer themselves or any employee.
+     * @deny (create) If the path ID does not match the Auth UID.
+     * @principle Path-based ownership and employee oversight.
+     */
     match /customers/{customerId} {
-       allow read, write: if isSignedIn();
+      allow get, list: if isOwner(customerId) || isEmployee();
+      allow create: if isOwner(customerId) || isEmployee();
+      allow update, delete: if (resource != null && (isOwner(customerId) || isEmployee()));
     }
-    match /leaseAgreements/{leaseId} {
-       allow read, write: if isSignedIn();
+
+    /**
+     * @description Management of laptop product models.
+     * @path /laptop_products/{laptopProductId}
+     * @allow (read/write) Only employees.
+     * @deny (all) Customers have no access to the product catalog directly via Firestore.
+     * @principle Internal business logic restriction.
+     */
+    match /laptop_products/{laptopProductId} {
+      allow get, list: if isEmployee();
+      allow create, update, delete: if isEmployee() && (request.method == 'create' || resource != null);
     }
-     match /documents/{documentId} {
-      allow read, write: if isSignedIn();
+
+    /**
+     * @description Tracking of individual laptop units.
+     * @path /laptop_instances/{laptopInstanceId}
+     * @allow (read/write) Only employees.
+     * @principle Internal inventory management.
+     */
+    match /laptop_instances/{laptopInstanceId} {
+      allow get, list: if isEmployee();
+      allow create, update, delete: if isEmployee() && (request.method == 'create' || resource != null);
     }
-    match /sales/{saleId} {
-        allow read, write: if isSignedIn();
+
+    /**
+     * @description Lease agreements between the company and customers.
+     * @path /lease_agreements/{leaseAgreementId}
+     * @allow (create) Customer if they set their own ID. (read/update) Owner or employee.
+     * @deny (update) If customer attempts to change the customerId.
+     * @principle Field-based ownership with immutability.
+     */
+    match /lease_agreements/{leaseAgreementId} {
+      allow get, list: if isEmployee() || isDocOwner(resource.data);
+      allow create: if isEmployee() || isValidCreate(request.resource.data);
+      allow update: if resource != null && (isEmployee() || (isDocOwner(resource.data) && isImmutableCustomer(resource, request.resource)));
+      allow delete: if resource != null && isEmployee(); // Customers cannot delete agreements.
+      
+      /**
+       * @description Individual payments for a specific lease.
+       * @path /lease_agreements/{leaseAgreementId}/payments/{leasePaymentId}
+       * @allow (read) Owner of the parent agreement or employee.
+       * @principle Authorization Independence via denormalized customerId.
+       */
+      match /payments/{leasePaymentId} {
+        allow get, list: if isEmployee() || isDocOwner(resource.data);
+        allow create: if isEmployee() || isValidCreate(request.resource.data);
+        allow update: if resource != null && (isEmployee() || (isDocOwner(resource.data) && isImmutableCustomer(resource, request.resource)));
+        allow delete: if resource != null && isEmployee();
+      }
     }
-    match /expenses/{expenseId} {
-        allow read, write: if isSignedIn();
+
+    /**
+     * @description Records of laptop repairs.
+     * @path /repairs/{repairId}
+     * @allow (read/create) The customer who owns the repair or an employee.
+     * @principle Employee-managed records with customer visibility.
+     */
+    match /repairs/{repairId} {
+      allow get, list: if isEmployee() || isDocOwner(resource.data);
+      allow create: if isEmployee() || isValidCreate(request.resource.data);
+      allow update: if resource != null && (isEmployee() || (isDocOwner(resource.data) && isImmutableCustomer(resource, request.resource)));
+      allow delete: if resource != null && isEmployee();
     }
-    match /reports/{reportId} {
-        allow read, write: if isSignedIn();
+
+    /**
+     * @description High-accuracy GPS tracking for assets.
+     * @path /location_tracking/{locationTrackingId}
+     * @allow (all) Only employees.
+     * @principle Privacy protection and asset security.
+     */
+    match /location_tracking/{locationTrackingId} {
+      allow get, list: if isEmployee();
+      allow create, update, delete: if isEmployee() && (request.method == 'create' || resource != null);
     }
-    match /payments/{paymentId} {
-        allow read, write: if isSignedIn();
-    }
-     match /campaigns/{campaignId} {
-      allow read, write: if isSignedIn();
-    }
-    match /tickets/{ticketId} {
-      allow read, write: if isSignedIn();
-    }
-    match /projects/{projectId} {
-      allow read, write: if isSignedIn();
-    }
-    match /employees/{employeeId} {
-       allow read, write: if isSignedIn();
-    }
-    match /jobPostings/{jobPostingId} {
-      allow read, write: if isSignedIn();
-    }
-    match /applicants/{applicantId} {
-      allow read, write: if isSignedIn();
-    }
-    match /messages/{messageId} {
-      allow read, write: if isSignedIn();
-    }
-     match /resellers/{resellerId} {
-      allow read, write: if isSignedIn();
-    }
-    match /itemIssuances/{issuanceId} {
-      allow read, write: if isSignedIn();
+
+    /**
+     * @description Direct sales transactions and invoices.
+     * @path /sales_transactions/{salesTransactionId}
+     * @allow (read) The customer involved or an employee.
+     * @deny (write) Customers cannot modify or delete sales records.
+     * @principle Financial record integrity.
+     */
+    match /sales_transactions/{salesTransactionId} {
+      allow get, list: if isEmployee() || isDocOwner(resource.data);
+      allow create: if isEmployee();
+      allow update, delete: if resource != null && isEmployee();
     }
   }
 }
