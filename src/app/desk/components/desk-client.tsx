@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Ticket } from "@/types";
+import type { Ticket, Customer } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, SearchX, Inbox } from "lucide-react";
+import { PlusCircle, Inbox } from "lucide-react";
 import { TicketForm } from "./ticket-form";
 import { getTicketColumns, type TicketColumnActions } from "./ticket-columns";
 import { Input } from "@/components/ui/input";
@@ -34,11 +34,10 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, doc } from "firebase/firestore";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
-import { useUser } from "@/firebase/provider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function DeskClient() {
@@ -50,21 +49,26 @@ export function DeskClient() {
   const { toast } = useToast();
   const { tenant } = useSaaS();
   const { user } = useUser();
+  const firestore = useFirestore();
+  
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
-  // SaaS Isolated Query
-  const tickets = useLiveQuery(async () => {
-    if (!tenant) return undefined;
-    return await db.tickets.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  // Firestore Queries (MIGRATED FROM DEXIE)
+  const ticketsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'repairs'); // Desk module maps to 'repairs' in Firestore schema
+  }, [firestore]);
 
-  const customers = useLiveQuery(async () => {
-    if (!tenant) return undefined;
-    return await db.customers.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  const customersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'customers');
+  }, [firestore]);
 
-  const isLoading = tickets === undefined || customers === undefined;
+  const { data: tickets, isLoading: isTicketsLoading } = useCollection<Ticket>(ticketsQuery);
+  const { data: customers } = useCollection<Customer>(customersQuery);
+
+  const isLoading = isTicketsLoading || customers === null;
 
   const filteredTickets = useMemo(() => {
     if (!tickets) return [];
@@ -75,41 +79,43 @@ export function DeskClient() {
   }, [tickets, searchTerm]);
 
   const handleFormSubmit = async (data: any) => { 
-    if (!tenant || !user) return;
+    if (!tenant || !user || !firestore) return;
     
     const selectedCustomer = customers?.find(c => c.id === data.customerId);
 
     const ticketData = {
         ...data,
-        tenantId: tenant.id, // Multi-tenant Injection
+        tenantId: tenant.id,
         customerName: selectedCustomer?.name,
         updatedAt: new Date().toISOString(),
     };
 
     try {
         if (editingTicket) {
-            await db.tickets.update(editingTicket.id, ticketData);
-            toast({ title: "Ticket Updated" });
+            const docRef = doc(firestore, 'repairs', editingTicket.id);
+            updateDocumentNonBlocking(docRef, ticketData);
+            toast({ title: "Case Updated" });
         } else {
-            await db.tickets.add({ 
+            const colRef = collection(firestore, 'repairs');
+            addDocumentNonBlocking(colRef, { 
                 ...ticketData, 
-                id: crypto.randomUUID(), 
                 createdAt: new Date().toISOString(),
                 createdBy: { uid: user.uid, name: user.displayName || 'User' }
             });
-            toast({ title: "Ticket Created" });
+            toast({ title: "Case Initialized" });
         }
         setIsFormOpen(false);
         setEditingTicket(null);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: e.message });
+        toast({ variant: 'destructive', title: 'Action Failed', description: e.message });
     }
   };
 
   const confirmDelete = async () => {
-    if (ticketToDelete) {
-      await db.tickets.delete(ticketToDelete.id);
-      toast({ title: "Ticket Deleted" });
+    if (ticketToDelete && firestore) {
+      const docRef = doc(firestore, 'repairs', ticketToDelete.id);
+      deleteDocumentNonBlocking(docRef);
+      toast({ title: "Ticket Erased" });
       setTicketToDelete(null);
     }
     setIsDeleteConfirmOpen(false);
@@ -136,8 +142,8 @@ export function DeskClient() {
   return (
     <>
       <PageHeader 
-        title="Support Desk (Siloed)" 
-        description="Track and resolve customer support issues for your business." 
+        title="Support Desk (Cloud)" 
+        description="Global helpdesk oversight synced via Firestore." 
         actionLabel="Create Ticket" 
         onAction={() => setIsFormOpen(true)} 
         ActionIcon={PlusCircle} 
@@ -145,7 +151,7 @@ export function DeskClient() {
 
       <div className="mb-4">
         <Input 
-            placeholder="Search by subject or customer..." 
+            placeholder="Search cases..." 
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)} 
             className="max-w-sm bg-card h-10" 
@@ -153,35 +159,39 @@ export function DeskClient() {
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground animate-pulse">Syncing support directory...</p>
-      ) : filteredTickets.length === 0 ? (
-        <Alert className="bg-card">
-            <Inbox className="h-4 w-4" />
-            <AlertTitle>Desk Empty</AlertTitle>
-            <AlertDescription>
-                {searchTerm ? "No tickets match your search filters." : "Your support queue is clear. All customers are satisfied!"}
-            </AlertDescription>
-        </Alert>
+        <p className="text-muted-foreground animate-pulse">Syncing support registry...</p>
       ) : (
-        <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
-          <Table>
-            <TableHeader className="bg-muted/50">
-                {table.getHeaderGroups().map(hg => (
-                    <TableRow key={hg.id}>
-                        {hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
-                    </TableRow>
-                ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.map(row => (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                    {row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
-                  </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <DataTablePagination table={table} />
-        </div>
+        <>
+            {!filteredTickets.length ? (
+                <Alert className="bg-card">
+                    <Inbox className="h-4 w-4" />
+                    <AlertTitle>Desk Empty</AlertTitle>
+                    <AlertDescription>
+                        {searchTerm ? "No tickets match your cloud filters." : "Your support queue is clear."}
+                    </AlertDescription>
+                </Alert>
+            ) : (
+                <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
+                    <Table>
+                        <TableHeader className="bg-muted/50">
+                            {table.getHeaderGroups().map(hg => (
+                                <TableRow key={hg.id}>
+                                    {hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
+                                </TableRow>
+                            ))}
+                        </TableHeader>
+                        <TableBody>
+                        {table.getRowModel().rows.map(row => (
+                            <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                                {row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
+                            </TableRow>
+                        ))}
+                        </TableBody>
+                    </Table>
+                    <DataTablePagination table={table} />
+                </div>
+            )}
+        </>
       )}
 
       <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingTicket(null); }}}>
@@ -204,9 +214,7 @@ export function DeskClient() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Erasure</DialogTitle>
-            <DialogDescription>
-                Are you sure you want to permanently delete this support record?
-            </DialogDescription>
+            <DialogDescription>Permanently remove this support record from the cloud?</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>

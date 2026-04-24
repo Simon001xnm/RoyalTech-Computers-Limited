@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Lease } from "@/types";
+import type { Lease, Customer, Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, FileSearch, FileX } from "lucide-react";
@@ -21,7 +21,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -34,11 +33,10 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useUser } from '@/firebase/provider';
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, doc } from "firebase/firestore";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-
+import { useSaaS } from "@/components/saas/saas-provider";
 
 export function LeasesClient() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -53,13 +51,31 @@ export function LeasesClient() {
     pageSize: 10,
   });
 
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
+  const { tenant } = useSaaS();
+  const firestore = useFirestore();
 
-  const leases = useLiveQuery(() => db.leases.toArray());
-  const customers = useLiveQuery(() => db.customers.toArray());
-  const assets = useLiveQuery(() => db.assets.toArray());
+  // Firestore Queries (MIGRATED FROM DEXIE)
+  const leasesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'lease_agreements');
+  }, [firestore]);
 
-  const isLoading = isUserLoading || leases === undefined || customers === undefined || assets === undefined;
+  const customersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'customers');
+  }, [firestore]);
+
+  const assetsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'laptop_instances');
+  }, [firestore]);
+
+  const { data: leases, isLoading: isLeasesLoading } = useCollection<Lease>(leasesQuery);
+  const { data: customers } = useCollection<Customer>(customersQuery);
+  const { data: assets } = useCollection<Asset>(assetsQuery);
+
+  const isLoading = isLeasesLoading || customers === null || assets === null;
 
   const filteredLeases = useMemo(() => {
     if (!leases) return [];
@@ -85,21 +101,19 @@ export function LeasesClient() {
   };
 
   const confirmDelete = async () => {
-    if (leaseToDelete) {
-        try {
-            await db.transaction('rw', [db.leases, db.assets], async () => {
-                if (leaseToDelete.assetId) {
-                    await db.assets.update(leaseToDelete.assetId, { status: 'Available' });
-                }
-                await db.leases.delete(leaseToDelete.id);
-            });
-            toast({ title: "Lease Deleted" });
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Error", description: error.message });
-        } finally {
-            setLeaseToDelete(null);
-            setIsDeleteConfirmOpen(false);
-        }
+    if (leaseToDelete && firestore) {
+      const docRef = doc(firestore, 'lease_agreements', leaseToDelete.id);
+      deleteDocumentNonBlocking(docRef);
+      
+      // Update asset status back to available
+      if (leaseToDelete.assetId) {
+        const assetRef = doc(firestore, 'laptop_instances', leaseToDelete.assetId);
+        updateDocumentNonBlocking(assetRef, { status: 'Available' });
+      }
+      
+      toast({ title: "Lease Removed" });
+      setLeaseToDelete(null);
+      setIsDeleteConfirmOpen(false);
     }
   };
 
@@ -107,7 +121,7 @@ export function LeasesClient() {
      const selectedCustomer = customers?.find(c => c.id === data.customerId);
      const selectedAsset = assets?.find(a => a.id === data.assetId);
 
-    if (!selectedCustomer || !selectedAsset || !user) return;
+    if (!selectedCustomer || !selectedAsset || !user || !firestore) return;
 
     const auditInfo = {
         uid: user.uid,
@@ -125,25 +139,29 @@ export function LeasesClient() {
     };
 
     try {
-        await db.transaction('rw', [db.leases, db.assets], async () => {
-            if (editingLease) {
-                await db.leases.update(editingLease.id, leaseData);
-                if (editingLease.assetId !== selectedAsset.id) {
-                    await db.assets.update(editingLease.assetId, { status: 'Available' });
-                    await db.assets.update(selectedAsset.id, { status: 'Leased' });
-                }
-                toast({ title: "Lease Updated" });
-            } else {
-                await db.leases.add({ 
-                    ...leaseData, 
-                    id: crypto.randomUUID(),
-                    createdAt: new Date().toISOString(), 
-                    createdBy: auditInfo 
-                });
-                await db.assets.update(selectedAsset.id, { status: 'Leased' });
-                toast({ title: "Lease Created" });
+        if (editingLease) {
+            const leaseRef = doc(firestore, 'lease_agreements', editingLease.id);
+            updateDocumentNonBlocking(leaseRef, leaseData);
+            
+            if (editingLease.assetId !== selectedAsset.id) {
+                const oldAssetRef = doc(firestore, 'laptop_instances', editingLease.assetId);
+                const newAssetRef = doc(firestore, 'laptop_instances', selectedAsset.id);
+                updateDocumentNonBlocking(oldAssetRef, { status: 'Available' });
+                updateDocumentNonBlocking(newAssetRef, { status: 'Leased' });
             }
-        });
+            toast({ title: "Lease Updated" });
+        } else {
+            const leasesCol = collection(firestore, 'lease_agreements');
+            addDocumentNonBlocking(leasesCol, { 
+                ...leaseData, 
+                createdAt: new Date().toISOString(), 
+                createdBy: auditInfo 
+            });
+            
+            const assetRef = doc(firestore, 'laptop_instances', selectedAsset.id);
+            updateDocumentNonBlocking(assetRef, { status: 'Leased' });
+            toast({ title: "Lease Created" });
+        }
     } catch (error: any) {
         toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
@@ -152,23 +170,23 @@ export function LeasesClient() {
     }
   };
   
-  const handleMarkPaid = async (lease: Lease) => {
-    await db.leases.update(lease.id, { paymentStatus: 'Paid' });
-    toast({ title: "Payment Updated" });
+  const handleMarkPaid = (lease: Lease) => {
+    if (!firestore) return;
+    const docRef = doc(firestore, 'lease_agreements', lease.id);
+    updateDocumentNonBlocking(docRef, { paymentStatus: 'Paid' });
+    toast({ title: "Payment Recorded" });
   };
 
-  const handleTerminateLease = async (lease: Lease) => {
-     try {
-        await db.transaction('rw', [db.leases, db.assets], async () => {
-            await db.leases.update(lease.id, { status: 'Terminated', endDate: new Date().toISOString() });
-            if(lease.assetId) {
-                await db.assets.update(lease.assetId, { status: 'Available' });
-            }
-        });
-        toast({ title: "Lease Terminated" });
-     } catch (error: any) {
-        toast({ variant: "destructive", title: "Error", description: error.message });
-     }
+  const handleTerminateLease = (lease: Lease) => {
+    if (!firestore) return;
+    const docRef = doc(firestore, 'lease_agreements', lease.id);
+    updateDocumentNonBlocking(docRef, { status: 'Terminated', endDate: new Date().toISOString() });
+    
+    if(lease.assetId) {
+        const assetRef = doc(firestore, 'laptop_instances', lease.assetId);
+        updateDocumentNonBlocking(assetRef, { status: 'Available' });
+    }
+    toast({ title: "Lease Terminated" });
   };
 
   const columnActions: LeaseColumnActions = {
@@ -203,8 +221,8 @@ export function LeasesClient() {
   return (
     <>
       <PageHeader
-        title="Lease Tracking (Local)"
-        description="Manage asset lease agreements stored on this device."
+        title="Lease Tracking (Cloud)"
+        description="Audited hardware lease agreements managed via Firestore."
         actionLabel="Create New Lease"
         onAction={handleAddLease}
         ActionIcon={PlusCircle}
@@ -219,78 +237,58 @@ export function LeasesClient() {
         />
       </div>
 
-      {isLoading && <p>Loading data...</p>}
-
-      {!isLoading && filteredLeases.length === 0 && searchTerm && (
-        <Alert variant="default" className="mb-4 bg-card">
-          <FileSearch className="h-4 w-4" />
-          <AlertTitle>No Leases Found</AlertTitle>
-          <AlertDescription>
-            Your search for "{searchTerm}" did not match any local leases.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {!isLoading && leases && leases.length === 0 && !searchTerm && (
-         <Alert variant="default" className="mb-4 bg-card">
-          <FileX className="h-4 w-4" />
-          <AlertTitle>No Leases Recorded</AlertTitle>
-          <AlertDescription>
-            There are currently no leases in your records.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!isLoading && filteredLeases.length > 0 && (
-        <div className="rounded-lg border shadow-sm bg-card">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map(headerGroup => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
+      {isLoading ? <p className="text-muted-foreground animate-pulse">Syncing lease directory...</p> : (
+        <>
+          {!filteredLeases.length && searchTerm ? (
+            <Alert variant="default" className="mb-4 bg-card">
+              <FileSearch className="h-4 w-4" />
+              <AlertTitle>No Leases Found</AlertTitle>
+              <AlertDescription>Your search for "{searchTerm}" did not match any active cloud records.</AlertDescription>
+            </Alert>
+          ) : !leases?.length ? (
+            <Alert variant="default" className="mb-4 bg-card">
+              <FileX className="h-4 w-4" />
+              <AlertTitle>No Leases Recorded</AlertTitle>
+              <AlertDescription>Start tracking hardware leases in the cloud.</AlertDescription>
+            </Alert>
+          ) : (
+            <div className="rounded-lg border shadow-sm bg-card">
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map(headerGroup => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map(header => (
+                        <TableHead key={header.id}>
+                          {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                      ))}
+                    </TableRow>
                   ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.length ? (
-                table.getRowModel().rows.map(row => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results for the current filter.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          <DataTablePagination table={table} />
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.length ? (
+                    table.getRowModel().rows.map(row => (
+                      <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                        {row.getVisibleCells().map(cell => (
+                          <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No results match filters.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              <DataTablePagination table={table} />
+            </div>
+          )}
+        </>
       )}
 
-      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingLease(null); } else { setIsFormOpen(true); }}}>
+      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingLease(null); }}}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingLease ? "Edit Lease" : "Create New Lease"}</DialogTitle>
+            <DialogTitle>{editingLease ? "Edit Agreement" : "Finalize New Lease"}</DialogTitle>
           </DialogHeader>
           <LeaseForm
             lease={editingLease}
@@ -299,21 +297,6 @@ export function LeasesClient() {
             onSubmit={handleFormSubmit}
             onCancel={() => { setIsFormOpen(false); setEditingLease(null); }}
           />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete the lease for <strong>{leaseToDelete?.assetModel}</strong>?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
