@@ -1,31 +1,36 @@
 
-import { db } from "@/db";
+import { Firestore, collection, doc, serverTimestamp } from 'firebase/firestore';
 import type { Asset } from "@/types";
 import { logger } from "@/lib/logger";
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 
 /**
- * @fileOverview Asset Service (v3.0 Foundation)
- * Abstracts database interactions for hardware inventory.
+ * @fileOverview Asset Service (Firestore Integrated)
+ * Abstracts database interactions for hardware inventory using Firebase.
  */
 export const AssetService = {
   /**
    * Creates a new asset with automatic tenancy and logging.
    */
-  async create(data: Partial<Asset>, tenantId: string, user: { uid: string; name: string }) {
-    const id = crypto.randomUUID();
-    const asset: Asset = {
-      ...data as any,
-      id,
+  async create(firestore: Firestore, data: Partial<Asset>, tenantId: string, user: { uid: string; name: string }) {
+    const colRef = collection(firestore, 'laptop_instances');
+    const assetData = {
+      ...data,
       tenantId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      createdBy: user
+      createdBy: user,
+      specifications: {
+        ram: (data as any).ram || '',
+        storage: (data as any).storage || '',
+        processor: (data as any).processor || ''
+      }
     };
 
     try {
-      await db.assets.add(asset);
-      logger.business('Inventory', 'Asset Registered', { id, model: asset.model, tenantId });
-      return { success: true, id };
+      addDocumentNonBlocking(colRef, assetData);
+      logger.business('Inventory', 'Asset Registered', { model: (data as any).model, tenantId });
+      return { success: true };
     } catch (error: any) {
       logger.error('Inventory', 'Failed to register asset', error);
       throw error;
@@ -35,9 +40,10 @@ export const AssetService = {
   /**
    * Updates an existing asset.
    */
-  async update(id: string, updates: Partial<Asset>, tenantId: string) {
+  async update(firestore: Firestore, id: string, updates: Partial<Asset>, tenantId: string) {
+    const docRef = doc(firestore, 'laptop_instances', id);
     try {
-      await db.assets.update(id, {
+      updateDocumentNonBlocking(docRef, {
         ...updates,
         updatedAt: new Date().toISOString()
       });
@@ -52,9 +58,10 @@ export const AssetService = {
   /**
    * Deletes an asset.
    */
-  async delete(id: string, tenantId: string) {
+  async delete(firestore: Firestore, id: string, tenantId: string) {
+    const docRef = doc(firestore, 'laptop_instances', id);
     try {
-      await db.assets.delete(id);
+      deleteDocumentNonBlocking(docRef);
       logger.business('Inventory', 'Asset Removed', { id, tenantId });
       return { success: true };
     } catch (error: any) {
@@ -66,10 +73,13 @@ export const AssetService = {
   /**
    * Bulk imports assets.
    */
-  async bulkImport(assets: Asset[], tenantId: string) {
+  async bulkImport(firestore: Firestore, assets: Asset[], tenantId: string) {
+    const colRef = collection(firestore, 'laptop_instances');
     try {
-      await db.assets.bulkAdd(assets);
-      logger.business('Inventory', 'Bulk Import Success', { count: assets.length, tenantId });
+      for (const asset of assets) {
+        addDocumentNonBlocking(colRef, { ...asset, tenantId });
+      }
+      logger.business('Inventory', 'Bulk Import Triggered', { count: assets.length, tenantId });
       return { success: true };
     } catch (error: any) {
       logger.error('Inventory', 'Bulk import failed', error);

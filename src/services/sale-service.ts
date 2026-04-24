@@ -1,41 +1,34 @@
 
-import { db } from "@/db";
+import { Firestore, collection, doc, serverTimestamp } from 'firebase/firestore';
 import type { Sale, Document as AppDocument } from "@/types";
 import { logger } from "@/lib/logger";
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 
 /**
- * @fileOverview Sale Service (v3.0 Foundation)
- * Abstracts transaction logic and inventory updates.
+ * @fileOverview Sale Service (Firestore Integrated)
+ * Abstracts transaction logic and inventory updates via Firebase.
  */
 export const SaleService = {
   /**
    * Finalizes a sale, updates inventory, and generates a receipt.
    */
-  async finalizeSale(saleData: Sale, receiptDoc: AppDocument) {
+  async finalizeSale(firestore: Firestore, saleData: Sale, receiptDoc: AppDocument) {
     try {
-      await db.transaction('rw', [db.assets, db.accessories, db.sales, db.documents], async () => {
-        // 1. Update Inventory Statuses
-        for (const item of saleData.items) {
-          if (item.type === 'asset') {
-            await db.assets.update(item.id, { status: 'Sold', quantity: 0 });
-          } else {
-            const acc = await db.accessories.get(item.id);
-            if (acc) {
-              const newQty = Math.max(0, (acc.quantity || 0) - item.quantity);
-              await db.accessories.update(item.id, { 
-                quantity: newQty,
-                status: newQty === 0 ? 'Sold' : acc.status 
-              });
-            }
-          }
+      // 1. Record the Sale
+      const salesCol = collection(firestore, 'sales_transactions');
+      addDocumentNonBlocking(salesCol, saleData);
+
+      // 2. Archive the Document
+      const docsCol = collection(firestore, 'documents');
+      addDocumentNonBlocking(docsCol, receiptDoc);
+
+      // 3. Update Inventory Statuses
+      for (const item of saleData.items) {
+        if (item.type === 'asset') {
+          const assetRef = doc(firestore, 'laptop_instances', item.id);
+          updateDocumentNonBlocking(assetRef, { status: 'Sold', quantity: 0 });
         }
-
-        // 2. Record the Sale
-        await db.sales.add(saleData);
-
-        // 3. Archive the Document
-        await db.documents.add(receiptDoc);
-      });
+      }
 
       logger.business('POS', 'Transaction Finalized', { 
         id: saleData.id, 

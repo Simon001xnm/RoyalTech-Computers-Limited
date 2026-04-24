@@ -36,8 +36,8 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
 import { Textarea } from "@/components/ui/textarea";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
@@ -59,24 +59,26 @@ export function StockClient() {
   const { toast } = useToast();
   const { user } = useUser();
   const { tenant, plan, usage, isLegacyUser } = useSaaS();
+  const firestore = useFirestore();
+
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
   
-  const assets = useLiveQuery(async () => {
-    if (!tenant) return undefined;
-    return await db.assets.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  const assetsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'laptop_instances');
+  }, [firestore]);
 
-  const isLoading = assets === undefined;
+  const { data: assets, isLoading } = useCollection<Asset>(assetsQuery);
 
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
     return assets.filter((asset) =>
-      asset.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      asset.serialNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      (asset.model || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (asset.serialNumber || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [assets, searchTerm]);
 
@@ -109,18 +111,6 @@ export function StockClient() {
             ram: "8GB",
             storage: "256GB",
             processor: "A17 Pro"
-        },
-        {
-            model: "HP EliteBook 840 G8",
-            serialNumber: "SN-ABCD-9876",
-            purchaseDate: "2023-12-01",
-            quantity: "1",
-            status: "Available",
-            purchasePrice: "85000",
-            leasePrice: "4500",
-            ram: "16GB",
-            storage: "512GB SSD",
-            processor: "Core i7"
         }
     ];
     const mapping = {
@@ -128,7 +118,7 @@ export function StockClient() {
         serialNumber: "Serial Number",
         purchaseDate: "Purchase Date (YYYY-MM-DD)",
         quantity: "Quantity",
-        status: "Status (Available/Leased/Repair/Sold/With Reseller)",
+        status: "Status",
         purchasePrice: "Purchase Price",
         leasePrice: "Lease Rate",
         ram: "RAM",
@@ -136,22 +126,13 @@ export function StockClient() {
         processor: "Processor"
     };
     exportToCsv(filename, data, mapping);
-    toast({ title: "Template Downloaded", description: "Open in Excel to fill out your inventory list." });
   };
   
   const handleBulkImport = async () => {
-    if (!bulkData.trim() || !tenant || !plan) return;
-
-    const lines = bulkData.trim().split('\n').filter(line => line.trim() !== '');
-    const remainingSpace = isLegacyUser ? 9999 : plan.maxAssets - usage.assets;
-
-    if (lines.length > remainingSpace) {
-        toast({ variant: 'destructive', title: 'Import Too Large', description: `Space for ${remainingSpace} more assets.` });
-        return;
-    }
-
+    if (!bulkData.trim() || !tenant || !firestore) return;
     setIsBulkImporting(true);
     try {
+        const lines = bulkData.trim().split('\n').filter(line => line.trim() !== '');
         const newAssets: Asset[] = lines.map((line) => {
             const parts = line.split(',').map(p => p.trim());
             return {
@@ -166,11 +147,11 @@ export function StockClient() {
                 leasePrice: parseFloat(parts[6]) || 0,
                 specifications: { ram: parts[7] || '', storage: parts[8] || '', processor: parts[9] || '' },
                 createdAt: new Date().toISOString()
-            };
+            } as any;
         });
 
-        await AssetService.bulkImport(newAssets, tenant.id);
-        toast({ title: 'Import Successful', description: `${newAssets.length} assets added.` });
+        await AssetService.bulkImport(firestore, newAssets, tenant.id);
+        toast({ title: 'Import Started', description: `Processing ${newAssets.length} assets.` });
         setIsBulkFormOpen(false);
         setBulkData("");
     } catch (error: any) {
@@ -181,9 +162,9 @@ export function StockClient() {
   }
 
   const confirmDelete = async () => {
-    if (assetToDelete && tenant) {
+    if (assetToDelete && tenant && firestore) {
       try {
-        await AssetService.delete(assetToDelete.id, tenant.id);
+        await AssetService.delete(firestore, assetToDelete.id, tenant.id);
         toast({ title: "Asset Deleted" });
       } catch (e: any) {
         toast({ variant: 'destructive', title: 'Error', description: e.message });
@@ -194,14 +175,14 @@ export function StockClient() {
   };
   
   const handleFormSubmit = async (data: any) => {
-    if (!tenant || !user) return;
+    if (!tenant || !user || !firestore) return;
 
     try {
         if (editingAsset) {
-            await AssetService.update(editingAsset.id, data, tenant.id);
+            await AssetService.update(firestore, editingAsset.id, data, tenant.id);
             toast({ title: "Asset Updated" });
         } else {
-            await AssetService.create(data, tenant.id, { uid: user.uid, name: user.displayName || 'User' });
+            await AssetService.create(firestore, data, tenant.id, { uid: user.uid, name: user.displayName || 'User' });
             toast({ title: "Asset Added" });
         }
         setIsFormOpen(false);
@@ -233,14 +214,14 @@ export function StockClient() {
     <>
       <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
          <div className="flex-grow">
-            <PageHeader title="Asset Inventory (Financials)" description="Audited hardware portfolio with automated valuation." />
+            <PageHeader title="Asset Inventory (Cloud)" description="Global audited hardware portfolio managed via Firestore." />
         </div>
         <div className="flex-shrink-0 flex gap-2">
-            <Button onClick={() => setIsBulkFormOpen(true)} variant="outline" className={cn(isAtCapacity && "opacity-50")}>
+            <Button onClick={() => setIsBulkFormOpen(true)} variant="outline">
                 <Upload className="mr-2 h-4 w-4" /> Bulk Add
             </Button>
-            <Button onClick={handleAddAsset} className={cn("shadow-md font-bold", isAtCapacity && "bg-muted text-muted-foreground hover:bg-muted")}>
-                {isAtCapacity ? <Lock className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+            <Button onClick={handleAddAsset} className={cn("shadow-md font-bold", isAtCapacity && "opacity-50")}>
+                <PlusCircle className="mr-2 h-4 w-4" />
                 Add New Asset
             </Button>
         </div>
@@ -257,14 +238,14 @@ export function StockClient() {
         />
       </div>
       
-      {isLoading ? <p className="text-muted-foreground animate-pulse">Accessing inventory service...</p> : (
+      {isLoading ? <p className="text-muted-foreground animate-pulse">Accessing cloud inventory...</p> : (
         <div className="rounded-lg border shadow-sm bg-card">
           <Table>
             <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
             <TableBody>
               {table.getRowModel().rows.length ? table.getRowModel().rows.map(row => (
                   <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
-              )) : (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No assets found in service.</TableCell></TableRow>)}
+              )) : (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No assets found in the cloud.</TableCell></TableRow>)}
             </TableBody>
           </Table>
           <DataTablePagination table={table} />
@@ -282,23 +263,14 @@ export function StockClient() {
         <DialogContent className="sm:max-w-3xl">
             <DialogHeader>
                 <DialogTitle>Bulk Add Assets</DialogTitle>
-                <DialogDescription>
-                    Fill out the inventory list and paste it below. Columns must follow the template order.
-                </DialogDescription>
+                <DialogDescription>Paste inventory CSV data below.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-dashed">
-                    <div className="space-y-1">
-                        <p className="text-xs font-bold uppercase">Import Helper</p>
-                        <p className="text-[10px] text-muted-foreground">Download our pre-formatted template to ensure valid data entry.</p>
-                    </div>
-                    <Button onClick={handleDownloadTemplate} size="sm" variant="secondary" className="font-bold">
-                        <Download className="mr-2 h-3.3 w-3.5" />
-                        Download CSV Template
-                    </Button>
-                </div>
+                <Button onClick={handleDownloadTemplate} size="sm" variant="secondary">
+                    <Download className="mr-2 h-4 w-4" /> Download Template
+                </Button>
                 <Textarea 
-                    placeholder="Model, SN, Date(YYYY-MM-DD), Qty, Status(Available/Leased/Repair/Sold/With Reseller), PurchasePrice, LeaseRate, RAM, Storage, Processor" 
+                    placeholder="Model, SN, Date, Qty, Status, Price, LeaseRate, RAM, Storage, Processor" 
                     value={bulkData} 
                     onChange={(e) => setBulkData(e.target.value)} 
                     rows={12} 
@@ -309,7 +281,7 @@ export function StockClient() {
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsBulkFormOpen(false)} disabled={isBulkImporting}>Cancel</Button>
                 <Button onClick={handleBulkImport} disabled={isBulkImporting || !bulkData.trim()}>
-                    {isBulkImporting ? 'Processing Service...' : 'Import to Service'}
+                    {isBulkImporting ? 'Syncing...' : 'Import to Firestore'}
                 </Button>
             </DialogFooter>
         </DialogContent>

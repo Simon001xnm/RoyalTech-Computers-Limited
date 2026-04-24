@@ -36,8 +36,8 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 
@@ -49,25 +49,27 @@ export function CustomersClient() {
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const { toast } = useToast();
   const { tenant } = useSaaS();
+  const firestore = useFirestore();
+  
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
-  // SaaS Isolated Query
-  const customers = useLiveQuery(async () => {
-    if (!tenant) return undefined;
-    return await db.customers.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  // Firestore Memoized Query
+  const customersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'customers');
+  }, [firestore]);
 
-  const isLoading = customers === undefined;
+  const { data: customers, isLoading } = useCollection<Customer>(customersQuery);
 
   const filteredCustomers = useMemo(() => {
     if (!customers) return [];
     return customers.filter((customer) =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchTerm.toLowerCase())
+      (customer.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (customer.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [customers, searchTerm]);
 
@@ -87,33 +89,34 @@ export function CustomersClient() {
   };
 
   const confirmDelete = async () => {
-    if (customerToDelete) {
-      await db.customers.delete(customerToDelete.id);
-      toast({ title: "Customer Deleted", description: `${customerToDelete.name} has been removed.` });
+    if (customerToDelete && firestore) {
+      const docRef = doc(firestore, 'customers', customerToDelete.id);
+      deleteDocumentNonBlocking(docRef);
+      toast({ title: "Customer Deleted" });
       setCustomerToDelete(null);
     }
     setIsDeleteConfirmOpen(false);
   };
 
   const handleFormSubmit = async (data: any) => {
-    if (!tenant) return;
+    if (!firestore) return;
 
-    const customerData: Customer = {
+    const customerData = {
       ...data,
-      id: editingCustomer?.id || crypto.randomUUID(),
-      tenantId: tenant.id, // Layer 2 Tenancy Injection
       updatedAt: new Date().toISOString()
     };
 
     try {
         if (editingCustomer) {
-            await db.customers.put(customerData);
+            const docRef = doc(firestore, 'customers', editingCustomer.id);
+            updateDocumentNonBlocking(docRef, customerData);
             toast({ title: "Customer Updated" });
         } else {
-            await db.customers.add({ 
-                ...customerData, 
+            const colRef = collection(firestore, 'customers');
+            addDocumentNonBlocking(colRef, {
+                ...customerData,
                 registrationDate: new Date().toISOString(),
-                createdAt: new Date().toISOString() 
+                createdAt: new Date().toISOString()
             });
             toast({ title: "Customer Added" });
         }
@@ -148,8 +151,8 @@ export function CustomersClient() {
   return (
     <>
       <PageHeader
-        title="Customer CRM (Siloed)"
-        description="Managing client relationships private to your business workspace."
+        title="Customer CRM (Cloud)"
+        description="Managing client relationships synced across your entire team."
         actionLabel="Add New Customer"
         onAction={handleAddCustomer}
         ActionIcon={PlusCircle}
@@ -171,7 +174,7 @@ export function CustomersClient() {
           <UserX className="h-4 w-4" />
           <AlertTitle>No Results</AlertTitle>
           <AlertDescription>
-            Your search for "{searchTerm}" did not match any records in your tenant.
+            Your search for "{searchTerm}" did not match any records.
           </AlertDescription>
         </Alert>
       )}
@@ -181,7 +184,7 @@ export function CustomersClient() {
           <Users className="h-4 w-4" />
           <AlertTitle>CRM Empty</AlertTitle>
           <AlertDescription>
-            Start building your private customer base for this business.
+            Start building your customer base in the cloud.
           </AlertDescription>
         </Alert>
       )}
@@ -250,7 +253,7 @@ export function CustomersClient() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete <strong>{customerToDelete?.name}</strong> from your business CRM?
+              Are you sure you want to delete <strong>{customerToDelete?.name}</strong>? This will remove the record from the cloud.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

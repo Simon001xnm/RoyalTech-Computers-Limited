@@ -3,29 +3,25 @@
 
 import { useState, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 import type { Asset, Accessory, SaleItem, Sale, Customer, Document as AppDocument } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, ChevronsUpDown, PlusCircle, Smartphone, Loader2, Check, Download, Printer, Share2, Mail, MessageSquare, Lock } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { initiateStkPush } from '../actions';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { RecentSales } from './recent-sales';
 import { useUser } from '@/firebase/provider';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { SaleService } from '@/services/sale-service';
-import { cn } from '@/lib/utils';
 
 type Product = (Asset | Accessory) & { productType: 'asset' | 'accessory'; displayName: string; price?: number; };
 type CartItem = SaleItem & { productType: 'asset' | 'accessory'; quantity: number; unitPrice: number; discount: number; };
@@ -35,7 +31,8 @@ const VAT_RATE = 0.16;
 export function PosClient() {
   const { toast } = useToast();
   const { user } = useUser();
-  const { tenant, plan, usage, isLegacyUser } = useSaaS();
+  const { tenant } = useSaaS();
+  const firestore = useFirestore();
   
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
@@ -46,50 +43,50 @@ export function PosClient() {
   const [amountPaid, setAmountPaid] = useState('');
   const [applyVat, setApplyVat] = useState(false);
 
-  // M-Pesa State
-  const [mpesaPhone, setMpesaPhone] = useState('');
-  const [isMpesaLoading, setIsMpesaLoading] = useState(false);
-  const [mpesaStatus, setMpesaStatus] = useState<'idle' | 'pending' | 'confirmed'>('idle');
+  // Firestore Queries
+  const assetsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'laptop_instances') : null, [firestore]);
+  const customersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
+  
+  const { data: assets } = useCollection<Asset>(assetsQuery);
+  const { data: customers } = useCollection<Customer>(customersQuery);
 
-  // UI States
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState('');
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
-  const [lastSaleDoc, setLastSaleDoc] = useState<AppDocument | null>(null);
-  const [isReceiptPreviewOpen, setIsReceiptPreviewOpen] = useState(false);
 
-  const assets = useLiveQuery(() => db.assets.filter(a => a.status === 'Available').toArray());
-  const accessories = useLiveQuery(() => db.accessories.filter(a => a.status === 'Available').toArray());
-  const customers = useLiveQuery(() => db.customers.toArray());
+  const availableProducts = useMemo<Product[]>(() => {
+    if (!assets) return [];
+    return assets
+      .filter(a => a.status === 'Available')
+      .map(item => ({ 
+        ...item, 
+        productType: 'asset' as const, 
+        displayName: `${item.model} (S/N: ${item.serialNumber})`, 
+        price: item.purchasePrice 
+      }));
+  }, [assets]);
 
-  const allProducts = useMemo<Product[]>(() => {
-    if (!assets || !accessories) return [];
-    return [
-      ...assets.map(item => ({ ...item, productType: 'asset' as const, displayName: `${item.model} (S/N: ${item.serialNumber})`, price: item.purchasePrice })),
-      ...accessories.map(item => ({ ...item, productType: 'accessory' as const, displayName: `${item.name} (S/N: ${item.serialNumber})`, price: item.sellingPrice }))
-    ];
-  }, [assets, accessories]);
-
-  const { subtotal, totalDiscount, vatAmount, grandTotal, changeDue } = useMemo(() => {
+  const { subtotal, grandTotal, vatAmount, changeDue } = useMemo(() => {
     const subtotal = cart.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
-    const totalDiscount = cart.reduce((acc, item) => acc + (item.discount || 0) * item.quantity, 0);
-    const totalAfterDiscount = subtotal - totalDiscount;
-    const vatAmount = applyVat ? totalAfterDiscount * VAT_RATE : 0;
-    const grandTotal = totalAfterDiscount + vatAmount;
+    const vatAmount = applyVat ? subtotal * VAT_RATE : 0;
+    const grandTotal = subtotal + vatAmount;
     const parsedAmountPaid = parseFloat(amountPaid) || grandTotal;
-    return { subtotal, totalDiscount, vatAmount, grandTotal, changeDue: parsedAmountPaid > grandTotal ? parsedAmountPaid - grandTotal : 0 };
+    return { 
+        subtotal, 
+        vatAmount, 
+        grandTotal, 
+        changeDue: Math.max(0, parsedAmountPaid - grandTotal) 
+    };
   }, [cart, amountPaid, applyVat]);
-
-  const isAtMonthlyLimit = !isLegacyUser && plan && usage && usage.salesThisMonth >= plan.maxSalesPerMonth;
 
   const handleAddToCart = () => {
     if (!selectedProduct || !unitPrice) return;
     const price = parseFloat(unitPrice);
     setCart([...cart, {
       id: selectedProduct.id,
-      name: selectedProduct.productType === 'asset' ? (selectedProduct as Asset).model : (selectedProduct as Accessory).name,
+      name: selectedProduct.productType === 'asset' ? (selectedProduct as Asset).model : (selectedProduct as any).name,
       serialNumber: selectedProduct.serialNumber,
       price: price, unitPrice: price, quantity, discount: 0,
       type: selectedProduct.productType, productType: selectedProduct.productType
@@ -98,11 +95,7 @@ export function PosClient() {
   };
 
   const handleFinalizeSale = async () => {
-    if (cart.length === 0 || !selectedCustomer || !user || !tenant) return;
-    if (isAtMonthlyLimit) {
-        toast({ variant: 'destructive', title: 'Limit Reached', description: 'Monthly quota hit.' });
-        return;
-    }
+    if (cart.length === 0 || !selectedCustomer || !user || !tenant || !firestore) return;
 
     setIsProcessing(true);
     try {
@@ -110,7 +103,7 @@ export function PosClient() {
         const saleDate = new Date().toISOString();
         
         const saleData: Sale = {
-            id: saleId, tenantId: tenant.id, date: saleDate, amount: grandTotal, subtotal, totalDiscount, vat: vatAmount,
+            id: saleId, tenantId: tenant.id, date: saleDate, amount: grandTotal, subtotal, vat: vatAmount,
             amountPaid: parseFloat(amountPaid) || grandTotal, changeDue, paymentMethod, referenceCode,
             items: cart.map(i => ({ ...i, price: i.unitPrice })), customerName: selectedCustomer.name, customerId: selectedCustomer.id,
             status: 'Paid', createdAt: saleDate, createdBy: { uid: user.uid, name: user.displayName || 'User' }
@@ -122,10 +115,9 @@ export function PosClient() {
             data: { ...saleData, applyVat }, createdAt: saleDate, createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
-        await SaleService.finalizeSale(saleData, docData);
+        await SaleService.finalizeSale(firestore, saleData, docData);
 
-        toast({ title: 'Sale Finalized via Service Layer' });
-        setLastSaleDoc(docData);
+        toast({ title: 'Sale Finalized in Firestore' });
         setIsSuccessOpen(true);
         setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode('');
     } catch (e: any) {
@@ -137,7 +129,7 @@ export function PosClient() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Point of Sale (Service-Driven)" description="Enterprise-grade transaction flow via service layer." />
+      <PageHeader title="Point of Sale (Firestore)" description="Process cloud-synced transactions instantly." />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-md">
@@ -153,7 +145,7 @@ export function PosClient() {
                     <div className="space-y-2">
                         <Popover open={searchOpen} onOpenChange={setSearchOpen}>
                         <PopoverTrigger asChild><Button variant="outline" className="w-full h-10 truncate">{selectedProduct ? selectedProduct.displayName : "Select product..."}</Button></PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Model/SN..." /><CommandList><CommandGroup>{allProducts.map(p => <CommandItem key={p.id} onSelect={() => { setSelectedProduct(p); setUnitPrice((p.price || 0).toString()); setSearchOpen(false); }}>{p.displayName}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Model/SN..." /><CommandList><CommandGroup>{availableProducts.map(p => <CommandItem key={p.id} onSelect={() => { setSelectedProduct(p); setUnitPrice((p.price || 0).toString()); setSearchOpen(false); }}>{p.displayName}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent>
                         </Popover>
                     </div>
                     <Input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)} className="h-10" />
@@ -174,19 +166,13 @@ export function PosClient() {
                 <div className="flex items-center space-x-2 pt-2"><Switch id="vat-pos" checked={applyVat} onCheckedChange={setApplyVat} /><Label htmlFor="vat-pos" className="text-xs">Apply 16% VAT</Label></div>
                 <div className="space-y-2 p-4 rounded-xl bg-muted/20 border"><div className="flex justify-between text-xl font-black"><span>Total Due:</span><span className="text-primary">KES {grandTotal.toLocaleString()}</span></div></div>
             </CardContent>
-            <CardFooter className="pb-8"><Button onClick={handleFinalizeSale} className="w-full h-14 text-lg font-black" disabled={isProcessing || !selectedCustomer || cart.length === 0}>{isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Finalize via Service'}</Button></CardFooter>
+            <CardFooter className="pb-8"><Button onClick={handleFinalizeSale} className="w-full h-14 text-lg font-black" disabled={isProcessing || !selectedCustomer || cart.length === 0}>{isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Finalize in Cloud'}</Button></CardFooter>
         </Card>
       </div>
 
-      <RecentSales onViewReceipt={(sale) => {
-          const fetchDoc = async () => {
-              let docs = await db.documents.where('saleId').equals(sale.id).toArray();
-              if (docs.length > 0) { setLastSaleDoc(docs[0]); setIsSuccessOpen(true); }
-          };
-          fetchDoc();
-      }} />
+      <RecentSales onViewReceipt={() => {}} />
 
-      <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}><DialogContent className="sm:max-w-md text-center p-8"><Check className="h-12 w-12 text-green-600 mx-auto mb-4" /><DialogHeader><DialogTitle className="text-2xl font-black">Transaction Archived!</DialogTitle></DialogHeader><DialogFooter className="pt-6"><Button className="w-full h-11" onClick={() => setIsSuccessOpen(false)}>Continue</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}><DialogContent className="sm:max-w-md text-center p-8"><Check className="h-12 w-12 text-green-600 mx-auto mb-4" /><DialogHeader><DialogTitle className="text-2xl font-black">Sale Completed!</DialogTitle></DialogHeader><DialogFooter className="pt-6"><Button className="w-full h-11" onClick={() => setIsSuccessOpen(false)}>Continue</Button></DialogFooter></DialogContent></Dialog>
     </div>
   );
 }
