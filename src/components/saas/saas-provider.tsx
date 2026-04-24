@@ -28,22 +28,23 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Use the lazy DB getter
+  // Lazy database access to prevent early IDB calls
   const db = useMemo(() => getDB(), []);
 
   // SECURE PROFILE QUERY
   const userProfile = useLiveQuery(
     async () => {
-      if (typeof window === 'undefined' || !db || !user) return null;
+      if (!db || !user) return null;
       return await db.users.get(user.uid);
     },
     [user, db]
   );
 
-  // SECURE WORKSPACE PORTFOLIO QUERY
+  // SECURE WORKSPACE PORTFOLIO QUERY: Guaranteed isolation
   const availableWorkspaces = useLiveQuery(async () => {
-    if (typeof window === 'undefined' || !db || !userProfile) return [];
+    if (!db || !userProfile) return [];
     
+    // Only fetch workspaces the user is explicitly authorized to access
     const authorizedIds = Array.from(new Set([
         ...(userProfile.tenantIds || []),
         ...(userProfile.tenantId ? [userProfile.tenantId] : [])
@@ -56,14 +57,14 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
 
   const activeCompany = useLiveQuery(
     async () => {
-        if (typeof window === 'undefined' || !db || !userProfile?.tenantId) return null;
+        if (!db || !userProfile?.tenantId) return null;
         return await db.companies.get(userProfile.tenantId);
     },
     [userProfile?.tenantId, db]
   );
 
   const usageStats = useLiveQuery(async () => {
-    if (typeof window === 'undefined' || !db || !userProfile?.tenantId) return { assets: 0, salesThisMonth: 0 };
+    if (!db || !userProfile?.tenantId) return { assets: 0, salesThisMonth: 0 };
     
     const tid = userProfile.tenantId;
     const now = new Date();
@@ -79,7 +80,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   }, [userProfile?.tenantId, db]);
 
   useEffect(() => {
-    if (isUserLoading || typeof window === 'undefined') return;
+    if (isUserLoading) return;
 
     const resolveTenant = async () => {
       setIsLoading(true);
@@ -120,7 +121,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   }, [user, isUserLoading, activeCompany]);
 
   const switchTenant = async (newTenantId: string) => {
-    if (typeof window === 'undefined' || !db || !user || !userProfile) return;
+    if (!db || !user || !userProfile) return;
     
     const isAuthorized = userProfile.tenantIds?.includes(newTenantId) || userProfile.tenantId === newTenantId;
     if (!isAuthorized && userProfile.role !== 'super_admin') {
@@ -147,7 +148,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     switchTenant
   }), [tenant, plan, usageStats, isLoading, isUserLoading, availableWorkspaces]);
 
-  if (typeof window !== 'undefined' && user && tenant?.status === 'suspended') {
+  if (user && tenant?.status === 'suspended') {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-background p-6">
             <div className="max-w-md text-center space-y-6">

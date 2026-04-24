@@ -34,6 +34,7 @@ export interface PlatformLog {
 
 /**
  * RoyalTechDB: Hardened for Next.js SSR with truly lazy initialization.
+ * Version 6: Standardizing all fields for Cloud Sync.
  */
 export class RoyalTechDB extends Dexie {
   assets!: Table<Asset>;
@@ -59,7 +60,7 @@ export class RoyalTechDB extends Dexie {
   constructor() {
     super('RoyalTechDB', { addons: [dexieCloud] });
     
-    this.version(5).stores({
+    this.version(6).stores({
       assets: 'id, tenantId, model, serialNumber, status, purchaseDate',
       accessories: 'id, tenantId, name, serialNumber, status',
       customers: 'id, tenantId, name, email, phone',

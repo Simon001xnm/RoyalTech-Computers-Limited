@@ -34,8 +34,9 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from "firebase/firestore";
+import { useUser } from '@/firebase/provider';
+import { db } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -48,27 +49,23 @@ export function DeskClient() {
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const { toast } = useToast();
   const { tenant } = useSaaS();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
   
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
-  // Firestore Queries (MIGRATED FROM DEXIE)
-  const ticketsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'repairs'); // Desk module maps to 'repairs' in Firestore schema
-  }, [firestore]);
+  // DEXIE QUERIES: Consolidated & Siloed
+  const tickets = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.tickets.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
 
-  const customersQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'customers');
-  }, [firestore]);
+  const customers = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.customers.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
 
-  const { data: tickets, isLoading: isTicketsLoading } = useCollection<Ticket>(ticketsQuery);
-  const { data: customers } = useCollection<Customer>(customersQuery);
-
-  const isLoading = isTicketsLoading || customers === null;
+  const isLoading = isUserLoading || tickets === undefined || customers === undefined;
 
   const filteredTickets = useMemo(() => {
     if (!tickets) return [];
@@ -79,7 +76,7 @@ export function DeskClient() {
   }, [tickets, searchTerm]);
 
   const handleFormSubmit = async (data: any) => { 
-    if (!tenant || !user || !firestore) return;
+    if (!tenant || !user) return;
     
     const selectedCustomer = customers?.find(c => c.id === data.customerId);
 
@@ -92,13 +89,12 @@ export function DeskClient() {
 
     try {
         if (editingTicket) {
-            const docRef = doc(firestore, 'repairs', editingTicket.id);
-            updateDocumentNonBlocking(docRef, ticketData);
+            await db.tickets.update(editingTicket.id, ticketData);
             toast({ title: "Case Updated" });
         } else {
-            const colRef = collection(firestore, 'repairs');
-            addDocumentNonBlocking(colRef, { 
+            await db.tickets.add({ 
                 ...ticketData, 
+                id: crypto.randomUUID(),
                 createdAt: new Date().toISOString(),
                 createdBy: { uid: user.uid, name: user.displayName || 'User' }
             });
@@ -112,9 +108,8 @@ export function DeskClient() {
   };
 
   const confirmDelete = async () => {
-    if (ticketToDelete && firestore) {
-      const docRef = doc(firestore, 'repairs', ticketToDelete.id);
-      deleteDocumentNonBlocking(docRef);
+    if (ticketToDelete) {
+      await db.tickets.delete(ticketToDelete.id);
       toast({ title: "Ticket Erased" });
       setTicketToDelete(null);
     }
@@ -142,8 +137,8 @@ export function DeskClient() {
   return (
     <>
       <PageHeader 
-        title="Support Desk (Cloud)" 
-        description="Global helpdesk oversight synced via Firestore." 
+        title="Support Desk" 
+        description="Workspace helpdesk oversight and case management." 
         actionLabel="Create Ticket" 
         onAction={() => setIsFormOpen(true)} 
         ActionIcon={PlusCircle} 
@@ -167,7 +162,7 @@ export function DeskClient() {
                     <Inbox className="h-4 w-4" />
                     <AlertTitle>Desk Empty</AlertTitle>
                     <AlertDescription>
-                        {searchTerm ? "No tickets match your cloud filters." : "Your support queue is clear."}
+                        {searchTerm ? "No tickets match your filters." : "Your support queue is clear."}
                     </AlertDescription>
                 </Alert>
             ) : (
@@ -213,8 +208,8 @@ export function DeskClient() {
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Erasure</DialogTitle>
-            <DialogDescription>Permanently remove this support record from the cloud?</DialogDescription>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>Permanently remove this support record from the workspace?</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>

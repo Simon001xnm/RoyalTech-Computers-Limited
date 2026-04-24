@@ -3,11 +3,10 @@
 import React, { useEffect } from 'react';
 
 /**
- * BackgroundErrorGuard: Silences transient network error overlays.
+ * BackgroundErrorGuard: Silences transient network error overlays without breaking the browser context.
  * 
- * This version uses a context-safe console interceptor to suppress
- * "Failed to fetch" messages from appearing in the Next.js dev overlay,
- * while strictly preserving the execution context to avoid "Illegal invocation" crashes.
+ * We REMOVED the console.error proxy because it was causing "Illegal invocation" errors 
+ * when native methods (like IndexedDB access in Dexie) were called from a hijacked context.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -30,18 +29,7 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       return IGNORED_MESSAGES.some(msg => message.includes(msg));
     };
 
-    // 1. Safe Console Interceptor
-    // We use Function.prototype.apply to ensure 'this' is bound to window.console
-    const originalConsoleError = window.console.error;
-    window.console.error = function(...args: any[]) {
-      const message = args.map(arg => String(arg)).join(' ').toLowerCase();
-      if (IGNORED_MESSAGES.some(msg => message.includes(msg))) {
-        return;
-      }
-      return originalConsoleError.apply(window.console, args);
-    };
-
-    // 2. Suppress unhandled promise rejections
+    // Use safe event listeners instead of console hijacking to prevent Illegal Invocation
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (shouldSuppress(event.reason)) {
         event.preventDefault();
@@ -49,7 +37,6 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
-    // 3. Suppress runtime error events
     const handleError = (event: ErrorEvent) => {
       if (shouldSuppress(event.error || event.message)) {
         event.preventDefault();
@@ -61,7 +48,6 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
     window.addEventListener('error', handleError, true);
 
     return () => {
-      window.console.error = originalConsoleError;
       window.removeEventListener('unhandledrejection', handleRejection, true);
       window.removeEventListener('error', handleError, true);
     };
