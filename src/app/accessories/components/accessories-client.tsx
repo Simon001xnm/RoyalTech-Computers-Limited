@@ -39,14 +39,15 @@ import { useUser } from '@/firebase/provider';
 import { db } from "@/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { useSaaS } from "@/components/saas/saas-provider";
 
 
 export function AccessoriesClient() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingAccessory, setEditingAccessory] = useState<Accessory | null>(null);
+  const [editingAccessory, setEditingAccessory] = useState< Accessory | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [accessoryToDelete, setAccessoryToDelete] = useState<Accessory | null>(null);
+  const [accessoryToDelete, setAccessoryToDelete] = useState< Accessory | null>(null);
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({
@@ -55,7 +56,13 @@ export function AccessoriesClient() {
   });
   
   const { user, isUserLoading } = useUser();
-  const accessories = useLiveQuery(() => db.accessories.toArray());
+  const { tenant } = useSaaS();
+
+  // HARDENED QUERY: Strictly filter by tenantId
+  const accessories = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.accessories.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
 
   const isLoading = isUserLoading || accessories === undefined;
 
@@ -92,10 +99,11 @@ export function AccessoriesClient() {
   };
   
   const handleFormSubmit = async (data: any) => {
-    if (!user) return;
+    if (!user || !tenant) return;
 
     const accessoryData = {
       ...data,
+      tenantId: tenant.id, // Ensure tenancy is stamped
       purchaseDate: data.purchaseDate.toISOString(), 
     };
 
@@ -145,8 +153,8 @@ export function AccessoriesClient() {
   return (
     <>
       <PageHeader
-          title="Accessory Inventory (Local)"
-          description="Manage your accessory inventory stored on this device."
+          title="Accessory Inventory (Siloed)"
+          description="Manage your accessory inventory belonging to this workspace."
           actionLabel="Add New Accessory"
           onAction={handleAddAccessory}
           ActionIcon={PlusCircle}
@@ -168,7 +176,7 @@ export function AccessoriesClient() {
           <PackageSearch className="h-4 w-4" />
           <AlertTitle>No Accessories Found</AlertTitle>
           <AlertDescription>
-            Your search for "{searchTerm}" did not match any accessories.
+            Your search for "{searchTerm}" did not match any accessories in this workspace.
           </AlertDescription>
         </Alert>
       )}
@@ -178,7 +186,7 @@ export function AccessoriesClient() {
           <PackageSearch className="h-4 w-4" />
           <AlertTitle>No Accessories in Stock</AlertTitle>
           <AlertDescription>
-            There are currently no accessories in your inventory.
+            There are currently no accessories in this workspace's inventory.
           </AlertDescription>
         </Alert>
       )}

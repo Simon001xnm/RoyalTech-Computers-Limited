@@ -5,10 +5,9 @@ import React, { useEffect } from 'react';
 /**
  * BackgroundErrorGuard: Silences transient network artifacts in development.
  * 
- * This version uses a context-safe proxy pattern to intercept console.error 
- * and global event listeners. By using .apply(window.console, args), we 
- * preserve the native 'this' context, which prevents the "Illegal invocation" 
- * error that occurs when Next.js or the browser detects a loss of context.
+ * This version relies exclusively on standard browser event listeners to suppress
+ * the Next.js red error overlay for minor network events. It avoids monkey-patching
+ * native console methods, which is the definitive fix for the "Illegal invocation" crash.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -40,28 +39,16 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
-    // 1. Context-Safe Console Interception
-    // We use a closure to capture the original method and .apply() to maintain context.
-    const originalConsoleError = window.console.error;
-    window.console.error = function(...args: any[]) {
-      const message = args.map(arg => String(arg)).join(' ').toLowerCase();
-      if (SUPPRESS_PATTERNS.some(pattern => message.includes(pattern))) {
-        // Silently drop common network noise to avoid triggering Next.js overlay
-        return;
-      }
-      // CRITICAL: Must use .apply(window.console) to avoid "Illegal invocation"
-      return originalConsoleError.apply(window.console, args);
-    };
-
-    // 2. Intercept Promise Rejections (e.g. Firebase background sync fails)
+    // 1. Intercept Promise Rejections (e.g. Firebase background sync fails)
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (isSuppressed(event.reason)) {
+        // preventDefault() tells Next.js not to show the error overlay
         event.preventDefault();
         event.stopPropagation();
       }
     };
 
-    // 3. Intercept Global Errors
+    // 2. Intercept Global Errors
     const handleError = (event: ErrorEvent) => {
       if (isSuppressed(event.error || event.message)) {
         event.preventDefault();
@@ -73,8 +60,6 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
     window.addEventListener('error', handleError, true);
 
     return () => {
-      // Restore original console on unmount
-      window.console.error = originalConsoleError;
       window.removeEventListener('unhandledrejection', handleRejection, true);
       window.removeEventListener('error', handleError, true);
     };

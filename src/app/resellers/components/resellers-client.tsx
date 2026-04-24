@@ -26,12 +26,12 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { exportToCsv } from "@/lib/utils";
 import { format } from "date-fns";
+import { useSaaS } from "@/components/saas/saas-provider";
 
 type IssueableItem = 
   | (Asset & { type: 'laptop' }) 
   | (Accessory & { type: 'accessory' });
 
-// #region Reseller Card
 const ResellerCard = ({ reseller, onViewDashboard, onEdit, onDelete }: { reseller: Reseller, onViewDashboard: () => void, onEdit: () => void, onDelete: () => void }) => {
     return (
         <Card className="flex flex-col transition-all duration-200 hover:shadow-md">
@@ -50,7 +50,7 @@ const ResellerCard = ({ reseller, onViewDashboard, onEdit, onDelete }: { reselle
                  <div className="text-sm text-muted-foreground space-y-1">
                     <p>{reseller.email}</p>
                     <p>{reseller.phone || 'No phone number'}</p>
-                </div>
+                 </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={onEdit}><Edit className="mr-2 h-4 w-4" />Edit</Button>
@@ -60,11 +60,10 @@ const ResellerCard = ({ reseller, onViewDashboard, onEdit, onDelete }: { reselle
         </Card>
     );
 };
-// #endregion
 
-// #region Dashboard Sheet Content
 const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: { reseller: Reseller, allIssuances: ItemIssuance[], allAvailableItems: IssueableItem[] }) => {
     const { user } = useUser();
+    const { tenant } = useSaaS();
     const { toast } = useToast();
     
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 5 });
@@ -84,7 +83,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
     }, [issuances]);
 
     const handleIssueItems = async (data: { items: { id: string; type: 'laptop' | 'accessory' }[] }) => {
-        if (!user) return;
+        if (!user || !tenant) return;
 
         try {
             await db.transaction('rw', [db.itemIssuances, db.assets, db.accessories], async () => {
@@ -94,6 +93,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
 
                     const issuanceData: ItemIssuance = {
                         id: crypto.randomUUID(),
+                        tenantId: tenant.id,
                         resellerId: reseller.id,
                         resellerName: reseller.name,
                         itemId: itemToIssue.id,
@@ -109,7 +109,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
                     };
                     await db.itemIssuances.add(issuanceData);
                     
-                    if (item.type === 'laptop') { // laptop type mapping from IssueItemForm
+                    if (item.type === 'laptop') {
                         await db.assets.update(item.id, { status: 'With Reseller', quantity: 0 });
                     } else {
                         await db.accessories.update(item.id, { status: 'With Reseller', quantity: 0 });
@@ -125,7 +125,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
     };
     
     const handleMarkAsSold = async (data: { sellingPrice: number; paymentMethod: Sale['paymentMethod']; notes?: string; }) => {
-        if (!selectedIssuance || !user) return;
+        if (!selectedIssuance || !user || !tenant) return;
         
         try {
             await db.transaction('rw', [db.itemIssuances, db.assets, db.accessories, db.sales], async () => {
@@ -139,6 +139,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
                 
                 const saleData: Sale = {
                     id: crypto.randomUUID(),
+                    tenantId: tenant.id,
                     date: new Date().toISOString(),
                     amount: data.sellingPrice,
                     paymentMethod: data.paymentMethod,
@@ -274,7 +275,6 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
         </>
     );
 }
-// #endregion
 
 export function ResellersClient() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -283,16 +283,33 @@ export function ResellersClient() {
   const [selectedReseller, setSelectedReseller] = useState<Reseller | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const { toast } = useToast();
+  const { tenant } = useSaaS();
 
-  const resellers = useLiveQuery(() => db.resellers.toArray());
-  const allIssuances = useLiveQuery(() => db.itemIssuances.toArray());
-  const availableAssets = useLiveQuery(() => db.assets.filter(a => a.status === 'Available').toArray());
-  const availableAccessories = useLiveQuery(() => db.accessories.filter(a => a.status === 'Available').toArray());
+  // HARDENED QUERIES: Strictly siloed by tenantId
+  const resellers = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.resellers.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
+
+  const allIssuances = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.itemIssuances.where('tenantId').equals(tenant.id).toArray();
+  }, [tenant?.id]);
+
+  const availableAssets = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.assets.where('tenantId').equals(tenant.id).and(a => a.status === 'Available').toArray();
+  }, [tenant?.id]);
+
+  const availableAccessories = useLiveQuery(async () => {
+    if (!tenant) return [];
+    return await db.accessories.where('tenantId').equals(tenant.id).and(a => a.status === 'Available').toArray();
+  }, [tenant?.id]);
   
   const isLoading = resellers === undefined || allIssuances === undefined || availableAssets === undefined || availableAccessories === undefined;
 
   const allAvailableItems = useMemo<IssueableItem[]>(() => {
-        const mappedAssets = (availableAssets || []).map(item => ({ ...item, type: 'laptop' as const })); // type laptop mapped to asset internally in IssueItemForm
+        const mappedAssets = (availableAssets || []).map(item => ({ ...item, type: 'laptop' as const }));
         const mappedAccessories = (availableAccessories || []).map(item => ({ ...item, type: 'accessory' as const }));
         return [...mappedAssets, ...mappedAccessories];
     }, [availableAssets, availableAccessories]);
@@ -320,7 +337,7 @@ export function ResellersClient() {
   };
 
   const handleSaveReseller = async (data: any) => {
-    if (!resellers) return;
+    if (!resellers || !tenant) return;
 
     const lowerCaseName = data.name.toLowerCase();
     const lowerCaseEmail = data.email.toLowerCase();
@@ -333,7 +350,7 @@ export function ResellersClient() {
     });
     
     if (conflictingReseller) {
-        toast({ variant: 'destructive', title: 'Duplicate Record', description: 'Reseller with same name, email or phone exists.' });
+        toast({ variant: 'destructive', title: 'Duplicate Record', description: 'Reseller with same name, email or phone exists in this workspace.' });
         return;
     }
 
@@ -345,6 +362,7 @@ export function ResellersClient() {
             await db.resellers.add({ 
                 ...data, 
                 id: crypto.randomUUID(),
+                tenantId: tenant.id,
                 registrationDate: new Date().toISOString(),
                 createdAt: new Date().toISOString()
             });
@@ -421,15 +439,15 @@ export function ResellersClient() {
   return (
     <>
       <PageHeader 
-        title="Resellers" 
-        description="Manage reseller accounts and track issued items locally."
+        title="Resellers (Siloed)" 
+        description="Manage workspace reseller accounts and track issued items locally."
         actions={actions}
       />
       <div className="mb-4">
           <Input placeholder="Search by name, email, or company..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm"/>
       </div>
       
-      {isLoading ? <p>Loading resellers from local database...</p> : (
+      {isLoading ? <p>Syncing reseller portfolio...</p> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredResellers.map(reseller => (
                 <ResellerCard 
@@ -462,7 +480,7 @@ export function ResellersClient() {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Confirm Deletion</DialogTitle>
-                <DialogDescription>Are you sure you want to delete {editingReseller?.name}?</DialogDescription>
+                <DialogDescription>Are you sure you want to delete {editingReseller?.name} from this workspace?</DialogDescription>
             </DialogHeader>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>

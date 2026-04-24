@@ -62,18 +62,28 @@ export function UsersClient() {
   // Get current user profile for role checks
   const currentUser = useLiveQuery(async () => authUser ? await db.users.get(authUser.uid) : null, [authUser]);
 
-  // Fetch users with Tenancy Isolation
+  // Fetch users with STRICT Tenancy Isolation
   const users = useLiveQuery(async () => {
     if (!currentUser) return undefined;
     
-    const baseQuery = db.users;
-    
-    // LAYER 2: Tenancy Isolation Logic
-    if (isFeatureEnabled('TENANCY_ISOLATION') && currentUser.tenantId) {
-        return await baseQuery.where('tenantId').equals(currentUser.tenantId).toArray();
+    // LAYER 2: Secure Query Resolution
+    if (isFeatureEnabled('TENANCY_ISOLATION')) {
+        // Platform Technicians see everyone
+        if (currentUser.role === 'super_admin') {
+            return await db.users.toArray();
+        }
+        
+        // Admins and Staff see only their node
+        if (currentUser.tenantId) {
+            return await db.users.where('tenantId').equals(currentUser.tenantId).toArray();
+        }
+        
+        // Un-onboarded users see only themselves to prevent leaks
+        return [currentUser];
     }
     
-    return await baseQuery.toArray();
+    // Fallback for v1.0 mode
+    return await db.users.toArray();
   }, [currentUser]);
 
   const filteredUsers = useMemo(() => {
