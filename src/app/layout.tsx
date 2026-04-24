@@ -2,7 +2,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/toast";
 import { APP_NAME } from '@/lib/constants';
 import { PwaRegistration } from '@/components/layout/pwa-registration';
 import { Providers } from '@/components/layout/providers';
@@ -17,8 +17,7 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-// SYSTEM VERSION: v1.0.0 (The Golden Version)
-const VERSION = "1.0.0";
+const VERSION = "2.0.0";
 
 export const metadata: Metadata = {
   title: {
@@ -34,7 +33,7 @@ export const metadata: Metadata = {
   },
   other: {
     "system-version": VERSION,
-    "system-tier": "v1-core"
+    "system-tier": "v2-pro"
   }
 };
 
@@ -45,7 +44,10 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-
+/**
+ * RootLayout: A pure Server Component that serves as the entry point.
+ * All client-side initialization is deferred to the <Providers /> component.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -60,7 +62,6 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
-        <Toaster />
         <PwaRegistration />
       </body>
     </html>

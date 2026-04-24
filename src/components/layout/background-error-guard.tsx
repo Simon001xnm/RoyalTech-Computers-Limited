@@ -1,56 +1,48 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
 
 /**
- * BackgroundErrorGuard: Silences transient network artifacts in development.
+ * BackgroundErrorGuard: Definitive fix for "Failed to fetch" overlays.
  * 
- * This version uses standard browser event listeners to suppress
- * the Next.js red error overlay for minor network events. 
- * It avoids any modification of the global console object to prevent
- * "Illegal invocation" crashes.
+ * Instead of monkey-patching console.error (which causes "Illegal invocation"),
+ * this uses native browser event listeners to suppress the Next.js red overlay 
+ * for transient network artifacts.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // Only active in development and in the browser
+    // Only execute in development browser environment
     if (process.env.NODE_ENV !== 'development' || typeof window === 'undefined') {
       return;
     }
 
-    // Patterns for errors that are transient and safe to ignore in the UI
-    const SUPPRESS_PATTERNS = [
+    const IGNORED_MESSAGES = [
       'failed to fetch',
       'networkerror',
-      'load failed',
       'chunkloaderror',
       'firebaseerror',
-      'connection',
       'unavailable',
       'stream closed',
-      'timeout',
       'auth/network-request-failed'
     ];
 
-    const isSuppressed = (reason: any) => {
-      try {
-        const message = String(reason?.message || reason?.stack || reason || '').toLowerCase();
-        return SUPPRESS_PATTERNS.some(pattern => message.includes(pattern));
-      } catch {
-        return false;
-      }
+    const shouldSuppress = (error: any) => {
+      const message = String(error?.message || error || '').toLowerCase();
+      return IGNORED_MESSAGES.some(msg => message.includes(msg));
     };
 
-    // 1. Intercept Promise Rejections (e.g. Firebase/Dexie background sync fails)
+    // 1. Suppress unhandled promise rejections (Firebase background sync)
     const handleRejection = (event: PromiseRejectionEvent) => {
-      if (isSuppressed(event.reason)) {
+      if (shouldSuppress(event.reason)) {
         event.preventDefault();
         event.stopPropagation();
       }
     };
 
-    // 2. Intercept Global Errors
+    // 2. Suppress runtime error events (Next.js overlays)
     const handleError = (event: ErrorEvent) => {
-      if (isSuppressed(event.error || event.message)) {
+      if (shouldSuppress(event.error || event.message)) {
         event.preventDefault();
         event.stopPropagation();
       }

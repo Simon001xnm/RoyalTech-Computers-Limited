@@ -33,9 +33,8 @@ export interface PlatformLog {
 }
 
 /**
- * Professional ERP Suite Local Database
- * Powered by Dexie.js and IndexedDB for local-first storage.
- * Version 4: Notification Engine.
+ * RoyalTechDB: Hardened for Next.js SSR.
+ * Initialization of dexie-cloud is deferred to avoid Illegal Invocation errors.
  */
 export class RoyalTechDB extends Dexie {
   assets!: Table<Asset>;
@@ -60,7 +59,6 @@ export class RoyalTechDB extends Dexie {
   constructor() {
     super('RoyalTechDB', { addons: [dexieCloud] });
     
-    // Version 4: Adding notifications store
     this.version(4).stores({
       assets: 'id, tenantId, model, serialNumber, status, purchaseDate',
       accessories: 'id, tenantId, name, serialNumber, status',
@@ -82,10 +80,13 @@ export class RoyalTechDB extends Dexie {
       notifications: 'id, tenantId, userId, read, createdAt'
     });
 
-    this.cloud.configure({
-      databaseUrl: 'https://z1xwh7v7u.dexie.cloud',
-      requireAuth: false 
-    });
+    // Only configure cloud if in the browser
+    if (typeof window !== 'undefined') {
+        this.cloud.configure({
+          databaseUrl: 'https://z1xwh7v7u.dexie.cloud',
+          requireAuth: false 
+        });
+    }
   }
 }
 

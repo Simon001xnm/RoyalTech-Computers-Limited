@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -7,25 +8,24 @@ import { DynamicThemeProvider } from '@/components/layout/dynamic-theme-provider
 import { AuthGuard } from '@/components/layout/auth-guard';
 import { OnboardingGuard } from '@/components/layout/onboarding-guard';
 import { BackgroundErrorGuard } from '@/components/layout/background-error-guard';
+import { Toaster } from "@/components/ui/toaster";
 
 /**
- * Providers: A unified client-side wrapper for the entire application context stack.
+ * Providers: The definitive client-side wrapper.
  * 
- * HYDRATION GATE: 
- * This component ensures that browser-heavy logic (Firebase, Dexie, Cloud Sync) 
- * NEVER runs during Server-Side Rendering (SSR). This prevents "Illegal invocation" 
- * and "window is not defined" errors during initial page load.
+ * HYDRATION GATE (CRITICAL): 
+ * To prevent "Illegal invocation" and native browser context loss, this component 
+ * returns null until it is fully mounted in the browser. This ensures that 
+ * Firebase, Dexie, and other browser APIs NEVER attempt to run on the server.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    // Only set mounted true in the browser, after initial paint.
     setIsMounted(true);
   }, []);
 
-  // During Server-Side Rendering or initial mounting, return a safe shell.
-  // This is the definitive fix for "Illegal invocation" occurring on page load.
+  // During SSR, render a stable loading shell with zero client-side logic.
   if (!isMounted) {
     return (
       <div className="min-h-screen bg-background">
@@ -36,6 +36,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Once in the browser, wrap everything in the safe error guard and provide contexts.
   return (
     <BackgroundErrorGuard>
       <FirebaseClientProvider>
@@ -49,6 +50,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           </DynamicThemeProvider>
         </SaaSProvider>
       </FirebaseClientProvider>
+      <Toaster />
     </BackgroundErrorGuard>
   );
 }
