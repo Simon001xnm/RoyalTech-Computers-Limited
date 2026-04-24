@@ -45,7 +45,10 @@ service cloud.firestore {
     /** Companies / Workspaces */
     match /companies/{companyId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() || (isSignedIn() && companyId == getUserData().tenantId);
+      // Allow creation if the user is signed in and is setting themselves as owner
+      allow create: if isSignedIn() && request.resource.data.createdBy.uid == request.auth.uid;
+      // Allow updates if the user is an admin or belongs to this company
+      allow update, delete: if isAdmin() || (isSignedIn() && companyId == getUserData().tenantId);
     }
 
     /** Customer CRM - Siloed by tenantId */
@@ -74,6 +77,18 @@ service cloud.firestore {
       allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
       allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isAdmin());
       allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
+    }
+
+    /** Platform Logs - Siloed by tenantId */
+    match /platform_logs/{logId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.tenantId == getUserData().tenantId);
+      allow create: if isSignedIn(); // Allow writing logs for audits
+    }
+    
+    /** Notifications - Multi-tenant */
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && (resource.data.tenantId == getUserData().tenantId || isAdmin());
+      allow create, update, delete: if isAdmin();
     }
     
     /** Default deny for everything else */

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -41,7 +40,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [location, setLocation] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [primaryColor, setPrimaryColor] = useState(COLOR_PRESETS[0].primary);
   const [secondaryColor, setSecondaryColor] = useState(COLOR_PRESETS[0].secondary);
@@ -57,11 +55,12 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                     id: user.uid,
                     name: user.displayName || 'System User',
                     email: user.email || '',
-                    role: 'user', // Default role
-                    createdAt: new Date().toISOString()
+                    role: 'user', 
+                    createdAt: new Date().toISOString(),
+                    tenantIds: []
                 });
             } catch (e) {
-                console.warn("Auto-provisioning failed", e);
+                console.warn("Auto-provisioning failed:", e);
             }
         };
         provisionProfile();
@@ -90,14 +89,13 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
       const companyId = crypto.randomUUID();
       const companyRef = doc(firestore, 'companies', companyId);
       
-      await setDoc(companyRef, {
+      const setupData = {
         id: companyId,
         tenantId: companyId,
         name,
         address,
         phone,
         email,
-        location,
         logoUrl,
         primaryColor,
         secondaryColor,
@@ -105,8 +103,12 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         status: 'active',
         createdAt: new Date().toISOString(),
         createdBy: { uid: user.uid, name: user.displayName || 'Owner' }
-      });
+      };
 
+      // 1. Create the company document first
+      await setDoc(companyRef, setupData);
+
+      // 2. Update user profile to link to this new workspace
       const currentIds = userProfile?.tenantIds || [];
       await updateDoc(userProfileRef, { 
         tenantId: companyId, 
@@ -130,6 +132,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  // Super admins skip onboarding
   if (userProfile?.role === 'super_admin') {
       return <>{children}</>;
   }
@@ -154,19 +157,19 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                   <div className="space-y-5">
                     <div className="space-y-2">
                       <Label htmlFor="name">Business Name</Label>
-                      <Input id="name" value={name} onChange={e => setName(e.target.value)} required />
+                      <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. RoyalTech Solutions" required />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Public Email</Label>
-                      <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+                      <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contact@company.com" required />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone</Label>
-                      <Input id="phone" value={phone} onChange={e => setPhone(e.target.value)} required />
+                      <Input id="phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+254..." required />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="address">Physical Address</Label>
-                      <Input id="address" value={address} onChange={e => setAddress(e.target.value)} required />
+                      <Input id="address" value={address} onChange={e => setAddress(e.target.value)} placeholder="Mombasa Road, Nairobi" required />
                     </div>
                   </div>
                   <div className="space-y-6">
@@ -177,19 +180,41 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                 <button
                                 key={preset.name}
                                 type="button"
-                                className={cn("w-9 h-9 rounded-full border-2", primaryColor === preset.primary ? "ring-2 ring-primary ring-offset-2 border-primary" : "border-transparent")}
+                                className={cn("w-9 h-9 rounded-full border-2 transition-all", primaryColor === preset.primary ? "ring-2 ring-primary ring-offset-2 border-primary scale-110" : "border-transparent hover:scale-105")}
                                 style={{ backgroundColor: preset.primary }}
                                 onClick={() => { setPrimaryColor(preset.primary); setSecondaryColor(preset.secondary); }}
                                 />
                             ))}
                         </div>
                     </div>
+                    <div className="space-y-2">
+                        <Label>Workspace Logo (Optional)</Label>
+                        <div 
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full aspect-video border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors overflow-hidden"
+                        >
+                            {logoUrl ? (
+                                <img src={logoUrl} className="w-full h-full object-contain" alt="Logo Preview" />
+                            ) : (
+                                <>
+                                    <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                                    <p className="text-xs text-muted-foreground">Click to upload logo</p>
+                                </>
+                            )}
+                        </div>
+                        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+                    </div>
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="bg-muted/30 py-6 border-t px-6">
                 <Button type="submit" className="w-full h-12 text-lg font-bold" disabled={isSaving || !name || !email}>
-                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Finish Setup'}
+                  {isSaving ? (
+                      <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Provisioning Nodes...</span>
+                      </div>
+                  ) : 'Finish Setup'}
                 </Button>
               </CardFooter>
             </form>
