@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/toaster";
 
 /**
  * Providers: The definitive client-side wrapper.
+ * Using strict hydration gating to prevent browser APIs from executing during SSR.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);

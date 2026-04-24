@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
 import type { Accessory } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -35,12 +36,8 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useUser } from '@/firebase/provider';
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
-
 
 export function AccessoriesClient() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -55,16 +52,17 @@ export function AccessoriesClient() {
     pageSize: 10,
   });
   
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const { tenant } = useSaaS();
+  const firestore = useFirestore();
 
-  // HARDENED QUERY: Strictly filter by tenantId
-  const accessories = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.accessories.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  // FIRESTORE QUERY: Strictly filter by tenantId
+  const accessoriesQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
 
-  const isLoading = isUserLoading || accessories === undefined;
+  const { data: accessories, isLoading } = useCollection(accessoriesQuery);
 
   const filteredAccessories = useMemo(() => {
     if (!accessories) return [];
@@ -91,8 +89,12 @@ export function AccessoriesClient() {
 
   const confirmDelete = async () => {
     if (accessoryToDelete) {
-      await db.accessories.delete(accessoryToDelete.id);
-      toast({ title: "Accessory Deleted" });
+      try {
+        await deleteDoc(doc(firestore, 'accessories', accessoryToDelete.id));
+        toast({ title: "Accessory Deleted" });
+      } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+      }
       setAccessoryToDelete(null);
     }
     setIsDeleteConfirmOpen(false);
@@ -103,22 +105,20 @@ export function AccessoriesClient() {
 
     const accessoryData = {
       ...data,
-      tenantId: tenant.id, // Ensure tenancy is stamped
+      tenantId: tenant.id,
       purchaseDate: data.purchaseDate.toISOString(), 
+      updatedAt: new Date().toISOString()
     };
 
     try {
         if (editingAccessory) {
-            await db.accessories.update(editingAccessory.id, { 
-                ...accessoryData, 
-                updatedAt: new Date().toISOString() 
-            });
+            await updateDoc(doc(firestore, 'accessories', editingAccessory.id), accessoryData);
             toast({ title: "Accessory Updated" });
         } else {
-            await db.accessories.add({
+            await addDoc(collection(firestore, 'accessories'), {
                 ...accessoryData,
-                id: crypto.randomUUID(),
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                createdBy: { uid: user.uid, name: user.displayName || user.email }
             });
             toast({ title: "Accessory Added" });
         }
@@ -153,7 +153,7 @@ export function AccessoriesClient() {
   return (
     <>
       <PageHeader
-          title="Accessory Inventory (Siloed)"
+          title="Accessory Inventory"
           description="Manage your accessory inventory belonging to this workspace."
           actionLabel="Add New Accessory"
           onAction={handleAddAccessory}
@@ -169,75 +169,73 @@ export function AccessoriesClient() {
         />
       </div>
       
-      {isLoading && <p>Loading accessories...</p>}
-
-      {!isLoading && filteredAccessories.length === 0 && searchTerm && (
-        <Alert variant="default" className="mb-4 bg-card">
-          <PackageSearch className="h-4 w-4" />
-          <AlertTitle>No Accessories Found</AlertTitle>
-          <AlertDescription>
-            Your search for "{searchTerm}" did not match any accessories in this workspace.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {!isLoading && accessories && accessories.length === 0 && !searchTerm && (
-         <Alert variant="default" className="mb-4 bg-card">
-          <PackageSearch className="h-4 w-4" />
-          <AlertTitle>No Accessories in Stock</AlertTitle>
-          <AlertDescription>
-            There are currently no accessories in this workspace's inventory.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!isLoading && filteredAccessories.length > 0 && (
-        <div className="rounded-lg border shadow-sm bg-card">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map(headerGroup => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
+      {isLoading ? <p className="animate-pulse">Loading accessories...</p> : (
+        <>
+          {filteredAccessories.length === 0 && searchTerm ? (
+            <Alert variant="default" className="mb-4 bg-card">
+              <PackageSearch className="h-4 w-4" />
+              <AlertTitle>No Results</AlertTitle>
+              <AlertDescription>
+                No matching accessories found in this workspace.
+              </AlertDescription>
+            </Alert>
+          ) : accessories?.length === 0 ? (
+            <Alert variant="default" className="mb-4 bg-card">
+              <PackageSearch className="h-4 w-4" />
+              <AlertTitle>No Stock</AlertTitle>
+              <AlertDescription>
+                Your accessory inventory is currently empty.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="rounded-lg border shadow-sm bg-card">
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map(headerGroup => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map(header => (
+                        <TableHead key={header.id}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
                   ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.length ? (
-                table.getRowModel().rows.map(row => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.length ? (
+                    table.getRowModel().rows.map(row => (
+                      <TableRow
+                        key={row.id}
+                        data-state={row.getIsSelected() && "selected"}
+                      >
+                        {row.getVisibleCells().map(cell => (
+                          <TableCell key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="h-24 text-center">
+                        No results found.
                       </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          <DataTablePagination table={table} />
-        </div>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              <DataTablePagination table={table} />
+            </div>
+          )}
+        </>
       )}
 
-      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingAccessory(null); } else { setIsFormOpen(true); }}}>
+      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingAccessory(null); }}}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingAccessory ? "Edit Accessory" : "Add New Accessory"}</DialogTitle>
@@ -255,7 +253,7 @@ export function AccessoriesClient() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the accessory: <strong>{accessoryToDelete?.name}</strong>?
+              Are you sure you want to delete <strong>{accessoryToDelete?.name}</strong>?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

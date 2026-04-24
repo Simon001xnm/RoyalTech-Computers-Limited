@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useUser, useAuth, useFirestore } from '@/firebase/provider';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarSeparator, SidebarTrigger } from '@/components/ui/sidebar';
@@ -10,12 +9,10 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, Settings, User as UserIcon, ShieldCheck } from 'lucide-react';
+import { LogOut, User as UserIcon, ShieldCheck } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import type { User as AppUser } from '@/types';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { Badge } from '../ui/badge';
 import { NotificationCenter } from './notification-center';
 import { cn } from "@/lib/utils";
@@ -26,33 +23,14 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     const { user } = useUser();
     const auth = useAuth();
     const firestore = useFirestore();
-    const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
 
-    // Get user role from local database for layout decisions
-    const userProfile = useLiveQuery(async () => user ? await db.users.get(user.uid) : null, [user]);
-
-    useEffect(() => {
-      if (user && firestore) {
-        setProfileAvatar(user.photoURL);
-        const userRef = doc(firestore, 'users', user.uid);
-        const unsub = onSnapshot(userRef, (doc) => {
-          if (doc.exists()) {
-            const userData = doc.data() as AppUser;
-            if (userData.avatarUrl) {
-              setProfileAvatar(userData.avatarUrl);
-            }
-          }
-        });
-        return () => unsub();
-      }
-    }, [user, firestore]);
+    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
 
     const handleLogout = () => {
         if (auth) auth.signOut();
     };
 
-    // If profile is still loading, wait to avoid layout shifting or incorrect permission blocks
-    const isProfileLoaded = userProfile !== undefined;
     const isSuperAdmin = userProfile?.role === 'super_admin';
 
   return (
@@ -71,7 +49,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
             </Link>
         </SidebarHeader>
         <SidebarContent>
-            {isProfileLoaded ? <SidebarNav /> : <div className="p-4 animate-pulse bg-muted rounded-md mx-2 h-20" />}
+            {!isProfileLoading ? <SidebarNav /> : <div className="p-4 animate-pulse bg-muted rounded-md mx-2 h-20" />}
         </SidebarContent>
         <SidebarSeparator />
         <SidebarFooter className="p-4">
@@ -105,7 +83,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10 border border-border shadow-sm">
-                      <AvatarImage src={profileAvatar || `https://picsum.photos/seed/${user.uid}/40/40`} alt="User" />
+                      <AvatarImage src={userProfile?.avatarUrl || user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`} alt="User" />
                       <AvatarFallback>{user.displayName?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
                     </Avatar>
                   </Button>
@@ -177,7 +155,5 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return <AuthenticatedLayout>{children}</AuthenticatedLayout>;
   }
 
-  // Fallback: if not logged in and not public path, useEffect will redirect.
-  // We return null to avoid flashing authenticated components.
   return null;
 }

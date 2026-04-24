@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -8,18 +9,20 @@ import { PlusCircle, DollarSign, TrendingDown, ChevronsRight } from 'lucide-reac
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useUser } from '@/firebase/provider';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { TransactionForm } from './transaction-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { Badge } from '@/components/ui/badge';
+import { useSaaS } from '@/components/saas/saas-provider';
 
 type Transaction = (Sale | Expense) & { transactionType: 'Sale' | 'Expense' };
 
 export function AccountingClient() {
   const { user, isUserLoading } = useUser();
+  const { tenant } = useSaaS();
+  const firestore = useFirestore();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
 
@@ -31,17 +34,33 @@ export function AccountingClient() {
     });
   }, []);
 
-  const sales = useLiveQuery(() => {
-    if (!dateRange) return [];
-    return db.sales.where('date').between(dateRange.start, dateRange.end, true, true).toArray();
-  }, [dateRange]);
+  // FIRESTORE QUERIES: Siloed by tenantId
+  const salesQuery = useMemoFirebase(() => {
+    if (!tenant || !dateRange) return null;
+    return query(
+      collection(firestore, 'sales_transactions'),
+      where('tenantId', '==', tenant.id),
+      where('date', '>=', dateRange.start),
+      where('date', '<=', dateRange.end),
+      orderBy('date', 'desc')
+    );
+  }, [firestore, tenant?.id, dateRange]);
 
-  const expenses = useLiveQuery(() => {
-    if (!dateRange) return [];
-    return db.expenses.where('date').between(dateRange.start, dateRange.end, true, true).toArray();
-  }, [dateRange]);
+  const expensesQuery = useMemoFirebase(() => {
+    if (!tenant || !dateRange) return null;
+    return query(
+      collection(firestore, 'expenses'),
+      where('tenantId', '==', tenant.id),
+      where('date', '>=', dateRange.start),
+      where('date', '<=', dateRange.end),
+      orderBy('date', 'desc')
+    );
+  }, [firestore, tenant?.id, dateRange]);
+
+  const { data: sales, isLoading: salesLoading } = useCollection(salesQuery);
+  const { data: expenses, isLoading: expensesLoading } = useCollection(expensesQuery);
   
-  const isLoading = isUserLoading || sales === undefined || expenses === undefined || !dateRange;
+  const isLoading = isUserLoading || salesLoading || expensesLoading || !dateRange;
 
   const { totalSales, totalCogs, totalExpenses, netProfit } = useMemo(() => {
     const totalSales = sales?.reduce((sum, s) => sum + s.amount, 0) ?? 0;
@@ -66,13 +85,13 @@ export function AccountingClient() {
   };
 
   if (isLoading) {
-    return <PageHeader title="Accounting" description="Loading financial data..." />;
+    return <PageHeader title="Accounting" description="Syncing cloud ledger..." />;
   }
 
   return (
     <>
       <PageHeader
-        title="Accounting (Local)"
+        title="Accounting (Cloud)"
         description={`Financial summary for ${format(new Date(), 'MMMM yyyy')}`}
         actionLabel="Record Transaction"
         onAction={() => setIsFormOpen(true)}
@@ -87,7 +106,7 @@ export function AccountingClient() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Recent Local Transactions</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Recent Transactions</CardTitle></CardHeader>
         <CardContent>
           <Table>
             <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Details</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
@@ -100,6 +119,11 @@ export function AccountingClient() {
                   <TableCell className="text-right">{formatCurrency(t.amount)}</TableCell>
                 </TableRow>
               ))}
+              {recentTransactions.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No records in this period.</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -107,7 +131,7 @@ export function AccountingClient() {
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-2xl">
-          <DialogHeader><DialogTitle>Record Local Transaction</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Record Cloud Transaction</DialogTitle></DialogHeader>
           <TransactionForm user={user} onFinished={() => setIsFormOpen(false)} />
         </DialogContent>
       </Dialog>

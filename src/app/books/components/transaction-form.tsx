@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,17 +8,19 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { db } from '@/db';
+import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
+import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { User } from 'firebase/auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
+import { useSaaS } from '@/components/saas/saas-provider';
+import { useState } from 'react';
 
 const saleSchema = z.object({
   date: z.date(),
@@ -41,6 +44,9 @@ interface TransactionFormProps {
 
 export function TransactionForm({ user, onFinished }: TransactionFormProps) {
   const { toast } = useToast();
+  const { tenant } = useSaaS();
+  const firestore = useFirestore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const saleForm = useForm<z.infer<typeof saleSchema>>({
     resolver: zodResolver(saleSchema),
@@ -53,23 +59,28 @@ export function TransactionForm({ user, onFinished }: TransactionFormProps) {
   });
 
   const handleSubmit = async (data: any, type: 'sales' | 'expenses') => {
-    if (!user) return;
+    if (!user || !tenant) return;
+    setIsSubmitting(true);
     
+    const collectionPath = type === 'sales' ? 'sales_transactions' : 'expenses';
+    const colRef = collection(firestore, collectionPath);
+
     const docData: any = {
       ...data,
-      id: crypto.randomUUID(),
+      tenantId: tenant.id,
       date: data.date.toISOString(),
       createdAt: new Date().toISOString(),
       createdBy: { uid: user.uid, name: user.displayName || user.email },
     };
 
     try {
-        if (type === 'sales') await db.sales.add(docData);
-        else await db.expenses.add(docData);
-        toast({ title: `Transaction Recorded Locally` });
+        addDocumentNonBlocking(colRef, docData);
+        toast({ title: `Transaction Recorded Successfully` });
         onFinished();
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -88,7 +99,9 @@ export function TransactionForm({ user, onFinished }: TransactionFormProps) {
             <FormField control={saleForm.control} name="paymentMethod" render={({ field }) => (
               <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Till">Till</SelectItem><SelectItem value="M-Pesa">M-Pesa</SelectItem><SelectItem value="Bank">Bank</SelectItem><SelectItem value="Paybill">Paybill</SelectItem><SelectItem value="Cash">Cash</SelectItem></SelectContent></Select></FormItem>
             )}/>
-            <Button type="submit">Record Sale</Button>
+            <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Record Sale'}
+            </Button>
           </form>
         </Form>
       </TabsContent>
@@ -101,7 +114,9 @@ export function TransactionForm({ user, onFinished }: TransactionFormProps) {
              <FormField control={expenseForm.control} name="category" render={({ field }) => (
                 <FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g., Rent, Salaries" {...field} /></FormControl><FormMessage /></FormItem>
              )}/>
-            <Button type="submit">Record Expense</Button>
+            <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Record Expense'}
+            </Button>
           </form>
         </Form>
       </TabsContent>

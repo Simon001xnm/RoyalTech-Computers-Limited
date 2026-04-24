@@ -2,9 +2,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useUser } from '@/firebase/provider';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy, updateDoc, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { 
     Bell, 
     BellRing, 
@@ -30,50 +29,56 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useSaaS } from '@/components/saas/saas-provider';
 
 /**
  * @fileOverview Notification Center (Recipient View)
- * Displays platform alerts sent from the Super Admin.
+ * Displays platform alerts sent from the Super Admin via Firestore.
  */
 export function NotificationCenter() {
   const { user } = useUser();
+  const { tenant } = useSaaS();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
-  // REACTIVE QUERY: Get notifications for this specific user or their tenant
-  const notifications = useLiveQuery(async () => {
-    if (!user) return [];
-    
-    const profile = await db.users.get(user.uid);
-    const tid = profile?.tenantId;
+  // REACTIVE QUERY: Get notifications for this specific user or their tenant from Firestore
+  const notificationsQuery = useMemoFirebase(() => {
+    if (!user || !tenant) return null;
+    return query(
+      collection(firestore, 'notifications'),
+      where('tenantId', '==', tenant.id),
+      orderBy('createdAt', 'desc')
+    );
+  }, [firestore, user?.uid, tenant?.id]);
 
-    // Fetch all notifications from the local store
-    const all = await db.notifications.toArray();
+  const { data: notifications, isLoading } = useCollection(notificationsQuery);
 
-    // Filter for messages targeted at this specific user OR their current tenant
-    return all
-        .filter(n => {
-            const isForMe = n.userId === user.uid;
-            const isForMyTenant = tid && n.tenantId === tid;
-            return isForMe || isForMyTenant;
-        })
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [user]);
-
-  const unreadCount = notifications?.filter(n => !n.read).length || 0;
+  const filteredNotifications = (notifications || []).filter(n => !n.userId || n.userId === user?.uid);
+  const unreadCount = filteredNotifications.filter(n => !n.read).length || 0;
 
   const handleMarkAsRead = async (id: string) => {
-    await db.notifications.update(id, { 
+    const docRef = doc(firestore, 'notifications', id);
+    updateDoc(docRef, { 
         read: true, 
         updatedAt: new Date().toISOString() 
     });
   };
 
   const handleClearAll = async () => {
-    if (!notifications) return;
-    const ids = notifications.map(n => n.id);
-    await db.notifications.bulkDelete(ids);
-    toast({ title: "Inbox Cleared" });
+    if (!notifications || notifications.length === 0) return;
+    
+    const batch = writeBatch(firestore);
+    notifications.forEach(n => {
+      batch.delete(doc(firestore, 'notifications', n.id));
+    });
+    
+    try {
+      await batch.commit();
+      toast({ title: "Inbox Cleared" });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Clear Failed' });
+    }
   };
 
   const getPriorityIcon = (priority: string) => {
@@ -108,7 +113,7 @@ export function NotificationCenter() {
                 <Bell className="h-5 w-5 text-primary" />
                 Platform Alerts
             </SheetTitle>
-            {notifications && notifications.length > 0 && (
+            {filteredNotifications.length > 0 && (
                 <Button variant="ghost" size="icon" onClick={handleClearAll} className="h-8 w-8 text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-4 w-4" />
                 </Button>
@@ -120,9 +125,11 @@ export function NotificationCenter() {
         </SheetHeader>
         
         <ScrollArea className="flex-grow">
-          {notifications && notifications.length > 0 ? (
+          {isLoading ? (
+             <div className="p-12 text-center text-muted-foreground animate-pulse">Syncing alerts...</div>
+          ) : filteredNotifications.length > 0 ? (
             <div className="divide-y divide-muted/40">
-                {notifications.map(notif => (
+                {filteredNotifications.map(notif => (
                     <div 
                         key={notif.id} 
                         className={cn(
@@ -141,7 +148,7 @@ export function NotificationCenter() {
                                         {notif.subject}
                                     </p>
                                     <span className="text-[10px] font-medium text-muted-foreground shrink-0">
-                                        {format(parseISO(notif.createdAt), 'MMM d, p')}
+                                        {notif.createdAt ? format(parseISO(notif.createdAt), 'MMM d, p') : 'Just now'}
                                     </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground leading-relaxed pt-1 line-clamp-3">
@@ -175,7 +182,7 @@ export function NotificationCenter() {
         
         <div className="p-4 border-t bg-muted/30 text-center">
             <p className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter opacity-50">
-                secured endpoint node &bull; realtime synchronization active
+                secured endpoint node &bull; realtime cloud sync active
             </p>
         </div>
       </SheetContent>

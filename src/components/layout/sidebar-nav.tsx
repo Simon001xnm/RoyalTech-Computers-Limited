@@ -9,25 +9,27 @@ import {
   SidebarMenuButton,
   SidebarMenuSkeleton,
 } from "@/components/ui/sidebar";
-import { useUser } from "@/firebase/provider";
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from 'firebase/firestore';
 import { getPermittedNavItems } from '@/lib/roles';
 import { useSaaS } from "@/components/saas/saas-provider";
 import { AlertTriangle } from "lucide-react";
 import { parseISO, differenceInDays } from "date-fns";
 import { useMemo } from "react";
+import type { User as AppUser } from '@/types';
 
 export function SidebarNav() {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
   const { tenant, plan, usage, isLegacyUser } = useSaaS();
+  const firestore = useFirestore();
 
-  // DEXIE: Fetch user details locally
-  const currentUser = useLiveQuery(
-    async () => user ? await db.users.get(user.uid) : null,
-    [user]
+  // Firestore: Fetch user details
+  const userProfileRef = useMemoFirebase(() => 
+    user ? doc(firestore, 'users', user.uid) : null, 
+    [firestore, user]
   );
+  const { data: currentUser, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
 
   const hasHealthIssue = useMemo(() => {
     if (!plan || isLegacyUser) return false;
@@ -43,7 +45,7 @@ export function SidebarNav() {
     return isHighUsage || isExpiringSoon;
   }, [plan, usage, isLegacyUser, tenant]);
 
-  if (isUserLoading) {
+  if (isUserLoading || isProfileLoading) {
     return (
         <SidebarMenu className="p-2">
             {Array.from({ length: 8 }).map((_, i) => <SidebarMenuSkeleton key={i} />)}
@@ -51,15 +53,7 @@ export function SidebarNav() {
     );
   }
 
-  if (!user) return null;
-
-  if (currentUser === undefined) {
-      return (
-        <SidebarMenu className="p-2">
-            {Array.from({ length: 8 }).map((_, i) => <SidebarMenuSkeleton key={i} />)}
-        </SidebarMenu>
-      );
-  }
+  if (!user || !currentUser) return null;
   
   const permittedNavItems = getPermittedNavItems(currentUser?.role, user.isAnonymous);
 

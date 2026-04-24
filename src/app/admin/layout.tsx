@@ -1,25 +1,21 @@
-
 'use client';
 
-import { useUser } from '@/firebase/provider';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isFeatureEnabled } from '@/lib/feature-flags';
-import { ShieldAlert, AlertTriangle, Lock } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ShieldAlert, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { doc } from 'firebase/firestore';
+import type { User as AppUser } from '@/types';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
-  
-  // Get user role from local database for strict role-based access control
-  const userProfile = useLiveQuery(async () => user ? await db.users.get(user.uid) : null, [user]);
+  const firestore = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile } = useDoc<AppUser>(userProfileRef);
 
   const isPanelEnabled = isFeatureEnabled('SUPER_ADMIN_PANEL');
-  
-  // STRICT SECURITY: Only a Super Admin (Platform Owner) can access this area.
-  // Standard 'admin' roles (Tenant/Shop Owners) are strictly locked out.
   const isSuperAdmin = userProfile?.role === 'super_admin';
 
   if (!isPanelEnabled) {

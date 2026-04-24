@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, updateDoc } from 'firebase/firestore';
-import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier, TenantUsage } from '@/types/saas';
+import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier } from '@/types/saas';
 import { startOfMonth, parseISO, addDays } from 'date-fns';
 import { Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,14 +32,14 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile } = useDoc(userRef);
 
-  // 2. Resolve Active Company Branding
+  // 2. Resolve Active Company
   const companyRef = useMemoFirebase(() => 
     userProfile?.tenantId ? doc(firestore, 'companies', userProfile.tenantId) : null,
     [firestore, userProfile?.tenantId]
   );
   const { data: activeCompany } = useDoc(companyRef);
 
-  // 3. Resolve Available Portfolio
+  // 3. Resolve Portfolio
   const portfolioQuery = useMemoFirebase(() => {
     if (!userProfile?.tenantIds?.length) return null;
     return query(collection(firestore, 'companies'), where('id', 'in', userProfile.tenantIds));
@@ -47,7 +48,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
 
   // 4. Usage Metrics
   const assetQuery = useMemoFirebase(() => 
-    userProfile?.tenantId ? query(collection(firestore, 'laptop_instances'), where('tenantId', '==', userProfile.tenantId)) : null,
+    userProfile?.tenantId ? query(collection(firestore, 'assets'), where('tenantId', '==', userProfile.tenantId)) : null,
     [firestore, userProfile?.tenantId]
   );
   const { data: assets } = useCollection(assetQuery);
@@ -79,7 +80,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
             tier: (activeCompany.plan as SubscriptionTier) || 'legacy_pro',
             status: (activeCompany.status as any) || 'active',
             createdAt: activeCompany.createdAt,
-            expiresAt: addDays(parseISO(activeCompany.createdAt), 365).toISOString(),
+            expiresAt: activeCompany.createdAt ? addDays(parseISO(activeCompany.createdAt), 365).toISOString() : undefined,
             features: ['all']
         };
         setTenant(t);

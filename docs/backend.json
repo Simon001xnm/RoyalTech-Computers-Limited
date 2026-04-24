@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Company": {
@@ -16,7 +17,8 @@
         "secondaryColor": { "type": "string" },
         "plan": { "type": "string" },
         "status": { "type": "string" },
-        "createdAt": { "type": "string" }
+        "createdAt": { "type": "string" },
+        "expiresAt": { "type": "string" }
       }
     },
     "Asset": {
@@ -32,7 +34,8 @@
         "quantity": { "type": "number" },
         "purchasePrice": { "type": "number" },
         "leasePrice": { "type": "number" },
-        "createdAt": { "type": "string" }
+        "createdAt": { "type": "string" },
+        "purchaseDate": { "type": "string" }
       }
     },
     "Customer": {
@@ -63,6 +66,36 @@
         "paymentMethod": { "type": "string" },
         "status": { "type": "string" }
       }
+    },
+    "Lease": {
+      "title": "Lease",
+      "description": "Hardware lease agreement.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "assetId": { "type": "string" },
+        "laptopModel": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "status": { "type": "string" },
+        "paymentStatus": { "type": "string" }
+      }
+    },
+    "Ticket": {
+      "title": "Ticket",
+      "description": "Helpdesk support case.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "subject": { "type": "string" },
+        "customerId": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" }
+      }
     }
   },
   "auth": {
@@ -84,6 +117,26 @@
     "/sales_transactions/{saleId}": {
       "schema": "#/backend/entities/Sale",
       "description": "POS transactions siloed by tenantId."
+    },
+    "/leases/{leaseId}": {
+      "schema": "#/backend/entities/Lease",
+      "description": "Lease agreements siloed by tenantId."
+    },
+    "/tickets/{ticketId}": {
+      "schema": "#/backend/entities/Ticket",
+      "description": "Support tickets siloed by tenantId."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "title": "User",
+        "type": "object",
+        "properties": {
+          "tenantId": { "type": "string" },
+          "tenantIds": { "type": "array", "items": { "type": "string" } },
+          "role": { "type": "string" }
+        }
+      },
+      "description": "User profiles with tenancy link."
     }
   }
 }

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 
 /**
@@ -38,16 +38,18 @@ function hexToHsl(hex: string): string {
 }
 
 /**
- * Injects CSS variables for branding colors based on the active tenant's settings.
+ * Injects CSS variables for branding colors based on the active tenant's settings stored in Firestore.
  */
 export function DynamicThemeProvider({ children }: { children: React.ReactNode }) {
   const { tenant } = useSaaS();
+  const firestore = useFirestore();
 
-  // Fetch the active tenant's company branding info
-  const company = useLiveQuery(
-    async () => tenant?.id ? await db.companies.get(tenant.id) : null,
-    [tenant?.id]
+  // Fetch the active tenant's company branding info from Firestore
+  const companyRef = useMemoFirebase(() => 
+    tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
+    [firestore, tenant?.id]
   );
+  const { data: company } = useDoc(companyRef);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -59,7 +61,6 @@ export function DynamicThemeProvider({ children }: { children: React.ReactNode }
       root.style.setProperty('--ring', primaryHsl);
       root.style.setProperty('--sidebar-primary', primaryHsl);
     } else {
-      // Revert to default if no custom color (Navy Executive)
       root.style.setProperty('--primary', '220 40% 30%');
       root.style.setProperty('--accent', '220 40% 30%');
       root.style.setProperty('--ring', '220 40% 30%');

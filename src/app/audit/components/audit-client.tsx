@@ -5,8 +5,8 @@ import { useState, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -16,30 +16,36 @@ import { History, Search, Filter, ShieldCheck, AlertCircle, Info, DollarSign } f
 
 export function AuditClient() {
   const { tenant } = useSaaS();
+  const firestore = useFirestore();
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Siloed Logs: Strictly filtered by tenantId
-  const logs = useLiveQuery(async () => {
-    if (!tenant) return [];
+  // Siloed Logs: Strictly filtered by tenantId from Firestore
+  const logsQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
     
-    let collection = db.platformLogs
-        .where('tenantId').equals(tenant.id)
-        .reverse()
-        .sortBy('timestamp');
+    let q = query(
+      collection(firestore, 'platform_logs'),
+      where('tenantId', '==', tenant.id),
+      orderBy('timestamp', 'desc'),
+      limit(200)
+    );
 
-    const result = await collection;
-    
-    return result.filter(log => {
+    return q;
+  }, [firestore, tenant?.id]);
+
+  const { data: rawLogs, isLoading } = useCollection(logsQuery);
+
+  const logs = useMemo(() => {
+    if (!rawLogs) return [];
+    return rawLogs.filter(log => {
         const matchesLevel = levelFilter === 'all' || log.level === levelFilter;
         const matchesSearch = !searchTerm || 
             log.event.toLowerCase().includes(searchTerm.toLowerCase()) ||
             log.module.toLowerCase().includes(searchTerm.toLowerCase());
         return matchesLevel && matchesSearch;
-    }).slice(0, 200); // Only show most recent 200 for performance
-  }, [tenant?.id, levelFilter, searchTerm]);
-
-  const isLoading = logs === undefined;
+    });
+  }, [rawLogs, levelFilter, searchTerm]);
 
   const getLogIcon = (level: string) => {
     switch (level) {
@@ -61,7 +67,7 @@ export function AuditClient() {
     <div className="space-y-6">
       <PageHeader 
         title="Internal Audit Trail" 
-        description="Private activity logs and business event history for this workspace."
+        description="Private activity logs and business event history synced from the cloud."
       />
 
       <div className="grid gap-6 md:grid-cols-[1fr_300px]">
@@ -101,7 +107,7 @@ export function AuditClient() {
                 <CardContent className="p-0">
                     <ScrollArea className="h-[600px]">
                         {isLoading ? (
-                            <div className="p-8 text-center text-muted-foreground animate-pulse">Syncing local logs...</div>
+                            <div className="p-8 text-center text-muted-foreground animate-pulse">Syncing cloud logs...</div>
                         ) : logs.length === 0 ? (
                             <div className="p-20 text-center space-y-3">
                                 <div className="bg-muted p-4 rounded-full w-fit mx-auto">
@@ -125,7 +131,7 @@ export function AuditClient() {
                                                     </div>
                                                     <p className="text-sm font-bold text-foreground leading-tight">{log.event}</p>
                                                     <p className="text-[10px] text-muted-foreground">
-                                                        {format(parseISO(log.timestamp), 'PPP p')}
+                                                        {log.timestamp ? format(parseISO(log.timestamp), 'PPP p') : 'Recently'}
                                                     </p>
                                                 </div>
                                             </div>
@@ -151,12 +157,12 @@ export function AuditClient() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <p className="text-xs text-primary/80 leading-relaxed italic">
-                        "Audit logs are immutable and cryptographically bound to your business workspace. These records ensure internal accountability and are synced across your team's devices."
+                        "Audit logs are immutable and cryptographically bound to your business workspace. These records ensure internal accountability and are synced across your team's cloud session."
                     </p>
                     <div className="p-3 bg-background rounded-lg border border-primary/10 space-y-2">
                         <div className="flex items-center justify-between text-[10px] font-bold">
                             <span className="text-muted-foreground">Log Retention</span>
-                            <span className="text-green-600">UNLIMITED</span>
+                            <span className="text-green-600">CLOUD PERMANENT</span>
                         </div>
                         <div className="flex items-center justify-between text-[10px] font-bold">
                             <span className="text-muted-foreground">Silo Isolation</span>
@@ -174,7 +180,7 @@ export function AuditClient() {
                     <div className="space-y-3">
                          <div className="flex items-center gap-3">
                             <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                            <span className="text-xs font-medium">Database Node Active</span>
+                            <span className="text-xs font-medium">Cloud Node Active</span>
                          </div>
                          <div className="flex items-center gap-3">
                             <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />

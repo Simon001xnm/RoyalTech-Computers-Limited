@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -40,7 +41,7 @@ export default function DashboardPage() {
   // Firestore Isolated Queries
   const assetsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'laptop_instances'), where('tenantId', '==', tenant.id));
+    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
   const { data: assets } = useCollection(assetsQuery);
 
@@ -218,7 +219,7 @@ export default function DashboardPage() {
               </CardTitle>
               <CardDescription>Visual trend of sales across the last 7 business days.</CardDescription>
             </div>
-            <Badge variant="outline" className="h-fit">Live Tracking</Badge>
+            <Badge variant="outline" className="h-fit">Cloud Sync Active</Badge>
           </CardHeader>
           <CardContent className="p-0 pt-4">
             <div className="h-[300px] w-full px-2">
@@ -261,7 +262,7 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <History className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Recent Activity</CardTitle>
+              <CardTitle className="text-lg">Recent Transactions</CardTitle>
             </div>
             <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-bold text-primary">
                 <Link href="/audit">View All</Link>
@@ -274,7 +275,7 @@ export default function DashboardPage() {
                   <div key={sale.id} className="flex items-center justify-between border-b border-muted/30 pb-3 last:border-0 last:pb-0">
                     <div className="space-y-1">
                       <p className="text-sm font-semibold leading-none">{sale.customerName || 'Walk-in'}</p>
-                      <p className="text-xs text-muted-foreground">{format(parseISO(sale.date), 'MMM d, h:mm a')}</p>
+                      <p className="text-xs text-muted-foreground">{sale.date ? format(parseISO(sale.date), 'MMM d, h:mm a') : 'Recently'}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold">{formatCurrency(sale.amount)}</p>
@@ -284,8 +285,8 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center h-full">
-                <Badge variant="outline" className="mb-2">Quiet</Badge>
-                <p className="text-xs text-muted-foreground">No recent activity detected.</p>
+                <Badge variant="outline" className="mb-2">No Sales</Badge>
+                <p className="text-xs text-muted-foreground">No recent cloud transactions detected.</p>
               </div>
             )}
           </CardContent>

@@ -5,8 +5,7 @@ service cloud.firestore {
     /**
      * CORE SECURITY PHILOSOPHY
      * This ruleset enforces strict tenancy isolation (Layer 2 SaaS).
-     * Users can ONLY access documents where document.tenantId matches their auth.token.tenantId.
-     * Platform Administrators (Super Admins) bypass tenancy checks for global support.
+     * Users can ONLY access documents where document.tenantId matches their active tenantId in their profile.
      */
 
     // --- Core Helper Functions ---
@@ -15,14 +14,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     /** Global Platform Admin check */
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      return isSignedIn() && getUserData().role == 'super_admin';
     }
 
     /** Checks if the request is correctly siloed to the user's active tenant */
     function isTenantOwner(data) {
-      return isSignedIn() && (request.auth.token.tenantId == data.tenantId || isAdmin());
+      return isSignedIn() && (getUserData().tenantId == data.tenantId || isAdmin());
     }
 
     /** Verifies the user's own profile matching their Auth UID */
@@ -39,45 +42,43 @@ service cloud.firestore {
       allow write: if isSelf(userId) || isAdmin();
     }
 
+    /** Companies / Workspaces */
+    match /companies/{companyId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || (isSignedIn() && companyId == getUserData().tenantId);
+    }
+
     /** Customer CRM - Siloed by tenantId */
     match /customers/{customerId} {
       allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
-      allow create: if isSignedIn() && (request.resource.data.tenantId == request.auth.token.tenantId || isAdmin());
+      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isAdmin());
       allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
     }
 
     /** Inventory Assets - Siloed by tenantId */
-    match /laptop_instances/{laptopInstanceId} {
+    match /assets/{assetId} {
       allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
-      allow create: if isSignedIn() && (request.resource.data.tenantId == request.auth.token.tenantId || isAdmin());
-      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
-    }
-
-    /** Lease Agreements - Siloed by tenantId */
-    match /lease_agreements/{leaseAgreementId} {
-      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
-      allow create: if isSignedIn() && (request.resource.data.tenantId == request.auth.token.tenantId || isAdmin());
-      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
-    }
-
-    /** Support Tickets / Repairs - Siloed by tenantId */
-    match /repairs/{repairId} {
-      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
-      allow create: if isSignedIn() && (request.resource.data.tenantId == request.auth.token.tenantId || isAdmin());
+      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isAdmin());
       allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
     }
 
     /** Sales Transactions - Siloed by tenantId */
     match /sales_transactions/{salesTransactionId} {
       allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
-      allow create: if isSignedIn() && (request.resource.data.tenantId == request.auth.token.tenantId || isAdmin());
-      allow update, delete: if isAdmin(); // Transactions are immutable for standard users
+      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isAdmin());
+      allow update, delete: if isAdmin();
     }
 
-    /** Platform Audit Logs - Admin Only */
-    match /platform_logs/{logId} {
-      allow read, list: if isAdmin();
-      allow create: if isSignedIn();
+    /** Accessories - Siloed by tenantId */
+    match /accessories/{accessoryId} {
+      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
+      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isAdmin());
+      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
+    }
+    
+    /** Default deny for everything else */
+    match /{document=**} {
+      allow read, write: if isAdmin();
     }
   }
 }
