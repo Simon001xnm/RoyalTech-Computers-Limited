@@ -8,8 +8,8 @@ import React, { useEffect } from 'react';
  * Intercepts common "Failed to fetch" and "ChunkLoadError" messages that frequently 
  * trigger the Next.js development error overlay during background sync (Dexie Cloud/Firebase).
  * 
- * This version uses ONLY safe event listeners and avoids re-assigning native 
- * console methods to prevent "Illegal invocation" errors once and for all.
+ * This implementation uses a context-safe console proxy to avoid "Illegal invocation"
+ * errors by preserving the native console context.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -41,8 +41,35 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
+    // --- CONTEXT-SAFE CONSOLE INTERCEPTION ---
+    // We capture the original console methods to prevent infinite loops and maintain context
+    const originalConsole = window.console;
+    const originalError = originalConsole.error;
+    const originalWarn = originalConsole.warn;
+
+    // Safer console proxy that preserves 'this' context
+    const createSafeProxy = (originalMethod: typeof originalError) => {
+        return function(this: any, ...args: any[]) {
+            // Check if any argument looks like a suppressed error
+            const shouldSuppress = args.some(arg => isSuppressed(arg));
+            
+            if (shouldSuppress) {
+                // Silently ignore suppressed errors to prevent Next.js from showing the overlay
+                return;
+            }
+
+            // For all other logs, call the original method with the correct context
+            // We use originalConsole as the fallback context to prevent "Illegal invocation"
+            return originalMethod.apply(originalConsole, args);
+        };
+    };
+
+    // Apply the proxies
+    originalConsole.error = createSafeProxy(originalError);
+    originalConsole.warn = createSafeProxy(originalWarn);
+
+    // --- EVENT-BASED SUPPRESSION ---
     // 1. UNHANDLED REJECTION INTERCEPTION (Promises)
-    // Most background sync failures are unhandled promise rejections.
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (isSuppressed(event.reason)) {
         // preventDefault stops the Next.js development overlay from appearing
@@ -59,13 +86,17 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
-    // Register listeners on the window using capture phase
+    // Register listeners using capture phase
     window.addEventListener('unhandledrejection', handleRejection, true);
     window.addEventListener('error', handleError, true);
 
     return () => {
       window.removeEventListener('unhandledrejection', handleRejection, true);
       window.removeEventListener('error', handleError, true);
+      
+      // Restore original console methods on cleanup
+      originalConsole.error = originalError;
+      originalConsole.warn = originalWarn;
     };
   }, []);
 
