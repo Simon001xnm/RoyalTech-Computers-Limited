@@ -24,7 +24,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   
-  // 1. Resolve User Profile from Firestore
+  // 1. Resolve User Profile from Firestore (Single source of truth)
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userRef);
 
@@ -35,14 +35,14 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   );
   const { data: activeCompany, isLoading: isCompanyLoading } = useDoc(companyRef);
 
-  // 3. Resolve Portfolio
+  // 3. Resolve Portfolio (Workspaces user can access)
   const portfolioQuery = useMemoFirebase(() => {
     if (!userProfile?.tenantIds?.length) return null;
     return query(collection(firestore, 'companies'), where('id', 'in', userProfile.tenantIds));
   }, [firestore, userProfile?.tenantIds]);
   const { data: availableWorkspaces = [] } = useCollection(portfolioQuery);
 
-  // 4. Usage Metrics (Concurrent with profile)
+  // 4. Usage Metrics for Dashboard/Limits
   const assetQuery = useMemoFirebase(() => 
     userProfile?.tenantId ? query(collection(firestore, 'assets'), where('tenantId', '==', userProfile.tenantId)) : null,
     [firestore, userProfile?.tenantId]
@@ -65,7 +65,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     salesThisMonth: monthlySales?.length || 0
   }), [assets, monthlySales]);
 
-  // Derive Tenant and Plan
+  // Derive Tenant and Plan State
   const tenantData = useMemo<Tenant | null>(() => {
     if (!activeCompany) return null;
     return {
@@ -105,17 +105,13 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     switchTenant
   }), [tenantData, activePlan, usageStats, isUserLoading, isProfileLoading, isCompanyLoading, availableWorkspaces]);
 
-  // FAST-PATH for Super Admin or Un-onboarded
-  const isSuperAdmin = userProfile?.role === 'super_admin';
-  const needsOnboarding = userProfile && !userProfile.tenantId && !isSuperAdmin;
-
   if (user && tenantData?.status === 'suspended') {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-background p-6">
             <div className="max-w-md text-center space-y-6">
                 <Lock className="h-12 w-12 text-destructive mx-auto" />
                 <h1 className="text-3xl font-black uppercase">Workspace Locked</h1>
-                <p className="text-muted-foreground">Access suspended by provider.</p>
+                <p className="text-muted-foreground">Access suspended by platform provider.</p>
                 <Button variant="outline" className="w-full" onClick={() => window.location.reload()}>Check Status</Button>
             </div>
         </div>

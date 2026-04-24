@@ -12,11 +12,9 @@ import {
   Users, 
   TrendingUp,
   History,
-  AlertTriangle,
-  Zap,
-  ArrowRight
+  Zap
 } from 'lucide-react';
-import { format, startOfDay, subDays, parseISO, differenceInDays } from 'date-fns';
+import { format, startOfDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { 
   Area, 
@@ -28,17 +26,18 @@ import {
   CartesianGrid 
 } from 'recharts';
 import { useSaaS } from '@/components/saas/saas-provider';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 
+/**
+ * @fileOverview Integrated Executive Dashboard
+ * Powered by Firestore Real-time Collections.
+ */
 export default function DashboardPage() {
   const { user } = useUser();
-  const { tenant, plan, usage, isLegacyUser, isLoading: isSaaSLoading } = useSaaS();
+  const { tenant, isLoading: isSaaSLoading } = useSaaS();
   const firestore = useFirestore();
 
-  // Firestore Isolated Queries - Loaded Concurrently
+  // Firestore Isolated Queries
   const assetsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
@@ -70,30 +69,9 @@ export default function DashboardPage() {
     recentSalesCount: sales?.filter(s => {
         const saleDate = new Date(s.date);
         const today = new Date();
-        return saleDate.getMonth() === today.getMonth() && saleDate.getFullYear() === today.getFullYear();
+        return saleDate.getMonth() === today.getMonth();
     }).length || 0
   }), [assets, accessories, customers, sales]);
-
-  const healthAlerts = useMemo(() => {
-    if (!plan || isLegacyUser) return [];
-    const alerts = [];
-    
-    if (usage.assets >= plan.maxAssets * 0.8) {
-        alerts.push({ type: 'usage', title: 'Asset Capacity Nearly Full', description: `You have used ${usage.assets} of your ${plan.maxAssets} allowed asset slots.` });
-    }
-    if (usage.salesThisMonth >= plan.maxSalesPerMonth * 0.8) {
-        alerts.push({ type: 'usage', title: 'Sales Limit Approaching', description: `You are close to your monthly limit of ${plan.maxSalesPerMonth} transactions.` });
-    }
-
-    if (tenant?.expiresAt) {
-        const daysLeft = differenceInDays(parseISO(tenant.expiresAt), new Date());
-        if (daysLeft <= 7 && daysLeft >= 0) {
-            alerts.push({ type: 'billing', title: 'Subscription Renewal Soon', description: `Your workspace subscription expires in ${daysLeft} days.` });
-        }
-    }
-
-    return alerts;
-  }, [plan, usage, isLegacyUser, tenant]);
 
   const chartData = useMemo(() => {
     if (!sales) return [];
@@ -117,11 +95,6 @@ export default function DashboardPage() {
     return last7Days;
   }, [sales]);
 
-  const sortedRecentSales = useMemo(() => {
-      if (!sales) return [];
-      return [...sales].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [sales]);
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
       style: "currency",
@@ -130,168 +103,78 @@ export default function DashboardPage() {
     }).format(amount);
   };
 
-  const showMetricsLoading = isSaaSLoading || (!!tenant && (assetsLoading || accessoriesLoading || customersLoading || salesLoading));
+  const showMetricsLoading = isSaaSLoading || assetsLoading || accessoriesLoading || customersLoading || salesLoading;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex items-center justify-between">
-        <PageHeader 
-          title="Executive Command" 
-          description={tenant ? `Welcome, ${user?.displayName || 'Administrator'}. Real-time performance for ${tenant.name}.` : "Platform Command Center Active."} 
-        />
-      </div>
-
-      {healthAlerts.length > 0 && (
-          <div className="space-y-4">
-              {healthAlerts.map((alert, idx) => (
-                  <Alert key={idx} variant={alert.type === 'usage' ? 'default' : 'destructive'} className="bg-gradient-to-r from-background to-muted/50 border-primary/20 shadow-sm overflow-hidden">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-primary/10 p-2 rounded-full">
-                                <AlertTriangle className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <AlertTitle className="font-black text-sm uppercase tracking-tight">{alert.title}</AlertTitle>
-                                <AlertDescription className="text-xs text-muted-foreground">{alert.description}</AlertDescription>
-                            </div>
-                        </div>
-                        <Button asChild size="sm" className="font-bold gap-2">
-                            <Link href="/profile">
-                                <Zap className="h-3 w-3 fill-white" />
-                                Upgrade Workspace
-                                <ArrowRight className="h-3 w-3" />
-                            </Link>
-                        </Button>
-                    </div>
-                  </Alert>
-              ))}
-          </div>
-      )}
+      <PageHeader 
+        title="Executive Command" 
+        description={tenant ? `Real-time performance for ${tenant.name}.` : "Synchronizing identities..."} 
+      />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {showMetricsLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i} className="h-32 shadow-sm border-muted/40">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <Skeleton className="h-3 w-20" />
-                        <Skeleton className="h-8 w-8 rounded-lg" />
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                        <Skeleton className="h-8 w-24" />
-                        <Skeleton className="h-3 w-32" />
-                    </CardContent>
-                </Card>
+                <Card key={i} className="h-32 shadow-sm border-muted/40"><CardContent className="pt-6 space-y-4"><Skeleton className="h-3 w-20" /><Skeleton className="h-8 w-32" /></CardContent></Card>
             ))
         ) : (
             <>
-                <SummaryCard title="Stock Availability" value={stats.availableAssets} icon={Package} description="Assets ready for distribution" />
-                <SummaryCard title="Components" value={stats.accessoryItems} icon={Component} description="Total units in inventory" />
-                <SummaryCard title="Client Base" value={stats.totalClients} icon={Users} description="Active accounts in CRM" />
-                <SummaryCard title="Monthly Sales" value={stats.recentSalesCount} icon={TrendingUp} description="Total transactions this month" />
+                <SummaryCard title="Stock Available" value={stats.availableAssets} icon={Package} description="Active hardware assets" />
+                <SummaryCard title="Accessory Stock" value={stats.accessoryItems} icon={Component} description="Total units in node" />
+                <SummaryCard title="Total Clients" value={stats.totalClients} icon={Users} description="Registered in CRM" />
+                <SummaryCard title="Monthly Sales" value={stats.recentSalesCount} icon={TrendingUp} description="Transactions this month" />
             </>
         )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2 shadow-sm border-muted/40 overflow-hidden">
+        <Card className="lg:col-span-2 shadow-sm border-muted/40">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                Revenue Analytics
-              </CardTitle>
-              <CardDescription>Visual trend of sales across the last 7 business days.</CardDescription>
+              <CardTitle className="text-lg font-bold flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> Revenue Stream</CardTitle>
+              <CardDescription>Aggregate performance across the last 7 business days.</CardDescription>
             </div>
-            <Badge variant="outline" className="h-fit">Cloud Sync Active</Badge>
+            <Badge variant="outline">Cloud Node Active</Badge>
           </CardHeader>
-          <CardContent className="p-0 pt-4">
-            <div className="h-[300px] w-full px-2">
+          <CardContent className="h-[300px] w-full pt-4">
               {salesLoading ? (
-                  <div className="h-full w-full flex items-center justify-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Ingesting Sales Stream...</p>
-                      </div>
-                  </div>
+                  <div className="h-full w-full flex items-center justify-center opacity-30 animate-pulse"><Zap className="h-8 w-8" /></div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>
-                    <defs>
-                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                        </linearGradient>
-                    </defs>
+                    <defs><linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/><stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/></linearGradient></defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
-                    <XAxis 
-                        dataKey="date" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                        dy={10}
-                    />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} dy={10} />
                     <YAxis hide />
-                    <Tooltip 
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                        formatter={(value: number) => [formatCurrency(value), 'Revenue']}
-                    />
-                    <Area 
-                        type="monotone" 
-                        dataKey="revenue" 
-                        stroke="hsl(var(--primary))" 
-                        strokeWidth={3}
-                        fillOpacity={1} 
-                        fill="url(#colorRev)" 
-                    />
+                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} formatter={(value: number) => [formatCurrency(value), 'Revenue']} />
+                    <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
                     </AreaChart>
                 </ResponsiveContainer>
               )}
-            </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-muted/40 flex flex-col">
+        <Card className="shadow-sm border-muted/40">
           <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <History className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Recent Transactions</CardTitle>
-            </div>
-            <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-bold text-primary">
-                <Link href="/audit">View All</Link>
-            </Button>
+            <div className="flex items-center gap-2"><History className="h-5 w-5 text-primary" /><CardTitle className="text-lg">Recent Sales</CardTitle></div>
           </CardHeader>
-          <CardContent className="flex-grow max-h-[320px] overflow-auto">
+          <CardContent className="max-h-[320px] overflow-auto">
             {salesLoading ? (
-                <div className="space-y-4">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="flex items-center justify-between border-b border-muted/30 pb-3">
-                            <div className="space-y-2">
-                                <Skeleton className="h-4 w-24" />
-                                <Skeleton className="h-3 w-16" />
-                            </div>
-                            <Skeleton className="h-4 w-12" />
-                        </div>
-                    ))}
-                </div>
-            ) : sortedRecentSales && sortedRecentSales.length > 0 ? (
+                <div className="space-y-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+            ) : sales && sales.length > 0 ? (
               <div className="space-y-4">
-                {sortedRecentSales.slice(0, 10).map(sale => (
+                {[...sales].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10).map(sale => (
                   <div key={sale.id} className="flex items-center justify-between border-b border-muted/30 pb-3 last:border-0 last:pb-0">
                     <div className="space-y-1">
-                      <p className="text-sm font-semibold leading-none">{sale.customerName || 'Walk-in'}</p>
-                      <p className="text-xs text-muted-foreground">{sale.date ? format(parseISO(sale.date), 'MMM d, h:mm a') : 'Recently'}</p>
+                      <p className="text-sm font-semibold">{sale.customerName || 'Walk-in'}</p>
+                      <p className="text-xs text-muted-foreground">{format(parseISO(sale.date), 'MMM d, h:mm a')}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold">{formatCurrency(sale.amount)}</p>
-                    </div>
+                    <p className="text-sm font-black">{formatCurrency(sale.amount)}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center h-full">
-                <Badge variant="outline" className="mb-2">No Sales</Badge>
-                <p className="text-xs text-muted-foreground">No recent cloud transactions detected.</p>
-              </div>
+              <div className="py-20 text-center text-muted-foreground italic text-xs">No cloud transactions detected.</div>
             )}
           </CardContent>
         </Card>

@@ -4,11 +4,9 @@ service cloud.firestore {
 
     /**
      * CORE SECURITY PHILOSOPHY
-     * This ruleset enforces strict tenancy isolation (Layer 2 SaaS).
-     * Users can ONLY access documents where document.tenantId matches their active tenantId in their profile.
+     * Strict tenancy isolation. Users can ONLY access documents where 
+     * document.tenantId matches their profile tenantId.
      */
-
-    // --- Core Helper Functions ---
 
     function isSignedIn() {
       return request.auth != null;
@@ -18,82 +16,96 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    /** Global Platform Admin check */
     function isAdmin() {
+      return isSignedIn() && (getUserData().role == 'admin' || getUserData().role == 'super_admin');
+    }
+
+    function isSuperAdmin() {
       return isSignedIn() && getUserData().role == 'super_admin';
     }
 
-    /** Checks if the request is correctly siloed to the user's active tenant */
     function isTenantOwner(data) {
-      return isSignedIn() && (getUserData().tenantId == data.tenantId || isAdmin());
-    }
-
-    /** Verifies the user's own profile matching their Auth UID */
-    function isSelf(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return isSignedIn() && (getUserData().tenantId == data.tenantId || isSuperAdmin());
     }
 
     // --- Collection Rules ---
 
-    /** System User Profiles */
     match /users/{userId} {
       allow get: if isSignedIn();
-      allow list: if isAdmin();
-      allow write: if isSelf(userId) || isAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if isSignedIn(); // Allow initial profile creation
+      allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+      allow delete: if isSuperAdmin();
     }
 
-    /** Companies / Workspaces */
     match /companies/{companyId} {
-      allow read: if isSignedIn();
-      // Allow creation if the user is signed in and is setting themselves as owner
-      allow create: if isSignedIn() && request.resource.data.createdBy.uid == request.auth.uid;
-      // Allow updates if the user is an admin or belongs to this company
-      allow update, delete: if isAdmin() || (isSignedIn() && companyId == getUserData().tenantId);
+      // Allow read if user belongs to this company
+      allow read: if isSignedIn() && (getUserData().tenantId == companyId || isSuperAdmin());
+      // CRITICAL FIX: Allow any signed-in user to create their first company
+      allow create: if isSignedIn(); 
+      allow update, delete: if isSignedIn() && (getUserData().tenantId == companyId || isSuperAdmin());
     }
 
-    /** Customer CRM - Siloed by tenantId */
-    match /customers/{customerId} {
-      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
-      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isAdmin());
-      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
-    }
-
-    /** Inventory Assets - Siloed by tenantId */
     match /assets/{assetId} {
-      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
-      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isAdmin());
-      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
+      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isSuperAdmin());
+      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
     }
 
-    /** Sales Transactions - Siloed by tenantId */
-    match /sales_transactions/{salesTransactionId} {
-      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
-      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isAdmin());
-      allow update, delete: if isAdmin();
-    }
-
-    /** Accessories - Siloed by tenantId */
     match /accessories/{accessoryId} {
-      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
-      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isAdmin());
-      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isAdmin());
+      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isSuperAdmin());
+      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
     }
 
-    /** Platform Logs - Siloed by tenantId */
+    match /customers/{customerId} {
+      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isSuperAdmin());
+      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+    }
+
+    match /sales_transactions/{saleId} {
+      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isSuperAdmin());
+      allow update, delete: if isSuperAdmin();
+    }
+
+    match /expenses/{expenseId} {
+      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isSuperAdmin());
+      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+    }
+
+    match /leases/{leaseId} {
+      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isSuperAdmin());
+      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+    }
+    
+    match /documents/{docId} {
+      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isSuperAdmin());
+      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+    }
+
+    match /tickets/{ticketId} {
+      allow read, list: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+      allow create: if isSignedIn() && (request.resource.data.tenantId == getUserData().tenantId || isSuperAdmin());
+      allow update, delete: if isSignedIn() && (isTenantOwner(resource.data) || isSuperAdmin());
+    }
+
     match /platform_logs/{logId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.tenantId == getUserData().tenantId);
-      allow create: if isSignedIn(); // Allow writing logs for audits
+      allow read: if isSuperAdmin() || (isSignedIn() && resource.data.tenantId == getUserData().tenantId);
+      allow create: if isSignedIn(); 
     }
-    
-    /** Notifications - Multi-tenant */
+
     match /notifications/{notifId} {
-      allow read: if isSignedIn() && (resource.data.tenantId == getUserData().tenantId || isAdmin());
-      allow create, update, delete: if isAdmin();
+      allow read: if isSignedIn() && (resource.data.tenantId == getUserData().tenantId || isSuperAdmin());
+      allow create, update, delete: if isSuperAdmin();
     }
-    
-    /** Default deny for everything else */
+
     match /{document=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isSuperAdmin();
     }
   }
 }
