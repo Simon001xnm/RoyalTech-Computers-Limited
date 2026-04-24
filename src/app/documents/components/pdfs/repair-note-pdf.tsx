@@ -4,9 +4,16 @@ import type { Document as AppDocument } from "@/types";
 import { format } from "date-fns";
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSaaS } from '@/components/saas/saas-provider';
 
 export function RepairNotePdf({ document }: { document: AppDocument }) {
-  const company = useLiveQuery(() => db.companies.toCollection().last());
+  const { tenant } = useSaaS();
+  
+  // SECURE QUERY: Filter by active tenantId to prevent cross-account leakage
+  const company = useLiveQuery(
+    async () => tenant?.id ? await db.companies.get(tenant.id) : null,
+    [tenant?.id]
+  );
 
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;

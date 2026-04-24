@@ -4,9 +4,16 @@ import type { Document as AppDocument, DocumentLineItem } from "@/types";
 import { format } from "date-fns";
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSaaS } from '@/components/saas/saas-provider';
 
 export function LpoPdf({ document }: { document: AppDocument }) {
-  const company = useLiveQuery(() => db.companies.toCollection().last());
+  const { tenant } = useSaaS();
+  
+  // SECURE QUERY: Filter by active tenantId to prevent cross-account leakage
+  const company = useLiveQuery(
+    async () => tenant?.id ? await db.companies.get(tenant.id) : null,
+    [tenant?.id]
+  );
 
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
@@ -23,7 +30,7 @@ export function LpoPdf({ document }: { document: AppDocument }) {
   const companyName = company?.name || 'The Company';
 
   return (
-    <div className="p-8 font-sans text-sm bg-white text-gray-800 w-full min-h-[1000px] flex flex-col">
+    <div className="p-[20mm] font-sans text-sm bg-white text-gray-800 w-[210mm] min-h-[297mm] flex flex-col box-border">
       <header className="flex justify-between items-start pb-4">
         <div className="flex items-center gap-4">
           {company?.logoUrl ? (

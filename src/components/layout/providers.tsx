@@ -20,10 +20,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // Only set mounted true in the browser, after initial paint.
     setIsMounted(true);
   }, []);
 
-  // During Server-Side Rendering, return a safe shell.
+  // During Server-Side Rendering or initial mounting, return a safe shell.
   // This is the definitive fix for "Illegal invocation" occurring on page load.
   if (!isMounted) {
     return (

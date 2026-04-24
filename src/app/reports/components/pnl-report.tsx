@@ -1,4 +1,3 @@
-
 'use client';
 
 import { format } from 'date-fns';
@@ -7,6 +6,7 @@ import type { PnlData } from './reports-client';
 import type { DateRange } from 'react-day-picker';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSaaS } from '@/components/saas/saas-provider';
 
 interface PnlReportProps {
   data: PnlData;
@@ -55,21 +55,28 @@ const ReportRow = ({
 );
 
 export function PnlReport({ data, dateRange }: PnlReportProps) {
-  const company = useLiveQuery(() => db.companies.toCollection().last());
+  const { tenant } = useSaaS();
+  
+  // SECURE QUERY: Filter by active tenantId to prevent cross-account leakage
+  const company = useLiveQuery(
+    async () => tenant?.id ? await db.companies.get(tenant.id) : null,
+    [tenant?.id]
+  );
+
   const { operatingIncome, costOfGoodsSold, operatingExpenses, grossProfit, netIncome } = data;
 
   const companyName = company?.name || 'YOUR BUSINESS';
 
   return (
-    <Card id="pnl-report" className="print-container shadow-lg bg-white text-gray-900">
-      <CardHeader className="text-center p-4">
+    <Card id="pnl-report" className="print-container shadow-lg bg-white text-gray-900 border-none">
+      <CardHeader className="text-center p-8">
         {company?.logoUrl ? (
           <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain mx-auto mb-4" />
         ) : (
           <div className="h-20 flex items-center justify-center text-muted-foreground italic mb-4">Company Logo</div>
         )}
         <h1 className="text-2xl font-bold uppercase">{companyName}</h1>
-        <p className="text-xl">Profit and Loss</p>
+        <p className="text-xl">Profit and Loss Statement</p>
         <p className="text-sm text-muted-foreground">Basis: Accrual</p>
         {dateRange?.from && dateRange.to && (
           <p className="text-sm text-muted-foreground">
@@ -78,7 +85,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
           </p>
         )}
       </CardHeader>
-      <CardContent className="p-4">
+      <CardContent className="p-8">
         <div className="flex justify-between font-bold text-sm text-muted-foreground pb-2 border-b-2 border-black">
           <div className="flex-1">Account</div>
           <div className="w-24 text-center">Account Code</div>

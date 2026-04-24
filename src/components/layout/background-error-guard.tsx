@@ -5,9 +5,10 @@ import React, { useEffect } from 'react';
 /**
  * BackgroundErrorGuard: Silences transient network artifacts in development.
  * 
- * This version relies exclusively on standard browser event listeners to suppress
- * the Next.js red error overlay for minor network events. It avoids monkey-patching
- * native console methods, which is the definitive fix for the "Illegal invocation" crash.
+ * This version uses standard browser event listeners to suppress
+ * the Next.js red error overlay for minor network events. 
+ * It avoids any modification of the global console object to prevent
+ * "Illegal invocation" crashes.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -39,10 +40,9 @@ export function BackgroundErrorGuard({ children }: { children: React.ReactNode }
       }
     };
 
-    // 1. Intercept Promise Rejections (e.g. Firebase background sync fails)
+    // 1. Intercept Promise Rejections (e.g. Firebase/Dexie background sync fails)
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (isSuppressed(event.reason)) {
-        // preventDefault() tells Next.js not to show the error overlay
         event.preventDefault();
         event.stopPropagation();
       }
