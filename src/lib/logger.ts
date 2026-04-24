@@ -1,10 +1,10 @@
 /**
  * @fileOverview Professional Business Event Logger
- * Used for tracking audit trails, sales events, and system errors.
- * Refined to avoid context-breaking console overrides.
+ * Migrated to persist logs directly to Firebase Firestore for cross-tenant audit trails.
  */
 
-import { getDB } from "@/db";
+import { collection, addDoc, getFirestore } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
 
 type LogLevel = 'info' | 'warn' | 'error' | 'business';
 
@@ -35,39 +35,33 @@ class Logger {
     return `${icon} [${entry.timestamp}] [${entry.level.toUpperCase()}] [${entry.module}] ${entry.event}`;
   }
 
+  /**
+   * Persists log entry to Firestore platform_logs collection.
+   */
   public async log(level: LogLevel, module: string, event: string, metadata?: Record<string, any>) {
-    const entry: LogEntry = {
-      timestamp: new Date().toISOString(),
-      level,
-      module,
-      event,
-      metadata
-    };
+    const timestamp = new Date().toISOString();
+    const entry: LogEntry = { timestamp, level, module, event, metadata };
 
-    // Safe Console Logging
+    // Console mirror in development
     if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-      const message = this.format(entry);
-      if (level === 'error') {
-        console.error(message, metadata);
-      } else if (level === 'warn') {
-        console.warn(message, metadata);
-      } else {
-        console.log(message, metadata);
-      }
+        const message = this.format(entry);
+        if (level === 'error') console.error(message, metadata);
+        else if (level === 'warn') console.warn(message, metadata);
+        else console.log(message, metadata);
     }
 
-    // Database logging is disabled for system-level errors to prevent recursive loops or context loss
-    if (level === 'business' && typeof window !== 'undefined') {
-        const db = getDB();
-        if (db) {
-            try {
-              await db.platformLogs.add({
-                id: crypto.randomUUID(),
-                ...entry
-              });
-            } catch (e) {
-              // Silent fail
+    // Persist business and error events to Cloud Firestore
+    if (typeof window !== 'undefined' && (level === 'business' || level === 'error')) {
+        try {
+            const { firestore } = initializeFirebase();
+            if (firestore) {
+                addDoc(collection(firestore, 'platform_logs'), {
+                    ...entry,
+                    createdAt: timestamp
+                });
             }
+        } catch (e) {
+            // Silently fail to prevent log-loops
         }
     }
   }

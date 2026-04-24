@@ -16,9 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useUser } from '@/firebase/provider';
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, orderBy } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -47,6 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { SignaturePad } from "@/components/ui/signature-pad";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useSaaS } from "@/components/saas/saas-provider";
 
 const VAT_RATE = 0.16;
 
@@ -54,10 +54,21 @@ export function DocumentsClient() {
   const [activeTab, setActiveTab] = useState<DocumentType>("Invoice");
   const { toast } = useToast();
   const { user } = useUser();
+  const { tenant } = useSaaS();
+  const firestore = useFirestore();
   
-  const generatedDocuments = useLiveQuery(() => db.documents.toArray());
-  const customers = useLiveQuery(() => db.customers.toArray());
-  const assets = useLiveQuery(() => db.assets.toArray());
+  // FIRESTORE QUERIES: Siloed by tenantId
+  const docsQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'documents'), where('tenantId', '==', tenant.id), orderBy('generatedDate', 'desc'));
+  }, [firestore, tenant?.id]);
+  const { data: generatedDocuments, isLoading: docsLoading } = useCollection(docsQuery);
+
+  const customersQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: customers } = useCollection(customersQuery);
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [details, setDetails] = useState('');
@@ -76,7 +87,7 @@ export function DocumentsClient() {
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const anyDataLoading = generatedDocuments === undefined || customers === undefined || assets === undefined;
+  const isLoading = docsLoading;
   
   const resetFormState = () => {
     setSelectedCustomerId('');
@@ -92,6 +103,8 @@ export function DocumentsClient() {
   };
 
   const handleGenerateDocument = async (type: DocumentType) => {
+    if (!tenant || !user) return;
+
     const docCount = generatedDocuments?.length || 0;
     let title = `${type.replace(/([A-Z])/g, ' $1').trim()} #${type.slice(0,3).toUpperCase()}-2026-${String(docCount + 1).padStart(3,'0')}`;
     let relatedTo = "N/A";
@@ -128,15 +141,15 @@ export function DocumentsClient() {
     }
 
     try {
-        await db.documents.add({
-            id: crypto.randomUUID(),
+        await addDoc(collection(firestore, 'documents'), {
+            tenantId: tenant.id,
             type: type,
             title: title,
             generatedDate: new Date().toISOString(),
             relatedTo: relatedTo,
             data: documentData,
             createdAt: new Date().toISOString(),
-            createdBy: { uid: user!.uid, name: user!.displayName || 'User' }
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
         });
         toast({ title: `${type} Generated` });
         resetFormState();
@@ -161,31 +174,25 @@ export function DocumentsClient() {
     setIsPdfPreviewOpen(true);
     setIsDownloading(true);
 
-    // Give the DOM time to render the high-res A4 content
     setTimeout(async () => {
         const element = document.getElementById('pdf-preview-target');
         if (!element) return;
 
         try {
-            // Scale up for print quality (3x)
             const canvas = await html2canvas(element, { 
                 scale: 3, 
                 useCORS: true,
                 logging: false,
-                windowWidth: 1200 // Simulate desktop window to avoid responsive breakage
+                windowWidth: 1200
             });
             
             const pdf = new jsPDF('p', 'mm', 'a4');
             const imgData = canvas.toDataURL('image/png', 1.0);
-            
-            // Standard A4: 210mm x 297mm
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
             pdf.save(`${docToDownload.title}.pdf`);
-            
-            toast({ title: 'Download Successful', description: 'Your high-fidelity document is ready.' });
+            toast({ title: 'Download Successful' });
         } catch (err) {
-            console.error(err);
-            toast({ variant: 'destructive', title: 'PDF Error', description: 'Failed to capture full document.' });
+            toast({ variant: 'destructive', title: 'PDF Error' });
         } finally {
             setIsPdfPreviewOpen(false);
             setIsDownloading(false);
@@ -294,7 +301,7 @@ export function DocumentsClient() {
             </Select>
           </div>
           {['Quotation', 'Invoice', 'Proforma'].includes(type) && (
-              <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-lg"><Switch id="vat-switch" checked={applyVat} onCheckedChange={setApplyVat} /><Label htmlFor="vat-switch" className="cursor-pointer">Apply 16% VAT to Subtotal</Label></div>
+              <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-lg"><Switch id="vat-switch" checked={applyVat} onCheckedChange={setApplyVat} /><Label htmlFor="vat-switch" className="cursor-pointer">Apply 16% VAT</Label></div>
           )}
           {type === 'Receipt' && (
             <div><Label>Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11" /></div>
@@ -307,14 +314,14 @@ export function DocumentsClient() {
                </div>
            )}
         </CardContent>
-        <CardFooter><Button onClick={() => handleGenerateDocument(type)} className="ml-auto h-11 px-8 font-bold" disabled={anyDataLoading}>Generate Document</Button></CardFooter>
+        <CardFooter><Button onClick={() => handleGenerateDocument(type)} className="ml-auto h-11 px-8 font-bold" disabled={isLoading}>Generate Document</Button></CardFooter>
       </Card>
     );
   };
 
   return (
     <>
-      <PageHeader title="Branded Documents (Local)" description="Professional invoices, quotations, and receipts with executive branding." />
+      <PageHeader title="Branded Documents (Cloud)" description="Professional invoices and quotations synchronized globally." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-6 overflow-x-auto h-auto p-1 bg-muted/50 border">
           <TabsTrigger value="Quotation" className="py-2">Quotation</TabsTrigger>
@@ -341,7 +348,7 @@ export function DocumentsClient() {
                             <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
                         ))
                     ) : (
-                        <TableRow><TableCell colSpan={5} className="h-24 text-center">No local documents archived yet.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="h-24 text-center">No documents archived yet.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>

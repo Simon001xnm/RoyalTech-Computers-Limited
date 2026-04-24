@@ -34,9 +34,8 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useUser } from '@/firebase/provider';
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -49,29 +48,32 @@ export function DeskClient() {
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const { toast } = useToast();
   const { tenant } = useSaaS();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
+  const firestore = useFirestore();
   
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
-  // DEXIE QUERIES: Consolidated & Siloed
-  const tickets = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.tickets.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  // FIRESTORE QUERIES: Consolidated & Siloed
+  const ticketsQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'tickets'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: tickets, isLoading: ticketsLoading } = useCollection(ticketsQuery);
 
-  const customers = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.customers.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  const customersQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: customers, isLoading: customersLoading } = useCollection(customersQuery);
 
-  const isLoading = isUserLoading || tickets === undefined || customers === undefined;
+  const isLoading = ticketsLoading || customersLoading;
 
   const filteredTickets = useMemo(() => {
     if (!tickets) return [];
     return tickets.filter((ticket) =>
-      ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.customerName?.toLowerCase().includes(searchTerm.toLowerCase())
+      (ticket.subject || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ticket.customerName || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [tickets, searchTerm]);
 
@@ -89,12 +91,11 @@ export function DeskClient() {
 
     try {
         if (editingTicket) {
-            await db.tickets.update(editingTicket.id, ticketData);
+            await updateDoc(doc(firestore, 'tickets', editingTicket.id), ticketData);
             toast({ title: "Case Updated" });
         } else {
-            await db.tickets.add({ 
+            await addDoc(collection(firestore, 'tickets'), { 
                 ...ticketData, 
-                id: crypto.randomUUID(),
                 createdAt: new Date().toISOString(),
                 createdBy: { uid: user.uid, name: user.displayName || 'User' }
             });
@@ -109,8 +110,12 @@ export function DeskClient() {
 
   const confirmDelete = async () => {
     if (ticketToDelete) {
-      await db.tickets.delete(ticketToDelete.id);
-      toast({ title: "Ticket Erased" });
+      try {
+        await deleteDoc(doc(firestore, 'tickets', ticketToDelete.id));
+        toast({ title: "Ticket Erased" });
+      } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+      }
       setTicketToDelete(null);
     }
     setIsDeleteConfirmOpen(false);
@@ -138,7 +143,7 @@ export function DeskClient() {
     <>
       <PageHeader 
         title="Support Desk" 
-        description="Workspace helpdesk oversight and case management." 
+        description="Workspace helpdesk oversight and case management in the cloud." 
         actionLabel="Create Ticket" 
         onAction={() => setIsFormOpen(true)} 
         ActionIcon={PlusCircle} 

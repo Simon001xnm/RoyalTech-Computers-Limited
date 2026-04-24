@@ -8,21 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Camera, Image as ImageIcon, Check, Loader2, Building2, Upload, Palette, ShieldCheck, Crown, Zap, Repeat, PlusCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useUser } from "@/firebase/provider";
+import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase";
 import { useEffect, useState, useRef } from "react";
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
-import { useToast } from "@/hooks/use-toast";
+import { doc, updateDoc, collection, query, where, setDoc } from 'firebase/firestore';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile } from "firebase/auth";
 import placeholderAvatars from '@/lib/placeholder-images.json';
 import { cn } from "@/lib/utils";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { SaaSUsageMeters } from "@/components/saas/saas-usage-meters";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProfilePage() {
   const { user: authUser, isUserLoading } = useUser();
-  const { tenant, plan, isLegacyUser, availableWorkspaces, switchTenant } = useSaaS();
+  const { tenant, plan, isLegacyUser, switchTenant } = useSaaS();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -46,23 +46,24 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isNewWorkspaceOpen, setIsNewWorkspaceOpen] = useState(false);
 
-  const localUser = useLiveQuery(
-    async () => authUser ? await db.users.get(authUser.uid) : null,
-    [authUser]
-  );
+  // CLOUD DATA: Fetching profile and portfolio from Firestore
+  const userRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
+  const { data: userProfile } = useDoc(userRef);
 
-  const isSuperAdmin = localUser?.role === 'super_admin';
+  const portfolioQuery = useMemoFirebase(() => {
+    if (!userProfile?.tenantIds?.length) return null;
+    return query(collection(firestore, 'companies'), where('id', 'in', userProfile.tenantIds));
+  }, [firestore, userProfile?.tenantIds]);
+  const { data: availableWorkspaces = [] } = useCollection(portfolioQuery);
 
-  const company = useLiveQuery(
-    async () => tenant?.id ? await db.companies.get(tenant.id) : null,
-    [tenant?.id]
-  );
+  const companyRef = useMemoFirebase(() => tenant?.id ? doc(firestore, 'companies', tenant.id) : null, [firestore, tenant?.id]);
+  const { data: company } = useDoc(companyRef);
 
   useEffect(() => {
-    if (localUser) {
-      setDisplayName(localUser.name || authUser?.displayName || "");
-      setEmail(localUser.email || authUser?.email || "");
-      setAvatarUrl(localUser.avatarUrl || authUser?.photoURL || "");
+    if (userProfile) {
+      setDisplayName(userProfile.name || authUser?.displayName || "");
+      setEmail(userProfile.email || authUser?.email || "");
+      setAvatarUrl(userProfile.avatarUrl || authUser?.photoURL || "");
     }
     if (company) {
       setCompName(company.name);
@@ -71,16 +72,13 @@ export default function ProfilePage() {
       setCompSecondary(company.secondaryColor || '#f1f5f9');
       setCompLogo(company.logoUrl || "");
     }
-  }, [localUser, authUser, company]);
+  }, [userProfile, authUser, company]);
 
   const handleAvatarSelect = async (url: string) => {
-    if (!authUser) return;
+    if (!authUser || !userRef) return;
     try {
       setAvatarUrl(url);
-      if (url.length < 2000) {
-        await updateProfile(authUser, { photoURL: url });
-      }
-      await db.users.update(authUser.uid, { avatarUrl: url });
+      await updateDoc(userRef, { avatarUrl: url });
       toast({ title: 'Avatar Updated' });
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error' });
@@ -97,10 +95,10 @@ export default function ProfilePage() {
   };
 
   const handleSaveCompany = async () => {
-    if (!company) return;
+    if (!companyRef) return;
     setIsSaving(true);
     try {
-      await db.companies.update(company.id, {
+      await updateDoc(companyRef, {
         name: compName,
         address: compAddress,
         primaryColor: compPrimary,
@@ -108,61 +106,34 @@ export default function ProfilePage() {
         logoUrl: compLogo,
         updatedAt: new Date().toISOString()
       });
-      toast({ title: 'Workspace Updated', description: 'Branding changes applied successfully.' });
+      toast({ title: 'Workspace Updated', description: 'Branding changes applied.' });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handlePasswordChange = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      toast({ variant: 'destructive', title: 'Error', description: 'All fields required.' });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Passwords mismatch.' });
-      return;
-    }
-    if (!authUser || !authUser.email) return;
-
-    setIsSaving(true);
-    try {
-      const credential = EmailAuthProvider.credential(authUser.email, currentPassword);
-      await reauthenticateWithCredential(authUser, credential);
-      await updatePassword(authUser, newPassword);
-      toast({ title: 'Password Updated' });
-      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Failed', description: error.message });
+      toast({ variant: 'destructive', title: 'Error' });
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleCreateWorkspace = async () => {
-      if (!authUser) return;
-      // To create a new workspace, we clear the current tenantId in the profile.
-      // This will trigger the OnboardingGuard setup flow.
-      await db.users.update(authUser.uid, { tenantId: undefined });
-      toast({ title: "Initializing Setup", description: "You can now create a new workspace entity." });
-      window.location.reload(); 
+      if (!authUser || !userRef) return;
+      try {
+          await updateDoc(userRef, { tenantId: null });
+          toast({ title: "Initializing Setup", description: "Taking you to the workspace setup wizard." });
+          window.location.reload(); 
+      } catch (e) { toast({ variant: 'destructive', title: 'Failed to reset workspace link' }); }
   };
 
-  if (isUserLoading || !localUser) {
-    return <div className="p-12 text-center">Loading profile...</div>;
+  if (isUserLoading || !userProfile) {
+    return <div className="p-12 text-center text-muted-foreground animate-pulse">Synchronizing Cloud Profile...</div>;
   }
+
+  const isSuperAdmin = userProfile?.role === 'super_admin';
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      <PageHeader 
-        title={isSuperAdmin ? "Platform Technician Identity" : "Profile & Workspace"} 
-        description={isSuperAdmin ? "Global system identity and platform technician security." : "Manage your personal account and business branding."} 
-      />
+      <PageHeader title={isSuperAdmin ? "Platform technician identity" : "Profile & Workspace"} description="Manage your cloud credentials and business metadata." />
 
       <div className="grid gap-8 md:grid-cols-3">
-        {/* User Sidebar */}
         <div className="space-y-6">
           <Card className="shadow-md">
             <CardHeader className="items-center text-center">
@@ -171,9 +142,7 @@ export default function ProfilePage() {
                   <AvatarImage src={avatarUrl || `https://picsum.photos/seed/${authUser?.uid}/128/128`} />
                   <AvatarFallback>{(displayName || "U").substring(0, 2)}</AvatarFallback>
                 </Avatar>
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Camera className="h-6 w-6 text-white" />
-                </div>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><Camera className="h-6 w-6 text-white" /></div>
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
@@ -188,7 +157,7 @@ export default function ProfilePage() {
                 <CardDescription>{email}</CardDescription>
                 <Badge className={cn("mt-2 capitalize", isSuperAdmin ? "bg-primary text-primary-foreground" : "")}>
                     {isSuperAdmin && <ShieldCheck className="h-3 w-3 mr-1" />}
-                    {localUser.role}
+                    {userProfile.role}
                 </Badge>
               </div>
             </CardHeader>
@@ -196,7 +165,7 @@ export default function ProfilePage() {
               <Separator />
               <div className="grid grid-cols-5 gap-1">
                 {placeholderAvatars.avatars.map((av) => (
-                  <button key={av.id} onClick={() => handleAvatarSelect(av.url)} className={cn("rounded border-2", avatarUrl === av.url ? "border-primary" : "border-transparent")}>
+                  <button key={av.id} onClick={() => handleAvatarSelect(av.url)} className={cn("rounded border-2 overflow-hidden", avatarUrl === av.url ? "border-primary" : "border-transparent")}>
                     <img src={av.url} className="aspect-square object-cover" />
                   </button>
                 ))}
@@ -204,100 +173,58 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Portfolio Switcher - HIDDEN FOR SUPER ADMIN unless they have tenants */}
           {!isSuperAdmin && (
-            <Card className="shadow-md border-primary/20 bg-muted/20">
+            <Card className="shadow-md border-primary/20 bg-muted/10">
                 <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Repeat className="h-4 w-4 text-primary" />
-                            <CardTitle className="text-xs font-bold uppercase tracking-widest">Workspace Portfolio</CardTitle>
+                            <CardTitle className="text-xs font-bold uppercase tracking-widest">Portfolio</CardTitle>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsNewWorkspaceOpen(true)}>
-                            <PlusCircle className="h-4 w-4" />
-                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsNewWorkspaceOpen(true)}><PlusCircle className="h-4 w-4" /></Button>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                    {availableWorkspaces.length > 0 ? availableWorkspaces.map(ws => (
-                        <div 
-                            key={ws.id} 
-                            className={cn(
-                                "flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer",
-                                tenant?.id === ws.id ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
-                            )}
-                            onClick={() => tenant?.id !== ws.id && switchTenant(ws.id)}
-                        >
+                    {availableWorkspaces.map(ws => (
+                        <div key={ws.id} className={cn("flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer", tenant?.id === ws.id ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")} onClick={() => tenant?.id !== ws.id && switchTenant(ws.id)}>
                             <div className="flex items-center gap-2 overflow-hidden">
-                                {ws.logoUrl ? (
-                                    <img src={ws.logoUrl} className="h-6 w-6 object-contain shrink-0" />
-                                ) : (
-                                    <Building2 className="h-4 w-4 shrink-0 opacity-40" />
-                                )}
+                                {ws.logoUrl ? <img src={ws.logoUrl} className="h-6 w-6 object-contain shrink-0" /> : <Building2 className="h-4 w-4 shrink-0 opacity-40" />}
                                 <span className="text-xs font-bold truncate uppercase">{ws.name}</span>
                             </div>
                             {tenant?.id === ws.id && <Check className="h-3 w-3 shrink-0" />}
                         </div>
-                    )) : (
-                        <p className="text-[10px] text-center py-4 text-muted-foreground italic">No workspaces active.</p>
-                    )}
+                    ))}
                 </CardContent>
             </Card>
           )}
 
-          {/* SaaS Usage & Subscription - HIDDEN FOR SUPER ADMIN */}
           {!isSuperAdmin && (
             <div className="space-y-6">
                 <Card className="shadow-md border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
                     <CardHeader className="pb-3">
-                        <div className="flex items-center gap-2">
-                            <Crown className="h-4 w-4 text-primary" />
-                            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active Subscription</CardTitle>
-                        </div>
+                        <div className="flex items-center gap-2"><Crown className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-bold uppercase tracking-widest">Plan</CardTitle></div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="space-y-1">
-                            <p className="text-lg font-black text-primary uppercase tracking-tight">{plan?.name || 'Loading Plan...'}</p>
-                            <p className="text-[10px] text-muted-foreground">Status: <span className="text-green-600 font-bold uppercase">{tenant?.status || 'Active'}</span></p>
-                        </div>
-                        <div className="space-y-3 pt-2">
-                            <div className="flex items-center justify-between text-xs p-2 bg-background rounded-lg border border-primary/10">
-                                <span className="text-muted-foreground">Tenant ID</span>
-                                <span className="font-mono font-bold text-[10px] opacity-60">{tenant?.id || 'N/A'}</span>
-                            </div>
-                            {isLegacyUser && (
-                                <div className="flex items-start gap-2 p-3 bg-primary text-primary-foreground rounded-xl shadow-lg">
-                                    <Zap className="h-4 w-4 shrink-0 fill-white" />
-                                    <div className="space-y-0.5">
-                                        <p className="text-[10px] font-black uppercase leading-none">Golden v1.0 Access</p>
-                                        <p className="text-[9px] opacity-90 leading-tight">Full feature set unlocked forever.</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        <p className="text-lg font-black text-primary uppercase tracking-tight">{plan?.name || 'Loading Plan...'}</p>
+                        {isLegacyUser && <div className="flex items-start gap-2 p-3 bg-primary text-primary-foreground rounded-xl shadow-lg"><Zap className="h-4 w-4 shrink-0 fill-white" /><div className="space-y-0.5"><p className="text-[10px] font-black uppercase leading-none">Enterprise Unlocked</p><p className="text-[9px] opacity-90">All SaaS features are active.</p></div></div>}
                     </CardContent>
                 </Card>
-
                 <SaaSUsageMeters />
             </div>
           )}
         </div>
 
-        {/* Workspace Branding - HIDDEN FOR SUPER ADMIN */}
         <div className="md:col-span-2 space-y-8">
           {!isSuperAdmin && company && (
             <Card className="shadow-md">
                 <CardHeader>
-                <div className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-primary" />
-                    <CardTitle>Workspace Branding</CardTitle>
-                </div>
-                <CardDescription>Custom colors and logo for your system and documents.</CardDescription>
+                    <div className="flex items-center gap-2"><Building2 className="h-5 w-5 text-primary" /><CardTitle>Branding</CardTitle></div>
+                    <CardDescription>Visual identity for your system and documents.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] gap-8">
                     <div className="space-y-2">
-                    <Label>Company Logo</Label>
+                    <Label>Workspace Logo</Label>
                     <div className="w-full aspect-square border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer overflow-hidden relative group" onClick={() => logoInputRef.current?.click()}>
                         {compLogo ? <img src={compLogo} className="w-full h-full object-contain" /> : <ImageIcon className="h-8 w-8 text-muted-foreground" />}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><Upload className="text-white h-6 w-6" /></div>
@@ -305,106 +232,42 @@ export default function ProfilePage() {
                     <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
                     </div>
                     <div className="space-y-6">
-                    <div className="p-4 rounded-xl border bg-muted/30 space-y-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Palette className="h-4 w-4 text-primary" />
-                            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Color Palette</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold opacity-70">Primary Color</Label>
-                            <div className="flex gap-2">
-                                <input type="color" value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer border rounded" />
-                                <Input value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="font-mono text-xs uppercase" />
-                            </div>
-                            </div>
-                            <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold opacity-70">Secondary Color</Label>
-                            <div className="flex gap-2">
-                                <input type="color" value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer border rounded" />
-                                <Input value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="font-mono text-xs uppercase" />
-                            </div>
+                        <div className="p-4 rounded-xl border bg-muted/30 space-y-4">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2"><Label className="text-[10px] uppercase font-bold opacity-70">Primary Color</Label><div className="flex gap-2"><input type="color" value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer border rounded" /><Input value={compPrimary} onChange={e => setCompPrimary(e.target.value)} className="font-mono text-xs uppercase" /></div></div>
+                                <div className="space-y-2"><Label className="text-[10px] uppercase font-bold opacity-70">Secondary Color</Label><div className="flex gap-2"><input type="color" value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="w-12 h-10 p-1 cursor-pointer border rounded" /><Input value={compSecondary} onChange={e => setCompSecondary(e.target.value)} className="font-mono text-xs uppercase" /></div></div>
                             </div>
                         </div>
-                    </div>
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <Label>Business Name</Label>
-                            <Input value={compName} onChange={e => setCompName(e.target.value)} />
+                        <div className="space-y-4">
+                            <div className="space-y-2"><Label>Business Name</Label><Input value={compName} onChange={e => setCompName(e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Address</Label><Input value={compAddress} onChange={e => setCompAddress(e.target.value)} /></div>
                         </div>
-                        <div className="space-y-2">
-                            <Label>Address</Label>
-                            <Input value={compAddress} onChange={e => setCompAddress(e.target.value)} />
-                        </div>
-                    </div>
                     </div>
                 </div>
                 </CardContent>
                 <CardFooter className="justify-end">
-                <Button onClick={handleSaveCompany} disabled={isSaving}>
-                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Save Branding Changes
-                </Button>
+                    <Button onClick={handleSaveCompany} disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Changes</Button>
                 </CardFooter>
             </Card>
           )}
 
           <Card className="shadow-md">
-            <CardHeader><CardTitle>Account Security</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Security & Access</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Current Password</Label>
-                <Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
-              </div>
+              <div className="space-y-2"><Label>Current Password</Label><Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} /></div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>New Password</Label><Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} /></div>
-                <div className="space-y-2"><Label>Confirm Password</Label><Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Confirm</Label><Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></div>
               </div>
             </CardContent>
-            <CardFooter className="justify-end"><Button variant="outline" onClick={handlePasswordChange}>Change Password</Button></CardFooter>
           </Card>
-          
-          {isSuperAdmin && (
-             <Card className="shadow-md border-primary/20 bg-primary/5">
-                <CardHeader>
-                    <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-5 w-5 text-primary" />
-                        <CardTitle>System Privileges</CardTitle>
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                        As a **Platform Technician**, you have root access to the SaaS infrastructure. You are responsible for global node health, subscription overrides, and commercial intelligence.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-widest text-primary">
-                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 shadow-sm">Bypass Onboarding: Active</div>
-                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 shadow-sm">Global Audit: Unlocked</div>
-                    </div>
-                </CardContent>
-             </Card>
-          )}
         </div>
       </div>
 
        <Dialog open={isNewWorkspaceOpen} onOpenChange={setIsNewWorkspaceOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create New Business Entity</DialogTitle>
-            <DialogDescription>
-              This will pause your current session and take you to the onboarding wizard to initialize a completely new workspace.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-                You are currently managing <strong>{availableWorkspaces.length}</strong> business workspaces. 
-                Creating another will allow you to maintain separate inventory, sales history, and staff records for a new company.
-            </p>
-          </div>
-          <CardFooter className="px-0">
-             <Button className="w-full font-bold h-12" onClick={handleCreateWorkspace}>
-                Initialize New Setup
-             </Button>
-          </CardFooter>
+          <DialogHeader><DialogTitle>Add Workspace Entity</DialogTitle><DialogDescription>Reset your session to initialize a new business node.</DialogDescription></DialogHeader>
+          <CardFooter className="px-0 pt-4"><Button className="w-full font-bold h-12" onClick={handleCreateWorkspace}>Reset Session & Setup</Button></CardFooter>
         </DialogContent>
       </Dialog>
     </div>

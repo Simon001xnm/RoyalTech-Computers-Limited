@@ -33,9 +33,8 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useUser } from '@/firebase/provider';
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, writeBatch } from "firebase/firestore";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 
@@ -54,30 +53,34 @@ export function LeasesClient() {
 
   const { user } = useUser();
   const { tenant } = useSaaS();
+  const firestore = useFirestore();
 
-  // DEXIE QUERIES: Siloed by tenantId
-  const leases = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.leases.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  // FIRESTORE QUERIES: Siloed by tenantId
+  const leasesQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'leases'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: leases, isLoading: leasesLoading } = useCollection(leasesQuery);
 
-  const customers = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.customers.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  const customersQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: customers, isLoading: customersLoading } = useCollection(customersQuery);
 
-  const assets = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.assets.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  const assetsQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: assets, isLoading: assetsLoading } = useCollection(assetsQuery);
 
-  const isLoading = leases === undefined || customers === undefined || assets === undefined;
+  const isLoading = leasesLoading || customersLoading || assetsLoading;
 
   const filteredLeases = useMemo(() => {
     if (!leases) return [];
     return leases.filter((lease) =>
-      lease.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lease.laptopModel?.toLowerCase().includes(searchTerm.toLowerCase())
+      (lease.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lease.laptopModel || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [leases, searchTerm]);
 
@@ -98,14 +101,19 @@ export function LeasesClient() {
 
   const confirmDelete = async () => {
     if (leaseToDelete) {
-      await db.leases.delete(leaseToDelete.id);
+      const batch = writeBatch(firestore);
+      batch.delete(doc(firestore, 'leases', leaseToDelete.id));
       
-      // Update asset status back to available
       if (leaseToDelete.assetId) {
-        await db.assets.update(leaseToDelete.assetId, { status: 'Available' });
+        batch.update(doc(firestore, 'assets', leaseToDelete.assetId), { status: 'Available' });
       }
       
-      toast({ title: "Lease Removed" });
+      try {
+        await batch.commit();
+        toast({ title: "Lease Removed" });
+      } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+      }
       setLeaseToDelete(null);
     }
     setIsDeleteConfirmOpen(false);
@@ -134,23 +142,25 @@ export function LeasesClient() {
     };
 
     try {
+        const batch = writeBatch(firestore);
         if (editingLease) {
-            await db.leases.update(editingLease.id, leaseData);
-            
+            batch.update(doc(firestore, 'leases', editingLease.id), leaseData);
             if (editingLease.assetId !== selectedAsset.id) {
-                await db.assets.update(editingLease.assetId, { status: 'Available' });
-                await db.assets.update(selectedAsset.id, { status: 'Leased' });
+                batch.update(doc(firestore, 'assets', editingLease.assetId), { status: 'Available' });
+                batch.update(doc(firestore, 'assets', selectedAsset.id), { status: 'Leased' });
             }
+            await batch.commit();
             toast({ title: "Lease Updated" });
         } else {
-            await db.leases.add({ 
+            const leaseRef = doc(collection(firestore, 'leases'));
+            batch.set(leaseRef, { 
                 ...leaseData, 
-                id: crypto.randomUUID(),
+                id: leaseRef.id,
                 createdAt: new Date().toISOString(), 
                 createdBy: auditInfo 
             });
-            
-            await db.assets.update(selectedAsset.id, { status: 'Leased' });
+            batch.update(doc(firestore, 'assets', selectedAsset.id), { status: 'Leased' });
+            await batch.commit();
             toast({ title: "Lease Created" });
         }
     } catch (error: any) {
@@ -162,17 +172,28 @@ export function LeasesClient() {
   };
   
   const handleMarkPaid = async (lease: Lease) => {
-    await db.leases.update(lease.id, { paymentStatus: 'Paid' });
-    toast({ title: "Payment Recorded" });
+    try {
+        await updateDoc(doc(firestore, 'leases', lease.id), { paymentStatus: 'Paid' });
+        toast({ title: "Payment Recorded" });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    }
   };
 
   const handleTerminateLease = async (lease: Lease) => {
-    await db.leases.update(lease.id, { status: 'Terminated', endDate: new Date().toISOString() });
+    const batch = writeBatch(firestore);
+    batch.update(doc(firestore, 'leases', lease.id), { status: 'Terminated', endDate: new Date().toISOString() });
     
     if(lease.assetId) {
-        await db.assets.update(lease.assetId, { status: 'Available' });
+        batch.update(doc(firestore, 'assets', lease.assetId), { status: 'Available' });
     }
-    toast({ title: "Lease Terminated" });
+    
+    try {
+        await batch.commit();
+        toast({ title: "Lease Terminated" });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    }
   };
 
   const columnActions: LeaseColumnActions = {
@@ -208,7 +229,7 @@ export function LeasesClient() {
     <>
       <PageHeader
         title="Lease Tracking"
-        description="Hardware lease agreements managed locally with cloud backup."
+        description="Hardware lease agreements synchronized across your cloud workspace."
         actionLabel="Create New Lease"
         onAction={handleAddLease}
         ActionIcon={PlusCircle}
@@ -223,19 +244,19 @@ export function LeasesClient() {
         />
       </div>
 
-      {isLoading ? <p className="text-muted-foreground animate-pulse">Loading leases...</p> : (
+      {isLoading ? <p className="text-muted-foreground animate-pulse">Syncing contracts...</p> : (
         <>
           {!filteredLeases.length && searchTerm ? (
             <Alert variant="default" className="mb-4 bg-card">
               <FileSearch className="h-4 w-4" />
               <AlertTitle>No Leases Found</AlertTitle>
-              <AlertDescription>Your search for "{searchTerm}" did not match any local records.</AlertDescription>
+              <AlertDescription>Your search for "{searchTerm}" did not match any cloud records.</AlertDescription>
             </Alert>
           ) : !leases?.length ? (
             <Alert variant="default" className="mb-4 bg-card">
               <FileX className="h-4 w-4" />
               <AlertTitle>No Leases Recorded</AlertTitle>
-              <AlertDescription>Start tracking hardware leases locally.</AlertDescription>
+              <AlertDescription>Start tracking hardware leases globally.</AlertDescription>
             </Alert>
           ) : (
             <div className="rounded-lg border shadow-sm bg-card">

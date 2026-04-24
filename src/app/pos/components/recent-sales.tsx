@@ -1,10 +1,7 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import type { Sale } from '@/types';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef, getPaginationRowModel, type PaginationState } from "@tanstack/react-table";
@@ -13,6 +10,8 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useSaaS } from '@/components/saas/saas-provider';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy, addDoc } from 'firebase/firestore';
 
 interface RecentSalesProps {
     onViewReceipt: (sale: Sale) => void;
@@ -22,26 +21,28 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const router = useRouter();
     const { toast } = useToast();
     const { tenant } = useSaaS();
+    const firestore = useFirestore();
 
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 5 });
 
-    // SaaS Isolated Query
-    const sales = useLiveQuery(async () => {
-        if (!tenant) return [];
-        // Filter by tenantId and then sort in memory (or use a composite index in production)
-        const tenantSales = await db.sales.where('tenantId').equals(tenant.id).toArray();
-        return tenantSales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [tenant?.id]);
+    // CLOUD QUERY: Sync sales history from Firestore
+    const salesQuery = useMemoFirebase(() => {
+        if (!tenant) return null;
+        return query(
+            collection(firestore, 'sales_transactions'),
+            where('tenantId', '==', tenant.id),
+            orderBy('date', 'desc')
+        );
+    }, [firestore, tenant?.id]);
     
-    const isLoading = sales === undefined;
+    const { data: sales, isLoading } = useCollection(salesQuery);
     
     const handleGenerateDelivery = async (sale: Sale) => {
         if (!tenant) return;
         toast({ title: "Generating Delivery Note..." });
 
         const deliveryData = {
-            id: crypto.randomUUID(),
-            tenantId: tenant.id, // SaaS Injection
+            tenantId: tenant.id,
             type: 'DeliveryNote' as const,
             title: `Delivery Note #DEL-${sale.id.slice(0, 5).toUpperCase()}`,
             generatedDate: new Date().toISOString(),
@@ -59,12 +60,11 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         };
 
         try {
-            await db.documents.add(deliveryData);
-            toast({ title: "Success", description: "Delivery Note generated! Taking you to Documents..." });
+            await addDoc(collection(firestore, 'documents'), deliveryData);
+            toast({ title: "Success", description: "Delivery Note generated!" });
             router.push('/documents');
         } catch (error) {
-            console.error("Delivery note generation failed:", error);
-            toast({ variant: 'destructive', title: "Error", description: "Failed to generate delivery note locally." });
+            toast({ variant: 'destructive', title: "Error", description: "Failed to generate delivery note." });
         }
     };
 
@@ -86,16 +86,17 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                    <CardTitle>Workspace Sale History</CardTitle>
-                    <CardDescription>A siloed log of sales transactions for this business.</CardDescription>
+                    <CardTitle>Cloud Transaction History</CardTitle>
+                    <CardDescription>A real-time log of sales transactions for this workspace.</CardDescription>
                 </div>
             </CardHeader>
             <CardContent>
-                {isLoading && <p className="text-muted-foreground animate-pulse">Filtering workspace transactions...</p>}
-                {!isLoading && sales && (
+                {isLoading ? (
+                    <p className="text-muted-foreground animate-pulse text-sm">Syncing transaction registry...</p>
+                ) : (
                     <div className="border rounded-md">
                         <Table>
-                            <TableHeader>
+                            <TableHeader className="bg-muted/50">
                                 {salesTable.getHeaderGroups().map(headerGroup => (
                                     <TableRow key={headerGroup.id}>
                                         {headerGroup.headers.map(header => (
@@ -117,7 +118,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={saleColumns.length} className="h-24 text-center">No sales recorded in this workspace yet.</TableCell>
+                                        <TableCell colSpan={saleColumns.length} className="h-24 text-center text-muted-foreground">No sales recorded yet.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>

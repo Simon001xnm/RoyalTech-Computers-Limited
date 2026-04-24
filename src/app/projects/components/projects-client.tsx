@@ -1,26 +1,29 @@
-
 "use client";
 
 import { useState } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { PlusCircle } from 'lucide-react';
-import { useUser } from '@/firebase/provider';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import type { Project } from '@/types';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { useToast } from '@/hooks/use-toast';
 import { ProjectBoard } from './project-board';
 import { ProjectForm } from './project-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useSaaS } from '@/components/saas/saas-provider';
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 
 export function ProjectsClient() {
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
+  const { tenant } = useSaaS();
+  const firestore = useFirestore();
   
-  // Use Dexie for local projects
-  const projects = useLiveQuery(() => db.projects.toArray());
-  
-  const isLoading = isUserLoading || projects === undefined;
+  // FIRESTORE Isolated Query
+  const projectsQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'projects'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: projects, isLoading } = useCollection(projectsQuery);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -36,30 +39,40 @@ export function ProjectsClient() {
   };
 
   const handleDeleteProject = async (projectId: string) => {
-    await db.projects.delete(projectId);
-    toast({ title: 'Project Deleted' });
+    try {
+        await deleteDoc(doc(firestore, 'projects', projectId));
+        toast({ title: 'Project Deleted' });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    }
   };
 
   const handleStatusChange = async (projectId: string, newStatus: Project['status']) => {
-    await db.projects.update(projectId, { status: newStatus, updatedAt: new Date().toISOString() });
-    toast({ title: 'Project Updated', description: 'Status has been changed.' });
+    try {
+        await updateDoc(doc(firestore, 'projects', projectId), { status: newStatus, updatedAt: new Date().toISOString() });
+        toast({ title: 'Project Updated', description: 'Status has been changed.' });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    }
   };
 
   const handleFormSubmit = async (data: any) => {
+    if (!tenant) return;
+
     const projectData: any = {
       ...data,
+      tenantId: tenant.id,
       dueDate: data.dueDate ? data.dueDate.toISOString() : undefined,
       updatedAt: new Date().toISOString()
     };
     
     try {
         if (editingProject) {
-            await db.projects.update(editingProject.id, projectData);
+            await updateDoc(doc(firestore, 'projects', editingProject.id), projectData);
             toast({ title: 'Project Updated' });
         } else {
-            await db.projects.add({ 
+            await addDoc(collection(firestore, 'projects'), { 
                 ...projectData, 
-                id: crypto.randomUUID(), 
                 createdAt: new Date().toISOString(),
                 createdBy: { uid: user?.uid || 'local', name: user?.displayName || 'User' }
             });
@@ -75,15 +88,15 @@ export function ProjectsClient() {
   return (
     <>
       <PageHeader
-        title="Projects (Local)"
-        description="Plan, track, and collaborate on projects effectively on this device."
+        title="Project Management (Cloud)"
+        description="Plan, track, and collaborate on projects effectively across your team."
         actionLabel="Add New Project"
         onAction={handleAddProject}
         ActionIcon={PlusCircle}
       />
       
       {isLoading ? (
-        <p>Loading projects...</p>
+        <p className="animate-pulse">Syncing project board...</p>
       ) : (
         <ProjectBoard 
           projects={projects || []}
@@ -93,7 +106,7 @@ export function ProjectsClient() {
         />
       )}
 
-      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingProject(null); } else { setIsFormOpen(true); }}}>
+      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingProject(null); }}}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingProject ? 'Edit Project' : 'Add New Project'}</DialogTitle>

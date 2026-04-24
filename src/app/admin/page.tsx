@@ -1,30 +1,22 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
-import { PageHeader } from '@/components/layout/page-header';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
-    Building2, Users, CreditCard, Activity, ShieldCheck, Globe, Database, Server, 
-    History, MoreHorizontal, ShieldAlert, Lock, Unlock, Zap, Crown, BarChart3, 
-    TrendingUp, Trophy, Filter, Search, X, Loader2, Download, ActivitySquare, 
-    ChevronRight, AlertCircle, Info, CheckCircle2, MessageSquare, Inbox, ActivityIcon,
-    Gauge, Eye, User, Phone, Mail, Clock, Send, SendHorizonal, MailCheck, MailQuestion
+    Building2, Users, CreditCard, Activity, ShieldCheck, Server, 
+    History, MoreHorizontal, Lock, Unlock, Zap, Crown, 
+    ChevronRight, Inbox, Gauge, Eye, Mail, Phone, Clock, Send, SendHorizonal, MailCheck, MailQuestion, Loader2
 } from 'lucide-react';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy, limit, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { format, parseISO } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { logger } from '@/lib/logger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
@@ -34,13 +26,11 @@ import { Label } from '@/components/ui/label';
 
 export default function PlatformCommandCenter() {
   const { toast } = useToast();
+  const firestore = useFirestore();
   
-  // State for Log Filtering
+  // State for Filtering
   const [logLevelFilter, setLogLevelFilter] = useState<string>('all');
   const [tenantFilter, setTenantFilter] = useState<string>('all');
-
-  // Diagnostic & Inspection State
-  const [diagnosticTenant, setDiagnosticTenant] = useState<any | null>(null);
   const [inspectingTenantId, setInspectingTenantId] = useState<string | null>(null);
 
   // Messaging State
@@ -52,141 +42,93 @@ export default function PlatformCommandCenter() {
   const [msgPriority, setMsgPriority] = useState<'info' | 'important' | 'alert'>('info');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
 
-  const tenants = useLiveQuery(() => db.companies.toArray());
-  const users = useLiveQuery(() => db.users.toArray());
-  const globalSales = useLiveQuery(() => db.sales.toArray());
-  const globalTickets = useLiveQuery(() => db.tickets.toArray());
-  const allNotifications = useLiveQuery(() => db.notifications.orderBy('createdAt').reverse().toArray());
-  
-  // Node Inspector Data (Computed based on selected ID)
+  // GLOBAL CLOUD QUERIES (Super Admin Access)
+  const companiesQuery = useMemoFirebase(() => query(collection(firestore, 'companies')), []);
+  const { data: tenants } = useCollection(companiesQuery);
+
+  const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), []);
+  const { data: users } = useCollection(usersQuery);
+
+  const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales_transactions'), orderBy('date', 'desc'), limit(1000)), []);
+  const { data: globalSales } = useCollection(salesQuery);
+
+  const ticketsQuery = useMemoFirebase(() => query(collection(firestore, 'tickets')), []);
+  const { data: globalTickets } = useCollection(ticketsQuery);
+
+  const logsQuery = useMemoFirebase(() => query(collection(firestore, 'platform_logs'), orderBy('timestamp', 'desc'), limit(100)), []);
+  const { data: rawLogs } = useCollection(logsQuery);
+
+  const notifsQuery = useMemoFirebase(() => query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc'), limit(50)), []);
+  const { data: allNotifications } = useCollection(notifsQuery);
+
   const inspectionData = useMemo(() => {
       if (!inspectingTenantId || !globalSales || !users || !tenants) return null;
-      
       const tenant = tenants.find(t => t.id === inspectingTenantId);
-      const tenantSales = globalSales
-          .filter(s => s.tenantId === inspectingTenantId)
-          .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          
+      const tenantSales = globalSales.filter(s => s.tenantId === inspectingTenantId);
       const tenantUsers = users.filter(u => u.tenantId === inspectingTenantId);
-      
-      // Map sales to user identities for staff attribution
-      const attributedSales = tenantSales.map(sale => {
-          const user = tenantUsers.find(u => u.id === sale.createdBy?.uid);
-          return {
-              ...sale,
-              staff: {
-                  name: user?.name || sale.createdBy?.name || 'Unknown',
-                  email: user?.email || 'N/A',
-                  phone: user?.phone || 'N/A'
-              }
-          };
-      });
-
-      return { tenant, sales: attributedSales, users: tenantUsers };
+      return { tenant, sales: tenantSales, users: tenantUsers };
   }, [inspectingTenantId, globalSales, users, tenants]);
 
-  // Reactive logs with filtering
-  const logs = useLiveQuery(async () => {
-    let collection = db.platformLogs.orderBy('timestamp').reverse();
-    const result = await collection.limit(500).toArray();
-    
-    return result.filter(log => {
+  const logs = useMemo(() => {
+    if (!rawLogs) return [];
+    return rawLogs.filter(log => {
         const matchesLevel = logLevelFilter === 'all' || log.level === logLevelFilter;
         const matchesTenant = tenantFilter === 'all' || log.tenantId === tenantFilter;
         return matchesLevel && matchesTenant;
-    }).slice(0, 50);
-  }, [logLevelFilter, tenantFilter]);
+    });
+  }, [rawLogs, logLevelFilter, tenantFilter]);
   
-  const platformStats = useMemo(() => {
-    const totalRev = globalSales?.reduce((acc, s) => acc + s.amount, 0) || 0;
-    
-    return {
-        totalRevenue: totalRev,
-        totalTenants: tenants?.length || 0,
-        totalUsers: users?.length || 0,
-        openTickets: globalTickets?.filter(t => t.status !== 'Closed').length || 0,
-        activeAlerts: logs?.filter(l => l.level === 'error').length || 0
-    };
-  }, [tenants, users, globalSales, logs, globalTickets]);
+  const platformStats = useMemo(() => ({
+    totalRevenue: globalSales?.reduce((acc, s) => acc + s.amount, 0) || 0,
+    totalTenants: tenants?.length || 0,
+    totalUsers: users?.length || 0,
+    openTickets: globalTickets?.filter(t => t.status !== 'Closed').length || 0
+  }), [tenants, users, globalSales, globalTickets]);
 
   const commercialInsights = useMemo(() => {
     if (!globalSales || !tenants || !users) return [];
-    
     return tenants.map(t => {
         const tenantSales = globalSales.filter(s => s.tenantId === t.id);
         const tenantUsers = users.filter(u => u.tenantId === t.id);
         const gmv = tenantSales.reduce((acc, s) => acc + s.amount, 0);
-        const lastSaleDate = tenantSales.length > 0 
-            ? tenantSales.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date 
-            : null;
-            
-        return {
-            name: t.name,
-            id: t.id,
-            gmv,
-            salesCount: tenantSales.length,
-            userCount: tenantUsers.length,
-            lastActive: lastSaleDate,
-            plan: t.plan || 'Free'
-        };
+        return { name: t.name, id: t.id, gmv, salesCount: tenantSales.length, userCount: tenantUsers.length, plan: t.plan || 'Free' };
     }).sort((a, b) => b.gmv - a.gmv);
   }, [globalSales, tenants, users]);
 
   const handleUpdateTenantStatus = async (tenantId: string, status: 'active' | 'suspended') => {
     try {
-        await db.companies.update(tenantId, { status, updatedAt: new Date().toISOString() });
-        logger.warn('System', `Tenant Status Changed: ${status}`, { tenantId });
+        await updateDoc(doc(firestore, 'companies', tenantId), { status, updatedAt: new Date().toISOString() });
         toast({ title: `Tenant ${status === 'active' ? 'Activated' : 'Suspended'}` });
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Action Failed', description: e.message });
-    }
-  };
-
-  const handleUpdateTenantPlan = async (tenantId: string, plan: string) => {
-    try {
-        await db.companies.update(tenantId, { plan, updatedAt: new Date().toISOString() });
-        logger.business('System', `Tenant Plan Overridden: ${plan}`, { tenantId });
-        toast({ title: `Plan Updated to ${plan.toUpperCase()}` });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Action Failed', description: e.message });
+        toast({ variant: 'destructive', title: 'Action Failed' });
     }
   };
 
   const handleSendPlatformMessage = async () => {
     if (!msgTargetTenantId || !msgSubject || !msgBody) return;
-    
     setIsSendingMsg(true);
     try {
-        await db.notifications.add({
-            id: crypto.randomUUID(),
+        await addDoc(collection(firestore, 'notifications'), {
             tenantId: msgTargetTenantId,
-            userId: msgTargetUserId === 'all' ? undefined : msgTargetUserId,
-            from: 'Platform Support',
+            userId: msgTargetUserId === 'all' ? null : msgTargetUserId,
+            from: 'Platform Admin',
             subject: msgSubject,
             message: msgBody,
             priority: msgPriority,
             read: false,
             createdAt: new Date().toISOString()
         });
-
-        logger.business('System', 'Platform Message Sent', { targetTenantId: msgTargetTenantId, targetUserId: msgTargetUserId });
-        toast({ title: "Message Sent Successfully" });
+        toast({ title: "Message Broadcast Successful" });
         setIsMessageOpen(false);
-        setMsgSubject('');
-        setMsgBody('');
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Transmission Error', description: e.message });
+        toast({ variant: 'destructive', title: 'Transmission Error' });
     } finally {
         setIsSendingMsg(false);
     }
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-KE", {
-      style: "currency",
-      currency: "KES",
-      maximumFractionDigits: 0
-    }).format(amount);
+    return new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 }).format(amount);
   };
 
   return (
@@ -195,97 +137,109 @@ export default function PlatformCommandCenter() {
         <div>
             <h1 className="text-4xl font-black uppercase tracking-tighter flex items-center gap-3">
                 <Gauge className="h-10 w-10 text-primary" />
-                Platform Nerve Center
+                Platform Command
             </h1>
-            <p className="text-muted-foreground font-medium mt-1">Global SaaS Oversight & Transaction Intelligence</p>
+            <p className="text-muted-foreground font-medium mt-1">Global SaaS Oversight & Network Metrics</p>
         </div>
         <div className="flex gap-2">
-            <Button onClick={() => setIsMessageOpen(true)} className="h-9 px-4 font-bold bg-primary text-primary-foreground shadow-lg hover:scale-105 transition-all">
-                <SendHorizonal className="h-4 w-4 mr-2" /> Send Platform Broadcast
+            <Button onClick={() => setIsMessageOpen(true)} className="h-9 px-4 font-bold bg-primary text-primary-foreground shadow-lg">
+                <SendHorizonal className="h-4 w-4 mr-2" /> Global Broadcast
             </Button>
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-9 px-4 font-bold">
-                <Server className="h-3 w-3 mr-2" /> Global Cluster Online
+                <Server className="h-3 w-3 mr-2" /> Global Node Online
             </Badge>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard title="Active Tenancies" value={platformStats.totalTenants} icon={Building2} description="Registered business workspaces" />
-        <SummaryCard title="Global Users" value={platformStats.totalUsers} icon={Users} description="Consolidated staff across all nodes" />
-        <SummaryCard title="Cumulative GMV" value={formatCurrency(platformStats.totalRevenue)} icon={CreditCard} description="Gross Merchandise Volume" />
-        <SummaryCard 
-            title="SaaS Support" 
-            value={platformStats.openTickets} 
-            icon={Inbox} 
-            description="Active helpdesk inquiries"
-            className={platformStats.openTickets > 0 ? "border-orange-200 bg-orange-50/10" : ""}
-        />
+        <SummaryCard title="Active Workspaces" value={platformStats.totalTenants} icon={Building2} description="Registered cloud tenancies" />
+        <SummaryCard title="Global Identity" value={platformStats.totalUsers} icon={Users} description="Consolidated staff accounts" />
+        <SummaryCard title="Aggregate GMV" value={formatCurrency(platformStats.totalRevenue)} icon={CreditCard} description="Cumulative transaction volume" />
+        <SummaryCard title="Global Support" value={platformStats.openTickets} icon={Inbox} description="Pending helpdesk tickets" />
       </div>
 
-      <Tabs defaultValue="activity" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-8 h-14 p-1 bg-muted/50 border shadow-inner">
-          <TabsTrigger value="activity" className="font-black uppercase tracking-widest text-[10px]">Audit Nerve</TabsTrigger>
-          <TabsTrigger value="commercial" className="font-black uppercase tracking-widest text-[10px]">GMV Insights</TabsTrigger>
-          <TabsTrigger value="tenants" className="font-black uppercase tracking-widest text-[10px]">Workspace Registry</TabsTrigger>
-          <TabsTrigger value="support" className="font-black uppercase tracking-widest text-[10px]">Global Helpdesk</TabsTrigger>
-          <TabsTrigger value="comms" className="font-black uppercase tracking-widest text-[10px]">Comms Log</TabsTrigger>
+      <Tabs defaultValue="tenants" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
+          <TabsTrigger value="tenants" className="font-black uppercase tracking-widest text-[10px]">Workspaces</TabsTrigger>
+          <TabsTrigger value="commercial" className="font-black uppercase tracking-widest text-[10px]">Commercials</TabsTrigger>
+          <TabsTrigger value="activity" className="font-black uppercase tracking-widest text-[10px]">Global Audit</TabsTrigger>
+          <TabsTrigger value="comms" className="font-black uppercase tracking-widest text-[10px]">Platform Comms</TabsTrigger>
         </TabsList>
         
+        <TabsContent value="tenants">
+            <Card className="shadow-2xl border-none overflow-hidden">
+                <CardHeader className="p-6"><CardTitle className="text-xl font-black uppercase tracking-tight">Cloud Workspace Registry</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader className="bg-muted/50">
+                            <TableRow>
+                                <TableHead className="font-black uppercase text-[10px] py-4 px-6">Business Entity</TableHead>
+                                <TableHead className="font-black uppercase text-[10px]">Staff Size</TableHead>
+                                <TableHead className="font-black uppercase text-[10px]">Plan</TableHead>
+                                <TableHead className="font-black uppercase text-[10px]">Status</TableHead>
+                                <TableHead className="text-right font-black uppercase text-[10px] px-6">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {tenants?.map(tenant => (
+                                <TableRow key={tenant.id} className="hover:bg-muted/5">
+                                    <TableCell className="px-6 py-5">
+                                        <div className="font-black uppercase text-sm">{tenant.name}</div>
+                                        <div className="text-[10px] font-mono text-muted-foreground opacity-60">ID: {tenant.id.slice(0,8).toUpperCase()}</div>
+                                    </TableCell>
+                                    <TableCell><span className="font-bold text-xs">{users?.filter(u => u.tenantId === tenant.id).length || 0} Accounts</span></TableCell>
+                                    <TableCell><Badge variant="outline" className="uppercase text-[9px] font-black">{tenant.plan || 'Free'}</Badge></TableCell>
+                                    <TableCell><Badge variant={tenant.status === 'suspended' ? 'destructive' : 'secondary'} className="uppercase text-[9px] font-black">{tenant.status || 'Active'}</Badge></TableCell>
+                                    <TableCell className="text-right px-6">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-56 p-2">
+                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => { setMsgTargetTenantId(tenant.id); setMsgTargetUserId('all'); setIsMessageOpen(true); }}><Mail className="h-4 w-4 mr-2" /> Message Tenant</DropdownMenuItem>
+                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => setInspectingTenantId(tenant.id)}><Eye className="h-4 w-4 mr-2" /> Inspect Node</DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem className={cn("font-bold text-xs", tenant.status === 'suspended' ? "text-green-600" : "text-destructive")} onClick={() => handleUpdateTenantStatus(tenant.id, tenant.status === 'suspended' ? 'active' : 'suspended')}>
+                                                    {tenant.status === 'suspended' ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
+                                                    {tenant.status === 'suspended' ? "Re-activate Node" : "Suspend Access"}
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </TabsContent>
+
         <TabsContent value="activity">
-            <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden flex flex-col">
-                <CardHeader className="bg-muted/30 border-b space-y-4 p-6">
+            <Card className="shadow-2xl border-none overflow-hidden">
+                <CardHeader className="bg-muted/30 border-b p-6">
                     <div className="flex items-center gap-2">
                         <History className="h-6 w-6 text-primary" />
-                        <CardTitle className="text-xl font-black uppercase tracking-tight">Global Activity Stream</CardTitle>
-                    </div>
-                    <div className="flex flex-wrap gap-3">
-                        <Select value={logLevelFilter} onValueChange={setLogLevelFilter}>
-                            <SelectTrigger className="h-10 w-48 text-xs bg-background font-bold uppercase"><SelectValue placeholder="Severity"/></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Severities</SelectItem>
-                                <SelectItem value="business">💰 Business Events</SelectItem>
-                                <SelectItem value="error">🔴 Critical Errors</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={tenantFilter} onValueChange={setTenantFilter}>
-                            <SelectTrigger className="h-10 w-64 text-xs bg-background font-bold uppercase"><SelectValue placeholder="Isolate Tenant"/></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Business Nodes</SelectItem>
-                                {tenants?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        <CardTitle className="text-xl font-black uppercase tracking-tight">Global Network Trace</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
                     <ScrollArea className="h-[600px]">
-                        <div className="divide-y divide-muted/40">
+                        <div className="divide-y">
                             {logs?.map(log => (
-                                <div key={log.id} className="p-5 hover:bg-muted/20 transition-colors">
+                                <div key={log.id} className="p-5 hover:bg-muted/20">
                                     <div className="flex items-start justify-between gap-6">
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-3">
-                                                <Badge variant="outline" className={cn(
-                                                    "font-black text-[9px] uppercase",
-                                                    log.level === 'error' ? 'bg-red-50 text-red-700' : log.level === 'business' ? 'bg-green-50 text-green-700' : ''
-                                                )}>
+                                                <Badge variant="outline" className={cn("font-black text-[9px] uppercase", log.level === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700')}>
                                                     {log.level}
                                                 </Badge>
-                                                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{log.module}</span>
+                                                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{log.module}</span>
                                             </div>
-                                            <p className="text-sm font-bold text-foreground">{log.event}</p>
-                                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-medium">
-                                                <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-0.5 rounded">
-                                                    <Building2 className="h-3 w-3" /> {tenants?.find(t => t.id === log.tenantId)?.name || 'Platform'}
-                                                </div>
+                                            <p className="text-sm font-bold">{log.event}</p>
+                                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium">
+                                                <Building2 className="h-3 w-3" /> {tenants?.find(t => t.id === log.tenantId)?.name || 'Platform'}
                                                 <span className="opacity-40">&bull;</span>
-                                                {format(parseISO(log.timestamp), 'MMM d, HH:mm:ss')}
+                                                {format(parseISO(log.timestamp), 'MMM d, HH:mm')}
                                             </div>
                                         </div>
-                                        {log.metadata && (
-                                            <div className="hidden lg:block">
-                                                <Badge variant="secondary" className="text-[8px] font-mono opacity-60">TXN_{log.id.slice(0,6).toUpperCase()}</Badge>
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -295,232 +249,32 @@ export default function PlatformCommandCenter() {
             </Card>
         </TabsContent>
 
-        <TabsContent value="commercial">
-            <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden">
-                <CardHeader className="bg-primary/5 border-b p-6">
-                    <CardTitle className="text-xl font-black uppercase tracking-tight">Tenant GMV Leaderboard</CardTitle>
-                    <CardDescription className="text-xs uppercase font-bold text-muted-foreground">High-performance business nodes ranking &bull; Click to inspect node</CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="divide-y divide-muted/30">
-                        {commercialInsights.map((tenant, index) => (
-                            <button 
-                                key={tenant.id} 
-                                className="w-full p-8 flex items-center justify-between hover:bg-primary/5 transition-all group border-l-4 border-transparent hover:border-primary text-left"
-                                onClick={() => setInspectingTenantId(tenant.id)}
-                            >
-                                <div className="flex items-center gap-6">
-                                    <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center font-black text-lg shadow-inner group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                                        {index + 1}
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-black text-lg uppercase tracking-tight">{tenant.name}</p>
-                                            <Badge variant="outline" className="text-[8px] font-black uppercase">{tenant.plan}</Badge>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{tenant.salesCount} Cumulative Transactions</p>
-                                            <span className="text-muted-foreground/30">&bull;</span>
-                                            <p className="text-[10px] text-primary font-black uppercase tracking-widest">{tenant.userCount} Team Members</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-8">
-                                    <div className="text-right space-y-1">
-                                        <p className="text-2xl font-black text-primary tracking-tighter">{formatCurrency(tenant.gmv)}</p>
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Total Volume</p>
-                                    </div>
-                                    <ChevronRight className="h-5 w-5 text-muted-foreground opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
-        </TabsContent>
-
-        <TabsContent value="tenants">
-            <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden">
-                <CardHeader className="p-6"><CardTitle className="text-xl font-black uppercase tracking-tight">Workspace Registry</CardTitle></CardHeader>
+        <TabsContent value="comms">
+            <Card className="shadow-2xl border-none overflow-hidden">
+                <CardHeader className="bg-primary/5 border-b p-6"><CardTitle className="text-xl font-black uppercase tracking-tight">Communication Audit Log</CardTitle></CardHeader>
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="font-black uppercase text-[10px] py-4 px-6">Business Node</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Staff Capacity</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Subscription</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Operational Status</TableHead>
-                                <TableHead className="text-right font-black uppercase text-[10px] px-6">Privileged Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {tenants?.map(tenant => {
-                                const tenantInsight = commercialInsights.find(i => i.id === tenant.id);
-                                return (
-                                <TableRow key={tenant.id} className="hover:bg-muted/5">
-                                    <TableCell className="px-6 py-5">
-                                        <div className="font-black uppercase text-sm">{tenant.name}</div>
-                                        <div className="text-[10px] font-mono text-muted-foreground opacity-60">NODE_ID: {tenant.id.toUpperCase()}</div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Users className="h-3 w-3 text-muted-foreground" />
-                                            <span className="font-bold text-xs">{tenantInsight?.userCount || 0} Accounts</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline" className="uppercase text-[9px] font-black tracking-widest h-6 px-3">{tenant.plan || 'Standard'}</Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={tenant.status === 'suspended' ? 'destructive' : 'secondary'} className="uppercase text-[9px] font-black tracking-widest h-6 px-3">
-                                            {tenant.status || 'Active'}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right px-6">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-64 p-2 shadow-2xl border-none ring-1 ring-black/5">
-                                                <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-3 py-2">Platform Overrides</DropdownMenuLabel>
-                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => {
-                                                    setMsgTargetTenantId(tenant.id);
-                                                    setMsgTargetUserId('all');
-                                                    setIsMessageOpen(true);
-                                                }}>
-                                                    <MessageSquare className="h-4 w-4 mr-2 text-primary" /> Send Platform Message
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => handleUpdateTenantPlan(tenant.id, 'pro')}>
-                                                    <Crown className="h-4 w-4 mr-2 text-primary" /> Upgrade to Enterprise
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => setInspectingTenantId(tenant.id)}>
-                                                    <Eye className="h-4 w-4 mr-2 text-primary" /> Inspect Node Metrics
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => {
-                                                    setDiagnosticTenant(tenant);
-                                                    logger.info('System', 'Diagnostic Scan Initiated', { targetTenantId: tenant.id });
-                                                }}>
-                                                    <ActivityIcon className="h-4 w-4 mr-2 text-blue-600" /> Run Deep-Dive Diagnostics
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem 
-                                                    className={cn("font-bold text-xs", tenant.status === 'suspended' ? "text-green-600" : "text-destructive")}
-                                                    onClick={() => handleUpdateTenantStatus(tenant.id, tenant.status === 'suspended' ? 'active' : 'suspended')}
-                                                >
-                                                    {tenant.status === 'suspended' ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
-                                                    {tenant.status === 'suspended' ? "Re-activate Node" : "Suspend Tenancy"}
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            )})}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        </TabsContent>
-        
-        <TabsContent value="support">
-            <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden">
-                <CardHeader className="bg-orange-50/30 border-b p-6">
-                    <CardTitle className="text-xl font-black uppercase tracking-tight">Global Support Oversight</CardTitle>
-                    <CardDescription className="text-xs uppercase font-bold text-muted-foreground tracking-widest">Platform-wide helpdesk monitoring</CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader className="bg-muted/50">
-                            <TableRow>
-                                <TableHead className="font-black uppercase text-[10px] py-4 px-6">Source Node</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] py-4 px-6">Destination Node</TableHead>
                                 <TableHead className="font-black uppercase text-[10px]">Subject</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Criticality</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Resolution</TableHead>
-                                <TableHead className="font-black uppercase text-[10px] px-6">Ingested At</TableHead>
+                                <TableHead className="font-black uppercase text-[10px]">Sent</TableHead>
+                                <TableHead className="font-black uppercase text-[10px]">Status</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {globalTickets?.map(ticket => (
-                                <TableRow key={ticket.id} className="hover:bg-muted/5">
-                                    <TableCell className="px-6 py-5 font-black text-primary uppercase text-xs">
-                                        {tenants?.find(t => t.id === ticket.tenantId)?.name || 'Unknown'}
-                                    </TableCell>
+                            {allNotifications?.map(notif => (
+                                <TableRow key={notif.id} className="hover:bg-muted/5">
+                                    <TableCell className="px-6 py-4 font-black uppercase text-xs text-primary">{tenants?.find(t => t.id === notif.tenantId)?.name || 'Unknown'}</TableCell>
+                                    <TableCell className="font-bold text-sm">{notif.subject}</TableCell>
+                                    <TableCell className="text-[10px] font-medium text-muted-foreground">{format(parseISO(notif.createdAt), 'MMM d, HH:mm')}</TableCell>
                                     <TableCell>
-                                        <p className="font-bold text-sm">{ticket.subject}</p>
-                                        <p className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter">{ticket.customerName || 'Direct Support'}</p>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={ticket.priority === 'High' ? 'destructive' : 'outline'} className="font-black text-[9px] uppercase px-3">{ticket.priority}</Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="secondary" className="font-black text-[9px] uppercase px-3">{ticket.status}</Badge>
-                                    </TableCell>
-                                    <TableCell className="text-[10px] font-bold text-muted-foreground px-6">
-                                        {format(parseISO(ticket.createdAt), 'MMM d, yyyy')}
+                                        <Badge variant={notif.read ? "default" : "outline"} className="font-black uppercase text-[9px]">
+                                            {notif.read ? "Read" : "Sent"}
+                                        </Badge>
                                     </TableCell>
                                 </TableRow>
                             ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        </TabsContent>
-
-        <TabsContent value="comms">
-            <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden">
-                <CardHeader className="bg-primary/5 border-b p-6">
-                    <CardTitle className="text-xl font-black uppercase tracking-tight">Platform Communication Log</CardTitle>
-                    <CardDescription className="text-xs uppercase font-bold text-muted-foreground tracking-widest">Tracking delivery and read receipts for all platform alerts</CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader className="bg-muted/50">
-                            <TableRow>
-                                <TableHead className="font-black uppercase text-[10px] py-4 px-6">Target Node / User</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Subject</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Sent At</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Read Status</TableHead>
-                                <TableHead className="text-right font-black uppercase text-[10px] px-6">Read At</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {allNotifications?.map(notif => {
-                                const targetTenant = tenants?.find(t => t.id === notif.tenantId);
-                                const targetUser = users?.find(u => u.id === notif.userId);
-                                return (
-                                    <TableRow key={notif.id} className="hover:bg-muted/5 transition-colors">
-                                        <TableCell className="px-6 py-4">
-                                            <div className="font-black uppercase text-xs text-primary">{targetTenant?.name || 'Unknown Node'}</div>
-                                            <div className="text-[10px] text-muted-foreground font-bold italic">
-                                                {notif.userId ? `To: ${targetUser?.name || 'Specific Staff'}` : 'To: All Tenant Staff'}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="font-bold text-sm">{notif.subject}</TableCell>
-                                        <TableCell className="text-[10px] font-medium text-muted-foreground">
-                                            {format(parseISO(notif.createdAt), 'MMM d, HH:mm')}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={notif.read ? "default" : "outline"} className={cn(
-                                                "font-black uppercase text-[9px] h-6 px-3",
-                                                notif.read ? "bg-green-500 hover:bg-green-600 border-none" : "border-orange-200 text-orange-600 bg-orange-50"
-                                            )}>
-                                                {notif.read ? (
-                                                    <><MailCheck className="h-3 w-3 mr-1.5" /> Read</>
-                                                ) : (
-                                                    <><MailQuestion className="h-3 w-3 mr-1.5" /> Sent</>
-                                                )}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right px-6 text-[10px] font-mono text-muted-foreground">
-                                            {notif.read && notif.updatedAt ? format(parseISO(notif.updatedAt), 'HH:mm:ss') : '--:--:--'}
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                            {(!allNotifications || allNotifications.length === 0) && (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="h-32 text-center text-muted-foreground font-black uppercase tracking-widest text-xs opacity-40">
-                                        No platform communications logged yet.
-                                    </TableCell>
-                                </TableRow>
-                            )}
                         </TableBody>
                     </Table>
                 </CardContent>
@@ -530,266 +284,77 @@ export default function PlatformCommandCenter() {
 
       {/* Node Inspector Dialog */}
       <Dialog open={!!inspectingTenantId} onOpenChange={(open) => !open && setInspectingTenantId(null)}>
-        <DialogContent className="sm:max-w-5xl max-h-[90vh] flex flex-col p-0 border-none ring-1 ring-black/5 shadow-2xl overflow-hidden bg-background">
-            <DialogHeader className="p-8 bg-primary text-primary-foreground border-b border-white/10 shrink-0">
-                <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                        <DialogTitle className="text-3xl font-black uppercase tracking-tighter flex items-center gap-3">
-                            <Eye className="h-8 w-8" />
-                            Node Inspector: {inspectionData?.tenant?.name}
-                        </DialogTitle>
-                        <DialogDescription className="text-primary-foreground/70 font-bold uppercase text-[10px] tracking-[0.2em] flex items-center gap-4">
-                            <span>SaaS Tenancy ID: {inspectingTenantId?.toUpperCase()}</span>
-                            <span>&bull;</span>
-                            <span>Subscription: {inspectionData?.tenant?.plan || 'Standard'}</span>
-                        </DialogDescription>
-                    </div>
-                    <Badge variant="outline" className="bg-white/10 text-white border-white/20 h-8 px-4 font-black uppercase tracking-widest text-[9px]">
-                        Live Diagnostic Active
-                    </Badge>
-                </div>
-            </DialogHeader>
-            
-            <div className="flex-grow overflow-hidden flex flex-col p-0">
-                <div className="grid grid-cols-3 gap-0 border-b shrink-0">
-                    <div className="p-6 text-center border-r bg-muted/20">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Total Transactions</p>
-                        <p className="text-2xl font-black text-foreground tabular-nums">{inspectionData?.sales.length || 0}</p>
-                    </div>
-                    <div className="p-6 text-center border-r bg-muted/20">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Active Team Size</p>
-                        <p className="text-2xl font-black text-foreground tabular-nums">{inspectionData?.users.length || 0}</p>
-                    </div>
-                    <div className="p-6 text-center bg-muted/20">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Cumulative GMV</p>
-                        <p className="text-2xl font-black text-primary tabular-nums">
-                            {formatCurrency(inspectionData?.sales.reduce((acc, s) => acc + s.amount, 0) || 0)}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex-grow overflow-hidden flex flex-col p-8 space-y-6">
-                    <div className="flex items-center justify-between shrink-0">
-                        <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                            <Activity className="h-4 w-4 text-primary" />
-                            Live Node Transaction Feed
-                        </h3>
-                        <Badge variant="secondary" className="text-[8px] font-black uppercase">Staff Attribution Enabled</Badge>
-                    </div>
-
-                    <div className="flex-grow overflow-hidden rounded-xl border bg-card shadow-sm flex flex-col">
-                        <ScrollArea className="flex-grow">
-                            <Table>
-                                <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
-                                    <TableRow className="hover:bg-transparent">
-                                        <TableHead className="font-black uppercase text-[9px] w-[150px]">Timestamp</TableHead>
-                                        <TableHead className="font-black uppercase text-[9px]">Staff Identity (Primary ID)</TableHead>
-                                        <TableHead className="font-black uppercase text-[9px] text-right">Volume</TableHead>
-                                        <TableHead className="font-black uppercase text-[9px]">Method</TableHead>
-                                        <TableHead className="font-black uppercase text-[9px] text-right">Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {inspectionData?.sales.map((sale) => (
-                                        <TableRow key={sale.id} className="hover:bg-muted/10 transition-colors group">
-                                            <TableCell className="text-[10px] font-mono opacity-60">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Clock className="h-3 w-3 opacity-40" />
-                                                    {format(parseISO(sale.date), 'MMM d, HH:mm:ss')}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="space-y-1 py-1">
-                                                    <p className="text-xs font-black uppercase tracking-tight">{sale.staff.name}</p>
-                                                    <div className="flex flex-col gap-0.5 opacity-70">
-                                                        <p className="text-[10px] font-mono flex items-center gap-1">
-                                                            <Mail className="h-2.5 w-2.5" /> {sale.staff.email}
-                                                        </p>
-                                                        <p className="text-[10px] font-mono flex items-center gap-1">
-                                                            <Phone className="h-2.5 w-2.5" /> {sale.staff.phone}
-                                                        </p>
-                                                    </div>
-                                                    <p className="text-[8px] font-mono text-muted-foreground tracking-tighter opacity-40 group-hover:opacity-100 transition-opacity">
-                                                        UID: {sale.createdBy?.uid}
-                                                    </p>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <span className="font-black text-xs tabular-nums text-primary">{formatCurrency(sale.amount)}</span>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest bg-muted/20">
-                                                    {sale.paymentMethod}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Badge variant="default" className="text-[8px] font-black uppercase bg-green-500 hover:bg-green-600">
-                                                    {sale.status}
-                                                </Badge>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                    {inspectionData?.sales.length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="h-48 text-center text-muted-foreground font-black uppercase tracking-widest text-xs opacity-20">
-                                                No transactions logged in this node.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </ScrollArea>
-                    </div>
-                </div>
-            </div>
-
-            <CardFooter className="bg-muted/30 p-6 border-t flex justify-between shrink-0">
-                <p className="text-[9px] font-bold text-muted-foreground uppercase italic max-w-sm">
-                    "This oversight module provides cryptographically attributed transaction data. All staff actions are logged for platform-level accountability."
-                </p>
-                <Button onClick={() => setInspectingTenantId(null)} className="font-black uppercase tracking-widest text-xs px-8 h-10 shadow-lg">
-                    Terminate Inspection
-                </Button>
-            </CardFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Deep-Dive Diagnostic Dialog (Technical Audit) */}
-      <Dialog open={!!diagnosticTenant} onOpenChange={(open) => !open && setDiagnosticTenant(null)}>
-        <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col p-0 border-none ring-1 ring-black/5 shadow-2xl">
-            <DialogHeader className="p-8 bg-muted/30 border-b">
-                <DialogTitle className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
-                    <ActivityIcon className="h-6 w-6 text-primary" />
-                    Deep-Dive Diagnostic Scan
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+            <DialogHeader className="p-8 bg-primary text-primary-foreground">
+                <DialogTitle className="text-3xl font-black uppercase tracking-tighter flex items-center gap-3">
+                    <Eye className="h-8 w-8" />
+                    Node Audit: {inspectionData?.tenant?.name}
                 </DialogTitle>
-                <DialogDescription className="font-bold uppercase text-[10px] tracking-widest pt-1">
-                    Inspecting node: <span className="text-primary">{diagnosticTenant?.name}</span>
+                <DialogDescription className="text-primary-foreground/70 font-bold uppercase text-[10px] tracking-widest">
+                    Tenancy ID: {inspectingTenantId?.toUpperCase()}
                 </DialogDescription>
             </DialogHeader>
-            <div className="flex-grow overflow-y-auto p-8 space-y-8">
-                 <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-muted/20 rounded-2xl border space-y-1">
-                        <p className="text-[10px] font-black uppercase opacity-50 tracking-widest">Operational Status</p>
-                        <Badge className="font-black uppercase text-[10px]">{diagnosticTenant?.status || 'Active'}</Badge>
+            <div className="flex-grow overflow-hidden flex flex-col">
+                <div className="grid grid-cols-3 gap-0 border-b">
+                    <div className="p-6 text-center border-r bg-muted/10">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Total Sales</p>
+                        <p className="text-2xl font-black">{inspectionData?.sales.length || 0}</p>
                     </div>
-                    <div className="p-4 bg-muted/20 rounded-2xl border space-y-1">
-                        <p className="text-[10px] font-black uppercase opacity-50 tracking-widest">Active Plan</p>
-                        <p className="font-black uppercase text-lg tracking-tight text-primary">{diagnosticTenant?.plan || 'Standard'}</p>
+                    <div className="p-6 text-center border-r bg-muted/10">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Team Members</p>
+                        <p className="text-2xl font-black">{inspectionData?.users.length || 0}</p>
                     </div>
-                    <div className="p-4 bg-muted/20 rounded-2xl border space-y-1">
-                        <p className="text-[10px] font-black uppercase opacity-50 tracking-widest">Active Staff Count</p>
-                        <p className="font-black uppercase text-lg tracking-tight text-foreground">
-                            {commercialInsights.find(i => i.id === diagnosticTenant?.id)?.userCount || 0} Members
-                        </p>
+                    <div className="p-6 text-center bg-muted/10">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Active GMV</p>
+                        <p className="text-2xl font-black text-primary">{formatCurrency(inspectionData?.sales.reduce((acc, s) => acc + s.amount, 0) || 0)}</p>
                     </div>
-                 </div>
-                 
-                 <div className="space-y-4">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground border-b pb-2 flex items-center gap-2">
-                        <History className="h-4 w-4" />
-                        Node-Specific Audit Trace
-                    </h4>
-                    <div className="rounded-xl border bg-card overflow-hidden">
-                        <ScrollArea className="h-[300px]">
-                            <div className="divide-y divide-muted/30">
-                                {logs?.filter(l => l.tenantId === diagnosticTenant?.id).map(l => (
-                                    <div key={l.id} className="p-4 space-y-1">
-                                        <div className="flex justify-between items-center">
-                                            <Badge variant="outline" className="text-[8px] font-black uppercase">{l.level}</Badge>
-                                            <span className="text-[9px] font-mono opacity-50">{format(parseISO(l.timestamp), 'HH:mm:ss')}</span>
-                                        </div>
-                                        <p className="text-xs font-bold">{l.event}</p>
-                                    </div>
-                                ))}
-                                {logs?.filter(l => l.tenantId === diagnosticTenant?.id).length === 0 && (
-                                    <div className="p-10 text-center text-muted-foreground text-xs font-bold uppercase tracking-widest">No recent trace logs for this node.</div>
-                                )}
-                            </div>
-                        </ScrollArea>
-                    </div>
-                 </div>
+                </div>
+                <ScrollArea className="flex-grow p-6">
+                    <Table>
+                        <TableHeader><TableRow><TableHead className="text-[9px] uppercase font-black">Date</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Volume</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Method</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {inspectionData?.sales.map(s => (
+                                <TableRow key={s.id}>
+                                    <TableCell className="text-[10px] font-mono">{format(parseISO(s.date), 'MMM d, HH:mm')}</TableCell>
+                                    <TableCell className="text-right font-black text-xs text-primary">{formatCurrency(s.amount)}</TableCell>
+                                    <TableCell className="text-right"><Badge variant="outline" className="text-[8px]">{s.paymentMethod}</Badge></TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </ScrollArea>
             </div>
-            <CardFooter className="bg-muted/30 p-6 border-t flex justify-end">
-                <Button onClick={() => setDiagnosticTenant(null)} className="font-bold">Close Diagnostic Scan</Button>
+            <CardFooter className="p-6 border-t flex justify-end">
+                <Button onClick={() => setInspectingTenantId(null)} className="font-bold">Close Audit</Button>
             </CardFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Platform Comms: Send Message Dialog */}
+      {/* Messaging Dialog */}
       <Dialog open={isMessageOpen} onOpenChange={setIsMessageOpen}>
         <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-                <DialogTitle className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
-                    <Send className="h-6 w-6 text-primary" />
-                    Compose Platform Message
-                </DialogTitle>
-                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">
-                    Direct administrative communication to businesses
-                </DialogDescription>
+                <DialogTitle className="text-2xl font-black uppercase flex items-center gap-2"><Send className="h-6 w-6 text-primary" /> platform alert</DialogTitle>
+                <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">Admin broadcast service</DialogDescription>
             </DialogHeader>
-            
-            <div className="space-y-6 py-6">
-                <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest">Destination Node</Label>
-                        <Select value={msgTargetTenantId} onValueChange={setMsgTargetTenantId}>
-                            <SelectTrigger className="h-12 font-bold uppercase text-xs">
-                                <SelectValue placeholder="Select Business Node" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {tenants?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {msgTargetTenantId && (
-                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <Label className="text-[10px] font-black uppercase tracking-widest">Recipient Identity</Label>
-                            <Select value={msgTargetUserId} onValueChange={setMsgTargetUserId}>
-                                <SelectTrigger className="h-10 text-xs">
-                                    <SelectValue placeholder="All Tenant Staff" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Administrators & Staff</SelectItem>
-                                    {users?.filter(u => u.tenantId === msgTargetTenantId).map(u => (
-                                        <SelectItem key={u.id} value={u.id}>{u.name} ({u.email})</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
-
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest">Alert Subject</Label>
-                        <Input value={msgSubject} onChange={e => setMsgSubject(e.target.value)} placeholder="e.g. System Maintenance, Subscription Update" className="h-11 font-bold" />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest">Priority Tier</Label>
-                        <Select value={msgPriority} onValueChange={(v: any) => setMsgPriority(v)}>
-                            <SelectTrigger className="h-10 text-xs">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="info">Standard Information</SelectItem>
-                                <SelectItem value="important">Important (Pinned)</SelectItem>
-                                <SelectItem value="alert">Critical Alert (Red)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest">Detailed Content</Label>
-                        <Textarea value={msgBody} onChange={e => setMsgBody(e.target.value)} rows={6} placeholder="Compose your platform communication here..." />
-                    </div>
+            <div className="space-y-6 py-4">
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase">target node</Label>
+                    <Select value={msgTargetTenantId} onValueChange={setMsgTargetTenantId}><SelectTrigger className="h-12 font-bold uppercase text-xs"><SelectValue placeholder="Select Business Node" /></SelectTrigger><SelectContent>{tenants?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent></Select>
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase">subject</Label>
+                    <Input value={msgSubject} onChange={e => setMsgSubject(e.target.value)} placeholder="System Maintenance, Subscription Update..." className="h-11 font-bold" />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase">Message Content</Label>
+                    <Textarea value={msgBody} onChange={e => setMsgBody(e.target.value)} rows={6} placeholder="Compose your platform communication here..." />
                 </div>
             </div>
-
-            <DialogFooter className="border-t pt-6 bg-muted/10">
-                <Button variant="outline" onClick={() => setIsMessageOpen(false)} disabled={isSendingMsg}>Discard</Button>
-                <Button onClick={handleSendPlatformMessage} disabled={isSendingMsg || !msgTargetTenantId || !msgSubject || !msgBody} className="font-black uppercase tracking-widest text-xs px-8">
-                    {isSendingMsg ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                    Broadcast Message
+            <DialogFooter className="border-t pt-6">
+                <Button variant="outline" onClick={() => setIsMessageOpen(false)}>Cancel</Button>
+                <Button onClick={handleSendPlatformMessage} disabled={isSendingMsg || !msgTargetTenantId || !msgSubject} className="font-black uppercase tracking-widest text-xs px-8">
+                    {isSendingMsg ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />} Broadcast Alert
                 </Button>
             </DialogFooter>
         </DialogContent>

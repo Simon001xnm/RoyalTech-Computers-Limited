@@ -9,28 +9,31 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LocateFixed, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useUser } from '@/firebase/provider';
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { useSaaS } from "@/components/saas/saas-provider";
 import { SubscriptionGuard } from "@/components/saas/subscription-guard";
 
 export function TrackingClient() {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
+  const { tenant } = useSaaS();
+  const firestore = useFirestore();
 
-  // Fetch trackable assets from local Dexie database
-  const trackableAssets = useLiveQuery(async () => {
-    if (!user) return [];
-    // Only track assets that are leased or in repair
-    return await db.assets
-      .filter(a => ['Leased', 'Repair'].includes(a.status))
-      .toArray();
-  }, [user]);
+  // CLOUD QUERY: Leased assets for tracking
+  const trackableQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(
+        collection(firestore, 'assets'),
+        where('tenantId', '==', tenant.id),
+        where('status', 'in', ['Leased', 'Repair'])
+    );
+  }, [firestore, tenant?.id]);
 
-  const isLoading = isUserLoading || trackableAssets === undefined;
+  const { data: trackableAssets, isLoading } = useCollection(trackableQuery);
 
   const assetsWithLocation = useMemo(() => 
-    trackableAssets?.filter(asset => asset.location), 
+    (trackableAssets || []).filter(asset => asset.location), 
   [trackableAssets]);
 
   const selectedAssetDetails = useMemo(() => 
@@ -47,92 +50,44 @@ export function TrackingClient() {
   if (isLoading) {
     return (
         <div className="space-y-6">
-            <PageHeader
-                title="Asset Tracking"
-                description="Syncing trackable device locations..."
-            />
-            <p className="text-center py-12 text-muted-foreground animate-pulse">Accessing local location data...</p>
+            <PageHeader title="Asset Tracking" description="Acquiring GPS data from the cloud..." />
+            <p className="text-center py-12 text-muted-foreground animate-pulse">Syncing location coordinates...</p>
         </div>
     )
   }
 
   return (
     <SubscriptionGuard requiredTier="pro" feature="Live GPS Tracking">
-      <PageHeader
-        title="Asset Tracking (Local)"
-        description="View the last known location of leased or in-repair assets."
-      />
+      <PageHeader title="Cloud Asset Tracking" description="Visualizing the current location of leased and in-repair units." />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
             <MapComponent assets={trackableAssets || []} selectedAssetId={selectedAssetId} />
         </div>
         <div className="space-y-6">
             <Card className="shadow-lg">
-                <CardHeader>
-                    <CardTitle>Select Asset</CardTitle>
-                    <CardDescription>Choose a device to view its location.</CardDescription>
-                </CardHeader>
+                <CardHeader><CardTitle>Select Unit</CardTitle><CardDescription>Monitor a specific device.</CardDescription></CardHeader>
                 <CardContent>
-                    {assetsWithLocation && assetsWithLocation.length > 0 ? (
+                    {assetsWithLocation.length > 0 ? (
                         <Select onValueChange={setSelectedAssetId} value={selectedAssetId || undefined}>
-                            <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select a trackable device" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {assetsWithLocation.map((asset) => (
-                                <SelectItem key={asset.id} value={asset.id}>
-                                    {asset.model} (S/N: {asset.serialNumber})
-                                </SelectItem>
-                                ))}
-                            </SelectContent>
+                            <SelectTrigger className="w-full"><SelectValue placeholder="Search trackable units..." /></SelectTrigger>
+                            <SelectContent>{assetsWithLocation.map((asset) => (<SelectItem key={asset.id} value={asset.id}>{asset.model} ({asset.serialNumber})</SelectItem>))}</SelectContent>
                         </Select>
                     ) : (
-                        <Alert>
-                            <Package className="h-4 w-4" />
-                            <AlertTitle>No Trackable Assets</AlertTitle>
-                            <AlertDescription>
-                                There are no assets currently marked as 'Leased' or 'Repair' with location data available.
-                            </AlertDescription>
-                        </Alert>
+                        <Alert><Package className="h-4 w-4" /><AlertTitle>No Data</AlertTitle><AlertDescription>No units in this node have active GPS data.</AlertDescription></Alert>
                     )}
                 </CardContent>
             </Card>
 
             {selectedAssetDetails && selectedAssetDetails.location && (
                  <Card className="shadow-lg">
-                    <CardHeader>
-                        <CardTitle>Asset Details</CardTitle>
-                    </CardHeader>
+                    <CardHeader><CardTitle>Unit Metadata</CardTitle></CardHeader>
                     <CardContent className="space-y-3">
-                        <div>
-                            <h3 className="text-lg font-semibold">{selectedAssetDetails.model}</h3>
-                            <p className="text-sm text-muted-foreground">S/N: {selectedAssetDetails.serialNumber}</p>
-                        </div>
-                        <div className="text-sm">
-                            <span className="font-medium">Status: </span> 
-                            <Badge variant={selectedAssetDetails.status === 'Leased' ? 'default' : 'destructive'}>{selectedAssetDetails.status}</Badge>
-                        </div>
-                        <div className="text-sm">
-                            <span className="font-medium">Location: </span>
-                            <span className="text-muted-foreground font-mono">
-                                {selectedAssetDetails.location.lat.toFixed(4)}, {selectedAssetDetails.location.lng.toFixed(4)}
-                            </span>
-                        </div>
-                         <p className="text-xs text-muted-foreground pt-2">
-                            Note: Tracking is based on the last recorded synchronization from the field.
-                        </p>
+                        <div><h3 className="text-lg font-bold">{selectedAssetDetails.model}</h3><p className="text-xs font-mono opacity-60">S/N: {selectedAssetDetails.serialNumber}</p></div>
+                        <div className="text-sm"><span className="font-medium">Status: </span><Badge variant={selectedAssetDetails.status === 'Leased' ? 'default' : 'destructive'}>{selectedAssetDetails.status}</Badge></div>
+                        <div className="text-[10px] font-mono p-2 bg-muted rounded">LOC: {selectedAssetDetails.location.lat.toFixed(6)}, {selectedAssetDetails.location.lng.toFixed(6)}</div>
                     </CardContent>
                 </Card>
             )}
-             {selectedAssetDetails && !selectedAssetDetails.location && (
-                <Alert variant="default">
-                    <LocateFixed className="h-4 w-4" />
-                    <AlertTitle>Location Not Available</AlertTitle>
-                    <AlertDescription>
-                        The selected asset ({selectedAssetDetails.model}) does not have active GPS data.
-                    </AlertDescription>
-                </Alert>
-             )}
         </div>
       </div>
     </SubscriptionGuard>

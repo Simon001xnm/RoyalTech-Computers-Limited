@@ -1,16 +1,13 @@
-
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
 import type { Applicant, JobPosting } from "@/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, UserPlus } from "lucide-react";
-import { useUser } from '@/firebase/provider';
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Table,
@@ -32,26 +29,36 @@ import { getApplicantColumns, type ApplicantColumnActions } from "./applicant-co
 import { ApplicantForm } from "./applicant-form";
 import { Input } from "@/components/ui/input";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { useSaaS } from "@/components/saas/saas-provider";
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
 
 export function ApplicantList() {
     const { toast } = useToast();
-    const { user, isUserLoading } = useUser();
+    const { user } = useUser();
+    const { tenant } = useSaaS();
+    const firestore = useFirestore();
 
-    // Dexie queries
-    const applicants = useLiveQuery(() => db.applicants.toArray());
-    const postings = useLiveQuery(() => db.jobPostings.toArray());
+    // FIRESTORE QUERIES
+    const applicantsQuery = useMemoFirebase(() => {
+        if (!tenant) return null;
+        return query(collection(firestore, 'applicants'), where('tenantId', '==', tenant.id));
+    }, [firestore, tenant?.id]);
+    const { data: applicants, isLoading: applicantsLoading } = useCollection(applicantsQuery);
+
+    const postingsQuery = useMemoFirebase(() => {
+        if (!tenant) return null;
+        return query(collection(firestore, 'job_postings'), where('tenantId', '==', tenant.id));
+    }, [firestore, tenant?.id]);
+    const { data: postings, isLoading: postingsLoading } = useCollection(postingsQuery);
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingApplicant, setEditingApplicant] = useState<Applicant | null>(null);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [applicantToDelete, setApplicantToDelete] = useState<Applicant | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [pagination, setPagination] = useState<PaginationState>({
-      pageIndex: 0,
-      pageSize: 10,
-    });
+    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
     
-    const isLoading = isUserLoading || applicants === undefined || postings === undefined;
+    const isLoading = applicantsLoading || postingsLoading;
     
     const filteredApplicants = useMemo(() => {
         if (!applicants) return [];
@@ -79,24 +86,28 @@ export function ApplicantList() {
 
     const confirmDelete = async () => {
         if (applicantToDelete) {
-            await db.applicants.delete(applicantToDelete.id);
-            toast({ title: "Applicant Record Deleted" });
+            try {
+                await deleteDoc(doc(firestore, 'applicants', applicantToDelete.id));
+                toast({ title: "Applicant Record Deleted" });
+            } catch (e: any) {
+                toast({ variant: 'destructive', title: 'Error', description: e.message });
+            }
         }
         setIsDeleteConfirmOpen(false);
     };
     
     const handleFormSubmit = async (data: any) => {
+        if (!tenant) return;
         const selectedPosting = postings?.find(p => p.id === data.jobId);
-        const applicantData = { ...data, jobTitle: selectedPosting?.title, updatedAt: new Date().toISOString() };
+        const applicantData = { ...data, tenantId: tenant.id, jobTitle: selectedPosting?.title, updatedAt: new Date().toISOString() };
 
         try {
             if (editingApplicant) {
-                await db.applicants.update(editingApplicant.id, applicantData);
+                await updateDoc(doc(firestore, 'applicants', editingApplicant.id), applicantData);
                 toast({ title: "Applicant Record Updated" });
             } else {
-                await db.applicants.add({ 
+                await addDoc(collection(firestore, 'applicants'), { 
                     ...applicantData, 
-                    id: crypto.randomUUID(), 
                     appliedAt: new Date().toISOString(),
                     createdAt: new Date().toISOString() 
                 });
@@ -119,9 +130,7 @@ export function ApplicantList() {
     const table = useReactTable({
         data: filteredApplicants,
         columns,
-        state: {
-          pagination,
-        },
+        state: { pagination },
         onPaginationChange: setPagination,
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
@@ -132,8 +141,8 @@ export function ApplicantList() {
             <CardHeader>
                  <div className="flex justify-between items-center">
                     <div>
-                        <CardTitle>Applicants (Local)</CardTitle>
-                        <CardDescription>View and manage all job applicants locally.</CardDescription>
+                        <CardTitle>Applicants (Cloud)</CardTitle>
+                        <CardDescription>View and manage job applicants globally.</CardDescription>
                     </div>
                     <Button onClick={handleAddApplicant}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Applicant
@@ -147,12 +156,12 @@ export function ApplicantList() {
                 />
             </CardHeader>
             <CardContent>
-                 {isLoading && <p>Loading applicants...</p>}
+                 {isLoading && <p className="animate-pulse">Syncing talent pool...</p>}
                 {!isLoading && applicants?.length === 0 && (
                     <Alert>
                         <UserPlus className="h-4 w-4" />
                         <AlertTitle>No Applicants Found</AlertTitle>
-                        <AlertDescription>Click "Add Applicant" to create your first candidate record locally.</AlertDescription>
+                        <AlertDescription>Click "Add Applicant" to create your first candidate record.</AlertDescription>
                     </Alert>
                 )}
                  {!isLoading && applicants && applicants.length > 0 && (
@@ -163,7 +172,7 @@ export function ApplicantList() {
                                     <TableRow key={headerGroup.id}>
                                         {headerGroup.headers.map(header => (
                                             <TableHead key={header.id}>
-                                                {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                                                {flexRender(header.column.columnDef.header, header.getContext())}
                                             </TableHead>
                                         ))}
                                     </TableRow>
@@ -192,7 +201,7 @@ export function ApplicantList() {
                 )}
             </CardContent>
 
-             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+             <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingApplicant(null); }}}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{editingApplicant ? "Edit Applicant Record" : "Add New Applicant"}</DialogTitle>
@@ -210,9 +219,6 @@ export function ApplicantList() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Confirm Deletion</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to delete the record for <strong>{applicantToDelete?.name}</strong>?
-                        </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>

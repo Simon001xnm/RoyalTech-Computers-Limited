@@ -1,29 +1,33 @@
-
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { JobPosting } from "@/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Briefcase } from "lucide-react";
-import { useUser } from '@/firebase/provider';
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, isValid } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { JobPostingForm } from "./job-posting-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { useSaaS } from "@/components/saas/saas-provider";
 
 export function JobPostingList() {
     const { toast } = useToast();
-    const { user, isUserLoading } = useUser();
+    const { user } = useUser();
+    const { tenant } = useSaaS();
+    const firestore = useFirestore();
 
-    const postings = useLiveQuery(() => db.jobPostings.toArray());
-    const isLoading = isUserLoading || postings === undefined;
+    const postingsQuery = useMemoFirebase(() => {
+        if (!tenant) return null;
+        return query(collection(firestore, 'job_postings'), where('tenantId', '==', tenant.id));
+    }, [firestore, tenant?.id]);
+    const { data: postings, isLoading } = useCollection(postingsQuery);
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingPosting, setEditingPosting] = useState<JobPosting | null>(null);
@@ -47,21 +51,26 @@ export function JobPostingList() {
 
     const confirmDelete = async () => {
         if (postingToDelete) {
-            await db.jobPostings.delete(postingToDelete.id);
-            toast({ title: "Job Posting Deleted" });
+            try {
+                await deleteDoc(doc(firestore, 'job_postings', postingToDelete.id));
+                toast({ title: "Job Posting Deleted" });
+            } catch (e: any) {
+                toast({ variant: 'destructive', title: 'Error', description: e.message });
+            }
         }
         setIsDeleteConfirmOpen(false);
     };
     
     const handleFormSubmit = async (data: any) => {
+        if (!tenant) return;
         try {
             if (editingPosting) {
-                await db.jobPostings.update(editingPosting.id, { ...data, updatedAt: new Date().toISOString() });
+                await updateDoc(doc(firestore, 'job_postings', editingPosting.id), { ...data, updatedAt: new Date().toISOString() });
                 toast({ title: "Job Posting Updated" });
             } else {
-                await db.jobPostings.add({ 
+                await addDoc(collection(firestore, 'job_postings'), { 
                     ...data, 
-                    id: crypto.randomUUID(), 
+                    tenantId: tenant.id,
                     createdAt: new Date().toISOString() 
                 });
                 toast({ title: "Job Posting Created" });
@@ -84,8 +93,8 @@ export function JobPostingList() {
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <div>
-                        <CardTitle>Job Postings (Local)</CardTitle>
-                        <CardDescription>Manage all job positions stored on this device.</CardDescription>
+                        <CardTitle>Job Postings (Cloud)</CardTitle>
+                        <CardDescription>Manage all job positions across your workspace.</CardDescription>
                     </div>
                     <Button onClick={handleAddPosting}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Posting
@@ -93,12 +102,12 @@ export function JobPostingList() {
                 </div>
             </CardHeader>
             <CardContent>
-                {isLoading && <p>Loading postings...</p>}
+                {isLoading && <p className="animate-pulse">Syncing vacancies...</p>}
                 {!isLoading && postings?.length === 0 && (
                     <Alert>
                         <Briefcase className="h-4 w-4" />
                         <AlertTitle>No Job Postings Found</AlertTitle>
-                        <AlertDescription>Click "Add Posting" to create your first local job opening.</AlertDescription>
+                        <AlertDescription>Click "Add Posting" to create your first cloud job opening.</AlertDescription>
                     </Alert>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -135,7 +144,7 @@ export function JobPostingList() {
                 </div>
             </CardContent>
 
-             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+             <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingPosting(null); }}}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{editingPosting ? "Edit Job Posting" : "Create Job Posting"}</DialogTitle>
@@ -152,9 +161,6 @@ export function JobPostingList() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Confirm Deletion</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to delete the posting: <strong>{postingToDelete?.title}</strong>? This action cannot be undone.
-                        </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>

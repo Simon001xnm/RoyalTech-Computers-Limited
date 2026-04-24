@@ -2,10 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/layout/page-header";
-import { useUser } from "@/firebase/provider";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import type { Reseller, Asset, Accessory, ItemIssuance, Sale } from "@/types";
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { Briefcase, LaptopIcon, TrendingUp, CornerDownLeft, PlusCircle, Edit, Trash2, DownloadCloud } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -27,6 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { exportToCsv } from "@/lib/utils";
 import { format } from "date-fns";
 import { useSaaS } from "@/components/saas/saas-provider";
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, writeBatch } from "firebase/firestore";
 
 type IssueableItem = 
   | (Asset & { type: 'laptop' }) 
@@ -65,6 +64,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
     const { user } = useUser();
     const { tenant } = useSaaS();
     const { toast } = useToast();
+    const firestore = useFirestore();
     
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 5 });
     const [isIssueFormOpen, setIsIssueFormOpen] = useState(false);
@@ -85,38 +85,35 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
     const handleIssueItems = async (data: { items: { id: string; type: 'laptop' | 'accessory' }[] }) => {
         if (!user || !tenant) return;
 
+        const batch = writeBatch(firestore);
         try {
-            await db.transaction('rw', [db.itemIssuances, db.assets, db.accessories], async () => {
-                for (const item of data.items) {
-                    const itemToIssue = allAvailableItems.find(i => i.id === item.id);
-                    if (!itemToIssue) continue;
+            for (const item of data.items) {
+                const itemToIssue = allAvailableItems.find(i => i.id === item.id);
+                if (!itemToIssue) continue;
 
-                    const issuanceData: ItemIssuance = {
-                        id: crypto.randomUUID(),
-                        tenantId: tenant.id,
-                        resellerId: reseller.id,
-                        resellerName: reseller.name,
-                        itemId: itemToIssue.id,
-                        itemType: item.type as 'asset' | 'accessory',
-                        itemSerialNumber: itemToIssue.serialNumber,
-                        itemName: 'name' in itemToIssue ? itemToIssue.name : itemToIssue.model,
-                        costPrice: itemToIssue.purchasePrice || 0,
-                        expectedSellingPrice: ('sellingPrice' in itemToIssue ? itemToIssue.sellingPrice : itemToIssue.leasePrice) || 0,
-                        dateIssued: new Date().toISOString(),
-                        status: 'Issued',
-                        createdAt: new Date().toISOString(),
-                        createdBy: { uid: user.uid, name: user.displayName || 'User' }
-                    };
-                    await db.itemIssuances.add(issuanceData);
-                    
-                    if (item.type === 'laptop') {
-                        await db.assets.update(item.id, { status: 'With Reseller', quantity: 0 });
-                    } else {
-                        await db.accessories.update(item.id, { status: 'With Reseller', quantity: 0 });
-                    }
-                }
-            });
-
+                const issuanceRef = doc(collection(firestore, 'item_issuances'));
+                const issuanceData: ItemIssuance = {
+                    id: issuanceRef.id,
+                    tenantId: tenant.id,
+                    resellerId: reseller.id,
+                    resellerName: reseller.name,
+                    itemId: itemToIssue.id,
+                    itemType: item.type as 'asset' | 'accessory',
+                    itemSerialNumber: itemToIssue.serialNumber,
+                    itemName: 'name' in itemToIssue ? itemToIssue.name : itemToIssue.model,
+                    costPrice: itemToIssue.purchasePrice || 0,
+                    expectedSellingPrice: ('sellingPrice' in itemToIssue ? itemToIssue.sellingPrice : itemToIssue.leasePrice) || 0,
+                    dateIssued: new Date().toISOString(),
+                    status: 'Issued',
+                    createdAt: new Date().toISOString(),
+                    createdBy: { uid: user.uid, name: user.displayName || 'User' }
+                };
+                batch.set(issuanceRef, issuanceData);
+                
+                const table = item.type === 'laptop' ? 'assets' : 'accessories';
+                batch.update(doc(firestore, table, item.id), { status: 'With Reseller', quantity: 0 });
+            }
+            await batch.commit();
             toast({ title: `${data.items.length} Item(s) Issued` });
             setIsIssueFormOpen(false);
         } catch (error: any) {
@@ -127,42 +124,40 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
     const handleMarkAsSold = async (data: { sellingPrice: number; paymentMethod: Sale['paymentMethod']; notes?: string; }) => {
         if (!selectedIssuance || !user || !tenant) return;
         
+        const batch = writeBatch(firestore);
         try {
-            await db.transaction('rw', [db.itemIssuances, db.assets, db.accessories, db.sales], async () => {
-                await db.itemIssuances.update(selectedIssuance.id, { status: 'Sold', dateSold: new Date().toISOString() });
-                
-                if (selectedIssuance.itemType === 'asset') {
-                    await db.assets.update(selectedIssuance.itemId, { status: 'Sold' });
-                } else {
-                    await db.accessories.update(selectedIssuance.itemId, { status: 'Sold' });
-                }
-                
-                const saleData: Sale = {
-                    id: crypto.randomUUID(),
-                    tenantId: tenant.id,
-                    date: new Date().toISOString(),
-                    amount: data.sellingPrice,
-                    paymentMethod: data.paymentMethod,
-                    cogs: selectedIssuance.costPrice,
-                    notes: data.notes || `Sale by reseller: ${reseller.name}`,
-                    items: [{ 
-                        id: selectedIssuance.itemId, 
-                        name: selectedIssuance.itemName, 
-                        serialNumber: selectedIssuance.itemSerialNumber, 
-                        price: data.sellingPrice, 
-                        quantity: 1, 
-                        type: selectedIssuance.itemType === 'asset' ? 'asset' : 'accessory', 
-                        cogs: selectedIssuance.costPrice 
-                    }],
-                    resellerId: reseller.id,
-                    resellerName: reseller.name,
-                    status: 'Paid',
-                    createdAt: new Date().toISOString(),
-                    createdBy: { uid: user.uid, name: user.displayName || 'User' }
-                };
-                await db.sales.add(saleData);
-            });
+            batch.update(doc(firestore, 'item_issuances', selectedIssuance.id), { status: 'Sold', dateSold: new Date().toISOString() });
+            
+            const itemTable = selectedIssuance.itemType === 'asset' ? 'assets' : 'accessories';
+            batch.update(doc(firestore, itemTable, selectedIssuance.itemId), { status: 'Sold' });
+            
+            const saleRef = doc(collection(firestore, 'sales_transactions'));
+            const saleData: Sale = {
+                id: saleRef.id,
+                tenantId: tenant.id,
+                date: new Date().toISOString(),
+                amount: data.sellingPrice,
+                paymentMethod: data.paymentMethod,
+                cogs: selectedIssuance.costPrice,
+                notes: data.notes || `Sale by reseller: ${reseller.name}`,
+                items: [{ 
+                    id: selectedIssuance.itemId, 
+                    name: selectedIssuance.itemName, 
+                    serialNumber: selectedIssuance.itemSerialNumber, 
+                    price: data.sellingPrice, 
+                    quantity: 1, 
+                    type: selectedIssuance.itemType === 'asset' ? 'asset' : 'accessory', 
+                    cogs: selectedIssuance.costPrice 
+                }],
+                resellerId: reseller.id,
+                resellerName: reseller.name,
+                status: 'Paid',
+                createdAt: new Date().toISOString(),
+                createdBy: { uid: user.uid, name: user.displayName || 'User' }
+            };
+            batch.set(saleRef, saleData);
 
+            await batch.commit();
             toast({ title: 'Sale Recorded!' });
             setIsSellFormOpen(false);
             setSelectedIssuance(null);
@@ -173,17 +168,14 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
 
     const confirmReturn = async () => {
         if (!selectedIssuance) return;
+        const batch = writeBatch(firestore);
         try {
-            await db.transaction('rw', [db.itemIssuances, db.assets, db.accessories], async () => {
-                await db.itemIssuances.update(selectedIssuance.id, { status: 'Returned', dateReturned: new Date().toISOString() });
-                
-                if (selectedIssuance.itemType === 'asset') {
-                    await db.assets.update(selectedIssuance.itemId, { status: 'Available', quantity: 1 });
-                } else {
-                    await db.accessories.update(selectedIssuance.itemId, { status: 'Available', quantity: 1 });
-                }
-            });
+            batch.update(doc(firestore, 'item_issuances', selectedIssuance.id), { status: 'Returned', dateReturned: new Date().toISOString() });
+            
+            const itemTable = selectedIssuance.itemType === 'asset' ? 'assets' : 'accessories';
+            batch.update(doc(firestore, itemTable, selectedIssuance.itemId), { status: 'Available', quantity: 1 });
 
+            await batch.commit();
             toast({ title: 'Item Returned' });
             setIsReturnConfirmOpen(false);
             setSelectedIssuance(null);
@@ -284,29 +276,34 @@ export function ResellersClient() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const { toast } = useToast();
   const { tenant } = useSaaS();
+  const firestore = useFirestore();
 
-  // HARDENED QUERIES: Strictly siloed by tenantId
-  const resellers = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.resellers.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  // FIRESTORE QUERIES: Strictly siloed by tenantId
+  const resellersQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'resellers'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: resellers, isLoading: resellersLoading } = useCollection(resellersQuery);
 
-  const allIssuances = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.itemIssuances.where('tenantId').equals(tenant.id).toArray();
-  }, [tenant?.id]);
+  const issuancesQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'item_issuances'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: allIssuances, isLoading: issuancesLoading } = useCollection(issuancesQuery);
 
-  const availableAssets = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.assets.where('tenantId').equals(tenant.id).and(a => a.status === 'Available').toArray();
-  }, [tenant?.id]);
+  const assetsQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id), where('status', '==', 'Available'));
+  }, [firestore, tenant?.id]);
+  const { data: availableAssets } = useCollection(assetsQuery);
 
-  const availableAccessories = useLiveQuery(async () => {
-    if (!tenant) return [];
-    return await db.accessories.where('tenantId').equals(tenant.id).and(a => a.status === 'Available').toArray();
-  }, [tenant?.id]);
+  const accessoriesQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id), where('status', '==', 'Available'));
+  }, [firestore, tenant?.id]);
+  const { data: availableAccessories } = useCollection(accessoriesQuery);
   
-  const isLoading = resellers === undefined || allIssuances === undefined || availableAssets === undefined || availableAccessories === undefined;
+  const isLoading = resellersLoading || issuancesLoading;
 
   const allAvailableItems = useMemo<IssueableItem[]>(() => {
         const mappedAssets = (availableAssets || []).map(item => ({ ...item, type: 'laptop' as const }));
@@ -317,8 +314,8 @@ export function ResellersClient() {
   const filteredResellers = useMemo(() => {
     if (!resellers) return [];
     return resellers.filter((r) =>
-      r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (r.company || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [resellers, searchTerm]);
@@ -329,39 +326,27 @@ export function ResellersClient() {
 
   const confirmDelete = async () => {
     if (editingReseller) {
-      await db.resellers.delete(editingReseller.id);
-      toast({ title: "Reseller Deleted" });
+      try {
+        await deleteDoc(doc(firestore, 'resellers', editingReseller.id));
+        toast({ title: "Reseller Deleted" });
+      } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+      }
     }
     setIsDeleteConfirmOpen(false);
     setEditingReseller(null);
   };
 
   const handleSaveReseller = async (data: any) => {
-    if (!resellers || !tenant) return;
-
-    const lowerCaseName = data.name.toLowerCase();
-    const lowerCaseEmail = data.email.toLowerCase();
-
-    const conflictingReseller = resellers.find(r => {
-        if (editingReseller && r.id === editingReseller.id) return false;
-        return r.name.toLowerCase() === lowerCaseName ||
-               r.email.toLowerCase() === lowerCaseEmail ||
-               (data.phone && data.phone.trim() !== '' && r.phone === data.phone);
-    });
-    
-    if (conflictingReseller) {
-        toast({ variant: 'destructive', title: 'Duplicate Record', description: 'Reseller with same name, email or phone exists in this workspace.' });
-        return;
-    }
+    if (!tenant) return;
 
     try {
         if (editingReseller) {
-            await db.resellers.update(editingReseller.id, { ...data, updatedAt: new Date().toISOString() });
+            await updateDoc(doc(firestore, 'resellers', editingReseller.id), { ...data, updatedAt: new Date().toISOString() });
             toast({ title: "Reseller Updated" });
         } else {
-            await db.resellers.add({ 
+            await addDoc(collection(firestore, 'resellers'), { 
                 ...data, 
-                id: crypto.randomUUID(),
                 tenantId: tenant.id,
                 registrationDate: new Date().toISOString(),
                 createdAt: new Date().toISOString()
@@ -439,15 +424,15 @@ export function ResellersClient() {
   return (
     <>
       <PageHeader 
-        title="Resellers (Siloed)" 
-        description="Manage workspace reseller accounts and track issued items locally."
+        title="Resellers (Cloud)" 
+        description="Manage workspace reseller accounts and track issued items globally."
         actions={actions}
       />
       <div className="mb-4">
           <Input placeholder="Search by name, email, or company..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm"/>
       </div>
       
-      {isLoading ? <p>Syncing reseller portfolio...</p> : (
+      {isLoading ? <p className="animate-pulse">Syncing reseller portfolio...</p> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredResellers.map(reseller => (
                 <ResellerCard 

@@ -13,8 +13,9 @@ import { cn } from '@/lib/utils';
 import { PnlReport } from './pnl-report';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useSaaS } from '@/components/saas/saas-provider';
 
 export interface PnlData {
   operatingIncome: {
@@ -34,6 +35,8 @@ export interface PnlData {
 
 export function ReportsClient() {
   const { toast } = useToast();
+  const { tenant } = useSaaS();
+  const firestore = useFirestore();
   const [isExporting, setIsExporting] = useState(false);
 
   const [date, setDate] = useState<DateRange | undefined>({
@@ -41,16 +44,37 @@ export function ReportsClient() {
     to: new Date(),
   });
 
-  const sales = useLiveQuery(() => db.sales.toArray());
-  const expenses = useLiveQuery(() => db.expenses.toArray());
+  // CLOUD QUERIES: Deriving P&L from Firestore
+  const salesQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id), orderBy('date', 'desc'));
+  }, [firestore, tenant?.id]);
+  const { data: sales, isLoading: salesLoading } = useCollection(salesQuery);
 
-  const isLoading = sales === undefined || expenses === undefined;
+  const expensesQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'expenses'), where('tenantId', '==', tenant.id), orderBy('date', 'desc'));
+  }, [firestore, tenant?.id]);
+  const { data: expenses, isLoading: expensesLoading } = useCollection(expensesQuery);
+
+  const isLoading = salesLoading || expensesLoading;
 
   const filteredData = useMemo(() => {
     if (!sales || !expenses || !date?.from || !date?.to) return { filteredSales: [], filteredExpenses: [] };
     const interval = { start: date.from, end: date.to };
-    const filteredSales = sales.filter(s => isWithinInterval(parseISO(s.date), interval));
-    const filteredExpenses = expenses.filter(e => isWithinInterval(parseISO(e.date), interval));
+    
+    const filteredSales = sales.filter(s => {
+        try {
+            return isWithinInterval(parseISO(s.date), interval);
+        } catch { return false; }
+    });
+    
+    const filteredExpenses = expenses.filter(e => {
+        try {
+            return isWithinInterval(parseISO(e.date), interval);
+        } catch { return false; }
+    });
+
     return { filteredSales, filteredExpenses };
   }, [sales, expenses, date]);
 
@@ -96,22 +120,18 @@ export function ReportsClient() {
     if (!reportElement) return;
 
     setIsExporting(true);
-    toast({ title: 'Preparing Report', description: 'Generating high-resolution analytics...' });
+    toast({ title: 'Preparing Cloud Report' });
 
     setTimeout(async () => {
         try {
-            const canvas = await html2canvas(reportElement, { 
-                scale: 3, 
-                useCORS: true,
-                windowWidth: 1200 
-            });
+            const canvas = await html2canvas(reportElement, { scale: 3, useCORS: true, windowWidth: 1200 });
             const pdf = new jsPDF('p', 'mm', 'a4');
             const imgData = canvas.toDataURL('image/png', 1.0);
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
             pdf.save(`Financial_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
-            toast({ title: 'Download Complete' });
+            toast({ title: 'Download Successful' });
         } catch (error) {
-            toast({ variant: 'destructive', title: 'PDF Generation Failed' });
+            toast({ variant: 'destructive', title: 'PDF Error' });
         } finally {
             setIsExporting(false);
         }
@@ -120,27 +140,21 @@ export function ReportsClient() {
 
   return (
     <>
-      <PageHeader
-        title="Financial Intelligence (Local)"
-        description="Instant profit and loss analysis from your local data records."
-      />
+      <PageHeader title="Financial Ledger (Cloud)" description="Aggregate profit and loss analysis synced across your workspace." />
 
-      <Card className="mb-6 no-print shadow-sm border-primary/10">
+      <Card className="mb-6 no-print shadow-sm">
         <CardContent className="pt-6 flex flex-wrap items-center gap-4">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant={'outline'} className={cn('w-[300px] justify-start text-left font-normal h-11', !date && 'text-muted-foreground')}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date?.from ? (date.to ? <>{format(date.from, 'LLL dd, y')} - {format(date.to, 'LLL dd, y')}</> : format(date.from, 'LLL dd, y')) : <span>Pick a date</span>}
+                {date?.from ? (date.to ? <>{format(date.from, 'LLL dd, y')} - {format(date.to, 'LLL dd, y')}</> : format(date.from, 'LLL dd, y')) : <span>Pick a date range</span>}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={setDate} numberOfMonths={2} />
-            </PopoverContent>
+            <PopoverContent className="w-auto p-0" align="start"><Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={setDate} numberOfMonths={2} /></PopoverContent>
           </Popover>
           <Button onClick={handleDownloadPdf} disabled={isLoading || isExporting} className="h-11 px-6 font-bold shadow-md">
-            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-            Download P&L Report
+            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />} Export Report
           </Button>
         </CardContent>
       </Card>
@@ -148,18 +162,13 @@ export function ReportsClient() {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 opacity-20">
             <Loader2 className="h-12 w-12 animate-spin mb-4" />
-            <p className="font-bold uppercase tracking-widest">Compiling Data...</p>
+            <p className="font-bold uppercase tracking-widest">Aggregating Cloud Data...</p>
         </div>
       ) : (
-        <div className="flex justify-center bg-gray-100 p-8 rounded-2xl border border-dashed overflow-auto">
+        <div className="flex justify-center bg-muted/20 p-8 rounded-2xl border border-dashed overflow-auto">
             <div id="pnl-report" className="a4-document shadow-2xl relative">
                 <PnlReport data={pnlData} dateRange={date} />
-                {isExporting && (
-                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
-                        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                        <p className="font-black text-primary uppercase tracking-widest">Optimizing Report PDF...</p>
-                    </div>
-                )}
+                {isExporting && <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-50"><Loader2 className="h-12 w-12 animate-spin text-primary mb-4" /><p className="font-black text-primary uppercase tracking-widest">Optimizing PDF...</p></div>}
             </div>
         </div>
       )}

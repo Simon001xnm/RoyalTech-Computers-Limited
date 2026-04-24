@@ -1,9 +1,9 @@
-import { db } from '@/db';
+import { Firestore, doc, collection, setDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import type { Asset } from "@/types";
 import { logger } from "@/lib/logger";
 
 /**
- * @fileOverview Asset Service (Consolidated Dexie Storage)
+ * @fileOverview Asset Service (Firestore Cloud)
  * Abstracts database interactions for hardware inventory.
  * Ensures strict tenancy isolation by stamping every record with tenantId.
  */
@@ -11,13 +11,14 @@ export const AssetService = {
   /**
    * Creates a new asset with automatic tenancy and logging.
    */
-  async create(data: Partial<Asset>, tenantId: string, user: { uid: string; name: string }) {
+  async create(firestore: Firestore, data: Partial<Asset>, tenantId: string, user: { uid: string; name: string }) {
     if (!tenantId) throw new Error("Tenant ID required for workspace registration.");
     
+    const assetRef = doc(collection(firestore, 'assets'));
     const assetData: Asset = {
       ...data,
-      id: crypto.randomUUID(),
-      tenantId, // CRITICAL: SaaS Isolation
+      id: assetRef.id,
+      tenantId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: user,
@@ -29,7 +30,7 @@ export const AssetService = {
     } as any;
 
     try {
-      await db.assets.add(assetData);
+      await setDoc(assetRef, assetData);
       logger.business('Inventory', 'Asset Registered', { model: assetData.model, tenantId });
       return { success: true };
     } catch (error: any) {
@@ -41,11 +42,12 @@ export const AssetService = {
   /**
    * Updates an existing asset.
    */
-  async update(id: string, updates: Partial<Asset>, tenantId: string) {
+  async update(firestore: Firestore, id: string, updates: Partial<Asset>, tenantId: string) {
     try {
-      await db.assets.update(id, {
+      const assetRef = doc(firestore, 'assets', id);
+      await updateDoc(assetRef, {
         ...updates,
-        tenantId, // Ensure tenancy persists
+        tenantId,
         updatedAt: new Date().toISOString()
       });
       logger.business('Inventory', 'Asset Updated', { id, tenantId });
@@ -59,10 +61,11 @@ export const AssetService = {
   /**
    * Deletes an asset.
    */
-  async delete(id: string, tenantId: string) {
+  async delete(firestore: Firestore, id: string) {
     try {
-      await db.assets.delete(id);
-      logger.business('Inventory', 'Asset Removed', { id, tenantId });
+      const assetRef = doc(firestore, 'assets', id);
+      await deleteDoc(assetRef);
+      logger.business('Inventory', 'Asset Removed', { id });
       return { success: true };
     } catch (error: any) {
       logger.error('Inventory', 'Deletion failed', error);
@@ -71,14 +74,18 @@ export const AssetService = {
   },
 
   /**
-   * Bulk imports assets.
+   * Bulk imports assets using batches.
    */
-  async bulkImport(assets: Asset[], tenantId: string) {
+  async bulkImport(firestore: Firestore, assets: Asset[], tenantId: string) {
     if (!tenantId) throw new Error("Tenant ID required for bulk import.");
     
+    const batch = writeBatch(firestore);
     try {
-      const stampedAssets = assets.map(a => ({ ...a, tenantId }));
-      await db.assets.bulkAdd(stampedAssets);
+      assets.forEach(asset => {
+        const assetRef = doc(collection(firestore, 'assets'));
+        batch.set(assetRef, { ...asset, id: assetRef.id, tenantId });
+      });
+      await batch.commit();
       logger.business('Inventory', 'Bulk Import Executed', { count: assets.length, tenantId });
       return { success: true };
     } catch (error: any) {
