@@ -4,65 +4,69 @@
 import React, { useEffect } from 'react';
 
 /**
- * A root-level component that catches and suppresses generic background fetch errors.
- * This prevents transient Dexie Cloud, Firestore, or Next.js Chunk loading errors
- * from triggering the development error overlay.
+ * BackgroundErrorGuard: Silences transient network artifacts in development.
  * 
- * It uses capture-phase event listeners to intercept and silence network artifacts 
- * before they reach the development error handlers. This version avoids monkey-patching
- * the global console to prevent "Illegal invocation" errors.
+ * Intercepts common "Failed to fetch" and "ChunkLoadError" messages that frequently 
+ * trigger the Next.js development error overlay during background sync (Dexie Cloud/Firebase).
+ * 
+ * Uses a context-safe proxy to avoid "Illegal invocation" crashes.
  */
 export function BackgroundErrorGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // Helper to determine if an error message should be silenced
-    const isSuppressible = (errorMessage: string) => {
-      const searchTerms = [
-        'Failed to fetch',
-        'NetworkError',
-        'Load failed',
-        'ChunkLoadError',
-        'timeout',
-        'Unexpected token',
-        'connection',
-        'offline',
-        'Network request failed',
-        'FirebaseError: [code=unavailable]'
-      ];
-      return searchTerms.some(term => errorMessage.includes(term));
-    };
+    // Only active in development and in the browser
+    if (process.env.NODE_ENV !== 'development' || typeof window === 'undefined') {
+      return;
+    }
 
-    // 1. Intercept Unhandled Promise Rejections (e.g. from async fetch calls)
-    const handleRejection = (event: PromiseRejectionEvent) => {
-      const reason = event.reason;
-      const errorMessage = reason?.message || String(reason || '');
-      
-      if (isSuppressible(errorMessage)) {
-        // Prevent the error from reaching the global handler (and showing the overlay)
-        event.preventDefault();
-        event.stopPropagation();
-        console.debug('Suppressed background rejection:', errorMessage);
+    const SUPPRESS_PATTERNS = [
+      'failed to fetch',
+      'networkerror',
+      'load failed',
+      'chunkloaderror',
+      'firebaseerror: [code=unavailable]',
+      'dexie',
+      'connection'
+    ];
+
+    const shouldSuppress = (args: any[]) => {
+      try {
+        const message = String(args[0] || '').toLowerCase();
+        return SUPPRESS_PATTERNS.some(pattern => message.includes(pattern));
+      } catch {
+        return false;
       }
     };
 
-    // 2. Intercept Global Runtime Errors
-    const handleGlobalError = (event: ErrorEvent) => {
-      const error = event.error;
-      const errorMessage = event.message || error?.message || '';
-      
-      if (isSuppressible(errorMessage)) {
-        event.preventDefault();
-        event.stopPropagation();
-        console.debug('Suppressed global error event:', errorMessage);
-      }
-    };
-
-    // Use capture phase (true) to intercept errors as early as possible
-    window.addEventListener('unhandledrejection', handleRejection, true);
-    window.addEventListener('error', handleGlobalError, true);
+    // 1. SAFE CONSOLE INTERCEPTION
+    // We cache the original method and use .apply() to maintain the native 'console' context.
+    const originalConsoleError = window.console.error;
     
+    window.console.error = function(...args: any[]) {
+      if (shouldSuppress(args)) {
+        // Silently log to debug so it's not totally lost, but doesn't trigger the overlay
+        console.debug('BackgroundErrorGuard: Suppressed transient network error:', ...args);
+        return;
+      }
+      // Call original with the correct 'this' context (console)
+      return originalConsoleError.apply(window.console, args);
+    };
+
+    // 2. UNHANDLED REJECTION INTERCEPTION
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      const reason = String(event.reason?.message || event.reason || '').toLowerCase();
+      if (SUPPRESS_PATTERNS.some(pattern => reason.includes(pattern))) {
+        event.preventDefault();
+        event.stopPropagation();
+        console.debug('BackgroundErrorGuard: Blocked unhandled rejection:', reason);
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleRejection, true);
+
+    // CLEANUP
     return () => {
+      window.console.error = originalConsoleError;
       window.removeEventListener('unhandledrejection', handleRejection, true);
-      window.removeEventListener('error', handleGlobalError, true);
     };
   }, []);
 
