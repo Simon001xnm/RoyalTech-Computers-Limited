@@ -30,15 +30,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 /**
  * @fileOverview Integrated Executive Dashboard
- * Optimized for instant cloud integration without index requirements.
+ * Fully integrated with Firestore cloud synchronization.
  */
 export default function DashboardPage() {
-  const { user } = useUser();
   const { tenant, isLoading: isSaaSLoading } = useSaaS();
   const firestore = useFirestore();
 
-  // OPTIMIZED QUERIES: Perform basic filtering in cloud, sorting in memory 
-  // to avoid composite index requirements during development.
+  // CLOUD QUERIES: Filtered by tenantId, sorted in memory to avoid index requirements
   const assetsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
@@ -68,9 +66,11 @@ export default function DashboardPage() {
     accessoryItems: accessories?.reduce((acc, curr) => acc + (curr.quantity || 0), 0) || 0,
     totalClients: customers?.length || 0,
     recentSalesCount: sales?.filter(s => {
-        const saleDate = new Date(s.date);
-        const today = new Date();
-        return saleDate.getMonth() === today.getMonth();
+        try {
+            const saleDate = new Date(s.date);
+            const today = new Date();
+            return saleDate.getMonth() === today.getMonth();
+        } catch { return false; }
     }).length || 0
   }), [assets, accessories, customers, sales]);
 
@@ -86,11 +86,13 @@ export default function DashboardPage() {
     });
 
     sales.forEach(sale => {
-      const saleDate = startOfDay(parseISO(sale.date));
-      const chartDay = last7Days.find(d => d.rawDate.getTime() === saleDate.getTime());
-      if (chartDay) {
-        chartDay.revenue += sale.amount;
-      }
+      try {
+        const saleDate = startOfDay(parseISO(sale.date));
+        const chartDay = last7Days.find(d => d.rawDate.getTime() === saleDate.getTime());
+        if (chartDay) {
+          chartDay.revenue += (sale.amount || 0);
+        }
+      } catch (e) {}
     });
 
     return last7Days;
@@ -99,7 +101,11 @@ export default function DashboardPage() {
   const recentSales = useMemo(() => {
     if (!sales) return [];
     return [...sales]
-        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .sort((a,b) => {
+            const dateA = a.date ? new Date(a.date).getTime() : 0;
+            const dateB = b.date ? new Date(b.date).getTime() : 0;
+            return dateB - dateA;
+        })
         .slice(0, 10);
   }, [sales]);
 
@@ -123,7 +129,12 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {showMetricsLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i} className="h-32 shadow-sm border-muted/40"><CardContent className="pt-6 space-y-4"><Skeleton className="h-3 w-20" /><Skeleton className="h-8 w-32" /></CardContent></Card>
+                <Card key={i} className="h-32 shadow-sm border-muted/40">
+                  <CardContent className="pt-6 space-y-4">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-8 w-32" />
+                  </CardContent>
+                </Card>
             ))
         ) : (
             <>
@@ -142,7 +153,7 @@ export default function DashboardPage() {
               <CardTitle className="text-lg font-bold flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> Revenue Stream</CardTitle>
               <CardDescription>Aggregate performance across the last 7 business days.</CardDescription>
             </div>
-            <Badge variant="outline">Cloud Node Active</Badge>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Cloud Node Active</Badge>
           </CardHeader>
           <CardContent className="h-[300px] w-full pt-4">
               {salesLoading ? (
@@ -173,16 +184,16 @@ export default function DashboardPage() {
               <div className="space-y-4">
                 {recentSales.map(sale => (
                   <div key={sale.id} className="flex items-center justify-between border-b border-muted/30 pb-3 last:border-0 last:pb-0">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold">{sale.customerName || 'Walk-in'}</p>
-                      <p className="text-xs text-muted-foreground">{format(parseISO(sale.date), 'MMM d, h:mm a')}</p>
+                    <div className="space-y-1 overflow-hidden">
+                      <p className="text-sm font-semibold truncate">{sale.customerName || 'Walk-in Client'}</p>
+                      <p className="text-[10px] text-muted-foreground">{sale.date ? format(parseISO(sale.date), 'MMM d, h:mm a') : 'Recently'}</p>
                     </div>
-                    <p className="text-sm font-black">{formatCurrency(sale.amount)}</p>
+                    <p className="text-sm font-black text-primary">{formatCurrency(sale.amount)}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-20 text-center text-muted-foreground italic text-xs">No cloud transactions detected.</div>
+              <div className="py-20 text-center text-muted-foreground italic text-xs">No cloud transactions detected in this workspace.</div>
             )}
           </CardContent>
         </Card>

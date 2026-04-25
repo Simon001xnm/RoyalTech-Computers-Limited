@@ -6,12 +6,12 @@ import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "fir
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, PackageSearch, Upload } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import { AssetForm } from "./asset-form";
 import { getAssetColumns, type AssetColumnActions } from "./asset-columns";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender, type ColumnDef, type RowSelectionState, type PaginationState } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
@@ -58,6 +58,16 @@ export function StockClient() {
     }
     setEditingAsset(null);
     setIsFormOpen(true);
+  };
+
+  const handleEditAsset = (asset: Asset) => {
+    setEditingAsset(asset);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteAsset = (asset: Asset) => {
+    setAssetToDelete(asset);
+    setIsDeleteConfirmOpen(true);
   };
 
   const confirmDelete = async () => {
@@ -108,8 +118,8 @@ export function StockClient() {
   };
 
   const columnActions: AssetColumnActions = {
-    onEdit: (a) => { setEditingAsset(a); setIsFormOpen(true); },
-    onDelete: (a) => { setAssetToDelete(a); setIsDeleteConfirmOpen(true); },
+    onEdit: handleEditAsset,
+    onDelete: handleDeleteAsset,
   };
 
   const columns = useMemo<ColumnDef<Asset, any>[]>(() => getAssetColumns(columnActions), [columnActions]);
@@ -126,7 +136,7 @@ export function StockClient() {
   });
 
   return (
-    <>
+    <div className="space-y-6">
       <PageHeader 
         title="Inventory" 
         description="Workspace hardware portfolio."
@@ -146,14 +156,45 @@ export function StockClient() {
         />
       </div>
       
-      {isLoading ? <p className="animate-pulse">Syncing cloud inventory...</p> : (
+      {isLoading ? (
+        <div className="p-8 text-center text-muted-foreground animate-pulse">Syncing cloud inventory...</div>
+      ) : (
         <div className="rounded-lg border shadow-sm bg-card">
           <Table>
-            <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>)}</TableHeader>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
             <TableBody>
-              {table.getRowModel().rows.length ? table.getRowModel().rows.map(row => (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
-              )) : (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No assets found.</TableCell></TableRow>)}
+              {table.getRowModel().rows.length > 0 ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No assets found.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
           <DataTablePagination table={table} />
@@ -162,20 +203,31 @@ export function StockClient() {
 
       <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingAsset(null); }}}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editingAsset ? "Edit Asset" : "Add New Asset"}</DialogTitle></DialogHeader>
-          <AssetForm asset={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} />
+          <DialogHeader>
+            <DialogTitle>{editingAsset ? "Edit Asset" : "Add New Asset"}</DialogTitle>
+          </DialogHeader>
+          <AssetForm 
+            asset={editingAsset} 
+            onSubmit={handleFormSubmit} 
+            onCancel={() => setIsFormOpen(false)} 
+          />
         </DialogContent>
       </Dialog>
 
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Confirm Deletion</DialogTitle></DialogHeader>
-          <div className="flex justify-end gap-3 pt-4">
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{assetToDelete?.model}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={confirmDelete}>Delete Asset</Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

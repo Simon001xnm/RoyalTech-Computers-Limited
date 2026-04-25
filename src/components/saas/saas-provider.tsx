@@ -127,7 +127,10 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     switchTenant
   }), [tenantData, activePlan, usageStats, isUserLoading, isProfileLoading, isCompanyLoading, availableWorkspaces, userProfile?.role]);
 
-  if (user && tenantData?.status === 'suspended' && userProfile?.role !== 'super_admin') {
+  // Ensure unauthenticated users or users being provisioned don't block
+  const isSuspended = user && tenantData?.status === 'suspended' && userProfile?.role !== 'super_admin';
+
+  if (isSuspended) {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-background p-6">
             <div className="max-w-md text-center space-y-6">
