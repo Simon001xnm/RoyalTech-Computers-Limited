@@ -1,14 +1,11 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, updateDoc, doc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, updateDoc, doc, writeBatch } from 'firebase/firestore';
 import { 
     Bell, 
     BellRing, 
-    X, 
-    CheckCircle2, 
     Info, 
     AlertTriangle, 
     ShieldCheck, 
@@ -32,8 +29,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useSaaS } from '@/components/saas/saas-provider';
 
 /**
- * @fileOverview Notification Center (Recipient View)
- * Displays platform alerts sent from the Super Admin via Firestore.
+ * @fileOverview Notification Center
+ * Optimized to avoid composite index requirements for instant cloud integration.
  */
 export function NotificationCenter() {
   const { user } = useUser();
@@ -42,20 +39,31 @@ export function NotificationCenter() {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
-  // REACTIVE QUERY: Get notifications for this specific user or their tenant from Firestore
+  // OPTIMIZED QUERY: We filter by tenantId in the cloud, but sort in memory 
+  // to avoid requiring a composite index during prototyping.
   const notificationsQuery = useMemoFirebase(() => {
     if (!user || !tenant) return null;
     return query(
       collection(firestore, 'notifications'),
-      where('tenantId', '==', tenant.id),
-      orderBy('createdAt', 'desc')
+      where('tenantId', '==', tenant.id)
     );
   }, [firestore, user?.uid, tenant?.id]);
 
-  const { data: notifications, isLoading } = useCollection(notificationsQuery);
+  const { data: rawNotifications, isLoading } = useCollection(notificationsQuery);
 
-  const filteredNotifications = (notifications || []).filter(n => !n.userId || n.userId === user?.uid);
-  const unreadCount = filteredNotifications.filter(n => !n.read).length || 0;
+  const notifications = useMemo(() => {
+    if (!rawNotifications) return [];
+    // Filter by user and sort by creation date in memory
+    return rawNotifications
+        .filter(n => !n.userId || n.userId === user?.uid)
+        .sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+        });
+  }, [rawNotifications, user?.uid]);
+
+  const unreadCount = notifications.filter(n => !n.read).length || 0;
 
   const handleMarkAsRead = async (id: string) => {
     const docRef = doc(firestore, 'notifications', id);
@@ -113,7 +121,7 @@ export function NotificationCenter() {
                 <Bell className="h-5 w-5 text-primary" />
                 Platform Alerts
             </SheetTitle>
-            {filteredNotifications.length > 0 && (
+            {notifications.length > 0 && (
                 <Button variant="ghost" size="icon" onClick={handleClearAll} className="h-8 w-8 text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-4 w-4" />
                 </Button>
@@ -127,9 +135,9 @@ export function NotificationCenter() {
         <ScrollArea className="flex-grow">
           {isLoading ? (
              <div className="p-12 text-center text-muted-foreground animate-pulse">Syncing alerts...</div>
-          ) : filteredNotifications.length > 0 ? (
+          ) : notifications.length > 0 ? (
             <div className="divide-y divide-muted/40">
-                {filteredNotifications.map(notif => (
+                {notifications.map(notif => (
                     <div 
                         key={notif.id} 
                         className={cn(

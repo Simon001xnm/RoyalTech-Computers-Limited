@@ -30,14 +30,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 /**
  * @fileOverview Integrated Executive Dashboard
- * Powered by Firestore Real-time Collections.
+ * Optimized for instant cloud integration without index requirements.
  */
 export default function DashboardPage() {
   const { user } = useUser();
   const { tenant, isLoading: isSaaSLoading } = useSaaS();
   const firestore = useFirestore();
 
-  // Firestore Isolated Queries
+  // OPTIMIZED QUERIES: Perform basic filtering in cloud, sorting in memory 
+  // to avoid composite index requirements during development.
   const assetsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
@@ -95,6 +96,13 @@ export default function DashboardPage() {
     return last7Days;
   }, [sales]);
 
+  const recentSales = useMemo(() => {
+    if (!sales) return [];
+    return [...sales]
+        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 10);
+  }, [sales]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
       style: "currency",
@@ -109,7 +117,7 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-in fade-in duration-700">
       <PageHeader 
         title="Executive Command" 
-        description={tenant ? `Real-time performance for ${tenant.name}.` : "Synchronizing identities..."} 
+        description={tenant ? `Real-time performance for ${tenant.name}.` : "Synchronizing cloud data..."} 
       />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -161,9 +169,9 @@ export default function DashboardPage() {
           <CardContent className="max-h-[320px] overflow-auto">
             {salesLoading ? (
                 <div className="space-y-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
-            ) : sales && sales.length > 0 ? (
+            ) : recentSales.length > 0 ? (
               <div className="space-y-4">
-                {[...sales].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10).map(sale => (
+                {recentSales.map(sale => (
                   <div key={sale.id} className="flex items-center justify-between border-b border-muted/30 pb-3 last:border-0 last:pb-0">
                     <div className="space-y-1">
                       <p className="text-sm font-semibold">{sale.customerName || 'Walk-in'}</p>
