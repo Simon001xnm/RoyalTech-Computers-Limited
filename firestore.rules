@@ -3,28 +3,16 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * DEVELOPMENT / TEST MODE RULES
-     * Allows all authenticated users full access to all collections.
-     * This is intended to resolve "Insufficient Permissions" errors during the prototyping phase.
+     * GLOBAL TEST MODE RULES
+     * Allows all read and write access to all collections.
+     * This is intended to resolve all "Insufficient Permissions" errors during the prototyping and setup phase.
+     * 
+     * WARNING: These rules are for development only. 
+     * In production, these should be restricted to authenticated users with tenantId validation.
      */
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Allow full access to any document for any signed-in user
     match /{document=**} {
-      allow read, write: if isSignedIn();
-    }
-
-    // Explicitly allowing unauthenticated users to create their first profile document 
-    // if needed during the signup process (though Auth state is usually immediate)
-    match /users/{userId} {
-      allow get, create, update: if true;
-    }
-    
-    match /companies/{companyId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
   }
 }

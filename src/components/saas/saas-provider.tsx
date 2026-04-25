@@ -100,7 +100,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
                     createdAt: new Date().toISOString()
                 }, { merge: true });
             } catch (e) {
-                console.warn("Silent provisioning wait...");
+                console.warn("Profile provisioning in progress...");
             }
         };
         provision();
@@ -122,12 +122,12 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     plan: activePlan,
     usage: usageStats,
     isLoading: isUserLoading || isProfileLoading || (!!userProfile?.tenantId && isCompanyLoading),
-    isLegacyUser: activePlan?.tier === 'legacy_pro',
+    isLegacyUser: activePlan?.tier === 'legacy_pro' || userProfile?.role === 'super_admin',
     availableWorkspaces: (availableWorkspaces || []) as any,
     switchTenant
-  }), [tenantData, activePlan, usageStats, isUserLoading, isProfileLoading, isCompanyLoading, availableWorkspaces]);
+  }), [tenantData, activePlan, usageStats, isUserLoading, isProfileLoading, isCompanyLoading, availableWorkspaces, userProfile?.role]);
 
-  if (user && tenantData?.status === 'suspended') {
+  if (user && tenantData?.status === 'suspended' && userProfile?.role !== 'super_admin') {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-background p-6">
             <div className="max-w-md text-center space-y-6">
