@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, orderBy } from "firebase/firestore";
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -57,12 +57,12 @@ export function DocumentsClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
-  // FIRESTORE QUERIES: Siloed by tenantId
+  // FIRESTORE QUERIES (Index-free: sorting in memory)
   const docsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'documents'), where('tenantId', '==', tenant.id), orderBy('generatedDate', 'desc'));
+    return query(collection(firestore, 'documents'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
-  const { data: generatedDocuments, isLoading: docsLoading } = useCollection(docsQuery);
+  const { data: rawDocuments, isLoading: docsLoading } = useCollection(docsQuery);
 
   const customersQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -87,6 +87,15 @@ export function DocumentsClient() {
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [isDownloading, setIsDownloading] = useState(false);
 
+  const sortedDocuments = useMemo(() => {
+      if (!rawDocuments) return [];
+      return [...rawDocuments].sort((a, b) => {
+          const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
+          const dateB = b.generatedDate ? new Date(b.generatedDate).getTime() : 0;
+          return dateB - dateA;
+      });
+  }, [rawDocuments]);
+
   const isLoading = docsLoading;
   
   const resetFormState = () => {
@@ -105,7 +114,7 @@ export function DocumentsClient() {
   const handleGenerateDocument = async (type: DocumentType) => {
     if (!tenant || !user) return;
 
-    const docCount = generatedDocuments?.length || 0;
+    const docCount = rawDocuments?.length || 0;
     let title = `${type.replace(/([A-Z])/g, ' $1').trim()} #${type.slice(0,3).toUpperCase()}-2026-${String(docCount + 1).padStart(3,'0')}`;
     let relatedTo = "N/A";
     const documentData: any = { details, applyVat, signature };
@@ -242,7 +251,7 @@ export function DocumentsClient() {
   }, [columnActions]);
 
   const table = useReactTable({
-    data: generatedDocuments || [],
+    data: sortedDocuments,
     columns: customColumns,
     state: { pagination },
     onPaginationChange: setPagination,
@@ -320,7 +329,7 @@ export function DocumentsClient() {
   };
 
   return (
-    <>
+    <div className="space-y-6">
       <PageHeader title="Branded Documents (Cloud)" description="Professional invoices and quotations synchronized globally." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-6 overflow-x-auto h-auto p-1 bg-muted/50 border">
@@ -375,6 +384,6 @@ export function DocumentsClient() {
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

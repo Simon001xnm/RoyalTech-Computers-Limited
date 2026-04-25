@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, addDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc } from 'firebase/firestore';
 
 interface RecentSalesProps {
     onViewReceipt: (sale: Sale) => void;
@@ -25,17 +25,25 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
 
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 5 });
 
-    // CLOUD QUERY: Sync sales history from Firestore
+    // CLOUD QUERY: Sync history (Index-free: sort in memory)
     const salesQuery = useMemoFirebase(() => {
         if (!tenant) return null;
         return query(
             collection(firestore, 'sales_transactions'),
-            where('tenantId', '==', tenant.id),
-            orderBy('date', 'desc')
+            where('tenantId', '==', tenant.id)
         );
     }, [firestore, tenant?.id]);
     
-    const { data: sales, isLoading } = useCollection(salesQuery);
+    const { data: rawSales, isLoading } = useCollection(salesQuery);
+
+    const sortedSales = useMemo(() => {
+        if (!rawSales) return [];
+        return [...rawSales].sort((a, b) => {
+            const dateA = a.date ? new Date(a.date).getTime() : 0;
+            const dateB = b.date ? new Date(b.date).getTime() : 0;
+            return dateB - dateA;
+        });
+    }, [rawSales]);
     
     const handleGenerateDelivery = async (sale: Sale) => {
         if (!tenant) return;
@@ -74,7 +82,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     };
     const saleColumns = useMemo<ColumnDef<Sale>[]>(() => getSaleColumns(saleColumnActions), [saleColumnActions]);
     const salesTable = useReactTable({
-        data: sales || [],
+        data: sortedSales,
         columns: saleColumns,
         state: { pagination },
         onPaginationChange: setPagination,

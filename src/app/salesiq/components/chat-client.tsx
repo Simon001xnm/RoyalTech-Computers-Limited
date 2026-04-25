@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, addDoc, limit } from 'firebase/firestore';
+import { collection, query, where, addDoc, limit } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { format } from 'date-fns';
 
@@ -21,18 +21,26 @@ export function ChatClient() {
   const firestore = useFirestore();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // FIRESTORE query for real-time messages siloed by tenant
+  // FIRESTORE query (Index-free)
   const messagesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(
         collection(firestore, 'messages'),
         where('tenantId', '==', tenant.id),
-        orderBy('createdAt', 'asc'),
         limit(100)
     );
   }, [firestore, tenant?.id]);
 
-  const { data: messages, isLoading } = useCollection(messagesQuery);
+  const { data: rawMessages, isLoading } = useCollection(messagesQuery);
+
+  const messages = useMemo(() => {
+      if (!rawMessages) return [];
+      return [...rawMessages].sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateA - dateB;
+      });
+  }, [rawMessages]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -64,7 +72,7 @@ export function ChatClient() {
   };
 
   return (
-    <>
+    <div className="space-y-6">
       <PageHeader
         title="SalesIQ Live Chat (Cloud)"
         description="Engage with team members in real-time. Data is synchronized across your business workspace."
@@ -128,6 +136,6 @@ export function ChatClient() {
           </form>
         </CardFooter>
       </Card>
-    </>
+    </div>
   );
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -10,8 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
-import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { collection, query, where } from 'firebase/firestore';
+import { format, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
 import { TransactionForm } from './transaction-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { Badge } from '@/components/ui/badge';
@@ -34,48 +33,49 @@ export function AccountingClient() {
     });
   }, []);
 
-  // FIRESTORE QUERIES: Siloed by tenantId
+  // FIRESTORE QUERIES: Index-free (sorting in memory)
   const salesQuery = useMemoFirebase(() => {
-    if (!tenant || !dateRange) return null;
-    return query(
-      collection(firestore, 'sales_transactions'),
-      where('tenantId', '==', tenant.id),
-      where('date', '>=', dateRange.start),
-      where('date', '<=', dateRange.end),
-      orderBy('date', 'desc')
-    );
-  }, [firestore, tenant?.id, dateRange]);
+    if (!tenant) return null;
+    return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
 
   const expensesQuery = useMemoFirebase(() => {
-    if (!tenant || !dateRange) return null;
-    return query(
-      collection(firestore, 'expenses'),
-      where('tenantId', '==', tenant.id),
-      where('date', '>=', dateRange.start),
-      where('date', '<=', dateRange.end),
-      orderBy('date', 'desc')
-    );
-  }, [firestore, tenant?.id, dateRange]);
+    if (!tenant) return null;
+    return query(collection(firestore, 'expenses'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
 
-  const { data: sales, isLoading: salesLoading } = useCollection(salesQuery);
-  const { data: expenses, isLoading: expensesLoading } = useCollection(expensesQuery);
+  const { data: rawSales, isLoading: salesLoading } = useCollection(salesQuery);
+  const { data: rawExpenses, isLoading: expensesLoading } = useCollection(expensesQuery);
   
   const isLoading = isUserLoading || salesLoading || expensesLoading || !dateRange;
 
+  const filteredData = useMemo(() => {
+      if (!rawSales || !rawExpenses || !dateRange) return { sales: [], expenses: [] };
+      const interval = { start: parseISO(dateRange.start), end: parseISO(dateRange.end) };
+      
+      const sales = rawSales.filter(s => {
+          try { return isWithinInterval(parseISO(s.date), interval); } catch { return false; }
+      });
+      const expenses = rawExpenses.filter(e => {
+          try { return isWithinInterval(parseISO(e.date), interval); } catch { return false; }
+      });
+      return { sales, expenses };
+  }, [rawSales, rawExpenses, dateRange]);
+
   const { totalSales, totalCogs, totalExpenses, netProfit } = useMemo(() => {
-    const totalSales = sales?.reduce((sum, s) => sum + s.amount, 0) ?? 0;
-    const totalCogs = sales?.reduce((sum, s) => sum + (s.cogs || 0), 0) ?? 0;
-    const totalExpenses = expenses?.reduce((sum, e) => sum + e.amount, 0) ?? 0;
+    const totalSales = filteredData.sales.reduce((sum, s) => sum + s.amount, 0);
+    const totalCogs = filteredData.sales.reduce((sum, s) => sum + (s.cogs || 0), 0);
+    const totalExpenses = filteredData.expenses.reduce((sum, e) => sum + e.amount, 0);
     return { totalSales, totalCogs, totalExpenses, netProfit: totalSales - totalCogs - totalExpenses };
-  }, [sales, expenses]);
+  }, [filteredData]);
   
   const recentTransactions = useMemo(() => {
       const all: Transaction[] = [
-        ...(sales || []).map(s => ({...s, transactionType: 'Sale' as const })),
-        ...(expenses || []).map(e => ({...e, transactionType: 'Expense' as const })),
+        ...filteredData.sales.map(s => ({...s, transactionType: 'Sale' as const })),
+        ...filteredData.expenses.map(e => ({...e, transactionType: 'Expense' as const })),
       ];
       return all.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
-  }, [sales, expenses]);
+  }, [filteredData]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
@@ -89,7 +89,7 @@ export function AccountingClient() {
   }
 
   return (
-    <>
+    <div className="space-y-6">
       <PageHeader
         title="Accounting (Cloud)"
         description={`Financial summary for ${format(new Date(), 'MMMM yyyy')}`}
@@ -135,6 +135,6 @@ export function AccountingClient() {
           <TransactionForm user={user} onFinished={() => setIsFormOpen(false)} />
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

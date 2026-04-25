@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -6,7 +5,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, limit } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -20,25 +19,30 @@ export function AuditClient() {
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Siloed Logs: Strictly filtered by tenantId from Firestore
+  // Siloed Logs: Index-free query (sort in memory)
   const logsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    
-    let q = query(
+    return query(
       collection(firestore, 'platform_logs'),
       where('tenantId', '==', tenant.id),
-      orderBy('timestamp', 'desc'),
       limit(200)
     );
-
-    return q;
   }, [firestore, tenant?.id]);
 
   const { data: rawLogs, isLoading } = useCollection(logsQuery);
 
   const logs = useMemo(() => {
     if (!rawLogs) return [];
-    return rawLogs.filter(log => {
+    
+    // 1. In-memory sort by timestamp
+    const sorted = [...rawLogs].sort((a, b) => {
+        const dateA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const dateB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return dateB - dateA;
+    });
+
+    // 2. Filters
+    return sorted.filter(log => {
         const matchesLevel = levelFilter === 'all' || log.level === levelFilter;
         const matchesSearch = !searchTerm || 
             log.event.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -135,7 +139,7 @@ export function AuditClient() {
                                                     </p>
                                                 </div>
                                             </div>
-                                            {log.metadata && (
+                                            {log.id && (
                                                 <div className="hidden lg:block">
                                                     <Badge variant="outline" className="text-[8px] font-mono opacity-60">ID: {log.id.slice(0,8)}</Badge>
                                                 </div>
@@ -168,24 +172,6 @@ export function AuditClient() {
                             <span className="text-muted-foreground">Silo Isolation</span>
                             <span className="text-green-600">VERIFIED</span>
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card className="shadow-sm border-muted/40">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">System Health</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-3">
-                         <div className="flex items-center gap-3">
-                            <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                            <span className="text-xs font-medium">Cloud Node Active</span>
-                         </div>
-                         <div className="flex items-center gap-3">
-                            <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                            <span className="text-xs font-medium">Silo Filtering Integrity: 100%</span>
-                         </div>
                     </div>
                 </CardContent>
             </Card>

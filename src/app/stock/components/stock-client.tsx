@@ -39,15 +39,23 @@ export function StockClient() {
     return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
 
-  const { data: assets, isLoading } = useCollection(assetsQuery);
+  const { data: rawAssets, isLoading } = useCollection(assetsQuery);
 
   const filteredAssets = useMemo(() => {
-    if (!assets) return [];
-    return assets.filter((asset) =>
+    if (!rawAssets) return [];
+    
+    // In-memory sort (newest first) to avoid missing index errors
+    const sorted = [...rawAssets].sort((a, b) => {
+        const dateA = a.purchaseDate ? new Date(a.purchaseDate).getTime() : 0;
+        const dateB = b.purchaseDate ? new Date(b.purchaseDate).getTime() : 0;
+        return dateB - dateA;
+    });
+
+    return sorted.filter((asset) =>
       (asset.model || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (asset.serialNumber || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [assets, searchTerm]);
+  }, [rawAssets, searchTerm]);
 
   const isAtCapacity = !isLegacyUser && plan && usage && usage.assets >= plan.maxAssets;
 
@@ -145,7 +153,7 @@ export function StockClient() {
         ActionIcon={PlusCircle}
       />
 
-      {!isLoading && assets && <ValuationSummary assets={assets as any} />}
+      {!isLoading && rawAssets && <ValuationSummary assets={rawAssets as any} />}
 
       <div className="mb-4">
         <Input

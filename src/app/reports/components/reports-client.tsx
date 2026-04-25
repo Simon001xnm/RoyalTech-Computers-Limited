@@ -14,7 +14,7 @@ import { PnlReport } from './pnl-report';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 
 export interface PnlData {
@@ -44,39 +44,35 @@ export function ReportsClient() {
     to: new Date(),
   });
 
-  // CLOUD QUERIES: Deriving P&L from Firestore
+  // CLOUD QUERIES: Derbying P&L (Index-free queries)
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id), orderBy('date', 'desc'));
+    return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
-  const { data: sales, isLoading: salesLoading } = useCollection(salesQuery);
+  const { data: rawSales, isLoading: salesLoading } = useCollection(salesQuery);
 
   const expensesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'expenses'), where('tenantId', '==', tenant.id), orderBy('date', 'desc'));
+    return query(collection(firestore, 'expenses'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
-  const { data: expenses, isLoading: expensesLoading } = useCollection(expensesQuery);
+  const { data: rawExpenses, isLoading: expensesLoading } = useCollection(expensesQuery);
 
   const isLoading = salesLoading || expensesLoading;
 
   const filteredData = useMemo(() => {
-    if (!sales || !expenses || !date?.from || !date?.to) return { filteredSales: [], filteredExpenses: [] };
+    if (!rawSales || !rawExpenses || !date?.from || !date?.to) return { filteredSales: [], filteredExpenses: [] };
     const interval = { start: date.from, end: date.to };
     
-    const filteredSales = sales.filter(s => {
-        try {
-            return isWithinInterval(parseISO(s.date), interval);
-        } catch { return false; }
+    const filteredSales = rawSales.filter(s => {
+        try { return isWithinInterval(parseISO(s.date), interval); } catch { return false; }
     });
     
-    const filteredExpenses = expenses.filter(e => {
-        try {
-            return isWithinInterval(parseISO(e.date), interval);
-        } catch { return false; }
+    const filteredExpenses = rawExpenses.filter(e => {
+        try { return isWithinInterval(parseISO(e.date), interval); } catch { return false; }
     });
 
     return { filteredSales, filteredExpenses };
-  }, [sales, expenses, date]);
+  }, [rawSales, rawExpenses, date]);
 
   const pnlData = useMemo<PnlData>(() => {
     const { filteredSales, filteredExpenses } = filteredData;

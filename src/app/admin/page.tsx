@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 
 export default function PlatformCommandCenter() {
   const { toast } = useToast();
@@ -42,58 +43,72 @@ export default function PlatformCommandCenter() {
   const [msgPriority, setMsgPriority] = useState<'info' | 'important' | 'alert'>('info');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
 
-  // GLOBAL CLOUD QUERIES (Super Admin Access)
+  // GLOBAL CLOUD QUERIES (Index-free: sort in memory)
   const companiesQuery = useMemoFirebase(() => query(collection(firestore, 'companies')), []);
   const { data: tenants } = useCollection(companiesQuery);
 
   const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), []);
   const { data: users } = useCollection(usersQuery);
 
-  const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales_transactions'), orderBy('date', 'desc'), limit(1000)), []);
-  const { data: globalSales } = useCollection(salesQuery);
+  const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales_transactions'), limit(1000)), []);
+  const { data: rawGlobalSales } = useCollection(salesQuery);
 
   const ticketsQuery = useMemoFirebase(() => query(collection(firestore, 'tickets')), []);
   const { data: globalTickets } = useCollection(ticketsQuery);
 
-  const logsQuery = useMemoFirebase(() => query(collection(firestore, 'platform_logs'), orderBy('timestamp', 'desc'), limit(100)), []);
+  const logsQuery = useMemoFirebase(() => query(collection(firestore, 'platform_logs'), limit(100)), []);
   const { data: rawLogs } = useCollection(logsQuery);
 
-  const notifsQuery = useMemoFirebase(() => query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc'), limit(50)), []);
-  const { data: allNotifications } = useCollection(notifsQuery);
+  const notifsQuery = useMemoFirebase(() => query(collection(firestore, 'notifications'), limit(50)), []);
+  const { data: rawNotifications } = useCollection(notifsQuery);
 
-  const inspectionData = useMemo(() => {
-      if (!inspectingTenantId || !globalSales || !users || !tenants) return null;
-      const tenant = tenants.find(t => t.id === inspectingTenantId);
-      const tenantSales = globalSales.filter(s => s.tenantId === inspectingTenantId);
-      const tenantUsers = users.filter(u => u.tenantId === inspectingTenantId);
-      return { tenant, sales: tenantSales, users: tenantUsers };
-  }, [inspectingTenantId, globalSales, users, tenants]);
+  // In-memory Sorting & Derivation
+  const globalSalesSorted = useMemo(() => {
+    if (!rawGlobalSales) return [];
+    return [...rawGlobalSales].sort((a, b) => {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateB - dateA;
+    });
+  }, [rawGlobalSales]);
 
   const logs = useMemo(() => {
     if (!rawLogs) return [];
-    return rawLogs.filter(log => {
+    const filtered = rawLogs.filter(log => {
         const matchesLevel = logLevelFilter === 'all' || log.level === logLevelFilter;
         const matchesTenant = tenantFilter === 'all' || log.tenantId === tenantFilter;
         return matchesLevel && matchesTenant;
     });
+    return [...filtered].sort((a, b) => {
+        const dateA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const dateB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return dateB - dateA;
+    });
   }, [rawLogs, logLevelFilter, tenantFilter]);
+
+  const allNotifications = useMemo(() => {
+    if (!rawNotifications) return [];
+    return [...rawNotifications].sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+    });
+  }, [rawNotifications]);
+
+  const inspectionData = useMemo(() => {
+      if (!inspectingTenantId || !globalSalesSorted || !users || !tenants) return null;
+      const tenant = tenants.find(t => t.id === inspectingTenantId);
+      const tenantSales = globalSalesSorted.filter(s => s.tenantId === inspectingTenantId);
+      const tenantUsers = users.filter(u => u.tenantId === inspectingTenantId);
+      return { tenant, sales: tenantSales, users: tenantUsers };
+  }, [inspectingTenantId, globalSalesSorted, users, tenants]);
   
   const platformStats = useMemo(() => ({
-    totalRevenue: globalSales?.reduce((acc, s) => acc + s.amount, 0) || 0,
+    totalRevenue: globalSalesSorted?.reduce((acc, s) => acc + s.amount, 0) || 0,
     totalTenants: tenants?.length || 0,
     totalUsers: users?.length || 0,
     openTickets: globalTickets?.filter(t => t.status !== 'Closed').length || 0
-  }), [tenants, users, globalSales, globalTickets]);
-
-  const commercialInsights = useMemo(() => {
-    if (!globalSales || !tenants || !users) return [];
-    return tenants.map(t => {
-        const tenantSales = globalSales.filter(s => s.tenantId === t.id);
-        const tenantUsers = users.filter(u => u.tenantId === t.id);
-        const gmv = tenantSales.reduce((acc, s) => acc + s.amount, 0);
-        return { name: t.name, id: t.id, gmv, salesCount: tenantSales.length, userCount: tenantUsers.length, plan: t.plan || 'Free' };
-    }).sort((a, b) => b.gmv - a.gmv);
-  }, [globalSales, tenants, users]);
+  }), [tenants, users, globalSalesSorted, globalTickets]);
 
   const handleUpdateTenantStatus = async (tenantId: string, status: 'active' | 'suspended') => {
     try {
@@ -237,7 +252,7 @@ export default function PlatformCommandCenter() {
                                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium">
                                                 <Building2 className="h-3 w-3" /> {tenants?.find(t => t.id === log.tenantId)?.name || 'Platform'}
                                                 <span className="opacity-40">&bull;</span>
-                                                {format(parseISO(log.timestamp), 'MMM d, HH:mm')}
+                                                {log.timestamp ? format(parseISO(log.timestamp), 'MMM d, HH:mm') : 'Recent'}
                                             </div>
                                         </div>
                                     </div>
@@ -267,7 +282,7 @@ export default function PlatformCommandCenter() {
                                 <TableRow key={notif.id} className="hover:bg-muted/5">
                                     <TableCell className="px-6 py-4 font-black uppercase text-xs text-primary">{tenants?.find(t => t.id === notif.tenantId)?.name || 'Unknown'}</TableCell>
                                     <TableCell className="font-bold text-sm">{notif.subject}</TableCell>
-                                    <TableCell className="text-[10px] font-medium text-muted-foreground">{format(parseISO(notif.createdAt), 'MMM d, HH:mm')}</TableCell>
+                                    <TableCell className="text-[10px] font-medium text-muted-foreground">{notif.createdAt ? format(parseISO(notif.createdAt), 'MMM d, HH:mm') : 'Pending'}</TableCell>
                                     <TableCell>
                                         <Badge variant={notif.read ? "default" : "outline"} className="font-black uppercase text-[9px]">
                                             {notif.read ? "Read" : "Sent"}
@@ -315,7 +330,7 @@ export default function PlatformCommandCenter() {
                         <TableBody>
                             {inspectionData?.sales.map(s => (
                                 <TableRow key={s.id}>
-                                    <TableCell className="text-[10px] font-mono">{format(parseISO(s.date), 'MMM d, HH:mm')}</TableCell>
+                                    <TableCell className="text-[10px] font-mono">{s.date ? format(parseISO(s.date), 'MMM d, HH:mm') : 'N/A'}</TableCell>
                                     <TableCell className="text-right font-black text-xs text-primary">{formatCurrency(s.amount)}</TableCell>
                                     <TableCell className="text-right"><Badge variant="outline" className="text-[8px]">{s.paymentMethod}</Badge></TableCell>
                                 </TableRow>

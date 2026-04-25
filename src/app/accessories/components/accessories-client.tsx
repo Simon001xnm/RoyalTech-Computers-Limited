@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -42,9 +43,9 @@ import { useSaaS } from "@/components/saas/saas-provider";
 export function AccessoriesClient() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingAccessory, setEditingAccessory] = useState< Accessory | null>(null);
+  const [editingAccessory, setEditingAccessory] = useState<Accessory | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [accessoryToDelete, setAccessoryToDelete] = useState< Accessory | null>(null);
+  const [accessoryToDelete, setAccessoryToDelete] = useState<Accessory | null>(null);
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({
@@ -56,21 +57,29 @@ export function AccessoriesClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
 
-  // FIRESTORE QUERY: Strictly filter by tenantId
+  // FIRESTORE QUERY: Filtered by tenantId
   const accessoriesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
 
-  const { data: accessories, isLoading } = useCollection(accessoriesQuery);
+  const { data: rawAccessories, isLoading } = useCollection(accessoriesQuery);
 
   const filteredAccessories = useMemo(() => {
-    if (!accessories) return [];
-    return accessories.filter((accessory) =>
+    if (!rawAccessories) return [];
+    
+    // In-memory sort by purchase date (newest first)
+    const sorted = [...rawAccessories].sort((a, b) => {
+        const dateA = a.purchaseDate ? new Date(a.purchaseDate).getTime() : 0;
+        const dateB = b.purchaseDate ? new Date(b.purchaseDate).getTime() : 0;
+        return dateB - dateA;
+    });
+
+    return sorted.filter((accessory) =>
       accessory.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       accessory.serialNumber.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [accessories, searchTerm]);
+  }, [rawAccessories, searchTerm]);
 
   const handleAddAccessory = () => {
     setEditingAccessory(null);
@@ -151,7 +160,7 @@ export function AccessoriesClient() {
   });
 
   return (
-    <>
+    <div className="space-y-6">
       <PageHeader
           title="Accessory Inventory"
           description="Manage your accessory inventory belonging to this workspace."
@@ -179,7 +188,7 @@ export function AccessoriesClient() {
                 No matching accessories found in this workspace.
               </AlertDescription>
             </Alert>
-          ) : accessories?.length === 0 ? (
+          ) : rawAccessories?.length === 0 ? (
             <Alert variant="default" className="mb-4 bg-card">
               <PackageSearch className="h-4 w-4" />
               <AlertTitle>No Stock</AlertTitle>
@@ -262,6 +271,6 @@ export function AccessoriesClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
