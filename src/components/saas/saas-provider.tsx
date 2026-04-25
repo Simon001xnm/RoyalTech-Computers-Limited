@@ -1,8 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, where, updateDoc, setDoc } from 'firebase/firestore';
 import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier } from '@/types/saas';
 import { startOfMonth, parseISO, addDays } from 'date-fns';
 import { Lock } from 'lucide-react';
@@ -24,7 +24,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   
-  // 1. Resolve User Profile from Firestore (Single source of truth)
+  // 1. Resolve User Profile from Firestore
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userRef);
 
@@ -37,7 +37,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
 
   // 3. Resolve Portfolio (Workspaces user can access)
   const portfolioQuery = useMemoFirebase(() => {
-    if (!userProfile?.tenantIds?.length) return null;
+    if (!userProfile?.tenantIds || userProfile.tenantIds.length === 0) return null;
     return query(collection(firestore, 'companies'), where('id', 'in', userProfile.tenantIds));
   }, [firestore, userProfile?.tenantIds]);
   const { data: availableWorkspaces = [] } = useCollection(portfolioQuery);
@@ -65,7 +65,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     salesThisMonth: monthlySales?.length || 0
   }), [assets, monthlySales]);
 
-  // Derive Tenant and Plan State
+  // Derived Tenant and Plan State
   const tenantData = useMemo<Tenant | null>(() => {
     if (!activeCompany) return null;
     return {
@@ -84,6 +84,28 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
       if (!tenantData) return null;
       return DEFAULT_PLANS[tenantData.tier] || DEFAULT_PLANS.legacy_pro;
   }, [tenantData]);
+
+  // AUTO-PROVISION Profile
+  useEffect(() => {
+    if (!isUserLoading && user && !isProfileLoading && !userProfile) {
+        const provision = async () => {
+            const ref = doc(firestore, 'users', user.uid);
+            try {
+                await setDoc(ref, {
+                    id: user.uid,
+                    name: user.displayName || 'System User',
+                    email: user.email || '',
+                    role: 'user',
+                    tenantIds: [],
+                    createdAt: new Date().toISOString()
+                }, { merge: true });
+            } catch (e) {
+                console.warn("Silent provisioning wait...");
+            }
+        };
+        provision();
+    }
+  }, [user, isUserLoading, isProfileLoading, userProfile, firestore]);
 
   const switchTenant = async (newTenantId: string) => {
     if (!user || !userRef) return;

@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building2, Upload, Loader2, Palette } from 'lucide-react';
+import { Building2, Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
@@ -36,33 +36,9 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const [isSaving, setIsSaving] = useState(false);
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [primaryColor, setPrimaryColor] = useState(COLOR_PRESETS[0].primary);
-  const [secondaryColor, setSecondaryColor] = useState(COLOR_PRESETS[0].secondary);
-
-  // AUTO-PROVISION user profile if missing from Firestore
-  useEffect(() => {
-    if (!isUserLoading && !isProfileLoading && user && !userProfile && !PUBLIC_PATHS.includes(pathname)) {
-        const provisionProfile = async () => {
-            if (!userProfileRef) return;
-            try {
-                await setDoc(userProfileRef, {
-                    id: user.uid,
-                    name: user.displayName || 'System User',
-                    email: user.email || '',
-                    role: 'user', 
-                    createdAt: new Date().toISOString(),
-                    tenantIds: []
-                });
-            } catch (e) {
-                console.warn("Auto-provisioning logic waiting for permissions...", e);
-            }
-        };
-        provisionProfile();
-    }
-  }, [user, userProfile, isUserLoading, isProfileLoading, userProfileRef, pathname]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,21 +63,19 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         tenantId: companyId,
         name,
         address,
-        phone,
+        phone: '',
         email,
         logoUrl,
         primaryColor,
-        secondaryColor,
+        secondaryColor: '#f1f5f9',
         plan: 'legacy_pro',
         status: 'active',
         createdAt: new Date().toISOString(),
         createdBy: { uid: user.uid, name: user.displayName || 'Owner' }
       };
 
-      // 1. Create company first
       await setDoc(companyRef, setupData);
 
-      // 2. Link user to company
       const currentIds = userProfile?.tenantIds || [];
       await updateDoc(userProfileRef, { 
         tenantId: companyId, 
@@ -111,7 +85,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
       toast({ title: 'Workspace Initialized' });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Insufficient Permissions', description: 'Please check your connection or contact support.' });
+      toast({ variant: 'destructive', title: 'Setup Failed', description: err.message });
     } finally {
       setIsSaving(false);
     }
@@ -122,7 +96,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <>{children}</>;
-
   if (userProfile?.role === 'super_admin') return <>{children}</>;
 
   if (userProfile && !userProfile.tenantId) {
@@ -148,7 +121,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                         <div className="space-y-2"><Label>Address</Label><Input value={address} onChange={e => setAddress(e.target.value)} required /></div>
                     </div>
                     <div className="space-y-4">
-                         <Label>Workspace Branding</Label>
+                         <Label>Branding</Label>
                          <div className="flex gap-2">
                             {COLOR_PRESETS.map((preset) => (
                                 <button key={preset.name} type="button" className={cn("w-8 h-8 rounded-full border-2", primaryColor === preset.primary ? "border-primary scale-110" : "border-transparent")} style={{ backgroundColor: preset.primary }} onClick={() => setPrimaryColor(preset.primary)} />

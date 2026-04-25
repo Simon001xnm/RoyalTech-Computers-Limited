@@ -13,19 +13,22 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : { 'role': 'user', 'tenantId': null, 'tenantIds': [] };
     }
 
     function isAdmin() {
-      return isSignedIn() && (getUserData().role == 'admin' || getUserData().role == 'super_admin');
+      let data = getUserData();
+      return isSignedIn() && (data.role == 'admin' || data.role == 'super_admin');
     }
 
     function isSuperAdmin() {
       return isSignedIn() && getUserData().role == 'super_admin';
     }
 
-    function isTenantOwner(data) {
-      return isSignedIn() && (getUserData().tenantId == data.tenantId || isSuperAdmin());
+    function isTenantOwner(resourceData) {
+      let data = getUserData();
+      return isSignedIn() && (data.tenantId == resourceData.tenantId || isSuperAdmin());
     }
 
     // --- Collection Rules ---
@@ -33,17 +36,22 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isSignedIn();
       allow list: if isSuperAdmin();
-      allow create: if isSignedIn(); // Allow initial profile creation
+      allow create: if isSignedIn();
       allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
       allow delete: if isSuperAdmin();
     }
 
     match /companies/{companyId} {
-      // Allow read if user belongs to this company
-      allow read: if isSignedIn() && (getUserData().tenantId == companyId || isSuperAdmin());
-      // CRITICAL FIX: Allow any signed-in user to create their first company
+      // Allow read if user belongs to this company (check both current and portfolio)
+      allow read: if isSignedIn() && (
+        getUserData().tenantId == companyId || 
+        companyId in getUserData().tenantIds || 
+        isSuperAdmin()
+      );
+      // Allow any signed-in user to create their first company
       allow create: if isSignedIn(); 
-      allow update, delete: if isSignedIn() && (getUserData().tenantId == companyId || isSuperAdmin());
+      allow update: if isSignedIn() && (getUserData().tenantId == companyId || isSuperAdmin());
+      allow delete: if isSuperAdmin();
     }
 
     match /assets/{assetId} {
@@ -100,8 +108,13 @@ service cloud.firestore {
     }
 
     match /notifications/{notifId} {
-      allow read: if isSignedIn() && (resource.data.tenantId == getUserData().tenantId || isSuperAdmin());
+      allow read, list: if isSignedIn() && (resource.data.tenantId == getUserData().tenantId || isSuperAdmin());
       allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /messages/{msgId} {
+      allow read, list: if isSignedIn() && (resource.data.tenantId == getUserData().tenantId || isSuperAdmin());
+      allow create: if isSignedIn();
     }
 
     match /{document=**} {
