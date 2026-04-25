@@ -2,9 +2,9 @@
 
 import React, { createContext, useContext, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, query, where, updateDoc, setDoc, addDoc, getDocs, limit } from 'firebase/firestore';
 import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier } from '@/types/saas';
-import { startOfMonth, parseISO, addDays } from 'date-fns';
+import { startOfMonth, parseISO, addDays, differenceInDays } from 'date-fns';
 import { Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -85,7 +85,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
       return DEFAULT_PLANS[tenantData.tier] || DEFAULT_PLANS.legacy_pro;
   }, [tenantData]);
 
-  // AUTO-PROVISION Profile
+  // AUTO-PROVISION Profile & Expiry Check
   useEffect(() => {
     if (!isUserLoading && user && !isProfileLoading && !userProfile) {
         const provision = async () => {
@@ -105,7 +105,37 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
         };
         provision();
     }
-  }, [user, isUserLoading, isProfileLoading, userProfile, firestore]);
+
+    // Automated Expiration Check
+    if (tenantData?.expiresAt && userProfile?.role === 'admin') {
+        const daysLeft = differenceInDays(parseISO(tenantData.expiresAt), new Date());
+        if (daysLeft <= 7 && daysLeft > 0) {
+            const checkAlerted = async () => {
+                const notifsRef = collection(firestore, 'notifications');
+                const q = query(notifsRef, where('tenantId', '==', tenantData.id), where('subject', '==', 'Critical: Subscription Expiring Soon'), limit(1));
+                const snap = await getDocs(q);
+                
+                if (snap.empty) {
+                    await addDoc(notifsRef, {
+                        tenantId: tenantData.id,
+                        from: 'Platform Admin',
+                        subject: 'Critical: Subscription Expiring Soon',
+                        message: `Your workspace node for "${tenantData.name}" is scheduled to expire in ${daysLeft} days. Please update your billing info to prevent service interruption.`,
+                        priority: 'alert',
+                        read: false,
+                        createdAt: new Date().toISOString()
+                    });
+                    toast({ 
+                        variant: 'destructive', 
+                        title: 'Expiration Warning', 
+                        description: `Workspace expires in ${daysLeft} days.` 
+                    });
+                }
+            };
+            checkAlerted();
+        }
+    }
+  }, [user, isUserLoading, isProfileLoading, userProfile, firestore, tenantData, toast]);
 
   const switchTenant = async (newTenantId: string) => {
     if (!user || !userRef) return;

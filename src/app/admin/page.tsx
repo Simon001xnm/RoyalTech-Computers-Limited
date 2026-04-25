@@ -5,10 +5,10 @@ import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
     Building2, Users, CreditCard, Activity, ShieldCheck, Server, 
     History, MoreHorizontal, Lock, Unlock, Zap, Crown, 
-    ChevronRight, Inbox, Gauge, Eye, Mail, Phone, Clock, Send, SendHorizonal, MailCheck, MailQuestion, Loader2
+    ChevronRight, Inbox, Gauge, Eye, Mail, Phone, Clock, Send, SendHorizonal, MailCheck, MailQuestion, Loader2, MessageSquare, AlertCircle
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, limit, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, addDoc, updateDoc, doc, writeBatch } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function PlatformCommandCenter() {
   const { toast } = useToast();
@@ -41,6 +42,7 @@ export default function PlatformCommandCenter() {
   const [msgSubject, setMsgSubject] = useState('');
   const [msgBody, setMsgBody] = useState('');
   const [msgPriority, setMsgPriority] = useState<'info' | 'important' | 'alert'>('info');
+  const [postToChat, setPostToChat] = useState(true);
   const [isSendingMsg, setIsSendingMsg] = useState(false);
 
   // GLOBAL CLOUD QUERIES (Index-free: sort in memory)
@@ -122,8 +124,12 @@ export default function PlatformCommandCenter() {
   const handleSendPlatformMessage = async () => {
     if (!msgTargetTenantId || !msgSubject || !msgBody) return;
     setIsSendingMsg(true);
+    const batch = writeBatch(firestore);
+    
     try {
-        await addDoc(collection(firestore, 'notifications'), {
+        // 1. Add to Official Notifications
+        const notifRef = doc(collection(firestore, 'notifications'));
+        batch.set(notifRef, {
             tenantId: msgTargetTenantId,
             userId: msgTargetUserId === 'all' ? null : msgTargetUserId,
             from: 'Platform Admin',
@@ -133,10 +139,28 @@ export default function PlatformCommandCenter() {
             read: false,
             createdAt: new Date().toISOString()
         });
-        toast({ title: "Message Broadcast Successful" });
+
+        // 2. Optionally post to Team Chat (SalesIQ)
+        if (postToChat) {
+            const messageRef = doc(collection(firestore, 'messages'));
+            batch.set(messageRef, {
+                tenantId: msgTargetTenantId,
+                text: `[SYSTEM ALERT: ${msgSubject}] ${msgBody}`,
+                userId: 'platform_admin',
+                userName: 'Platform Command',
+                userAvatar: 'https://picsum.photos/seed/admin/128/128',
+                createdAt: new Date().toISOString(),
+                isSystemMessage: true
+            });
+        }
+
+        await batch.commit();
+        toast({ title: "Broadcast Transmitted Successfully" });
         setIsMessageOpen(false);
+        setMsgSubject('');
+        setMsgBody('');
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Transmission Error' });
+        toast({ variant: 'destructive', title: 'Transmission Error', description: e.message });
     } finally {
         setIsSendingMsg(false);
     }
@@ -157,7 +181,7 @@ export default function PlatformCommandCenter() {
             <p className="text-muted-foreground font-medium mt-1">Global SaaS Oversight & Network Metrics</p>
         </div>
         <div className="flex gap-2">
-            <Button onClick={() => setIsMessageOpen(true)} className="h-9 px-4 font-bold bg-primary text-primary-foreground shadow-lg">
+            <Button onClick={() => setIsMessageOpen(true)} className="h-9 px-4 font-bold bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all active:scale-95">
                 <SendHorizonal className="h-4 w-4 mr-2" /> Global Broadcast
             </Button>
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-9 px-4 font-bold">
@@ -206,18 +230,21 @@ export default function PlatformCommandCenter() {
                                     <TableCell><Badge variant="outline" className="uppercase text-[9px] font-black">{tenant.plan || 'Free'}</Badge></TableCell>
                                     <TableCell><Badge variant={tenant.status === 'suspended' ? 'destructive' : 'secondary'} className="uppercase text-[9px] font-black">{tenant.status || 'Active'}</Badge></TableCell>
                                     <TableCell className="text-right px-6">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-56 p-2">
-                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => { setMsgTargetTenantId(tenant.id); setMsgTargetUserId('all'); setIsMessageOpen(true); }}><Mail className="h-4 w-4 mr-2" /> Message Tenant</DropdownMenuItem>
-                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => setInspectingTenantId(tenant.id)}><Eye className="h-4 w-4 mr-2" /> Inspect Node</DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem className={cn("font-bold text-xs", tenant.status === 'suspended' ? "text-green-600" : "text-destructive")} onClick={() => handleUpdateTenantStatus(tenant.id, tenant.status === 'suspended' ? 'active' : 'suspended')}>
-                                                    {tenant.status === 'suspended' ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
-                                                    {tenant.status === 'suspended' ? "Re-activate Node" : "Suspend Access"}
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        <div className="flex justify-end gap-1">
+                                            <Button variant="ghost" size="icon" title="Quick Message" onClick={() => { setMsgTargetTenantId(tenant.id); setMsgTargetUserId('all'); setIsMessageOpen(true); }}><Mail className="h-4 w-4" /></Button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-56 p-2">
+                                                    <DropdownMenuItem className="font-bold text-xs" onClick={() => { setMsgTargetTenantId(tenant.id); setMsgTargetUserId('all'); setIsMessageOpen(true); }}><Mail className="h-4 w-4 mr-2" /> Message Tenant</DropdownMenuItem>
+                                                    <DropdownMenuItem className="font-bold text-xs" onClick={() => setInspectingTenantId(tenant.id)}><Eye className="h-4 w-4 mr-2" /> Inspect Node</DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem className={cn("font-bold text-xs", tenant.status === 'suspended' ? "text-green-600" : "text-destructive")} onClick={() => handleUpdateTenantStatus(tenant.id, tenant.status === 'suspended' ? 'active' : 'suspended')}>
+                                                        {tenant.status === 'suspended' ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
+                                                        {tenant.status === 'suspended' ? "Re-activate Node" : "Suspend Access"}
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -347,29 +374,62 @@ export default function PlatformCommandCenter() {
 
       {/* Messaging Dialog */}
       <Dialog open={isMessageOpen} onOpenChange={setIsMessageOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl">
             <DialogHeader>
                 <DialogTitle className="text-2xl font-black uppercase flex items-center gap-2"><Send className="h-6 w-6 text-primary" /> platform alert</DialogTitle>
-                <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">Admin broadcast service</DialogDescription>
+                <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">Admin broadcast service for security & status updates</DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-4">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase">target node</Label>
                     <Select value={msgTargetTenantId} onValueChange={setMsgTargetTenantId}><SelectTrigger className="h-12 font-bold uppercase text-xs"><SelectValue placeholder="Select Business Node" /></SelectTrigger><SelectContent>{tenants?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent></Select>
                 </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase">priority level</Label>
+                        <Select value={msgPriority} onValueChange={(v: any) => setMsgPriority(v)}>
+                            <SelectTrigger className="h-11 font-bold text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="info">Information</SelectItem>
+                                <SelectItem value="important">Important (Security)</SelectItem>
+                                <SelectItem value="alert">Critical Alert</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase">Alert Type</Label>
+                        <div className="flex items-center h-11 space-x-2 bg-muted/20 px-3 rounded-md border">
+                            <Checkbox id="chat-toggle" checked={postToChat} onCheckedChange={(v: any) => setPostToChat(v)} />
+                            <label htmlFor="chat-toggle" className="text-xs font-bold cursor-pointer flex items-center gap-1.5">
+                                <MessageSquare className="h-3 w-3" /> Post to Team Chat
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase">subject</Label>
-                    <Input value={msgSubject} onChange={e => setMsgSubject(e.target.value)} placeholder="System Maintenance, Subscription Update..." className="h-11 font-bold" />
+                    <Input value={msgSubject} onChange={e => setMsgSubject(e.target.value)} placeholder="System Security Update, Expiration Reminder..." className="h-11 font-bold" />
                 </div>
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase">Message Content</Label>
                     <Textarea value={msgBody} onChange={e => setMsgBody(e.target.value)} rows={6} placeholder="Compose your platform communication here..." />
                 </div>
+                
+                {msgPriority === 'important' && (
+                    <div className="bg-orange-50 border border-orange-200 p-3 rounded-lg flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-orange-800 leading-tight">
+                            <strong>Security Protocol:</strong> High-priority messages trigger red visual indicators on client dashboards. Ensure content is verified.
+                        </p>
+                    </div>
+                )}
             </div>
             <DialogFooter className="border-t pt-6">
                 <Button variant="outline" onClick={() => setIsMessageOpen(false)}>Cancel</Button>
-                <Button onClick={handleSendPlatformMessage} disabled={isSendingMsg || !msgTargetTenantId || !msgSubject} className="font-black uppercase tracking-widest text-xs px-8">
-                    {isSendingMsg ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />} Broadcast Alert
+                <Button onClick={handleSendPlatformMessage} disabled={isSendingMsg || !msgTargetTenantId || !msgSubject} className="font-black uppercase tracking-widest text-xs px-8 shadow-lg">
+                    {isSendingMsg ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />} Execute Broadcast
                 </Button>
             </DialogFooter>
         </DialogContent>
