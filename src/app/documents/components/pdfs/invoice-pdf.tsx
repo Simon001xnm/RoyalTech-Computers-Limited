@@ -2,18 +2,21 @@
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
 import { format } from "date-fns";
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 
 const VAT_RATE = 0.16;
 
 export function InvoicePdf({ document }: { document: AppDocument }) {
   const { tenant } = useSaaS();
-  const company = useLiveQuery(
-    async () => tenant?.id ? await db.companies.get(tenant.id) : null,
-    [tenant?.id]
+  const firestore = useFirestore();
+  
+  const companyRef = useMemoFirebase(() => 
+    tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
+    [firestore, tenant?.id]
   );
+  const { data: company } = useDoc(companyRef);
 
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;

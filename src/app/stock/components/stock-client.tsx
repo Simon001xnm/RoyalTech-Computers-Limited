@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender, type ColumnDef, type RowSelectionState, type PaginationState } from "@tanstack/react-table";
+import { flexRender as flexRenderTanstack } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { ValuationSummary } from "./valuation-summary";
@@ -33,7 +34,6 @@ export function StockClient() {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   
-  // FIRESTORE QUERY: Strictly siloed by tenantId
   const assetsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
@@ -44,7 +44,6 @@ export function StockClient() {
   const filteredAssets = useMemo(() => {
     if (!rawAssets) return [];
     
-    // In-memory sort (newest first) to avoid missing index errors
     const sorted = [...rawAssets].sort((a, b) => {
         const dateA = a.purchaseDate ? new Date(a.purchaseDate).getTime() : 0;
         const dateB = b.purchaseDate ? new Date(b.purchaseDate).getTime() : 0;
@@ -120,8 +119,8 @@ export function StockClient() {
         }
         setIsFormOpen(false);
         setEditingAsset(null);
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
     }
   };
 
@@ -153,7 +152,9 @@ export function StockClient() {
         ActionIcon={PlusCircle}
       />
 
-      {!isLoading && rawAssets && <ValuationSummary assets={rawAssets as any} />}
+      {!isLoading && filteredAssets.length > 0 && (
+        <ValuationSummary assets={filteredAssets} />
+      )}
 
       <div className="mb-4">
         <Input

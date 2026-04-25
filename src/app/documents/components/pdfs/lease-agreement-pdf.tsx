@@ -2,18 +2,19 @@
 
 import type { Document as AppDocument } from "@/types";
 import { format } from "date-fns";
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 
 export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
   const { tenant } = useSaaS();
+  const firestore = useFirestore();
   
-  // SECURE QUERY: Filter by active tenantId to prevent cross-account leakage
-  const company = useLiveQuery(
-    async () => tenant?.id ? await db.companies.get(tenant.id) : null,
-    [tenant?.id]
+  const companyRef = useMemoFirebase(() => 
+    tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
+    [firestore, tenant?.id]
   );
+  const { data: company } = useDoc(companyRef);
 
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
