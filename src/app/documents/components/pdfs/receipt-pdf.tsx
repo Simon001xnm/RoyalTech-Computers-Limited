@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument, SaleItem } from "@/types";
@@ -35,7 +36,7 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
   const primaryColor = company?.primaryColor || '#2c3e50';
 
   return (
-    <div className="p-[20mm] font-sans text-sm bg-white text-gray-900 w-[210mm] min-h-[297mm] flex flex-col box-border">
+    <div className="print-container p-[20mm] font-sans text-sm bg-white text-gray-900 w-[210mm] min-h-[297mm] flex flex-col box-border">
       {/* Header */}
       <header className="flex justify-between items-start pb-6 border-b-2" style={{ borderColor: primaryColor }}>
         <div className="flex items-center gap-4">

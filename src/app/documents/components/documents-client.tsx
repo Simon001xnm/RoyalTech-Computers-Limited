@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, MoreHorizontal } from "lucide-react";
+import { Trash2, PlusCircle, MoreHorizontal, Loader2 } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
 import {
   Table,
@@ -24,6 +25,9 @@ import {
   Dialog,
   DialogContent,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { InvoicePdf } from "./pdfs/invoice-pdf";
 import { ReceiptPdf } from "./pdfs/receipt-pdf";
@@ -57,7 +61,6 @@ export function DocumentsClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
-  // FIRESTORE QUERIES (Index-free: sorting in memory)
   const docsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'documents'), where('tenantId', '==', tenant.id));
@@ -183,16 +186,27 @@ export function DocumentsClient() {
     setIsPdfPreviewOpen(true);
     setIsDownloading(true);
 
+    // Optimized delay for rendering and scroll reset to prevent header clipping
     setTimeout(async () => {
         const element = document.getElementById('pdf-preview-target');
         if (!element) return;
 
         try {
+            // Force scroll to top of the preview container before capture
+            const captureContainer = element.closest('.overflow-auto');
+            if (captureContainer) captureContainer.scrollTo(0, 0);
+
             const canvas = await html2canvas(element, { 
-                scale: 3, 
+                scale: 2.5, 
                 useCORS: true,
                 logging: false,
-                windowWidth: 1200
+                backgroundColor: "#ffffff",
+                width: element.scrollWidth,
+                height: element.scrollHeight,
+                windowWidth: element.scrollWidth,
+                scrollY: 0, // CRITICAL: Forces snapshot to start from the top
+                x: 0,
+                y: 0
             });
             
             const pdf = new jsPDF('p', 'mm', 'a4');
@@ -206,7 +220,7 @@ export function DocumentsClient() {
             setIsPdfPreviewOpen(false);
             setIsDownloading(false);
         }
-    }, 1000);
+    }, 800);
   };
 
   const handleViewPdf = (doc: AppDocument) => {
@@ -349,7 +363,11 @@ export function DocumentsClient() {
         <div className="rounded-lg border overflow-hidden">
             <Table>
                 <TableHeader className="bg-muted/50">
-                    {table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}
+                    {table.getHeaderGroups().map(hg => (
+                        <TableRow key={hg.id}>
+                            {hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
+                        </TableRow>
+                    ))}
                 </TableHeader>
                 <TableBody>
                     {table.getRowModel().rows.length ? (
@@ -366,21 +384,23 @@ export function DocumentsClient() {
       </CardContent></Card>
 
        <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
-        <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0">
-          <div className="flex-grow overflow-auto bg-gray-300 flex justify-center p-4 py-8">
-            <div id="pdf-preview-target" className="a4-document shrink-0 shadow-2xl relative">
+        <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
+          <div className="flex-grow overflow-auto bg-slate-200/50 backdrop-blur-md flex justify-center p-4 py-8">
+            <div id="pdf-preview-target" className="shrink-0 shadow-2xl relative bg-white overflow-hidden" style={{ width: '210mm', minHeight: '297mm' }}>
                 {renderPdfPreview()}
                 {isDownloading && (
-                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
-                        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-                        <p className="font-black text-primary uppercase tracking-widest">Optimizing PDF...</p>
+                    <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+                        <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+                        <p className="font-black text-primary uppercase tracking-widest text-sm">Optimizing High-Fidelity PDF...</p>
                     </div>
                 )}
             </div>
           </div>
           <div className="p-4 border-t flex justify-end gap-3 bg-white no-print">
             <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)}>Close Preview</Button>
-            <Button onClick={() => window.print()} className="font-bold">Print Page (A4)</Button>
+            <Button onClick={() => window.print()} className="font-bold">
+                Print Document (A4)
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

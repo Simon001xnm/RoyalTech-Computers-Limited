@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
@@ -35,7 +36,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-md">
+      <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-md no-print">
         <SidebarHeader className="p-4">
             <Link href={isSuperAdmin ? "/admin" : "/"} className="flex items-center gap-2">
             <div className={isSuperAdmin ? "bg-primary p-1.5 rounded-lg shadow-sm" : ""}>
@@ -62,7 +63,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="min-h-screen">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6 no-print">
           <div className="flex items-center gap-4">
             <SidebarTrigger />
             <Link href="/" className="flex items-center gap-2 font-bold text-lg md:hidden">

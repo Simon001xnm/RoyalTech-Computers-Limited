@@ -191,10 +191,10 @@ export default function ProfilePage() {
                 <CardContent className="space-y-2">
                     {isPortfolioLoading ? (
                       <div className="p-4 text-center text-xs animate-pulse opacity-50 uppercase font-bold">Checking workspaces...</div>
-                    ) : availableWorkspaces && availableWorkspaces.length === 0 ? (
+                    ) : availableWorkspaces.length === 0 ? (
                       <div className="p-4 text-center text-xs text-muted-foreground italic">No workspaces linked.</div>
                     ) : (
-                      availableWorkspaces && availableWorkspaces.map(ws => (
+                      availableWorkspaces.map(ws => (
                           <div key={ws.id} className={cn("flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer", tenant?.id === ws.id ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")} onClick={() => tenant?.id !== ws.id && switchTenant(ws.id)}>
                               <div className="flex items-center gap-2 overflow-hidden">
                                   {ws.logoUrl ? <img src={ws.logoUrl} className="h-6 w-6 object-contain shrink-0" alt="logo" /> : <Building2 className="h-4 w-4 shrink-0 opacity-40" />}
