@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';

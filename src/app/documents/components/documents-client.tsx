@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -45,7 +44,6 @@ import { getDocumentColumns, type DocumentColumnActions } from "./document-colum
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { SignaturePad } from "@/components/ui/signature-pad";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useSaaS } from "@/components/saas/saas-provider";
 
@@ -75,12 +73,6 @@ export function DocumentsClient() {
   const [amount, setAmount] = useState<string>('');
   const [applyVat, setApplyVat] = useState(false);
   
-  const [deliveredBy, setDeliveredBy] = useState('');
-  const [receivedBy, setReceivedBy] = useState('');
-  const [delivererSignature, setDelivererDelivererSignature] = useState('');
-  const [recipientSignature, setRecipientSignature] = useState('');
-  const [signature, setSignature] = useState(''); 
-
   const [lineItems, setLineItems] = useState<DocumentLineItem[]>([{ description: '', quantity: 1, unitPrice: 0 }]);
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
@@ -101,11 +93,6 @@ export function DocumentsClient() {
     setDetails('');
     setAmount('');
     setApplyVat(false);
-    setSignature('');
-    setDeliveredBy('');
-    setReceivedBy('');
-    setDelivererDelivererSignature('');
-    setRecipientSignature('');
     setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
   };
 
@@ -115,7 +102,7 @@ export function DocumentsClient() {
     const docCount = rawDocuments?.length || 0;
     let title = `${type.replace(/([A-Z])/g, ' $1').trim()} #${type.slice(0,3).toUpperCase()}-2026-${String(docCount + 1).padStart(3,'0')}`;
     let relatedTo = "N/A";
-    const documentData: any = { details, applyVat, signature };
+    const documentData: any = { details, applyVat };
 
     const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
     
@@ -139,12 +126,6 @@ export function DocumentsClient() {
         documentData.subtotal = subtotal;
         documentData.vat = vat;
         documentData.total = subtotal + vat;
-    } else if (type === 'DeliveryNote') {
-        documentData.deliveredBy = deliveredBy;
-        documentData.receivedBy = receivedBy;
-        documentData.delivererSignature = delivererSignature;
-        documentData.recipientSignature = recipientSignature;
-        documentData.items = lineItems.filter(i => i.description.trim() !== '');
     }
 
     try {
@@ -173,10 +154,6 @@ export function DocumentsClient() {
   const addLineItem = () => setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }]);
   const removeLineItem = (index: number) => setLineItems(lineItems.filter((_, i) => i !== index));
 
-  /**
-   * World-Class Instant Structured PDF Generation
-   * Optimized for Word conversion by setting correct document structure and metadata.
-   */
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     setIsExporting(true);
     const { default: html2canvas } = await import('html2canvas');
@@ -187,10 +164,15 @@ export function DocumentsClient() {
 
     // Instant execution - NO artificial delays
     const element = document.getElementById('pdf-preview-target');
-    if (!element) return;
+    if (!element) {
+        setIsExporting(false);
+        return;
+    }
 
     try {
+        // RESET SCROLL to ensure header is captured
         window.scrollTo(0, 0); 
+        
         const canvas = await html2canvas(element, { 
             scale: 2, 
             useCORS: true,
@@ -198,6 +180,8 @@ export function DocumentsClient() {
             backgroundColor: "#ffffff",
             width: 210 * 3.78, // A4 Width in px at 96dpi * scale
             height: element.scrollHeight,
+            y: 0,
+            scrollY: 0
         });
         
         const pdf = new jsPDF({
@@ -208,7 +192,6 @@ export function DocumentsClient() {
             floatPrecision: 16
         });
 
-        // Set high-end professional metadata for Word interpretation
         pdf.setProperties({
             title: docToDownload.title,
             subject: docToDownload.type,
@@ -233,15 +216,8 @@ export function DocumentsClient() {
     setIsPdfPreviewOpen(true);
   }
 
-  const handleConvertDocument = (sourceDoc: AppDocument, targetType: DocumentType) => {
-    resetFormState();
-    setActiveTab(targetType);
-    if (sourceDoc.data.customer) setSelectedCustomerId(sourceDoc.data.customer.id);
-    if (sourceDoc.data.items) setLineItems(sourceDoc.data.items);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const columnActions: DocumentColumnActions = { onView: handleViewPdf, onDownload: handleDownloadPdf };
+  
   const customColumns = useMemo(() => {
       const base = getDocumentColumns(columnActions);
       const actionsCol = base.find(c => c.id === 'actions');
@@ -256,14 +232,6 @@ export function DocumentsClient() {
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => handleViewPdf(doc)}>View Structure</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDownloadPdf(doc)}>Instant Download</DropdownMenuItem>
-                            <DropdownMenuSeparator /><DropdownMenuLabel>Convert To</DropdownMenuLabel>
-                            {doc.type === 'Quotation' && (
-                                <>
-                                    <DropdownMenuItem onClick={() => handleConvertDocument(doc, 'Proforma')}>Proforma</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleConvertDocument(doc, 'Invoice')}>Invoice</DropdownMenuItem>
-                                </>
-                            )}
-                            {['Invoice', 'Receipt'].includes(doc.type) && <DropdownMenuItem onClick={() => handleConvertDocument(doc, 'DeliveryNote')}>Delivery Note</DropdownMenuItem>}
                         </DropdownMenuContent>
                     </DropdownMenu>
                     <Button variant="outline" size="sm" onClick={() => handleViewPdf(doc)}>View</Button>
@@ -302,7 +270,14 @@ export function DocumentsClient() {
       <Label className="font-bold text-xs uppercase tracking-widest opacity-50">Line Items</Label>
       <div className="border rounded-xl overflow-hidden shadow-inner bg-muted/20">
           <Table>
-              <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[10px] font-black uppercase">Description</TableHead><TableHead className="w-24 text-[10px] font-black uppercase">Qty</TableHead><TableHead className="w-32 text-[10px] font-black uppercase">Price</TableHead><TableHead className="w-16"></TableHead></TableRow></TableHeader>
+              <TableHeader className="bg-muted/50">
+                  <TableRow>
+                      <TableHead className="text-[10px] font-black uppercase">Description</TableHead>
+                      <TableHead className="w-24 text-[10px] font-black uppercase">Qty</TableHead>
+                      <TableHead className="w-32 text-[10px] font-black uppercase">Price</TableHead>
+                      <TableHead className="w-16"></TableHead>
+                  </TableRow>
+              </TableHeader>
               <TableBody>
                   {lineItems.map((item, index) => (
                       <TableRow key={index} className="hover:bg-muted/30">
@@ -350,7 +325,7 @@ export function DocumentsClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Structured Documents" description="World-class document generation engine optimized for Word editing." />
+      <PageHeader title="Branded Documents (Cloud)" description="Professional invoices and quotations synchronized globally." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[10px] tracking-widest">Quotation</TabsTrigger>

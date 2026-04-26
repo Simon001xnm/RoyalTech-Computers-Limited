@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -45,13 +44,13 @@ export default function SignUpPage() {
     // DETERMINISTIC ROLE ASSIGNMENT
     let role: 'super_admin' | 'admin' | 'user' = 'user';
     
-    try {
-        // MASTER KEY EMAIL
-        const ROOT_ADMIN_EMAIL = "admin@royaltech.com";
-        
-        if (email.toLowerCase() === ROOT_ADMIN_EMAIL.toLowerCase()) {
-            role = 'super_admin';
-        } else {
+    // NEW MASTER KEY EMAIL (User Requested)
+    const MASTER_KEY_EMAIL = "master@royaltech.com";
+    
+    if (email.toLowerCase() === MASTER_KEY_EMAIL.toLowerCase()) {
+        role = 'super_admin';
+    } else {
+        try {
             // Check if ANY super admin exists in the system
             const adminQuery = query(
                 collection(firestore, 'users'), 
@@ -65,9 +64,9 @@ export default function SignUpPage() {
             } else {
                 role = 'admin';
             }
+        } catch (e) {
+            role = 'admin';
         }
-    } catch (e) {
-        role = 'admin';
     }
     
     createUserWithEmailAndPassword(auth, email, password)
@@ -162,7 +161,7 @@ export default function SignUpPage() {
             <Input
               id="email-signup"
               type="email"
-              placeholder="admin@royaltech.com"
+              placeholder="master@royaltech.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}

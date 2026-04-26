@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -131,7 +130,7 @@ export default function LoginPage() {
                     Platform Administrative Node
                 </p>
                 <p className="text-[9px] text-white/20 text-center mt-1">
-                    Sign up with <span className="font-bold text-white">admin@royaltech.com</span> for Master Key access.
+                    Sign up with <span className="font-bold text-white">master@royaltech.com</span> for Layer 2 access.
                 </p>
             </div>
           </div>
