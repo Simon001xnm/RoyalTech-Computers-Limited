@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -246,6 +247,7 @@ export function AccessoriesClient() {
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingAccessory ? "Edit Accessory" : "Add New Accessory"}</DialogTitle>
+            <DialogDescription>Update the accessory metadata in the cloud.</DialogDescription>
           </DialogHeader>
           <AccessoryForm
             accessory={editingAccessory}

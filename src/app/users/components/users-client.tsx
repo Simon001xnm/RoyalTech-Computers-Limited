@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from "react";
@@ -35,13 +36,11 @@ import {
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
-import { useUser as useAuthUser } from '@/firebase/provider';
-import { db } from "@/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where, deleteDoc } from "firebase/firestore";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createUser, updateUser } from "@/firebase/server-actions";
-
+import { useSaaS } from "@/components/saas/saas-provider";
 
 export function UsersClient() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,40 +50,38 @@ export function UsersClient() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const { tenant } = useSaaS();
+  const firestore = useFirestore();
+  const { user: authUser, isUserLoading: isAuthUserLoading } = useUser();
+
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
-  const { user: authUser, isUserLoading: isAuthUserLoading } = useAuthUser();
-
-  // Get current user profile for role checks
-  const currentUser = useLiveQuery(async () => authUser ? await db.users.get(authUser.uid) : null, [authUser]);
+  // Fetch current user profile for role checks
+  const userProfileRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
+  const { data: currentUserProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
 
   // Fetch users with STRICT Tenancy Isolation
-  const users = useLiveQuery(async () => {
-    if (!currentUser) return undefined;
+  const usersQuery = useMemoFirebase(() => {
+    if (!currentUserProfile) return null;
     
-    // LAYER 2: Secure Query Resolution
-    if (isFeatureEnabled('TENANCY_ISOLATION')) {
-        // Platform Technicians see everyone
-        if (currentUser.role === 'super_admin') {
-            return await db.users.toArray();
-        }
-        
-        // Admins and Staff see only their node
-        if (currentUser.tenantId) {
-            return await db.users.where('tenantId').equals(currentUser.tenantId).toArray();
-        }
-        
-        // Un-onboarded users see only themselves to prevent leaks
-        return [currentUser];
+    // Platform Technicians see everyone
+    if (currentUserProfile.role === 'super_admin') {
+        return query(collection(firestore, 'users'));
     }
     
-    // Fallback for v1.0 mode
-    return await db.users.toArray();
-  }, [currentUser]);
+    // Admins and Staff see only their node
+    if (tenant?.id) {
+        return query(collection(firestore, 'users'), where('tenantId', '==', tenant.id));
+    }
+    
+    return query(collection(firestore, 'users'), where('id', '==', authUser?.uid || 'none'));
+  }, [firestore, currentUserProfile, tenant?.id, authUser?.uid]);
+
+  const { data: users, isLoading: usersDataLoading } = useCollection(usersQuery);
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -105,7 +102,7 @@ export function UsersClient() {
   };
 
   const handleDeleteUser = (user: User) => {
-    if (currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin') {
+    if (currentUserProfile?.role !== 'admin' && currentUserProfile?.role !== 'super_admin') {
       toast({ variant: "destructive", title: "Permission Denied", description: "You do not have permission to delete users." });
       return;
     }
@@ -119,65 +116,44 @@ export function UsersClient() {
 
   const confirmDelete = async () => {
     if (userToDelete) {
-      await db.users.delete(userToDelete.id);
-      toast({ title: "User Record Deleted", description: `Local record for ${userToDelete.name} has been removed.` });
+      try {
+          await deleteDoc(doc(firestore, 'users', userToDelete.id));
+          toast({ title: "User Record Deleted" });
+      } catch (e: any) {
+          toast({ variant: 'destructive', title: 'Deletion Failed', description: e.message });
+      }
       setUserToDelete(null);
     }
     setIsDeleteConfirmOpen(false);
   };
 
   const handleFormSubmit = async (data: any) => {
-    if (!currentUser) return;
+    if (!currentUserProfile) return;
     setIsProcessing(true);
     
     try {
         if (editingUser) {
-            // Update Existing Team Member
             const result = await updateUser({
                 uid: editingUser.id,
                 name: data.name,
                 phone: data.phone,
                 role: data.role,
-                requestingUserRole: currentUser.role
+                requestingUserRole: currentUserProfile.role
             });
-
-            if (result.success) {
-                await db.users.update(editingUser.id, { 
-                    name: data.name, 
-                    phone: data.phone, 
-                    role: data.role,
-                    updatedAt: new Date().toISOString()
-                });
-                toast({ title: "Team Member Updated" });
-            } else {
-                throw new Error(result.error);
-            }
+            if (!result.success) throw new Error(result.error);
+            toast({ title: "Team Member Updated" });
         } else {
-            // Create New Team Member inside the Tenant
             const result = await createUser({
                 email: data.email,
                 password: data.password,
                 name: data.name,
                 phone: data.phone,
                 role: data.role,
-                tenantId: currentUser.tenantId, // Tag with current company
-                requestingUserRole: currentUser.role
+                tenantId: tenant?.id || null, 
+                requestingUserRole: currentUserProfile.role
             });
-
-            if (result.success && result.uid) {
-                await db.users.add({
-                    id: result.uid,
-                    email: data.email,
-                    name: data.name,
-                    phone: data.phone,
-                    role: data.role,
-                    tenantId: currentUser.tenantId,
-                    createdAt: new Date().toISOString()
-                });
-                toast({ title: "Team Member Added", description: `An account for ${data.name} has been created in your workspace.` });
-            } else {
-                throw new Error(result.error);
-            }
+            if (!result.success) throw new Error(result.error);
+            toast({ title: "Team Member Added" });
         }
         setIsFormOpen(false);
         setEditingUser(null);
@@ -188,23 +164,20 @@ export function UsersClient() {
     }
   };
   
-  const isLoading = users === undefined || isAuthUserLoading;
-  const canManageUsers = !isLoading && (currentUser?.role === 'admin' || currentUser?.role === 'super_admin');
+  const isLoading = isAuthUserLoading || isProfileLoading || usersDataLoading;
+  const canManageUsers = !isLoading && (currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'super_admin');
 
   const columnActions: UserColumnActions = {
     onEdit: handleEditUser,
     onDelete: handleDeleteUser,
   };
   
-  const columns = useMemo<ColumnDef<User, any>>(() => getUserColumns(columnActions), [columnActions, canManageUsers]);
+  const columns = useMemo<ColumnDef<User, any>>(() => getUserColumns(columnActions), [columnActions]);
 
   const table = useReactTable({
     data: filteredUsers,
     columns,
-    state: {
-      rowSelection,
-      pagination,
-    },
+    state: { rowSelection, pagination },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
@@ -215,8 +188,8 @@ export function UsersClient() {
   return (
     <>
       <PageHeader
-        title="Team Management (Multi-tenant)"
-        description={isFeatureEnabled('TENANCY_ISOLATION') ? "Manage staff members belonging strictly to your business workspace." : "View and manage all system users locally."}
+        title="Team Management (Cloud)"
+        description="Manage staff members belonging strictly to your business workspace."
         actionLabel={canManageUsers ? "Invite Team Member" : undefined}
         onAction={canManageUsers ? handleAddUser : undefined}
         ActionIcon={UserPlus}
@@ -227,7 +200,7 @@ export function UsersClient() {
           <UserX className="h-4 w-4" />
           <AlertTitle>Access Restricted</AlertTitle>
           <AlertDescription>
-            You do not have the required permissions to manage users for this tenant. Please contact your Workspace Owner.
+            You do not have the required permissions to manage users for this tenant.
           </AlertDescription>
         </Alert>
       )}
@@ -241,22 +214,17 @@ export function UsersClient() {
         />
       </div>
       
-      {isLoading && <p className="text-muted-foreground animate-pulse">Syncing team directory...</p>}
-      
-      {!isLoading && filteredUsers.length > 0 && (
+      {isLoading ? (
+          <p className="text-muted-foreground animate-pulse">Syncing team directory...</p>
+      ) : (
         <div className="rounded-lg border shadow-sm bg-card">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map(headerGroup => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map(header => (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   ))}
                 </TableRow>
@@ -265,22 +233,15 @@ export function UsersClient() {
             <TableBody>
               {table.getRowModel().rows.length ? (
                 table.getRowModel().rows.map(row => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
+                  <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                     {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
+                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : (
                  <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No users match your criteria.
-                  </TableCell>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">No users found.</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -289,22 +250,13 @@ export function UsersClient() {
         </div>
       )}
 
-      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingUser(null); } else { setIsFormOpen(true); }}}>
+      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingUser(null); }}}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingUser ? 'Edit Team Member' : 'Invite Team Member'}</DialogTitle>
-            <DialogDescription>
-              {editingUser ? 'Update role and profile details.' : 'Provision a new account for a staff member within your business workspace.'}
-            </DialogDescription>
+            <DialogDescription>Provision an account within your workspace.</DialogDescription>
           </DialogHeader>
-          {isFormOpen && (
-            <UserForm
-                user={editingUser}
-                onSubmit={handleFormSubmit}
-                onCancel={() => { setIsFormOpen(false); setEditingUser(null); }}
-                isLoading={isProcessing}
-            />
-          )}
+          <UserForm user={editingUser} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isProcessing} />
         </DialogContent>
       </Dialog>
 
@@ -312,9 +264,7 @@ export function UsersClient() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Revoke Access</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to remove <strong>{userToDelete?.name}</strong> from your workspace? They will no longer be able to log in.
-            </DialogDescription>
+            <DialogDescription>Remove <strong>{userToDelete?.name}</strong> from your workspace?</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>

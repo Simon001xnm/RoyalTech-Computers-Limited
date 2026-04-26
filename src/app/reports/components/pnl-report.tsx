@@ -1,11 +1,12 @@
+
 'use client';
 
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { PnlData } from './reports-client';
 import type { DateRange } from 'react-day-picker';
-import { db } from '@/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 
 interface PnlReportProps {
@@ -56,12 +57,13 @@ const ReportRow = ({
 
 export function PnlReport({ data, dateRange }: PnlReportProps) {
   const { tenant } = useSaaS();
+  const firestore = useFirestore();
   
-  // SECURE QUERY: Filter by active tenantId to prevent cross-account leakage
-  const company = useLiveQuery(
-    async () => tenant?.id ? await db.companies.get(tenant.id) : null,
-    [tenant?.id]
+  const companyRef = useMemoFirebase(() => 
+    tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
+    [firestore, tenant?.id]
   );
+  const { data: company } = useDoc(companyRef);
 
   const { operatingIncome, costOfGoodsSold, operatingExpenses, grossProfit, netIncome } = data;
 

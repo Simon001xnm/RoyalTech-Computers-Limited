@@ -105,7 +105,7 @@ export default function ProfilePage() {
         logoUrl: compLogo,
         updatedAt: new Date().toISOString()
       });
-      toast({ title: 'Workspace Updated', description: 'Branding changes applied.' });
+      toast({ title: 'Workspace Updated' });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Error' });
     } finally {
@@ -117,7 +117,7 @@ export default function ProfilePage() {
       if (!authUser || !userRef) return;
       try {
           await updateDoc(userRef, { tenantId: null });
-          toast({ title: "Initializing Setup", description: "Taking you to the workspace setup wizard." });
+          toast({ title: "Initializing Setup" });
           window.location.reload(); 
       } catch (e) { toast({ variant: 'destructive', title: 'Failed to reset workspace link' }); }
   };
@@ -191,10 +191,10 @@ export default function ProfilePage() {
                 <CardContent className="space-y-2">
                     {isPortfolioLoading ? (
                       <div className="p-4 text-center text-xs animate-pulse opacity-50 uppercase font-bold">Checking workspaces...</div>
-                    ) : availableWorkspaces.length === 0 ? (
+                    ) : availableWorkspaces && availableWorkspaces.length === 0 ? (
                       <div className="p-4 text-center text-xs text-muted-foreground italic">No workspaces linked.</div>
                     ) : (
-                      availableWorkspaces.map(ws => (
+                      availableWorkspaces && availableWorkspaces.map(ws => (
                           <div key={ws.id} className={cn("flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer", tenant?.id === ws.id ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")} onClick={() => tenant?.id !== ws.id && switchTenant(ws.id)}>
                               <div className="flex items-center gap-2 overflow-hidden">
                                   {ws.logoUrl ? <img src={ws.logoUrl} className="h-6 w-6 object-contain shrink-0" alt="logo" /> : <Building2 className="h-4 w-4 shrink-0 opacity-40" />}
@@ -276,7 +276,10 @@ export default function ProfilePage() {
 
        <Dialog open={isNewWorkspaceOpen} onOpenChange={setIsNewWorkspaceOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Add Workspace Entity</DialogTitle><DialogDescription>Reset your session to initialize a new business node.</DialogDescription></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Add Workspace Entity</DialogTitle>
+            <DialogDescription>Reset your session to initialize a new business node.</DialogDescription>
+          </DialogHeader>
           <CardFooter className="px-0 pt-4"><Button className="w-full font-bold h-12" onClick={handleCreateWorkspace}>Reset Session & Setup</Button></CardFooter>
         </DialogContent>
       </Dialog>

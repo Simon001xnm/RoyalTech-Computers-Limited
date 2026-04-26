@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from "react";
@@ -43,7 +44,6 @@ export function StockClient() {
   const filteredAssets = useMemo(() => {
     if (!rawAssets) return [];
     
-    // In-memory sort to avoid requiring composite indexes during prototyping
     const sorted = [...rawAssets].sort((a, b) => {
         const dateA = a.purchaseDate ? new Date(a.purchaseDate).getTime() : 0;
         const dateB = b.purchaseDate ? new Date(b.purchaseDate).getTime() : 0;
@@ -175,12 +175,7 @@ export function StockClient() {
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
                     <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   ))}
                 </TableRow>
@@ -191,17 +186,13 @@ export function StockClient() {
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
+                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No assets found.
-                  </TableCell>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">No assets found.</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -214,12 +205,9 @@ export function StockClient() {
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingAsset ? "Edit Asset" : "Add New Asset"}</DialogTitle>
+            <DialogDescription>Update your hardware records in the cloud.</DialogDescription>
           </DialogHeader>
-          <AssetForm 
-            asset={editingAsset} 
-            onSubmit={handleFormSubmit} 
-            onCancel={() => setIsFormOpen(false)} 
-          />
+          <AssetForm asset={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} />
         </DialogContent>
       </Dialog>
 
