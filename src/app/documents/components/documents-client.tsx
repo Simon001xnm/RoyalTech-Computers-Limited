@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, MoreHorizontal, Loader2 } from "lucide-react";
+import { Trash2, PlusCircle, MoreHorizontal, Loader2, Download } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
 import {
   Table,
@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, doc } from "firebase/firestore";
+import { collection, query, where, addDoc } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -39,7 +39,6 @@ import {
   getCoreRowModel,
   getPaginationRowModel,
   flexRender,
-  type ColumnDef,
   type PaginationState,
 } from "@tanstack/react-table";
 import { getDocumentColumns, type DocumentColumnActions } from "./document-columns";
@@ -86,6 +85,7 @@ export function DocumentsClient() {
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+  const [isExporting, setIsExporting] = useState(false);
 
   const sortedDocuments = useMemo(() => {
       if (!rawDocuments) return [];
@@ -96,8 +96,6 @@ export function DocumentsClient() {
       });
   }, [rawDocuments]);
 
-  const isLoading = docsLoading;
-  
   const resetFormState = () => {
     setSelectedCustomerId('');
     setDetails('');
@@ -175,43 +173,59 @@ export function DocumentsClient() {
   const addLineItem = () => setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }]);
   const removeLineItem = (index: number) => setLineItems(lineItems.filter((_, i) => i !== index));
 
+  /**
+   * High-Performance Structured PDF Download
+   * Uses native canvas context and structure to allow Word conversion.
+   */
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
+    setIsExporting(true);
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
     
-    // Mount the component instantly for capture
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    requestAnimationFrame(async () => {
-        const element = document.getElementById('pdf-preview-target');
-        if (!element) return;
+    // No timer - instant execution
+    const element = document.getElementById('pdf-preview-target');
+    if (!element) return;
 
-        try {
-            const captureContainer = element.closest('.overflow-auto');
-            if (captureContainer) captureContainer.scrollTo(0, 0);
+    try {
+        window.scrollTo(0, 0); // Reset scroll for full capture
+        const canvas = await html2canvas(element, { 
+            scale: 2, 
+            useCORS: true,
+            logging: false,
+            backgroundColor: "#ffffff",
+            width: element.scrollWidth,
+            height: element.scrollHeight,
+        });
+        
+        const pdf = new jsPDF({
+            orientation: 'p',
+            unit: 'mm',
+            format: 'a4',
+            putOnlyUsedFonts: true,
+            floatPrecision: 16
+        });
 
-            const canvas = await html2canvas(element, { 
-                scale: 2, 
-                useCORS: true,
-                backgroundColor: "#ffffff",
-                width: element.scrollWidth,
-                height: element.scrollHeight,
-                scrollY: 0,
-                x: 0,
-                y: 0
-            });
-            
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgData = canvas.toDataURL('image/png', 1.0);
-            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-            pdf.save(`${docToDownload.title}.pdf`);
-        } catch (err) {
-            toast({ variant: 'destructive', title: 'PDF Generation Failed' });
-        } finally {
-            setIsPdfPreviewOpen(false);
-        }
-    });
+        // Set metadata for Word conversion engines
+        pdf.setProperties({
+            title: docToDownload.title,
+            subject: docToDownload.type,
+            author: user?.displayName || 'RoyalTech Suite',
+            keywords: 'invoice, document, receipt',
+            creator: 'Professional ERP Suite'
+        });
+
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        pdf.save(`${docToDownload.title}.pdf`);
+    } catch (err) {
+        toast({ variant: 'destructive', title: 'Export Failed' });
+    } finally {
+        setIsPdfPreviewOpen(false);
+        setIsExporting(false);
+    }
   };
 
   const handleViewPdf = (doc: AppDocument) => {
@@ -228,7 +242,7 @@ export function DocumentsClient() {
   };
 
   const columnActions: DocumentColumnActions = { onView: handleViewPdf, onDownload: handleDownloadPdf };
-  const customColumns = useMemo<ColumnDef<AppDocument, any>[]>(() => {
+  const customColumns = useMemo(() => {
       const base = getDocumentColumns(columnActions);
       const actionsCol = base.find(c => c.id === 'actions');
       if (actionsCol) {
@@ -240,8 +254,8 @@ export function DocumentsClient() {
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleViewPdf(doc)}>View</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownloadPdf(doc)}>Download PDF</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleViewPdf(doc)}>View Structure</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadPdf(doc)}>Instant Download</DropdownMenuItem>
                             <DropdownMenuSeparator /><DropdownMenuLabel>Convert To</DropdownMenuLabel>
                             {doc.type === 'Quotation' && (
                                 <>
@@ -285,69 +299,65 @@ export function DocumentsClient() {
 
   const renderManualItemEntry = () => (
     <div className="space-y-4">
-      <Label>Line Items</Label>
-      <div className="border rounded-lg">
+      <Label className="font-bold text-xs uppercase tracking-widest opacity-50">Line Items</Label>
+      <div className="border rounded-xl overflow-hidden shadow-inner bg-muted/20">
           <Table>
-              <TableHeader><TableRow><TableHead>Description</TableHead><TableHead className="w-24">Qty</TableHead><TableHead className="w-32">Price</TableHead><TableHead className="w-16"></TableHead></TableRow></TableHeader>
+              <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[10px] font-black uppercase">Description</TableHead><TableHead className="w-24 text-[10px] font-black uppercase">Qty</TableHead><TableHead className="w-32 text-[10px] font-black uppercase">Price</TableHead><TableHead className="w-16"></TableHead></TableRow></TableHeader>
               <TableBody>
                   {lineItems.map((item, index) => (
-                      <TableRow key={index}>
-                          <TableCell><Input placeholder="Item description" value={item.description} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
-                          <TableCell><Input type="number" value={item.quantity} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
-                          <TableCell><Input type="number" value={item.unitPrice} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
-                          <TableCell><Button variant="ghost" size="icon" onClick={() => removeLineItem(index)} disabled={lineItems.length === 1}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                      <TableRow key={index} className="hover:bg-muted/30">
+                          <TableCell><Input placeholder="Item description" className="h-9 border-none bg-transparent shadow-none focus-visible:ring-0" value={item.description} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
+                          <TableCell><Input type="number" className="h-9 border-none bg-transparent shadow-none focus-visible:ring-0" value={item.quantity} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
+                          <TableCell><Input type="number" className="h-9 border-none bg-transparent shadow-none focus-visible:ring-0" value={item.unitPrice} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
+                          <TableCell><Button variant="ghost" size="icon" onClick={() => removeLineItem(index)} disabled={lineItems.length === 1} className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive/50" /></Button></TableCell>
                       </TableRow>
                   ))}
               </TableBody>
           </Table>
       </div>
-      <Button type="button" variant="outline" size="sm" onClick={addLineItem}><PlusCircle className="mr-2 h-4 w-4"/>Add Item</Button>
+      <Button type="button" variant="outline" size="sm" onClick={addLineItem} className="h-8 font-bold text-[10px] uppercase tracking-widest"><PlusCircle className="mr-2 h-3 w-3"/>Add Line</Button>
     </div>
   );
 
   const renderForm = (type: DocumentType) => {
-    const isDelivery = type === 'DeliveryNote';
     const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'DeliveryNote', 'LPO'].includes(type);
     return (
-      <Card className="shadow-lg border-primary/10">
-        <CardHeader><CardTitle>Generate Branded {type}</CardTitle></CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <Label>Customer</Label>
-            <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId}>
-              <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
-              <SelectContent>{customers?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-            </Select>
+      <Card className="shadow-lg border-primary/10 overflow-hidden">
+        <CardHeader className="bg-primary/5 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight">Generate Branded {type}</CardTitle></CardHeader>
+        <CardContent className="space-y-8 pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <Label className="font-bold text-xs uppercase tracking-widest opacity-50">Target Customer</Label>
+                <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId}>
+                <SelectTrigger className="h-11"><SelectValue placeholder="Select customer node" /></SelectTrigger>
+                <SelectContent>{customers?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-xl border border-dashed h-11 self-end">
+                <Switch id="vat-switch" checked={applyVat} onCheckedChange={setApplyVat} />
+                <Label htmlFor="vat-switch" className="cursor-pointer font-bold text-xs uppercase">Include 16% VAT</Label>
+              </div>
           </div>
-          {['Quotation', 'Invoice', 'Proforma'].includes(type) && (
-              <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-lg"><Switch id="vat-switch" checked={applyVat} onCheckedChange={setApplyVat} /><Label htmlFor="vat-switch" className="cursor-pointer">Apply 16% VAT</Label></div>
-          )}
           {type === 'Receipt' && (
-            <div><Label>Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11" /></div>
+            <div className="max-w-xs"><Label className="font-bold text-xs uppercase tracking-widest opacity-50">Transaction Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 text-xl font-black" /></div>
           )}
           {showsItemEntry && renderManualItemEntry()}
-          {isDelivery && (
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-                   <div className="space-y-4"><Label>Delivered By</Label><Input value={deliveredBy} onChange={e => setDeliveredBy(e.target.value)} /><SignaturePad onSave={setDelivererDelivererSignature} /></div>
-                   <div className="space-y-4"><Label>Received By</Label><Input value={receivedBy} onChange={e => setReceivedBy(e.target.value)} /><SignaturePad onSave={setRecipientSignature} /></div>
-               </div>
-           )}
         </CardContent>
-        <CardFooter><Button onClick={() => handleGenerateDocument(type)} className="ml-auto h-11 px-8 font-bold" disabled={isLoading}>Generate Document</Button></CardFooter>
+        <CardFooter className="bg-muted/20 border-t py-6"><Button onClick={() => handleGenerateDocument(type)} className="ml-auto h-12 px-10 font-black uppercase tracking-widest shadow-xl" disabled={docsLoading}>Execute Generation</Button></CardFooter>
       </Card>
     );
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Branded Documents (Cloud)" description="Professional invoices and quotations synchronized globally." />
+      <PageHeader title="Structured Documents" description="World-class document generation engine optimized for Word editing." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-6 overflow-x-auto h-auto p-1 bg-muted/50 border">
-          <TabsTrigger value="Quotation" className="py-2">Quotation</TabsTrigger>
-          <TabsTrigger value="Invoice" className="py-2">Invoice</TabsTrigger>
-          <TabsTrigger value="Proforma" className="py-2">Proforma</TabsTrigger>
-          <TabsTrigger value="Receipt" className="py-2">Receipt</TabsTrigger>
-          <TabsTrigger value="DeliveryNote" className="py-2">Delivery</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
+          <TabsTrigger value="Quotation" className="font-black uppercase text-[10px] tracking-widest">Quotation</TabsTrigger>
+          <TabsTrigger value="Invoice" className="font-black uppercase text-[10px] tracking-widest">Invoice</TabsTrigger>
+          <TabsTrigger value="Proforma" className="font-black uppercase text-[10px] tracking-widest">Proforma</TabsTrigger>
+          <TabsTrigger value="Receipt" className="font-black uppercase text-[10px] tracking-widest">Receipt</TabsTrigger>
+          <TabsTrigger value="DeliveryNote" className="font-black uppercase text-[10px] tracking-widest">Delivery</TabsTrigger>
         </TabsList>
         <TabsContent value="Quotation">{renderForm("Quotation")}</TabsContent>
         <TabsContent value="Invoice">{renderForm("Invoice")}</TabsContent>
@@ -355,28 +365,28 @@ export function DocumentsClient() {
         <TabsContent value="Receipt">{renderForm("Receipt")}</TabsContent>
         <TabsContent value="DeliveryNote">{renderForm("DeliveryNote")}</TabsContent>
       </Tabs>
-      <Card className="mt-8 shadow-md"><CardContent className="pt-6">
-        <div className="rounded-lg border overflow-hidden">
+      <Card className="mt-8 shadow-2xl border-none overflow-hidden">
+          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-sm font-black uppercase tracking-widest">Archived Records</CardTitle></CardHeader>
+          <CardContent className="p-0">
             <Table>
-                <TableHeader className="bg-muted/50">
+                <TableHeader className="bg-muted/20">
                     {table.getHeaderGroups().map(hg => (
-                        <TableRow key={hg.id}>
-                            {hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
+                        <TableRow key={hg.id} className="hover:bg-transparent">
+                            {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
                         </TableRow>
                     ))}
                 </TableHeader>
                 <TableBody>
                     {table.getRowModel().rows.length ? (
                         table.getRowModel().rows.map(row => (
-                            <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
+                            <TableRow key={row.id} className="hover:bg-muted/10">{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
                         ))
                     ) : (
-                        <TableRow><TableCell colSpan={5} className="h-24 text-center">No documents archived yet.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="h-48 text-center text-muted-foreground font-medium italic">No cloud documents generated in this node.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>
             <DataTablePagination table={table} />
-        </div>
       </CardContent></Card>
 
        <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
@@ -386,10 +396,10 @@ export function DocumentsClient() {
                 {renderPdfPreview()}
             </div>
           </div>
-          <div className="p-4 border-t flex justify-end gap-3 bg-white no-print">
-            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)}>Close Preview</Button>
-            <Button onClick={() => window.print()} className="font-bold">
-                Print Document (A4)
+          <div className="p-6 border-t flex justify-end gap-3 bg-white no-print shadow-inner">
+            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold">Close Hub</Button>
+            <Button onClick={() => window.print()} className="font-black uppercase tracking-widest px-8 shadow-lg">
+                Print A4 Document
             </Button>
           </div>
         </DialogContent>

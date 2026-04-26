@@ -10,7 +10,7 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, ShieldCheck } from 'lucide-react';
+import { LogOut, User as UserIcon, ShieldCheck, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc } from 'firebase/firestore';
 import type { User as AppUser } from '@/types';
@@ -20,13 +20,9 @@ import { cn } from "@/lib/utils";
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
-function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+function AuthenticatedLayout({ children, userProfile }: { children: React.ReactNode, userProfile: AppUser | null }) {
     const { user } = useUser();
     const auth = useAuth();
-    const firestore = useFirestore();
-
-    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-    const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
 
     const handleLogout = () => {
         if (auth) auth.signOut();
@@ -50,7 +46,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
             </Link>
         </SidebarHeader>
         <SidebarContent>
-            {!isProfileLoading ? <SidebarNav /> : <div className="p-4 animate-pulse bg-muted rounded-md mx-2 h-20" />}
+            <SidebarNav />
         </SidebarContent>
         <SidebarSeparator />
         <SidebarFooter className="p-4">
@@ -125,35 +121,42 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const pathname = usePathname();
+  const firestore = useFirestore();
 
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
 
+  // CRITICAL: Fetch profile here to ensure it persists across login/logout cycles
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
+
   useEffect(() => {
-    if (!isUserLoading) {
+    if (!isUserLoading && !isProfileLoading) {
       if (!user && !isPublicPath) {
         router.push('/login');
       } else if (user && isPublicPath) {
         router.push('/');
+      } else if (user && userProfile?.role === 'super_admin' && pathname === '/') {
+        // Redirection logic: Super Admins land on Command Center by default
+        router.push('/admin');
       }
     }
-  }, [user, isUserLoading, router, pathname, isPublicPath]);
+  }, [user, isUserLoading, isProfileLoading, userProfile, router, pathname, isPublicPath]);
 
-  if (isUserLoading) {
+  if (isUserLoading || (user && isProfileLoading)) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <p>Syncing identity...</p>
+      <div className="flex flex-col h-screen w-full items-center justify-center bg-background space-y-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
+        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Cloud Identity...</p>
       </div>
     );
   }
 
-  // If we are on a public page, render it directly
   if (isPublicPath) {
     return <>{children}</>;
   }
 
-  // If we have a user, render the authenticated layout
   if (user) {
-    return <AuthenticatedLayout>{children}</AuthenticatedLayout>;
+    return <AuthenticatedLayout userProfile={userProfile}>{children}</AuthenticatedLayout>;
   }
 
   return null;

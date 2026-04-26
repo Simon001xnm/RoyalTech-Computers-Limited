@@ -42,11 +42,10 @@ export default function SignUpPage() {
 
     setIsLoading(true);
 
-    // DETERMINISTIC ROLE ASSIGNMENT:
+    // DETERMINISTIC ROLE ASSIGNMENT
     let role: 'super_admin' | 'admin' | 'user' = 'user';
     
     try {
-        // MASTER KEY: This email always gets Super Admin
         const ROOT_ADMIN_EMAIL = "admin@royaltech.com";
         
         if (email.toLowerCase() === ROOT_ADMIN_EMAIL.toLowerCase()) {
@@ -61,15 +60,12 @@ export default function SignUpPage() {
             const adminSnapshot = await getDocs(adminQuery);
             
             if (adminSnapshot.empty) {
-                // If no platform technician exists, this user takes the throne
                 role = 'super_admin';
             } else {
-                // Otherwise, they are a workspace owner
                 role = 'admin';
             }
         }
     } catch (e) {
-        console.warn("Role check failed, defaulting to admin role.");
         role = 'admin';
     }
     
@@ -85,16 +81,20 @@ export default function SignUpPage() {
                 email: email,
                 phone: '',
                 role: role,
+                tenantId: null, // Initialized as null to trigger onboarding
                 tenantIds: [],
                 createdAt: new Date().toISOString()
             });
 
             toast({
-                title: role === 'super_admin' ? 'Super Admin Account Created' : 'Account Created',
+                title: role === 'super_admin' ? 'Platform Node Active' : 'Account Created',
                 description: role === 'super_admin' 
-                    ? 'You have been granted Global Platform access.' 
-                    : 'Welcome aboard! Let\'s configure your workspace now.',
+                    ? 'Global Technician privileges granted.' 
+                    : 'Welcome! Initializing your workspace setup...',
             });
+            
+            // Force immediate redirect to dashboard/onboarding
+            router.push('/');
         })
         .catch((error) => {
             let description = "Registration could not be completed.";
@@ -125,7 +125,7 @@ export default function SignUpPage() {
   if (isUserLoading || user) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
-            <p className="animate-pulse text-sm font-medium uppercase tracking-widest">Redirecting to workspace...</p>
+            <p className="animate-pulse text-sm font-medium uppercase tracking-widest">Redirecting to node...</p>
         </div>
     );
   }
@@ -140,8 +140,8 @@ export default function SignUpPage() {
 
       <Card className="relative w-full max-w-[400px] mx-4 bg-white/5 backdrop-blur-2xl border-white/10 shadow-2xl text-white">
         <CardHeader className="text-center items-center pt-8">
-          <CardTitle className="text-3xl font-bold tracking-tight mb-2">Join the Suite</CardTitle>
-          <CardDescription className="text-white/60">Create your individual account to start managing your business.</CardDescription>
+          <CardTitle className="text-3xl font-bold tracking-tight mb-2">Initialize Suite</CardTitle>
+          <CardDescription className="text-white/60">Register your credentials to access the global business node.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5 px-8">
           <div className="space-y-2">
@@ -149,7 +149,7 @@ export default function SignUpPage() {
             <Input
               id="name-signup"
               type="text"
-              placeholder="e.g. John Doe"
+              placeholder="e.g. Platform Admin"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -158,7 +158,7 @@ export default function SignUpPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email-signup" className="text-white/80 text-xs uppercase tracking-widest font-semibold">Email Address</Label>
+            <Label htmlFor="email-signup" className="text-white/80 text-xs uppercase tracking-widest font-semibold">Master Identity (Email)</Label>
             <Input
               id="email-signup"
               type="email"
@@ -171,7 +171,7 @@ export default function SignUpPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password-signup" className="text-white/80 text-xs uppercase tracking-widest font-semibold">Password</Label>
+            <Label htmlFor="password-signup" className="text-white/80 text-xs uppercase tracking-widest font-semibold">Access Key (Password)</Label>
             <Input
               id="password-signup"
               type="password"
@@ -188,12 +188,12 @@ export default function SignUpPage() {
         </CardContent>
         <CardFooter className="flex-col gap-6 px-8 pb-10 pt-2">
           <Button onClick={handleSignUp} className="w-full h-12 text-base font-bold shadow-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-white text-black hover:bg-white/90" disabled={isLoading}>
-            {isLoading ? 'Creating Account...' : 'Get Started'}
+            {isLoading ? 'Synchronizing...' : 'Finalize Registration'}
           </Button>
           <div className="text-center text-sm text-white/40">
-            Already have an account?{' '}
+            Already registered?{' '}
             <Link href="/login" className="text-white hover:underline transition-colors font-semibold">
-              Sign in
+              Sign in to node
             </Link>
           </div>
         </CardFooter>
