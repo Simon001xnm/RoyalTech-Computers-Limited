@@ -1,7 +1,7 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { Sale, Expense } from '@/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { Download, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
@@ -37,14 +37,12 @@ export function ReportsClient() {
   const { toast } = useToast();
   const { tenant } = useSaaS();
   const firestore = useFirestore();
-  const [isExporting, setIsExporting] = useState(false);
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: startOfYear(new Date()),
     to: new Date(),
   });
 
-  // CLOUD QUERIES: Derbying P&L (Index-free queries)
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
@@ -115,23 +113,15 @@ export function ReportsClient() {
     const reportElement = document.getElementById('pnl-report');
     if (!reportElement) return;
 
-    setIsExporting(true);
-    toast({ title: 'Preparing Cloud Report' });
-
-    setTimeout(async () => {
-        try {
-            const canvas = await html2canvas(reportElement, { scale: 3, useCORS: true, windowWidth: 1200 });
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgData = canvas.toDataURL('image/png', 1.0);
-            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-            pdf.save(`Financial_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
-            toast({ title: 'Download Successful' });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'PDF Error' });
-        } finally {
-            setIsExporting(false);
-        }
-    }, 1000);
+    try {
+        const canvas = await html2canvas(reportElement, { scale: 2, useCORS: true, windowWidth: 1200 });
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        pdf.save(`Financial_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'PDF Export Failed' });
+    }
   };
 
   return (
@@ -149,8 +139,8 @@ export function ReportsClient() {
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start"><Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={setDate} numberOfMonths={2} /></PopoverContent>
           </Popover>
-          <Button onClick={handleDownloadPdf} disabled={isLoading || isExporting} className="h-11 px-6 font-bold shadow-md">
-            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />} Export Report
+          <Button onClick={handleDownloadPdf} disabled={isLoading} className="h-11 px-6 font-bold shadow-md">
+            <Download className="mr-2 h-4 w-4" /> Export Report
           </Button>
         </CardContent>
       </Card>
@@ -164,7 +154,6 @@ export function ReportsClient() {
         <div className="flex justify-center bg-muted/20 p-8 rounded-2xl border border-dashed overflow-auto">
             <div id="pnl-report" className="a4-document shadow-2xl relative">
                 <PnlReport data={pnlData} dateRange={date} />
-                {isExporting && <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-50"><Loader2 className="h-12 w-12 animate-spin text-primary mb-4" /><p className="font-black text-primary uppercase tracking-widest">Optimizing PDF...</p></div>}
             </div>
         </div>
       )}

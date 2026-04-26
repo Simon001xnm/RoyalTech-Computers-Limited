@@ -18,16 +18,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, addDoc, doc } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { InvoicePdf } from "./pdfs/invoice-pdf";
 import { ReceiptPdf } from "./pdfs/receipt-pdf";
@@ -88,7 +86,6 @@ export function DocumentsClient() {
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
-  const [isDownloading, setIsDownloading] = useState(false);
 
   const sortedDocuments = useMemo(() => {
       if (!rawDocuments) return [];
@@ -182,29 +179,25 @@ export function DocumentsClient() {
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
     
+    // Mount the component instantly for capture
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
-    setIsDownloading(true);
 
-    // Optimized delay for rendering and scroll reset to prevent header clipping
-    setTimeout(async () => {
+    requestAnimationFrame(async () => {
         const element = document.getElementById('pdf-preview-target');
         if (!element) return;
 
         try {
-            // Force scroll to top of the preview container before capture
             const captureContainer = element.closest('.overflow-auto');
             if (captureContainer) captureContainer.scrollTo(0, 0);
 
             const canvas = await html2canvas(element, { 
-                scale: 2.5, 
+                scale: 2, 
                 useCORS: true,
-                logging: false,
                 backgroundColor: "#ffffff",
                 width: element.scrollWidth,
                 height: element.scrollHeight,
-                windowWidth: element.scrollWidth,
-                scrollY: 0, // CRITICAL: Forces snapshot to start from the top
+                scrollY: 0,
                 x: 0,
                 y: 0
             });
@@ -213,14 +206,12 @@ export function DocumentsClient() {
             const imgData = canvas.toDataURL('image/png', 1.0);
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
             pdf.save(`${docToDownload.title}.pdf`);
-            toast({ title: 'Download Successful' });
         } catch (err) {
-            toast({ variant: 'destructive', title: 'PDF Error' });
+            toast({ variant: 'destructive', title: 'PDF Generation Failed' });
         } finally {
             setIsPdfPreviewOpen(false);
-            setIsDownloading(false);
         }
-    }, 800);
+    });
   };
 
   const handleViewPdf = (doc: AppDocument) => {
@@ -252,7 +243,12 @@ export function DocumentsClient() {
                             <DropdownMenuItem onClick={() => handleViewPdf(doc)}>View</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDownloadPdf(doc)}>Download PDF</DropdownMenuItem>
                             <DropdownMenuSeparator /><DropdownMenuLabel>Convert To</DropdownMenuLabel>
-                            {doc.type === 'Quotation' && <><DropdownMenuItem onClick={() => handleConvertDocument(doc, 'Proforma')}>Proforma</DropdownMenuItem><DropdownMenuItem onClick={() => handleConvertDocument(doc, 'Invoice')}>Invoice</DropdownMenuItem></>}
+                            {doc.type === 'Quotation' && (
+                                <>
+                                    <DropdownMenuItem onClick={() => handleConvertDocument(doc, 'Proforma')}>Proforma</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleConvertDocument(doc, 'Invoice')}>Invoice</DropdownMenuItem>
+                                </>
+                            )}
                             {['Invoice', 'Receipt'].includes(doc.type) && <DropdownMenuItem onClick={() => handleConvertDocument(doc, 'DeliveryNote')}>Delivery Note</DropdownMenuItem>}
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -388,12 +384,6 @@ export function DocumentsClient() {
           <div className="flex-grow overflow-auto bg-slate-200/50 backdrop-blur-md flex justify-center p-4 py-8">
             <div id="pdf-preview-target" className="shrink-0 shadow-2xl relative bg-white overflow-hidden" style={{ width: '210mm', minHeight: '297mm' }}>
                 {renderPdfPreview()}
-                {isDownloading && (
-                    <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-50">
-                        <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-                        <p className="font-black text-primary uppercase tracking-widest text-sm">Optimizing High-Fidelity PDF...</p>
-                    </div>
-                )}
             </div>
           </div>
           <div className="p-4 border-t flex justify-end gap-3 bg-white no-print">

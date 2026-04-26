@@ -60,20 +60,16 @@ export function UsersClient() {
     pageSize: 10,
   });
 
-  // Fetch current user profile for role checks
   const userProfileRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
   const { data: currentUserProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
 
-  // Fetch users with STRICT Tenancy Isolation
   const usersQuery = useMemoFirebase(() => {
     if (!currentUserProfile) return null;
     
-    // Platform Technicians see everyone
     if (currentUserProfile.role === 'super_admin') {
         return query(collection(firestore, 'users'));
     }
     
-    // Admins and Staff see only their node
     if (tenant?.id) {
         return query(collection(firestore, 'users'), where('tenantId', '==', tenant.id));
     }
