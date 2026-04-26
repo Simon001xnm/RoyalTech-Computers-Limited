@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -41,12 +42,16 @@ export default function SignUpPage() {
 
     setIsLoading(true);
 
-    let role: 'admin' | 'user' = 'user';
+    // DETERMINISTIC ROLE ASSIGNMENT:
+    // The very first user in the database becomes the super_admin.
+    let role: 'super_admin' | 'admin' | 'user' = 'user';
     try {
         const usersCollectionRef = collection(firestore, 'users');
         const snapshot = await getDocs(query(usersCollectionRef, limit(1)));
         if (snapshot.empty) {
-            role = 'admin';
+            role = 'super_admin';
+        } else {
+            role = 'admin'; // Subsequent signups are treated as workspace owners
         }
     } catch (e) {
         console.warn("Role check failed, defaulting to user role.");
@@ -64,11 +69,15 @@ export default function SignUpPage() {
                 email: email,
                 phone: '',
                 role: role,
+                tenantIds: [],
+                createdAt: new Date().toISOString()
             });
 
             toast({
-                title: 'Account Created',
-                description: 'Welcome aboard! Let\'s configure your workspace now.',
+                title: role === 'super_admin' ? 'Super Admin Account Created' : 'Account Created',
+                description: role === 'super_admin' 
+                    ? 'You have been granted Global Platform access.' 
+                    : 'Welcome aboard! Let\'s configure your workspace now.',
             });
         })
         .catch((error) => {
@@ -100,20 +109,19 @@ export default function SignUpPage() {
   if (isUserLoading || user) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
-            <p className="animate-pulse text-sm font-medium">Redirecting to workspace...</p>
+            <p className="animate-pulse text-sm font-medium uppercase tracking-widest">Redirecting to workspace...</p>
         </div>
     );
   }
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-black overflow-hidden">
-      {/* Dynamic Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 scale-105 transition-transform duration-[2000ms] ease-out"
-        style={{ backgroundImage: 'url("/stimaspt.jpg")' }}
+        style={{ backgroundImage: 'url("https://picsum.photos/seed/setup/1920/1080")' }}
+        data-ai-hint="modern office"
       />
 
-      {/* Blurred Mirror Form (Glassmorphism) */}
       <Card className="relative w-full max-w-[400px] mx-4 bg-white/5 backdrop-blur-2xl border-white/10 shadow-2xl text-white">
         <CardHeader className="text-center items-center pt-8">
           <CardTitle className="text-3xl font-bold tracking-tight mb-2">Join the Suite</CardTitle>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,6 +12,7 @@ import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -114,11 +116,24 @@ export default function LoginPage() {
                 </div>
             ) : 'Sign In'}
           </Button>
-          <div className="text-center text-sm text-white/40">
-            Don't have a workspace?{' '}
-            <Link href="/signup" className="text-white hover:underline transition-colors font-semibold">
-              Create one now
-            </Link>
+
+          <div className="flex flex-col items-center gap-4 w-full">
+            <div className="text-center text-sm text-white/40">
+                Don't have a workspace?{' '}
+                <Link href="/signup" className="text-white hover:underline transition-colors font-semibold">
+                Create one now
+                </Link>
+            </div>
+            
+            <div className="pt-4 border-t border-white/5 w-full">
+                <p className="text-[10px] uppercase font-black tracking-widest text-white/30 text-center flex items-center justify-center gap-2">
+                    <ShieldCheck className="h-3 w-3" /> 
+                    Platform Administrative Node
+                </p>
+                <p className="text-[9px] text-white/20 text-center mt-1">
+                    First registered user is assigned Super Admin privileges.
+                </p>
+            </div>
           </div>
         </CardFooter>
       </Card>
