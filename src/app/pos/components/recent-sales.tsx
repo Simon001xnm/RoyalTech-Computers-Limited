@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc } from 'firebase/firestore';
 
 interface RecentSalesProps {
     onViewReceipt: (sale: Sale) => void;
@@ -45,6 +45,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const handleGenerateDelivery = async (sale: Sale) => {
         if (!tenant) return;
         
+        // DEFENSIVE SANITIZATION: Ensure no undefined fields are passed to Firestore
         const deliveryData = {
             tenantId: tenant.id,
             type: 'DeliveryNote' as const,
@@ -55,7 +56,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                 customer: { 
                     id: sale.customerId || '', 
                     name: sale.customerName || 'Walk-in Client', 
-                    phone: sale.customerPhone || sale.notes || '' 
+                    phone: sale.customerPhone || '' 
                 },
                 items: (sale.items || []).map(item => ({
                     description: item.name || 'Unknown Item',
@@ -69,16 +70,16 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
 
         try {
             await addDoc(collection(firestore, 'documents'), deliveryData);
-            toast({ title: "Success", description: "Delivery Note generated!" });
+            toast({ title: "Delivery Note Generated" });
             router.push('/documents');
         } catch (error: any) {
-            toast({ variant: 'destructive', title: "Error", description: "Failed to generate delivery note." });
+            toast({ variant: 'destructive', title: "Error", description: "Cloud sync failed. Check parameters." });
         }
     };
 
     const handleShareWhatsApp = (sale: Sale) => {
         const phone = sale.customerPhone || "";
-        const text = `Hello! Thank you for your purchase of ${sale.amount.toLocaleString()} KES. Receipt RCL-${sale.id.slice(0,4)} is available.`;
+        const text = `Hello! Your purchase of ${sale.amount.toLocaleString()} KES from RoyalTech is confirmed. Reference: RCL-${sale.id.slice(0,4)}. Thank you!`;
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
     };
 
@@ -99,23 +100,21 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     });
 
     return (
-        <Card className="shadow-lg border-none">
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle className="text-xl font-black uppercase tracking-tight">Recent Workspace Sales</CardTitle>
-                    <CardDescription>Direct access to receipts and delivery workflows.</CardDescription>
-                </div>
+        <Card className="shadow-lg border-none overflow-hidden">
+            <CardHeader className="bg-muted/30">
+                <CardTitle className="text-xl font-black uppercase tracking-tight">Recent Transactions</CardTitle>
+                <CardDescription>Direct cloud-synced sale records.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
                 {isLoading ? (
-                    <p className="text-muted-foreground animate-pulse text-sm">Syncing transaction registry...</p>
+                    <p className="text-muted-foreground animate-pulse p-8">Syncing transaction registry...</p>
                 ) : (
-                    <div className="border rounded-xl overflow-hidden bg-card/50">
+                    <div className="border-t">
                         <Table>
                             <TableHeader className="bg-muted/50">
                                 {salesTable.getHeaderGroups().map(hg => (
                                     <TableRow key={hg.id}>
-                                        {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
+                                        {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
                                     </TableRow>
                                 ))}
                             </TableHeader>
@@ -123,7 +122,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                                 {salesTable.getRowModel().rows.length ? (
                                     salesTable.getRowModel().rows.map(row => (
                                         <TableRow key={row.id} className="hover:bg-muted/20">
-                                            {row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
+                                            {row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
                                         </TableRow>
                                     ))
                                 ) : (

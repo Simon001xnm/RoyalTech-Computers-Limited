@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, MoreHorizontal, Loader2, Download, MessageCircle, Printer } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Download, MessageCircle, Printer } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
 import {
   Table,
@@ -44,7 +44,6 @@ import { getDocumentColumns, type DocumentColumnActions } from "./document-colum
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useSaaS } from "@/components/saas/saas-provider";
 
 const VAT_RATE = 0.16;
@@ -168,8 +167,8 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // Wait for DOM to settle
-    await new Promise(r => setTimeout(r, 100));
+    // Wait for UI to render
+    await new Promise(r => setTimeout(r, 50));
 
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
@@ -178,6 +177,7 @@ export function DocumentsClient() {
     }
 
     try {
+        // ANTI-CLIPPING: Force scroll to top before capture
         window.scrollTo(0, 0); 
         
         const canvas = await html2canvas(element, { 
@@ -185,7 +185,7 @@ export function DocumentsClient() {
             useCORS: true,
             logging: false,
             backgroundColor: "#ffffff",
-            width: 210 * 3.78, 
+            width: 210 * 3.78, // Force A4 pixel width
             height: element.scrollHeight,
             y: 0,
             scrollY: 0
@@ -202,8 +202,8 @@ export function DocumentsClient() {
         pdf.setProperties({
             title: docToDownload.title,
             subject: docToDownload.type,
-            author: user?.displayName || 'ERP Suite',
-            creator: 'Professional ERP PDF Engine'
+            author: user?.displayName || 'RoyalTech ERP',
+            creator: 'High-Fidelity ERP PDF Engine'
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
@@ -218,13 +218,9 @@ export function DocumentsClient() {
   };
 
   const handleWhatsAppShare = async (docToShare: AppDocument) => {
-    const message = `Hello! Here is your ${docToShare.type}: ${docToShare.title}.`;
+    const message = `Hello! Your ${docToShare.type} (${docToShare.title}) from RoyalTech is ready for viewing.`;
     const encodedMsg = encodeURIComponent(message);
-    const phone = docToShare.data?.customer?.phone || docToShare.data?.phone || "";
-    if (!phone) {
-        toast({ variant: 'destructive', title: 'No Phone Number', description: 'Customer record missing contact info.' });
-        return;
-    }
+    const phone = docToShare.data?.customer?.phone || "";
     const waUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodedMsg}`;
     window.open(waUrl, '_blank');
   };
@@ -232,18 +228,11 @@ export function DocumentsClient() {
   const handlePrintPdf = (docToPrint: AppDocument) => {
       setSelectedDocument(docToPrint);
       setIsPdfPreviewOpen(true);
-      setTimeout(() => {
-          window.print();
-      }, 500);
+      setTimeout(() => { window.print(); }, 200);
   };
 
-  const handleViewPdf = (doc: AppDocument) => {
-    setSelectedDocument(doc);
-    setIsPdfPreviewOpen(true);
-  }
-
   const columnActions: DocumentColumnActions = { 
-    onView: handleViewPdf, 
+    onView: (d) => { setSelectedDocument(d); setIsPdfPreviewOpen(true); }, 
     onDownload: handleDownloadPdf,
     onPrint: handlePrintPdf,
     onWhatsApp: handleWhatsAppShare
@@ -274,74 +263,72 @@ export function DocumentsClient() {
     }
   }
 
-  const renderManualItemEntry = () => (
-    <div className="space-y-4">
-      <Label className="font-bold text-xs uppercase tracking-widest opacity-50">Line Items</Label>
-      <div className="border rounded-xl overflow-hidden shadow-inner bg-muted/20">
-          <Table>
-              <TableHeader className="bg-muted/50">
-                  <TableRow>
-                      <TableHead className="text-[10px] font-black uppercase">Description</TableHead>
-                      <TableHead className="w-24 text-[10px] font-black uppercase">Qty</TableHead>
-                      <TableHead className="w-32 text-[10px] font-black uppercase">Price</TableHead>
-                      <TableHead className="w-16"></TableHead>
-                  </TableRow>
-              </TableHeader>
-              <TableBody>
-                  {lineItems.map((item, index) => (
-                      <TableRow key={index} className="hover:bg-muted/30">
-                          <TableCell><Input placeholder="Item description" className="h-9 border-none bg-transparent shadow-none focus-visible:ring-0" value={item.description} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
-                          <TableCell><Input type="number" className="h-9 border-none bg-transparent shadow-none focus-visible:ring-0" value={item.quantity} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
-                          <TableCell><Input type="number" className="h-9 border-none bg-transparent shadow-none focus-visible:ring-0" value={item.unitPrice} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
-                          <TableCell><Button variant="ghost" size="icon" onClick={() => removeLineItem(index)} disabled={lineItems.length === 1} className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive/50" /></Button></TableCell>
-                      </TableRow>
-                  ))}
-              </TableBody>
-          </Table>
-      </div>
-      <Button type="button" variant="outline" size="sm" onClick={addLineItem} className="h-8 font-bold text-[10px] uppercase tracking-widest"><PlusCircle className="mr-2 h-3 w-3"/>Add Line</Button>
-    </div>
-  );
-
   const renderForm = (type: DocumentType) => {
     const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'DeliveryNote', 'LPO'].includes(type);
     return (
-      <Card className="shadow-lg border-primary/10 overflow-hidden">
-        <CardHeader className="bg-primary/5 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight">Generate Branded {type}</CardTitle></CardHeader>
-        <CardContent className="space-y-8 pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <Card className="shadow-lg border-primary/10">
+        <CardHeader className="bg-primary/5 border-b"><CardTitle className="text-lg font-black uppercase">Generate Branded {type}</CardTitle></CardHeader>
+        <CardContent className="space-y-6 pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="font-bold text-xs uppercase tracking-widest opacity-50">Target Customer</Label>
+                <Label className="text-[10px] font-black uppercase opacity-60">Customer</Label>
                 <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId}>
-                <SelectTrigger className="h-11"><SelectValue placeholder="Select customer node" /></SelectTrigger>
+                <SelectTrigger className="h-11"><SelectValue placeholder="Select customer..." /></SelectTrigger>
                 <SelectContent>{customers?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-xl border border-dashed h-11 self-end">
+              <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-xl border h-11 self-end">
                 <Switch id="vat-switch" checked={applyVat} onCheckedChange={setApplyVat} />
-                <Label htmlFor="vat-switch" className="cursor-pointer font-bold text-xs uppercase">Include 16% VAT</Label>
+                <Label htmlFor="vat-switch" className="cursor-pointer font-bold text-xs">Include 16% VAT</Label>
               </div>
           </div>
           {type === 'Receipt' && (
-            <div className="max-w-xs"><Label className="font-bold text-xs uppercase tracking-widest opacity-50">Transaction Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 text-xl font-black" /></div>
+            <div className="max-w-xs"><Label>Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
           )}
-          {showsItemEntry && renderManualItemEntry()}
+          {showsItemEntry && (
+            <div className="space-y-4">
+                <Label className="text-[10px] font-black uppercase opacity-60">Line Items</Label>
+                <div className="border rounded-xl overflow-hidden">
+                    <Table>
+                        <TableHeader className="bg-muted/50">
+                            <TableRow>
+                                <TableHead className="text-[10px] font-black uppercase">Description</TableHead>
+                                <TableHead className="w-24 text-[10px] font-black uppercase">Qty</TableHead>
+                                <TableHead className="w-32 text-[10px] font-black uppercase">Price</TableHead>
+                                <TableHead className="w-10"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {lineItems.map((item, index) => (
+                                <TableRow key={index}>
+                                    <TableCell><Input className="h-9 border-none bg-transparent" value={item.description} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
+                                    <TableCell><Input type="number" className="h-9 border-none bg-transparent" value={item.quantity} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
+                                    <TableCell><Input type="number" className="h-9 border-none bg-transparent" value={item.unitPrice} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
+                                    <TableCell><Button variant="ghost" size="icon" onClick={() => removeLineItem(index)} disabled={lineItems.length === 1}><Trash2 className="h-4 w-4 text-destructive/50" /></Button></TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={addLineItem} className="h-8 font-bold"><PlusCircle className="mr-2 h-3 w-3"/>Add Line</Button>
+            </div>
+          )}
         </CardContent>
-        <CardFooter className="bg-muted/20 border-t py-6"><Button onClick={() => handleGenerateDocument(type)} className="ml-auto h-12 px-10 font-black uppercase tracking-widest shadow-xl" disabled={docsLoading}>Execute Generation</Button></CardFooter>
+        <CardFooter className="bg-muted/10 border-t py-4"><Button onClick={() => handleGenerateDocument(type)} className="ml-auto font-black uppercase" disabled={docsLoading}>Generate Document</Button></CardFooter>
       </Card>
     );
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Branded Documents (Cloud)" description="Professional invoices and quotations synchronized globally." />
+      <PageHeader title="Branded Documents" description="Professional invoices and quotations synchronized globally." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
-          <TabsTrigger value="Quotation" className="font-black uppercase text-[10px] tracking-widest">Quotation</TabsTrigger>
-          <TabsTrigger value="Invoice" className="font-black uppercase text-[10px] tracking-widest">Invoice</TabsTrigger>
-          <TabsTrigger value="Proforma" className="font-black uppercase text-[10px] tracking-widest">Proforma</TabsTrigger>
-          <TabsTrigger value="Receipt" className="font-black uppercase text-[10px] tracking-widest">Receipt</TabsTrigger>
-          <TabsTrigger value="DeliveryNote" className="font-black uppercase text-[10px] tracking-widest">Delivery</TabsTrigger>
+          <TabsTrigger value="Quotation" className="font-black uppercase text-[10px]">Quotation</TabsTrigger>
+          <TabsTrigger value="Invoice" className="font-black uppercase text-[10px]">Invoice</TabsTrigger>
+          <TabsTrigger value="Proforma" className="font-black uppercase text-[10px]">Proforma</TabsTrigger>
+          <TabsTrigger value="Receipt" className="font-black uppercase text-[10px]">Receipt</TabsTrigger>
+          <TabsTrigger value="DeliveryNote" className="font-black uppercase text-[10px]">Delivery</TabsTrigger>
         </TabsList>
         <TabsContent value="Quotation">{renderForm("Quotation")}</TabsContent>
         <TabsContent value="Invoice">{renderForm("Invoice")}</TabsContent>
@@ -351,23 +338,23 @@ export function DocumentsClient() {
       </Tabs>
       
       <Card className="mt-8 shadow-2xl border-none overflow-hidden">
-          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-sm font-black uppercase tracking-widest">Archived Records</CardTitle></CardHeader>
+          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase">Document Archive</CardTitle></CardHeader>
           <CardContent className="p-0">
             <Table>
                 <TableHeader className="bg-muted/20">
                     {table.getHeaderGroups().map(hg => (
-                        <TableRow key={hg.id} className="hover:bg-transparent">
-                            {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
+                        <TableRow key={hg.id}>
+                            {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
                         </TableRow>
                     ))}
                 </TableHeader>
                 <TableBody>
                     {table.getRowModel().rows.length ? (
                         table.getRowModel().rows.map(row => (
-                            <TableRow key={row.id} className="hover:bg-muted/10">{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
+                            <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
                         ))
                     ) : (
-                        <TableRow><TableCell colSpan={5} className="h-48 text-center text-muted-foreground font-medium italic">No cloud documents generated in this node.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No cloud documents generated in this node.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>
@@ -377,16 +364,14 @@ export function DocumentsClient() {
 
        <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
         <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
-          <div className="flex-grow overflow-auto bg-slate-200/50 backdrop-blur-md flex justify-center p-4 py-8">
+          <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-8">
             <div id="pdf-preview-target" className="shrink-0 shadow-2xl relative bg-white overflow-hidden" style={{ width: '210mm', minHeight: '297mm' }}>
                 {renderPdfPreview()}
             </div>
           </div>
-          <div className="p-6 border-t flex justify-end gap-3 bg-white no-print shadow-inner">
-            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold">Close Hub</Button>
-            <Button onClick={() => window.print()} className="font-black uppercase tracking-widest px-8 shadow-lg">
-                Print A4 Document
-            </Button>
+          <div className="p-4 border-t flex justify-end gap-3 bg-white no-print">
+            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold">Close</Button>
+            <Button onClick={() => window.print()} className="font-black uppercase">Print A4 Document</Button>
           </div>
         </DialogContent>
       </Dialog>
