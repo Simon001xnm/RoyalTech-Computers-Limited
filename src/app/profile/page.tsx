@@ -6,12 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Camera, Image as ImageIcon, Check, Loader2, Building2, Upload, Palette, ShieldCheck, Crown, Zap, Repeat, PlusCircle } from "lucide-react";
+import { Camera, Image as ImageIcon, Check, Loader2, Building2, Upload, Repeat, PlusCircle, ShieldCheck, Crown, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase";
 import { useEffect, useState, useRef } from "react";
-import { doc, updateDoc, collection, query, where, setDoc } from 'firebase/firestore';
-import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile } from "firebase/auth";
+import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
 import placeholderAvatars from '@/lib/placeholder-images.json';
 import { cn } from "@/lib/utils";
 import { useSaaS } from "@/components/saas/saas-provider";
@@ -40,9 +39,6 @@ export default function ProfilePage() {
   const [compLogo, setCompLogo] = useState("");
 
   // UI States
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isNewWorkspaceOpen, setIsNewWorkspaceOpen] = useState(false);
 
@@ -54,7 +50,9 @@ export default function ProfilePage() {
     if (!userProfile?.tenantIds?.length) return null;
     return query(collection(firestore, 'companies'), where('id', 'in', userProfile.tenantIds));
   }, [firestore, userProfile?.tenantIds]);
-  const { data: availableWorkspaces = [] } = useCollection(portfolioQuery);
+  
+  const { data: rawWorkspaces, isLoading: isPortfolioLoading } = useCollection(portfolioQuery);
+  const availableWorkspaces = rawWorkspaces || [];
 
   const companyRef = useMemoFirebase(() => tenant?.id ? doc(firestore, 'companies', tenant.id) : null, [firestore, tenant?.id]);
   const { data: company } = useDoc(companyRef);
@@ -124,7 +122,12 @@ export default function ProfilePage() {
   };
 
   if (isUserLoading || !userProfile) {
-    return <div className="p-12 text-center text-muted-foreground animate-pulse">Synchronizing Cloud Profile...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center p-12 space-y-4 text-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
+        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Cloud Profile...</p>
+      </div>
+    );
   }
 
   const isSuperAdmin = userProfile?.role === 'super_admin';
@@ -166,7 +169,7 @@ export default function ProfilePage() {
               <div className="grid grid-cols-5 gap-1">
                 {placeholderAvatars.avatars.map((av) => (
                   <button key={av.id} onClick={() => handleAvatarSelect(av.url)} className={cn("rounded border-2 overflow-hidden", avatarUrl === av.url ? "border-primary" : "border-transparent")}>
-                    <img src={av.url} className="aspect-square object-cover" />
+                    <img src={av.url} className="aspect-square object-cover" alt="avatar" />
                   </button>
                 ))}
               </div>
@@ -185,15 +188,21 @@ export default function ProfilePage() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                    {availableWorkspaces.map(ws => (
-                        <div key={ws.id} className={cn("flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer", tenant?.id === ws.id ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")} onClick={() => tenant?.id !== ws.id && switchTenant(ws.id)}>
-                            <div className="flex items-center gap-2 overflow-hidden">
-                                {ws.logoUrl ? <img src={ws.logoUrl} className="h-6 w-6 object-contain shrink-0" /> : <Building2 className="h-4 w-4 shrink-0 opacity-40" />}
-                                <span className="text-xs font-bold truncate uppercase">{ws.name}</span>
-                            </div>
-                            {tenant?.id === ws.id && <Check className="h-3 w-3 shrink-0" />}
-                        </div>
-                    ))}
+                    {isPortfolioLoading ? (
+                      <div className="p-4 text-center text-xs animate-pulse opacity-50 uppercase font-bold">Checking workspaces...</div>
+                    ) : availableWorkspaces.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-muted-foreground italic">No workspaces linked.</div>
+                    ) : (
+                      availableWorkspaces.map(ws => (
+                          <div key={ws.id} className={cn("flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer", tenant?.id === ws.id ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")} onClick={() => tenant?.id !== ws.id && switchTenant(ws.id)}>
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                  {ws.logoUrl ? <img src={ws.logoUrl} className="h-6 w-6 object-contain shrink-0" alt="logo" /> : <Building2 className="h-4 w-4 shrink-0 opacity-40" />}
+                                  <span className="text-xs font-bold truncate uppercase">{ws.name}</span>
+                              </div>
+                              {tenant?.id === ws.id && <Check className="h-3 w-3 shrink-0" />}
+                          </div>
+                      ))
+                    )}
                 </CardContent>
             </Card>
           )}
@@ -226,7 +235,7 @@ export default function ProfilePage() {
                     <div className="space-y-2">
                     <Label>Workspace Logo</Label>
                     <div className="w-full aspect-square border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer overflow-hidden relative group" onClick={() => logoInputRef.current?.click()}>
-                        {compLogo ? <img src={compLogo} className="w-full h-full object-contain" /> : <ImageIcon className="h-8 w-8 text-muted-foreground" />}
+                        {compLogo ? <img src={compLogo} className="w-full h-full object-contain" alt="company logo" /> : <ImageIcon className="h-8 w-8 text-muted-foreground" />}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><Upload className="text-white h-6 w-6" /></div>
                     </div>
                     <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
@@ -254,10 +263,10 @@ export default function ProfilePage() {
           <Card className="shadow-md">
             <CardHeader><CardTitle>Security & Access</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2"><Label>Current Password</Label><Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>New Password</Label><Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} /></div>
-                <div className="space-y-2"><Label>Confirm</Label><Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></div>
+              <p className="text-sm text-muted-foreground">Contact your system administrator to reset credentials or modify access levels.</p>
+              <div className="p-4 bg-muted/50 rounded-lg border border-dashed text-center">
+                  <ShieldCheck className="h-8 w-8 text-primary mx-auto mb-2 opacity-40" />
+                  <p className="text-xs font-bold uppercase tracking-widest opacity-50">Cloud identity protected</p>
               </div>
             </CardContent>
           </Card>
