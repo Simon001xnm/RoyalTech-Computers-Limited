@@ -57,7 +57,6 @@ export function AccessoriesClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
 
-  // FIRESTORE QUERY: Filtered by tenantId
   const accessoriesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id));
@@ -68,7 +67,6 @@ export function AccessoriesClient() {
   const filteredAccessories = useMemo(() => {
     if (!rawAccessories) return [];
     
-    // In-memory sort by purchase date (newest first)
     const sorted = [...rawAccessories].sort((a, b) => {
         const dateA = a.purchaseDate ? new Date(a.purchaseDate).getTime() : 0;
         const dateB = b.purchaseDate ? new Date(b.purchaseDate).getTime() : 0;
@@ -178,7 +176,7 @@ export function AccessoriesClient() {
         />
       </div>
       
-      {isLoading ? <p className="animate-pulse">Loading accessories...</p> : (
+      {isLoading ? <p className="animate-pulse text-muted-foreground">Loading accessories...</p> : (
         <>
           {filteredAccessories.length === 0 && searchTerm ? (
             <Alert variant="default" className="mb-4 bg-card">

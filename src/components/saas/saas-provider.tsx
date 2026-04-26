@@ -21,55 +21,55 @@ const SaaSContext = createContext<SaaSContextState | undefined>(undefined);
 
 /**
  * @fileOverview SaaS Infrastructure Provider
- * Manages the transition from un-onboarded identity to a fully integrated business node.
+ * Optimized to perform usage calculations in memory to avoid "Missing Index" errors.
  */
 export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   
-  // 1. Resolve User Profile from Firestore
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userRef);
 
-  // 2. Resolve Active Company
   const companyRef = useMemoFirebase(() => 
     userProfile?.tenantId ? doc(firestore, 'companies', userProfile.tenantId) : null,
     [firestore, userProfile?.tenantId]
   );
   const { data: activeCompany, isLoading: isCompanyLoading } = useDoc(companyRef);
 
-  // 3. Resolve Portfolio (Workspaces user can access)
   const portfolioQuery = useMemoFirebase(() => {
     if (!userProfile?.tenantIds || userProfile.tenantIds.length === 0) return null;
     return query(collection(firestore, 'companies'), where('id', 'in', userProfile.tenantIds));
   }, [firestore, userProfile?.tenantIds]);
   const { data: availableWorkspaces = [] } = useCollection(portfolioQuery);
 
-  // 4. Usage Metrics for Dashboard/Limits
+  // INDEX-FREE USAGE QUERIES: Fetch all and filter in memory
   const assetQuery = useMemoFirebase(() => 
     userProfile?.tenantId ? query(collection(firestore, 'assets'), where('tenantId', '==', userProfile.tenantId)) : null,
     [firestore, userProfile?.tenantId]
   );
   const { data: assets } = useCollection(assetQuery);
 
-  const salesQuery = useMemoFirebase(() => {
-    if (!userProfile?.tenantId) return null;
-    const start = startOfMonth(new Date()).toISOString();
-    return query(
-        collection(firestore, 'sales_transactions'), 
-        where('tenantId', '==', userProfile.tenantId),
-        where('date', '>=', start)
-    );
-  }, [firestore, userProfile?.tenantId]);
-  const { data: monthlySales } = useCollection(salesQuery);
+  const salesQuery = useMemoFirebase(() => 
+    userProfile?.tenantId ? query(collection(firestore, 'sales_transactions'), where('tenantId', '==', userProfile.tenantId)) : null,
+    [firestore, userProfile?.tenantId]
+  );
+  const { data: allSales } = useCollection(salesQuery);
 
-  const usageStats = useMemo(() => ({
-    assets: assets?.length || 0,
-    salesThisMonth: monthlySales?.length || 0
-  }), [assets, monthlySales]);
+  const usageStats = useMemo(() => {
+    const startOfCurrentMonth = startOfMonth(new Date());
+    const monthlySales = (allSales || []).filter(s => {
+        try {
+            return new Date(s.date) >= startOfCurrentMonth;
+        } catch { return false; }
+    });
 
-  // Derived Tenant and Plan State
+    return {
+        assets: assets?.length || 0,
+        salesThisMonth: monthlySales.length
+    };
+  }, [assets, allSales]);
+
   const tenantData = useMemo<Tenant | null>(() => {
     if (!activeCompany) return null;
     return {
@@ -89,7 +89,6 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
       return DEFAULT_PLANS[tenantData.tier] || DEFAULT_PLANS.legacy_pro;
   }, [tenantData]);
 
-  // AUTO-PROVISION Profile & Expiry Check
   useEffect(() => {
     if (!isUserLoading && user && !isProfileLoading && !userProfile) {
         const provision = async () => {
@@ -104,13 +103,12 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
                     createdAt: new Date().toISOString()
                 }, { merge: true });
             } catch (e) {
-                console.warn("Profile provisioning in progress...");
+                console.warn("Profile provisioning...");
             }
         };
         provision();
     }
 
-    // Automated Expiration Check
     if (tenantData?.expiresAt && userProfile?.role === 'admin') {
         const daysLeft = differenceInDays(parseISO(tenantData.expiresAt), new Date());
         if (daysLeft <= 7 && daysLeft > 0) {
@@ -124,7 +122,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
                         tenantId: tenantData.id,
                         from: 'Platform Admin',
                         subject: 'Critical: Subscription Expiring Soon',
-                        message: `Your workspace node for "${tenantData.name}" is scheduled to expire in ${daysLeft} days. Please update your billing info to prevent service interruption.`,
+                        message: `Your workspace node for "${tenantData.name}" is scheduled to expire in ${daysLeft} days. Please update your billing info.`,
                         priority: 'alert',
                         read: false,
                         createdAt: new Date().toISOString()
@@ -161,7 +159,6 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     switchTenant
   }), [tenantData, activePlan, usageStats, isUserLoading, isProfileLoading, isCompanyLoading, availableWorkspaces, userProfile?.role]);
 
-  // Ensure unauthenticated users or users being provisioned don't block
   const isSuspended = user && tenantData?.status === 'suspended' && userProfile?.role !== 'super_admin';
 
   if (isSuspended) {

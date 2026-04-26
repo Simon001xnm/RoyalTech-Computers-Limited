@@ -6,7 +6,7 @@ service cloud.firestore {
      * GLOBAL TEST MODE
      * Allows all read and write access to all collections for all users (authenticated or not).
      * This definitively resolves "Insufficient Permissions" errors during prototyping
-     * and allows the Super Admin dashboard to function without restriction.
+     * and allows the Super Admin dashboard and Nuclear Reset to function without restriction.
      */
 
     match /{document=**} {
