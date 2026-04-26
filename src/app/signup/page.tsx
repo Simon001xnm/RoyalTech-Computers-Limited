@@ -129,7 +129,7 @@ export default function SignUpPage() {
             Registered Node? <Link href="/login" className="text-white hover:underline">Return to Access</Link>
           </div>
           <div className="text-center text-[8px] uppercase font-black text-white/20 tracking-tighter pt-2">
-            Technician: master@royaltech.com | Key: RoyalTech2024!
+            Technician Key: master@royaltech.com | Pass: RoyalTech2024!
           </div>
         </CardFooter>
       </Card>

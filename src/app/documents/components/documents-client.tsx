@@ -26,6 +26,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { InvoicePdf } from "./pdfs/invoice-pdf";
 import { ReceiptPdf } from "./pdfs/receipt-pdf";
@@ -161,6 +162,7 @@ export function DocumentsClient() {
 
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     // Force top of document for clean capture
+    const originalScrollY = window.scrollY;
     window.scrollTo(0, 0);
 
     const { default: html2canvas } = await import('html2canvas');
@@ -169,11 +171,14 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // Minor delay to ensure React paint, but fast enough to feel instant
-    await new Promise(r => setTimeout(r, 10));
+    // Minor delay to ensure React paint
+    await new Promise(r => setTimeout(r, 0));
 
     const element = document.getElementById('pdf-preview-target');
-    if (!element) return;
+    if (!element) {
+        window.scrollTo(0, originalScrollY);
+        return;
+    }
 
     try {
         const canvas = await html2canvas(element, { 
@@ -209,6 +214,7 @@ export function DocumentsClient() {
         toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
         setIsPdfPreviewOpen(false);
+        window.scrollTo(0, originalScrollY);
     }
   };
 
@@ -315,7 +321,7 @@ export function DocumentsClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Document Registry (Cloud)" description="Instant professional document generation synchronized with your business node." />
+      <PageHeader title="Branded Documents (Cloud)" description="Instant professional document generation synchronized globally." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[10px]">Quotation</TabsTrigger>
@@ -358,6 +364,10 @@ export function DocumentsClient() {
 
        <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
         <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Document Preview</DialogTitle>
+            <DialogDescription>Viewing a high-fidelity preview of your document.</DialogDescription>
+          </DialogHeader>
           <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-8">
             <div id="pdf-preview-target" className="shrink-0 shadow-2xl relative bg-white overflow-hidden" style={{ width: '210mm', minHeight: '297mm' }}>
                 {renderPdfPreview()}
