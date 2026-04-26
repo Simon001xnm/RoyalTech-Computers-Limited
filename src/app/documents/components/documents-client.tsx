@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, MoreHorizontal, Loader2, Download } from "lucide-react";
+import { Trash2, PlusCircle, MoreHorizontal, Loader2, Download, MessageCircle } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
 import {
   Table,
@@ -102,12 +102,18 @@ export function DocumentsClient() {
     const docCount = rawDocuments?.length || 0;
     let title = `${type.replace(/([A-Z])/g, ' $1').trim()} #${type.slice(0,3).toUpperCase()}-2026-${String(docCount + 1).padStart(3,'0')}`;
     let relatedTo = "N/A";
-    const documentData: any = { details, applyVat };
+    const documentData: any = { details: details || '', applyVat };
 
     const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
     
     if (selectedCustomer) {
-        documentData.customer = selectedCustomer;
+        documentData.customer = {
+            id: selectedCustomer.id || '',
+            name: selectedCustomer.name || 'Client',
+            phone: selectedCustomer.phone || '',
+            email: selectedCustomer.email || '',
+            address: selectedCustomer.address || ''
+        };
         relatedTo = `Customer: ${selectedCustomer.name}`;
     }
 
@@ -162,7 +168,6 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // Instant execution - NO artificial delays
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
         setIsExporting(false);
@@ -170,7 +175,6 @@ export function DocumentsClient() {
     }
 
     try {
-        // RESET SCROLL to ensure header is captured
         window.scrollTo(0, 0); 
         
         const canvas = await html2canvas(element, { 
@@ -178,7 +182,7 @@ export function DocumentsClient() {
             useCORS: true,
             logging: false,
             backgroundColor: "#ffffff",
-            width: 210 * 3.78, // A4 Width in px at 96dpi * scale
+            width: 210 * 3.78, 
             height: element.scrollHeight,
             y: 0,
             scrollY: 0
@@ -196,7 +200,6 @@ export function DocumentsClient() {
             title: docToDownload.title,
             subject: docToDownload.type,
             author: user?.displayName || 'ERP Suite',
-            keywords: 'invoice, structured, business',
             creator: 'Professional ERP PDF Engine'
         });
 
@@ -209,6 +212,14 @@ export function DocumentsClient() {
         setIsPdfPreviewOpen(false);
         setIsExporting(false);
     }
+  };
+
+  const handleWhatsAppShare = async (docToShare: AppDocument) => {
+    const message = `Hello! Here is your ${docToShare.type}: ${docToShare.title}. Download it here (if available) or check your email.`;
+    const encodedMsg = encodeURIComponent(message);
+    const phone = docToShare.data?.customer?.phone || "";
+    const waUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodedMsg}`;
+    window.open(waUrl, '_blank');
   };
 
   const handleViewPdf = (doc: AppDocument) => {
@@ -232,6 +243,9 @@ export function DocumentsClient() {
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => handleViewPdf(doc)}>View Structure</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDownloadPdf(doc)}>Instant Download</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleWhatsAppShare(doc)} className="text-green-600 focus:text-green-600 focus:bg-green-50">
+                                <MessageCircle className="mr-2 h-4 w-4" /> Share on WhatsApp
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                     <Button variant="outline" size="sm" onClick={() => handleViewPdf(doc)}>View</Button>
@@ -340,6 +354,7 @@ export function DocumentsClient() {
         <TabsContent value="Receipt">{renderForm("Receipt")}</TabsContent>
         <TabsContent value="DeliveryNote">{renderForm("DeliveryNote")}</TabsContent>
       </Tabs>
+      
       <Card className="mt-8 shadow-2xl border-none overflow-hidden">
           <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-sm font-black uppercase tracking-widest">Archived Records</CardTitle></CardHeader>
           <CardContent className="p-0">
@@ -362,7 +377,8 @@ export function DocumentsClient() {
                 </TableBody>
             </Table>
             <DataTablePagination table={table} />
-      </CardContent></Card>
+          </CardContent>
+      </Card>
 
        <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
         <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">

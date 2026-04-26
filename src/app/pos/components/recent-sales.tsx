@@ -47,20 +47,23 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     
     const handleGenerateDelivery = async (sale: Sale) => {
         if (!tenant) return;
-        toast({ title: "Generating Delivery Note..." });
-
+        
         const deliveryData = {
             tenantId: tenant.id,
             type: 'DeliveryNote' as const,
             title: `Delivery Note #DEL-${sale.id.slice(0, 5).toUpperCase()}`,
             generatedDate: new Date().toISOString(),
-            relatedTo: `Sale to ${sale.customerName}`,
+            relatedTo: `Sale to ${sale.customerName || 'Walk-in'}`,
             data: {
-                customer: { id: sale.customerId, name: sale.customerName, phone: sale.customerPhone },
-                items: sale.items.map(item => ({
-                    description: item.name,
-                    serialNumber: item.serialNumber,
-                    quantity: item.quantity
+                customer: { 
+                    id: sale.customerId || '', 
+                    name: sale.customerName || 'Walk-in Client', 
+                    phone: sale.customerPhone || '' 
+                },
+                items: (sale.items || []).map(item => ({
+                    description: item.name || 'Unknown Item',
+                    serialNumber: item.serialNumber || 'N/A',
+                    quantity: item.quantity || 1
                 })),
                 details: `Generated from Sale RCL-${sale.id.slice(0, 4)}`,
             },
@@ -71,7 +74,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             await addDoc(collection(firestore, 'documents'), deliveryData);
             toast({ title: "Success", description: "Delivery Note generated!" });
             router.push('/documents');
-        } catch (error) {
+        } catch (error: any) {
             toast({ variant: 'destructive', title: "Error", description: "Failed to generate delivery note." });
         }
     };
