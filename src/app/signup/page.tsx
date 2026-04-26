@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -126,6 +127,9 @@ export default function SignUpPage() {
           </Button>
           <div className="text-center text-[10px] uppercase font-bold tracking-widest text-white/30 border-t border-white/5 pt-6 w-full">
             Registered Node? <Link href="/login" className="text-white hover:underline">Return to Access</Link>
+          </div>
+          <div className="text-center text-[8px] uppercase font-black text-white/20 tracking-tighter pt-2">
+            Technician: master@royaltech.com | Key: RoyalTech2024!
           </div>
         </CardFooter>
       </Card>

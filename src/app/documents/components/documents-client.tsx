@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Download, MessageCircle, Printer } from "lucide-react";
+import { Trash2, PlusCircle, Download, MessageCircle, Printer, FileText } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
 import {
   Table,
@@ -76,7 +77,6 @@ export function DocumentsClient() {
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
-  const [isExporting, setIsExporting] = useState(false);
 
   const sortedDocuments = useMemo(() => {
       if (!rawDocuments) return [];
@@ -99,7 +99,7 @@ export function DocumentsClient() {
     if (!tenant || !user) return;
 
     const docCount = rawDocuments?.length || 0;
-    let title = `${type.replace(/([A-Z])/g, ' $1').trim()} #${type.slice(0,3).toUpperCase()}-2026-${String(docCount + 1).padStart(3,'0')}`;
+    let title = `${type.replace(/([A-Z])/g, ' $1').trim()} #${type.slice(0,3).toUpperCase()}-2024-${String(docCount + 1).padStart(3,'0')}`;
     let relatedTo = "N/A";
     const documentData: any = { details: details || '', applyVat };
 
@@ -144,10 +144,10 @@ export function DocumentsClient() {
             createdAt: new Date().toISOString(),
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         });
-        toast({ title: `${type} Generated` });
+        toast({ title: `${type} Generated Successfully` });
         resetFormState();
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Error', description: error.message });
+        toast({ variant: 'destructive', title: 'Generation Failed', description: error.message });
     }
   };
   
@@ -160,33 +160,29 @@ export function DocumentsClient() {
   const removeLineItem = (index: number) => setLineItems(lineItems.filter((_, i) => i !== index));
 
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
-    setIsExporting(true);
+    // Force top of document for clean capture
+    window.scrollTo(0, 0);
+
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
     
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // Wait for UI to render
-    await new Promise(r => setTimeout(r, 50));
+    // Minor delay to ensure React paint, but fast enough to feel instant
+    await new Promise(r => setTimeout(r, 10));
 
     const element = document.getElementById('pdf-preview-target');
-    if (!element) {
-        setIsExporting(false);
-        return;
-    }
+    if (!element) return;
 
     try {
-        // ANTI-CLIPPING: Force scroll to top before capture
-        window.scrollTo(0, 0); 
-        
         const canvas = await html2canvas(element, { 
             scale: 2, 
             useCORS: true,
             logging: false,
             backgroundColor: "#ffffff",
-            width: 210 * 3.78, // Force A4 pixel width
-            height: element.scrollHeight,
+            width: 794, // A4 @ 96 DPI * 2 scale
+            height: 1123,
             y: 0,
             scrollY: 0
         });
@@ -202,8 +198,8 @@ export function DocumentsClient() {
         pdf.setProperties({
             title: docToDownload.title,
             subject: docToDownload.type,
-            author: user?.displayName || 'RoyalTech ERP',
-            creator: 'High-Fidelity ERP PDF Engine'
+            author: 'RoyalTech ERP',
+            creator: 'Structured PDF Engine v2'
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
@@ -213,22 +209,20 @@ export function DocumentsClient() {
         toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
         setIsPdfPreviewOpen(false);
-        setIsExporting(false);
     }
   };
 
   const handleWhatsAppShare = async (docToShare: AppDocument) => {
-    const message = `Hello! Your ${docToShare.type} (${docToShare.title}) from RoyalTech is ready for viewing.`;
-    const encodedMsg = encodeURIComponent(message);
     const phone = docToShare.data?.customer?.phone || "";
-    const waUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodedMsg}`;
+    const message = `Hello! Your ${docToShare.type} (${docToShare.title}) from RoyalTech is ready. Reference: ${docToShare.title}. Thank you!`;
+    const waUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank');
   };
 
   const handlePrintPdf = (docToPrint: AppDocument) => {
       setSelectedDocument(docToPrint);
       setIsPdfPreviewOpen(true);
-      setTimeout(() => { window.print(); }, 200);
+      setTimeout(() => { window.print(); }, 100);
   };
 
   const columnActions: DocumentColumnActions = { 
@@ -321,7 +315,7 @@ export function DocumentsClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Branded Documents" description="Professional invoices and quotations synchronized globally." />
+      <PageHeader title="Document Registry (Cloud)" description="Instant professional document generation synchronized with your business node." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[10px]">Quotation</TabsTrigger>
@@ -338,7 +332,7 @@ export function DocumentsClient() {
       </Tabs>
       
       <Card className="mt-8 shadow-2xl border-none overflow-hidden">
-          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase">Document Archive</CardTitle></CardHeader>
+          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase">Recent Cloud Documents</CardTitle></CardHeader>
           <CardContent className="p-0">
             <Table>
                 <TableHeader className="bg-muted/20">
@@ -354,7 +348,7 @@ export function DocumentsClient() {
                             <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
                         ))
                     ) : (
-                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No cloud documents generated in this node.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No documents found in cloud node.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>
@@ -370,8 +364,8 @@ export function DocumentsClient() {
             </div>
           </div>
           <div className="p-4 border-t flex justify-end gap-3 bg-white no-print">
-            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold">Close</Button>
-            <Button onClick={() => window.print()} className="font-black uppercase">Print A4 Document</Button>
+            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold">Close Preview</Button>
+            <Button onClick={() => window.print()} className="font-black uppercase">Execute Print (A4)</Button>
           </div>
         </DialogContent>
       </Dialog>
