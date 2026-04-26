@@ -11,7 +11,7 @@ import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -39,10 +39,16 @@ export default function LoginPage() {
     setIsProcessing(true);
     try {
         await initiateEmailSignIn(auth, email, password);
-        // The AuthGuard will handle the redirect once user state updates
+        // AuthGuard handles redirection on success
     } catch (e: any) {
         setIsProcessing(false);
-        toast({ variant: 'destructive', title: 'Sign In Failed', description: 'Please check your credentials.' });
+        let description = 'Please check your credentials and try again.';
+        if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+            description = 'The email or password you entered is incorrect.';
+        } else if (e.code === 'auth/network-request-failed') {
+            description = 'Network error. Please check your internet connection.';
+        }
+        toast({ variant: 'destructive', title: 'Sign In Failed', description });
     }
   };
 
@@ -56,8 +62,8 @@ export default function LoginPage() {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
-                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="animate-pulse text-sm font-bold uppercase tracking-widest opacity-50">Synchronizing Identity...</p>
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                <p className="animate-pulse text-xs font-bold uppercase tracking-widest opacity-50">Authenticating session...</p>
             </div>
         </div>
     );
@@ -73,12 +79,12 @@ export default function LoginPage() {
       
       <Card className="relative w-full max-w-[400px] mx-4 bg-white/5 backdrop-blur-2xl border-white/10 shadow-2xl text-white">
         <CardHeader className="text-center items-center pt-8">
-          <CardTitle className="text-3xl font-bold tracking-tight mb-2">{`Welcome to ${APP_NAME}`}</CardTitle>
-          <CardDescription className="text-white/60">Enter your credentials to access your workspace.</CardDescription>
+          <CardTitle className="text-3xl font-black uppercase tracking-tighter mb-2">{APP_NAME}</CardTitle>
+          <CardDescription className="text-white/60 font-bold uppercase text-[10px] tracking-widest">Workspace Node Authentication</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 px-8">
           <div className="space-y-2">
-            <Label htmlFor="email-signin" className="text-white/80 text-xs uppercase tracking-widest font-semibold">Email Address</Label>
+            <Label htmlFor="email-signin" className="text-white/80 text-[10px] uppercase tracking-widest font-black">Email Address</Label>
             <Input
               id="email-signin"
               type="email"
@@ -91,7 +97,7 @@ export default function LoginPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password-signin" className="text-white/80 text-xs uppercase tracking-widest font-semibold">Password</Label>
+            <Label htmlFor="password-signin" className="text-white/80 text-[10px] uppercase tracking-widest font-black">Password</Label>
             <Input
               id="password-signin"
               type="password"
@@ -107,30 +113,30 @@ export default function LoginPage() {
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-6 px-8 pb-10">
-          <Button onClick={handleSignIn} className="w-full h-12 text-base font-bold shadow-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-white text-black hover:bg-white/90" disabled={isProcessing}>
+          <Button onClick={handleSignIn} className="w-full h-12 text-base font-black uppercase tracking-widest shadow-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-white text-black hover:bg-white/90" disabled={isProcessing}>
             {isProcessing ? (
                 <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                    <span>Processing...</span>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Syncing...</span>
                 </div>
-            ) : 'Sign In'}
+            ) : 'Establish Connection'}
           </Button>
 
           <div className="flex flex-col items-center gap-4 w-full">
             <div className="text-center text-sm text-white/40">
-                Don't have a workspace?{' '}
-                <Link href="/signup" className="text-white hover:underline transition-colors font-semibold">
-                Create one now
+                New workspace?{' '}
+                <Link href="/signup" className="text-white hover:underline transition-colors font-bold uppercase text-xs">
+                Initialize Node
                 </Link>
             </div>
             
             <div className="pt-4 border-t border-white/5 w-full">
-                <p className="text-[10px] uppercase font-black tracking-widest text-white/30 text-center flex items-center justify-center gap-2">
+                <p className="text-[9px] uppercase font-black tracking-tighter text-white/30 text-center flex items-center justify-center gap-2">
                     <ShieldCheck className="h-3 w-3" /> 
-                    Platform Administrative Node
+                    Technician Entry Node
                 </p>
                 <p className="text-[9px] text-white/20 text-center mt-1">
-                    Sign up with <span className="font-bold text-white">master@royaltech.com</span> for Layer 2 access.
+                    master@royaltech.com &bull; admin@royaltech.com
                 </p>
             </div>
           </div>

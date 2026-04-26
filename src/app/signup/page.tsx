@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,7 +12,7 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { collection, doc, getDocs, limit, query, setDoc, where } from 'firebase/firestore';
-
+import { Loader2 } from 'lucide-react';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
@@ -64,7 +63,8 @@ export default function SignUpPage() {
             await updateProfile(user, { displayName: name });
 
             const userDocRef = doc(firestore, 'users', user.uid);
-            await setDoc(userDocRef, {
+            // non-blocking write for prototype
+            setDoc(userDocRef, {
                 id: user.uid,
                 name: name,
                 email: email.toLowerCase(),
@@ -122,7 +122,7 @@ export default function SignUpPage() {
         </CardContent>
         <CardFooter className="flex-col gap-6 px-8 pb-12 pt-4">
           <Button onClick={handleSignUp} className="w-full h-14 text-lg font-black uppercase tracking-widest shadow-xl bg-white text-black hover:bg-white/90 active:scale-95 transition-all" disabled={isLoading}>
-            {isLoading ? 'Syncing Node...' : 'Establish Cloud ID'}
+            {isLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Syncing Node...</> : 'Establish Cloud ID'}
           </Button>
           <div className="text-center text-[10px] uppercase font-bold tracking-widest text-white/30 border-t border-white/5 pt-6 w-full">
             Registered Node? <Link href="/login" className="text-white hover:underline">Return to Access</Link>

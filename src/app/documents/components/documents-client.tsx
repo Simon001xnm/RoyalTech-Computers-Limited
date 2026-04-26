@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -7,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Download, MessageCircle, Printer, FileText } from "lucide-react";
+import { Trash2, PlusCircle, FileText, Loader2 } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
 import {
   Table,
@@ -78,6 +77,7 @@ export function DocumentsClient() {
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+  const [isExporting, setIsExporting] = useState(false);
 
   const sortedDocuments = useMemo(() => {
       if (!rawDocuments) return [];
@@ -161,6 +161,7 @@ export function DocumentsClient() {
   const removeLineItem = (index: number) => setLineItems(lineItems.filter((_, i) => i !== index));
 
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
+    setIsExporting(true);
     // Instant trigger - force top of document for clean capture
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -171,12 +172,13 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // Minor delay to ensure React paint (optimized to 0)
-    await new Promise(r => setTimeout(r, 0));
+    // Minor delay to ensure React paint
+    await new Promise(r => setTimeout(r, 100));
 
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
         window.scrollTo({ top: originalScrollY, behavior: 'instant' });
+        setIsExporting(false);
         return;
     }
 
@@ -196,24 +198,22 @@ export function DocumentsClient() {
             orientation: 'p',
             unit: 'mm',
             format: 'a4',
-            putOnlyUsedFonts: true,
-            floatPrecision: 16
         });
 
         pdf.setProperties({
             title: docToDownload.title,
             subject: docToDownload.type,
             author: 'RoyalTech ERP',
-            creator: 'Instant PDF Engine v3'
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
-        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
         pdf.save(`${docToDownload.title.replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
         toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
         setIsPdfPreviewOpen(false);
+        setIsExporting(false);
         window.scrollTo({ top: originalScrollY, behavior: 'instant' });
     }
   };
@@ -228,7 +228,7 @@ export function DocumentsClient() {
   const handlePrintPdf = (docToPrint: AppDocument) => {
       setSelectedDocument(docToPrint);
       setIsPdfPreviewOpen(true);
-      setTimeout(() => { window.print(); }, 50);
+      setTimeout(() => { window.print(); }, 150);
   };
 
   const columnActions: DocumentColumnActions = { 
@@ -374,6 +374,7 @@ export function DocumentsClient() {
             </div>
           </div>
           <div className="p-4 border-t flex justify-end gap-3 bg-white no-print">
+            {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
             <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold">Close Preview</Button>
             <Button onClick={() => window.print()} className="font-black uppercase">Execute Print (A4)</Button>
           </div>

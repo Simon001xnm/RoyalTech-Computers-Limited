@@ -1,4 +1,3 @@
-
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -18,7 +17,7 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-const VERSION = "2.0.0";
+const VERSION = "2.0.1";
 
 export const metadata: Metadata = {
   title: {
@@ -45,10 +44,6 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-/**
- * RootLayout: A pure Server Component that serves as the entry point.
- * Includes a resilient hardware-level recovery script for slow environments.
- */
 export default function RootLayout({
   children,
 }: Readonly<{
