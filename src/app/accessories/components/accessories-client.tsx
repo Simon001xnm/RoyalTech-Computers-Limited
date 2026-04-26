@@ -76,8 +76,8 @@ export function AccessoriesClient() {
     });
 
     return sorted.filter((accessory) =>
-      accessory.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      accessory.serialNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      (accessory.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (accessory.serialNumber || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [rawAccessories, searchTerm]);
 

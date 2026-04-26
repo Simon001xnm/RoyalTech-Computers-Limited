@@ -5,10 +5,10 @@ import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
     Building2, Users, CreditCard, Activity, ShieldCheck, Server, 
     History, MoreHorizontal, Lock, Unlock, Zap, Crown, 
-    ChevronRight, Inbox, Gauge, Eye, Mail, Phone, Clock, Send, SendHorizonal, MailCheck, MailQuestion, Loader2, MessageSquare, AlertCircle
+    ChevronRight, Inbox, Gauge, Eye, Mail, Phone, Clock, Send, SendHorizonal, MailCheck, MailQuestion, Loader2, MessageSquare, AlertCircle, Trash2, AlertTriangle
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, limit, addDoc, updateDoc, doc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, addDoc, updateDoc, doc, writeBatch, getDocs } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,12 +23,13 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 /**
  * @fileOverview Platform Command Center (Super Admin Dashboard)
- * Fully integrated with Firestore to provide global oversight of all tenant nodes.
+ * Enhanced with "Nuclear Reset" to deregister all accounts and purge cloud data.
  */
 export default function PlatformCommandCenter() {
   const { toast } = useToast();
@@ -48,6 +49,10 @@ export default function PlatformCommandCenter() {
   const [msgPriority, setMsgPriority] = useState<'info' | 'important' | 'alert'>('info');
   const [postToChat, setPostToChat] = useState(true);
   const [isSendingMsg, setIsSendingMsg] = useState(false);
+  
+  // Danger Zone State
+  const [isPurging, setIsPurging] = useState(false);
+  const [purgeConfirmText, setPurgeConfirmText] = useState('');
 
   // GLOBAL CLOUD QUERIES (Index-free: sort in memory)
   const companiesQuery = useMemoFirebase(() => query(collection(firestore, 'companies')), []);
@@ -101,14 +106,6 @@ export default function PlatformCommandCenter() {
     });
   }, [rawNotifications]);
 
-  const inspectionData = useMemo(() => {
-      if (!inspectingTenantId || !globalSalesSorted || !users || !tenants) return null;
-      const tenant = tenants.find(t => t.id === inspectingTenantId);
-      const tenantSales = globalSalesSorted.filter(s => s.tenantId === inspectingTenantId);
-      const tenantUsers = users.filter(u => u.tenantId === inspectingTenantId);
-      return { tenant, sales: tenantSales, users: tenantUsers };
-  }, [inspectingTenantId, globalSalesSorted, users, tenants]);
-  
   const platformStats = useMemo(() => ({
     totalRevenue: globalSalesSorted?.reduce((acc, s) => acc + s.amount, 0) || 0,
     totalTenants: tenants?.length || 0,
@@ -125,13 +122,47 @@ export default function PlatformCommandCenter() {
     }
   };
 
+  /**
+   * Nuclear Reset: Deregisters all accounts and purges all cloud collections.
+   */
+  const handleNuclearPurge = async () => {
+      if (purgeConfirmText !== 'DEREGISTER ALL') {
+          toast({ variant: 'destructive', title: 'Verification Failed', description: 'Please type the confirmation text correctly.' });
+          return;
+      }
+
+      setIsPurging(true);
+      try {
+          const collections = [
+              'users', 'companies', 'assets', 'accessories', 'customers', 
+              'sales_transactions', 'leases', 'tickets', 'notifications', 
+              'platform_logs', 'messages', 'campaigns', 'projects', 
+              'job_postings', 'applicants', 'item_issuances', 'expenses', 'documents'
+          ];
+          
+          for (const colName of collections) {
+              const snap = await getDocs(collection(firestore, colName));
+              const batch = writeBatch(firestore);
+              snap.docs.forEach(d => batch.delete(d.ref));
+              await batch.commit();
+          }
+          
+          toast({ title: "Platform Data Purged", description: "All accounts and business nodes have been deregistered." });
+          window.location.href = '/';
+      } catch (e: any) {
+          toast({ variant: 'destructive', title: 'Purge Failed', description: e.message });
+      } finally {
+          setIsPurging(false);
+          setPurgeConfirmText('');
+      }
+  };
+
   const handleSendPlatformMessage = async () => {
     if (!msgTargetTenantId || !msgSubject || !msgBody) return;
     setIsSendingMsg(true);
     const batch = writeBatch(firestore);
     
     try {
-        // 1. Add to Official Notifications
         const notifRef = doc(collection(firestore, 'notifications'));
         batch.set(notifRef, {
             tenantId: msgTargetTenantId,
@@ -144,7 +175,6 @@ export default function PlatformCommandCenter() {
             createdAt: new Date().toISOString()
         });
 
-        // 2. Optionally post to Team Chat (SalesIQ)
         if (postToChat) {
             const messageRef = doc(collection(firestore, 'messages'));
             batch.set(messageRef, {
@@ -204,9 +234,9 @@ export default function PlatformCommandCenter() {
       <Tabs defaultValue="tenants" className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="tenants" className="font-black uppercase tracking-widest text-[10px]">Workspaces</TabsTrigger>
-          <TabsTrigger value="commercial" className="font-black uppercase tracking-widest text-[10px]">Commercials</TabsTrigger>
           <TabsTrigger value="activity" className="font-black uppercase tracking-widest text-[10px]">Global Audit</TabsTrigger>
           <TabsTrigger value="comms" className="font-black uppercase tracking-widest text-[10px]">Platform Comms</TabsTrigger>
+          <TabsTrigger value="danger" className="font-black uppercase tracking-widest text-[10px] text-destructive">Danger Zone</TabsTrigger>
         </TabsList>
         
         <TabsContent value="tenants">
@@ -240,7 +270,6 @@ export default function PlatformCommandCenter() {
                                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="w-56 p-2">
                                                     <DropdownMenuItem className="font-bold text-xs" onClick={() => { setMsgTargetTenantId(tenant.id); setMsgTargetUserId('all'); setIsMessageOpen(true); }}><Mail className="h-4 w-4 mr-2" /> Message Tenant</DropdownMenuItem>
-                                                    <DropdownMenuItem className="font-bold text-xs" onClick={() => setInspectingTenantId(tenant.id)}><Eye className="h-4 w-4 mr-2" /> Inspect Node</DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem className={cn("font-bold text-xs", tenant.status === 'suspended' ? "text-green-600" : "text-destructive")} onClick={() => handleUpdateTenantStatus(tenant.id, tenant.status === 'suspended' ? 'active' : 'suspended')}>
                                                         {tenant.status === 'suspended' ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
@@ -326,55 +355,60 @@ export default function PlatformCommandCenter() {
                 </CardContent>
             </Card>
         </TabsContent>
+        
+        <TabsContent value="danger">
+            <Card className="shadow-2xl border-2 border-destructive/20 overflow-hidden bg-destructive/5">
+                <CardHeader className="bg-destructive/10 p-8">
+                    <div className="flex items-center gap-3">
+                        <AlertTriangle className="h-10 w-10 text-destructive" />
+                        <div>
+                            <CardTitle className="text-3xl font-black uppercase tracking-tighter text-destructive">Danger Zone</CardTitle>
+                            <CardDescription className="text-destructive font-bold">Platform Maintenance & Purge Utilities</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-8 space-y-8">
+                    <div className="bg-white rounded-xl p-6 border border-destructive/10 shadow-sm space-y-6">
+                        <div className="space-y-2">
+                            <h3 className="text-lg font-black uppercase tracking-tight text-destructive">Nuclear Reset: Deregister All Accounts</h3>
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                This action will permanently erase **ALL** user accounts, business workspaces, inventory records, and transaction logs from the cloud database. This process is irreversible and will return the platform to a blank state.
+                            </p>
+                        </div>
+                        
+                        <Alert variant="destructive" className="bg-destructive/5 border-destructive/20">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle className="font-black uppercase text-xs">Final Warning</AlertTitle>
+                            <AlertDescription className="text-xs">
+                                All connected staff will lose access immediately. Only proceed if you intend to wipe the entire prototype environment.
+                            </AlertDescription>
+                        </Alert>
+                        
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase">Type "DEREGISTER ALL" to confirm</Label>
+                                <Input 
+                                    value={purgeConfirmText} 
+                                    onChange={e => setPurgeConfirmText(e.target.value)} 
+                                    placeholder="Confirmation string..." 
+                                    className="h-12 border-destructive/20 focus:ring-destructive font-black uppercase tracking-widest text-center"
+                                />
+                            </div>
+                            <Button 
+                                onClick={handleNuclearPurge} 
+                                disabled={isPurging || purgeConfirmText !== 'DEREGISTER ALL'}
+                                variant="destructive" 
+                                className="w-full h-14 font-black uppercase tracking-[0.2em] shadow-xl hover:bg-destructive/90 transition-all active:scale-[0.98]"
+                            >
+                                {isPurging ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : <Trash2 className="h-6 w-6 mr-2" />}
+                                Purge All Platform Data
+                            </Button>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
       </Tabs>
-
-      {/* Node Inspector Dialog */}
-      <Dialog open={!!inspectingTenantId} onOpenChange={(open) => !open && setInspectingTenantId(null)}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
-            <DialogHeader className="p-8 bg-primary text-primary-foreground">
-                <DialogTitle className="text-3xl font-black uppercase tracking-tighter flex items-center gap-3">
-                    <Eye className="h-8 w-8" />
-                    Node Audit: {inspectionData?.tenant?.name}
-                </DialogTitle>
-                <DialogDescription className="text-primary-foreground/70 font-bold uppercase text-[10px] tracking-widest">
-                    Tenancy ID: {inspectingTenantId?.toUpperCase()}
-                </DialogDescription>
-            </DialogHeader>
-            <div className="flex-grow overflow-hidden flex flex-col">
-                <div className="grid grid-cols-3 gap-0 border-b">
-                    <div className="p-6 text-center border-r bg-muted/10">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Total Sales</p>
-                        <p className="text-2xl font-black">{inspectionData?.sales.length || 0}</p>
-                    </div>
-                    <div className="p-6 text-center border-r bg-muted/10">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Team Members</p>
-                        <p className="text-2xl font-black">{inspectionData?.users.length || 0}</p>
-                    </div>
-                    <div className="p-6 text-center bg-muted/10">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Active GMV</p>
-                        <p className="text-2xl font-black text-primary">{formatCurrency(inspectionData?.sales.reduce((acc, s) => acc + s.amount, 0) || 0)}</p>
-                    </div>
-                </div>
-                <ScrollArea className="flex-grow p-6">
-                    <Table>
-                        <TableHeader><TableRow><TableHead className="text-[9px] uppercase font-black">Date</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Volume</TableHead><TableHead className="text-[9px] uppercase font-black text-right">Method</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                            {inspectionData?.sales.map(s => (
-                                <TableRow key={s.id}>
-                                    <TableCell className="text-[10px] font-mono">{s.date ? format(parseISO(s.date), 'MMM d, HH:mm') : 'N/A'}</TableCell>
-                                    <TableCell className="text-right font-black text-xs text-primary">{formatCurrency(s.amount)}</TableCell>
-                                    <TableCell className="text-right"><Badge variant="outline" className="text-[8px]">{s.paymentMethod}</Badge></TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </ScrollArea>
-            </div>
-            <CardFooter className="p-6 border-t flex justify-end">
-                <Button onClick={() => setInspectingTenantId(null)} className="font-bold">Close Audit</Button>
-            </CardFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Messaging Dialog */}
       <Dialog open={isMessageOpen} onOpenChange={setIsMessageOpen}>
@@ -420,15 +454,6 @@ export default function PlatformCommandCenter() {
                     <Label className="text-[10px] font-black uppercase">Message Content</Label>
                     <Textarea value={msgBody} onChange={e => setMsgBody(e.target.value)} rows={6} placeholder="Compose your platform communication here..." />
                 </div>
-                
-                {msgPriority === 'important' && (
-                    <div className="bg-orange-50 border border-orange-200 p-3 rounded-lg flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-orange-800 leading-tight">
-                            <strong>Security Protocol:</strong> High-priority messages trigger red visual indicators on client dashboards. Ensure content is verified.
-                        </p>
-                    </div>
-                )}
             </div>
             <DialogFooter className="border-t pt-6">
                 <Button variant="outline" onClick={() => setIsMessageOpen(false)}>Cancel</Button>

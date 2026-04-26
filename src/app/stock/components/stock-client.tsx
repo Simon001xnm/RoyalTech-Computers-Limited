@@ -43,6 +43,7 @@ export function StockClient() {
   const filteredAssets = useMemo(() => {
     if (!rawAssets) return [];
     
+    // In-memory sort to avoid requiring composite indexes during prototyping
     const sorted = [...rawAssets].sort((a, b) => {
         const dateA = a.purchaseDate ? new Date(a.purchaseDate).getTime() : 0;
         const dateB = b.purchaseDate ? new Date(b.purchaseDate).getTime() : 0;
