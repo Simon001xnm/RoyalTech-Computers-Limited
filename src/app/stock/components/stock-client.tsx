@@ -93,11 +93,17 @@ export function StockClient() {
   const handleFormSubmit = async (data: any) => {
     if (!tenant || !user) return;
 
+    // Explicitly map fields to avoid 'undefined' values which crash Firestore
     const assetData = {
-      ...data,
       tenantId: tenant.id,
-      updatedAt: new Date().toISOString(),
+      model: data.model || '',
+      serialNumber: data.serialNumber || '',
+      status: data.status,
+      quantity: Number(data.quantity) || 0,
       purchaseDate: data.purchaseDate.toISOString(),
+      updatedAt: new Date().toISOString(),
+      purchasePrice: data.purchasePrice !== undefined ? Number(data.purchasePrice) : null,
+      leasePrice: data.leasePrice !== undefined ? Number(data.leasePrice) : null,
       specifications: {
         ram: data.ram || '',
         storage: data.storage || '',

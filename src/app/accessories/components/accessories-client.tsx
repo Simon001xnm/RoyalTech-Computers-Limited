@@ -111,9 +111,15 @@ export function AccessoriesClient() {
   const handleFormSubmit = async (data: any) => {
     if (!user || !tenant) return;
 
+    // Explicitly structure to avoid 'undefined' values
     const accessoryData = {
-      ...data,
       tenantId: tenant.id,
+      name: data.name || '',
+      serialNumber: data.serialNumber || '',
+      status: data.status,
+      quantity: Number(data.quantity) || 0,
+      purchasePrice: data.purchasePrice !== undefined ? Number(data.purchasePrice) : null,
+      sellingPrice: Number(data.sellingPrice) || 0,
       purchaseDate: data.purchaseDate.toISOString(), 
       updatedAt: new Date().toISOString()
     };
