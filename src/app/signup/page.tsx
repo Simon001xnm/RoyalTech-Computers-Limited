@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { collection, doc, getDocs, limit, query, setDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, limit, query, setDoc, where } from 'firebase/firestore';
 
 
 export default function SignUpPage() {
@@ -43,18 +43,34 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     // DETERMINISTIC ROLE ASSIGNMENT:
-    // The very first user in the database becomes the super_admin.
     let role: 'super_admin' | 'admin' | 'user' = 'user';
+    
     try {
-        const usersCollectionRef = collection(firestore, 'users');
-        const snapshot = await getDocs(query(usersCollectionRef, limit(1)));
-        if (snapshot.empty) {
+        // MASTER KEY: This email always gets Super Admin
+        const ROOT_ADMIN_EMAIL = "admin@platform.com";
+        
+        if (email.toLowerCase() === ROOT_ADMIN_EMAIL.toLowerCase()) {
             role = 'super_admin';
         } else {
-            role = 'admin'; // Subsequent signups are treated as workspace owners
+            // Check if ANY super admin exists in the system
+            const adminQuery = query(
+                collection(firestore, 'users'), 
+                where('role', '==', 'super_admin'), 
+                limit(1)
+            );
+            const adminSnapshot = await getDocs(adminQuery);
+            
+            if (adminSnapshot.empty) {
+                // If no platform technician exists, this user takes the throne
+                role = 'super_admin';
+            } else {
+                // Otherwise, they are a workspace owner
+                role = 'admin';
+            }
         }
     } catch (e) {
-        console.warn("Role check failed, defaulting to user role.");
+        console.warn("Role check failed, defaulting to admin role.");
+        role = 'admin';
     }
     
     createUserWithEmailAndPassword(auth, email, password)
