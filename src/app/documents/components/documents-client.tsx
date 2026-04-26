@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, MoreHorizontal, Loader2, Download, MessageCircle } from "lucide-react";
+import { Trash2, PlusCircle, MoreHorizontal, Loader2, Download, MessageCircle, Printer } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
 import {
   Table,
@@ -168,6 +168,9 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
+    // Wait for DOM to settle
+    await new Promise(r => setTimeout(r, 100));
+
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
         setIsExporting(false);
@@ -215,11 +218,23 @@ export function DocumentsClient() {
   };
 
   const handleWhatsAppShare = async (docToShare: AppDocument) => {
-    const message = `Hello! Here is your ${docToShare.type}: ${docToShare.title}. Download it here (if available) or check your email.`;
+    const message = `Hello! Here is your ${docToShare.type}: ${docToShare.title}.`;
     const encodedMsg = encodeURIComponent(message);
-    const phone = docToShare.data?.customer?.phone || "";
+    const phone = docToShare.data?.customer?.phone || docToShare.data?.phone || "";
+    if (!phone) {
+        toast({ variant: 'destructive', title: 'No Phone Number', description: 'Customer record missing contact info.' });
+        return;
+    }
     const waUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodedMsg}`;
     window.open(waUrl, '_blank');
+  };
+
+  const handlePrintPdf = (docToPrint: AppDocument) => {
+      setSelectedDocument(docToPrint);
+      setIsPdfPreviewOpen(true);
+      setTimeout(() => {
+          window.print();
+      }, 500);
   };
 
   const handleViewPdf = (doc: AppDocument) => {
@@ -227,34 +242,14 @@ export function DocumentsClient() {
     setIsPdfPreviewOpen(true);
   }
 
-  const columnActions: DocumentColumnActions = { onView: handleViewPdf, onDownload: handleDownloadPdf };
+  const columnActions: DocumentColumnActions = { 
+    onView: handleViewPdf, 
+    onDownload: handleDownloadPdf,
+    onPrint: handlePrintPdf,
+    onWhatsApp: handleWhatsAppShare
+  };
   
-  const customColumns = useMemo(() => {
-      const base = getDocumentColumns(columnActions);
-      const actionsCol = base.find(c => c.id === 'actions');
-      if (actionsCol) {
-          actionsCol.cell = ({ row }) => {
-              const doc = row.original;
-              return (
-                <div className="text-right space-x-2">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleViewPdf(doc)}>View Structure</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownloadPdf(doc)}>Instant Download</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleWhatsAppShare(doc)} className="text-green-600 focus:text-green-600 focus:bg-green-50">
-                                <MessageCircle className="mr-2 h-4 w-4" /> Share on WhatsApp
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button variant="outline" size="sm" onClick={() => handleViewPdf(doc)}>View</Button>
-                </div>
-              );
-          };
-      }
-      return base;
-  }, [columnActions]);
+  const customColumns = useMemo(() => getDocumentColumns(columnActions), [columnActions]);
 
   const table = useReactTable({
     data: sortedDocuments,

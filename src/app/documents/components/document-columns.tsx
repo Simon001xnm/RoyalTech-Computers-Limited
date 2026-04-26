@@ -1,11 +1,10 @@
-
 "use client";
 
 import type { Document as AppDocument, DocumentType } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Download, FileText, ListChecks, Receipt, FileWarning, Truck, FilePlus2, ShoppingCart } from "lucide-react";
+import { Download, FileText, ListChecks, Receipt, FileWarning, Truck, FilePlus2, ShoppingCart, Printer, MessageCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -13,6 +12,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 export interface DocumentColumnActions {
   onView: (doc: AppDocument) => void;
   onDownload: (doc: AppDocument) => void;
+  onPrint?: (doc: AppDocument) => void;
+  onWhatsApp?: (doc: AppDocument) => void;
 }
 
 const documentIcons: Record<DocumentType, React.ElementType> = {
@@ -70,11 +71,34 @@ export const getDocumentColumns = (actions: DocumentColumnActions): ColumnDef<Ap
         cell: ({ row }) => {
             const doc = row.original;
             return (
-                <div className="text-right space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => actions.onView(doc)}>View</Button>
-                    <Button variant="outline" size="sm" onClick={() => actions.onDownload(doc)}>
-                        <Download className="mr-2 h-3 w-3" /> Download
-                    </Button>
+                <div className="text-right flex items-center justify-end gap-2">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="outline" size="icon" className="h-8 w-8 text-green-600 border-green-200 hover:bg-green-50" onClick={() => actions.onWhatsApp?.(doc)}>
+                                    <MessageCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Share to WhatsApp</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="outline" size="icon" className="h-8 w-8 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => actions.onPrint?.(doc)}>
+                                    <Printer className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Print Document</TooltipContent>
+                        </Tooltip>
+                         <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => actions.onDownload(doc)}>
+                                    <Download className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Download PDF</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    <Button variant="outline" size="sm" onClick={() => actions.onView(doc)} className="font-bold h-8">View</Button>
                 </div>
             );
         },

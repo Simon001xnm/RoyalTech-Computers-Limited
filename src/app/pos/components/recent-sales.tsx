@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc, doc, setDoc } from 'firebase/firestore';
 
 interface RecentSalesProps {
     onViewReceipt: (sale: Sale) => void;
@@ -25,13 +25,10 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
 
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 5 });
 
-    // CLOUD QUERY: Sync history (Index-free: sort in memory)
+    // CLOUD QUERY
     const salesQuery = useMemoFirebase(() => {
         if (!tenant) return null;
-        return query(
-            collection(firestore, 'sales_transactions'),
-            where('tenantId', '==', tenant.id)
-        );
+        return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
     }, [firestore, tenant?.id]);
     
     const { data: rawSales, isLoading } = useCollection(salesQuery);
@@ -58,7 +55,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                 customer: { 
                     id: sale.customerId || '', 
                     name: sale.customerName || 'Walk-in Client', 
-                    phone: sale.customerPhone || '' 
+                    phone: sale.customerPhone || sale.notes || '' 
                 },
                 items: (sale.items || []).map(item => ({
                     description: item.name || 'Unknown Item',
@@ -79,11 +76,19 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         }
     };
 
+    const handleShareWhatsApp = (sale: Sale) => {
+        const phone = sale.customerPhone || "";
+        const text = `Hello! Thank you for your purchase of ${sale.amount.toLocaleString()} KES. Receipt RCL-${sale.id.slice(0,4)} is available.`;
+        window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+    };
+
     const saleColumnActions: SaleColumnActions = { 
         onView: onViewReceipt,
-        onGenerateDelivery: handleGenerateDelivery
+        onGenerateDelivery: handleGenerateDelivery,
+        onWhatsApp: handleShareWhatsApp
     };
     const saleColumns = useMemo<ColumnDef<Sale>[]>(() => getSaleColumns(saleColumnActions), [saleColumnActions]);
+    
     const salesTable = useReactTable({
         data: sortedSales,
         columns: saleColumns,
@@ -94,43 +99,35 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     });
 
     return (
-        <Card>
+        <Card className="shadow-lg border-none">
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                    <CardTitle>Cloud Transaction History</CardTitle>
-                    <CardDescription>A real-time log of sales transactions for this workspace.</CardDescription>
+                    <CardTitle className="text-xl font-black uppercase tracking-tight">Recent Workspace Sales</CardTitle>
+                    <CardDescription>Direct access to receipts and delivery workflows.</CardDescription>
                 </div>
             </CardHeader>
             <CardContent>
                 {isLoading ? (
                     <p className="text-muted-foreground animate-pulse text-sm">Syncing transaction registry...</p>
                 ) : (
-                    <div className="border rounded-md">
+                    <div className="border rounded-xl overflow-hidden bg-card/50">
                         <Table>
                             <TableHeader className="bg-muted/50">
-                                {salesTable.getHeaderGroups().map(headerGroup => (
-                                    <TableRow key={headerGroup.id}>
-                                        {headerGroup.headers.map(header => (
-                                            <TableHead key={header.id}>{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>
-                                        ))}
+                                {salesTable.getHeaderGroups().map(hg => (
+                                    <TableRow key={hg.id}>
+                                        {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
                                     </TableRow>
                                 ))}
                             </TableHeader>
                             <TableBody>
                                 {salesTable.getRowModel().rows.length ? (
                                     salesTable.getRowModel().rows.map(row => (
-                                        <TableRow key={row.id}>
-                                            {row.getVisibleCells().map(cell => (
-                                                <TableCell key={cell.id}>
-                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                </TableCell>
-                                            ))}
+                                        <TableRow key={row.id} className="hover:bg-muted/20">
+                                            {row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
                                         </TableRow>
                                     ))
                                 ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={saleColumns.length} className="h-24 text-center text-muted-foreground">No sales recorded yet.</TableCell>
-                                    </TableRow>
+                                    <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">No sales recorded yet.</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>
