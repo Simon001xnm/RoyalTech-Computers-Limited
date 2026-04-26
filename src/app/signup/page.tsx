@@ -46,6 +46,7 @@ export default function SignUpPage() {
     let role: 'super_admin' | 'admin' | 'user' = 'user';
     
     try {
+        // MASTER KEY EMAIL
         const ROOT_ADMIN_EMAIL = "admin@royaltech.com";
         
         if (email.toLowerCase() === ROOT_ADMIN_EMAIL.toLowerCase()) {
@@ -78,10 +79,10 @@ export default function SignUpPage() {
             await setDoc(userDocRef, {
                 id: user.uid,
                 name: name,
-                email: email,
+                email: email.toLowerCase(),
                 phone: '',
                 role: role,
-                tenantId: null, // Initialized as null to trigger onboarding
+                tenantId: null, 
                 tenantIds: [],
                 createdAt: new Date().toISOString()
             });
@@ -93,8 +94,7 @@ export default function SignUpPage() {
                     : 'Welcome! Initializing your workspace setup...',
             });
             
-            // Force immediate redirect to dashboard/onboarding
-            router.push('/');
+            router.push(role === 'super_admin' ? '/admin' : '/');
         })
         .catch((error) => {
             let description = "Registration could not be completed.";

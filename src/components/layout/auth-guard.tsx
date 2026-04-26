@@ -125,7 +125,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
 
-  // CRITICAL: Fetch profile here to ensure it persists across login/logout cycles
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
 
@@ -134,9 +133,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       if (!user && !isPublicPath) {
         router.push('/login');
       } else if (user && isPublicPath) {
-        router.push('/');
+        // Redirection on sign in based on role
+        if (userProfile?.role === 'super_admin') {
+            router.push('/admin');
+        } else {
+            router.push('/');
+        }
       } else if (user && userProfile?.role === 'super_admin' && pathname === '/') {
-        // Redirection logic: Super Admins land on Command Center by default
+        // Super Admins should always be at the command center unless specifically on a module
         router.push('/admin');
       }
     }

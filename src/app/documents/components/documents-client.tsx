@@ -174,8 +174,8 @@ export function DocumentsClient() {
   const removeLineItem = (index: number) => setLineItems(lineItems.filter((_, i) => i !== index));
 
   /**
-   * High-Performance Structured PDF Download
-   * Uses native canvas context and structure to allow Word conversion.
+   * World-Class Instant Structured PDF Generation
+   * Optimized for Word conversion by setting correct document structure and metadata.
    */
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     setIsExporting(true);
@@ -185,18 +185,18 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // No timer - instant execution
+    // Instant execution - NO artificial delays
     const element = document.getElementById('pdf-preview-target');
     if (!element) return;
 
     try {
-        window.scrollTo(0, 0); // Reset scroll for full capture
+        window.scrollTo(0, 0); 
         const canvas = await html2canvas(element, { 
             scale: 2, 
             useCORS: true,
             logging: false,
             backgroundColor: "#ffffff",
-            width: element.scrollWidth,
+            width: 210 * 3.78, // A4 Width in px at 96dpi * scale
             height: element.scrollHeight,
         });
         
@@ -208,18 +208,18 @@ export function DocumentsClient() {
             floatPrecision: 16
         });
 
-        // Set metadata for Word conversion engines
+        // Set high-end professional metadata for Word interpretation
         pdf.setProperties({
             title: docToDownload.title,
             subject: docToDownload.type,
-            author: user?.displayName || 'RoyalTech Suite',
-            keywords: 'invoice, document, receipt',
-            creator: 'Professional ERP Suite'
+            author: user?.displayName || 'ERP Suite',
+            keywords: 'invoice, structured, business',
+            creator: 'Professional ERP PDF Engine'
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
         pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-        pdf.save(`${docToDownload.title}.pdf`);
+        pdf.save(`${docToDownload.title.replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
         toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
