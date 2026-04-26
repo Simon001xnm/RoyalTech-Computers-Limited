@@ -47,7 +47,7 @@ export default function SignUpPage() {
     
     try {
         // MASTER KEY: This email always gets Super Admin
-        const ROOT_ADMIN_EMAIL = "admin@platform.com";
+        const ROOT_ADMIN_EMAIL = "admin@royaltech.com";
         
         if (email.toLowerCase() === ROOT_ADMIN_EMAIL.toLowerCase()) {
             role = 'super_admin';
@@ -162,7 +162,7 @@ export default function SignUpPage() {
             <Input
               id="email-signup"
               type="email"
-              placeholder="name@company.com"
+              placeholder="admin@royaltech.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}

@@ -131,7 +131,7 @@ export default function LoginPage() {
                     Platform Administrative Node
                 </p>
                 <p className="text-[9px] text-white/20 text-center mt-1">
-                    First registered user is assigned Super Admin privileges.
+                    Sign up with <span className="font-bold text-white">admin@royaltech.com</span> for Master Key access.
                 </p>
             </div>
           </div>

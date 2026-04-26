@@ -1,3 +1,4 @@
+
 'use client';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -47,7 +48,7 @@ export default function ProfilePage() {
   const { data: userProfile } = useDoc(userRef);
 
   const portfolioQuery = useMemoFirebase(() => {
-    if (!userProfile?.tenantIds?.length) return null;
+    if (!userProfile?.tenantIds || userProfile.tenantIds.length === 0) return null;
     return query(collection(firestore, 'companies'), where('id', 'in', userProfile.tenantIds));
   }, [firestore, userProfile?.tenantIds]);
   
