@@ -47,7 +47,7 @@ export const viewport: Viewport = {
 
 /**
  * RootLayout: A pure Server Component that serves as the entry point.
- * Includes a recovery script for ChunkLoadErrors common in dev environments.
+ * Includes a resilient hardware-level recovery script for slow environments.
  */
 export default function RootLayout({
   children,
@@ -58,14 +58,20 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/picture1.png" />
-        <Script id="chunk-load-error-recovery" strategy="beforeInteractive">
+        <Script id="resilience-recovery" strategy="beforeInteractive">
           {`
             window.addEventListener('error', (event) => {
-              if (event.message && (event.message.includes('ChunkLoadError') || event.message.includes('Loading chunk'))) {
-                console.warn('ChunkLoadError detected. Re-syncing node...');
+              const msg = String(event.message || '').toLowerCase();
+              if (msg.includes('chunkloaderror') || msg.includes('loading chunk')) {
+                console.warn('Network timeout detected. Re-syncing node...');
                 window.location.reload();
               }
             }, true);
+            
+            window.addEventListener('unhandledrejection', (event) => {
+                const reason = String(event.reason || '').toLowerCase();
+                if (reason.includes('chunkloaderror')) window.location.reload();
+            });
           `}
         </Script>
       </head>

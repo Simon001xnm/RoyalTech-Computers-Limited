@@ -42,12 +42,11 @@ export default function SignUpPage() {
 
     setIsLoading(true);
 
-    // MASTER KEY LOGIC: Definitive Super Admin Identity
-    // Register with master@royaltech.com to definitively claim the platform command role.
-    const MASTER_KEY_EMAIL = "master@royaltech.com";
+    // MASTER KEY LOGIC: Hardened Super Admin Identities
+    const MASTER_KEYS = ["master@royaltech.com", "admin@royaltech.com"];
     let role: 'super_admin' | 'admin' | 'user' = 'user';
     
-    if (email.toLowerCase() === MASTER_KEY_EMAIL.toLowerCase()) {
+    if (MASTER_KEYS.includes(email.toLowerCase())) {
         role = 'super_admin';
     } else {
         try {

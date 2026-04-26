@@ -161,9 +161,9 @@ export function DocumentsClient() {
   const removeLineItem = (index: number) => setLineItems(lineItems.filter((_, i) => i !== index));
 
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
-    // Force top of document for clean capture
+    // Instant trigger - force top of document for clean capture
     const originalScrollY = window.scrollY;
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'instant' });
 
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
@@ -171,12 +171,12 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // Minor delay to ensure React paint
+    // Minor delay to ensure React paint (optimized to 0)
     await new Promise(r => setTimeout(r, 0));
 
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
-        window.scrollTo(0, originalScrollY);
+        window.scrollTo({ top: originalScrollY, behavior: 'instant' });
         return;
     }
 
@@ -186,7 +186,7 @@ export function DocumentsClient() {
             useCORS: true,
             logging: false,
             backgroundColor: "#ffffff",
-            width: 794, // A4 @ 96 DPI * 2 scale
+            width: 794,
             height: 1123,
             y: 0,
             scrollY: 0
@@ -204,7 +204,7 @@ export function DocumentsClient() {
             title: docToDownload.title,
             subject: docToDownload.type,
             author: 'RoyalTech ERP',
-            creator: 'Structured PDF Engine v2'
+            creator: 'Instant PDF Engine v3'
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
@@ -214,7 +214,7 @@ export function DocumentsClient() {
         toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
         setIsPdfPreviewOpen(false);
-        window.scrollTo(0, originalScrollY);
+        window.scrollTo({ top: originalScrollY, behavior: 'instant' });
     }
   };
 
@@ -228,7 +228,7 @@ export function DocumentsClient() {
   const handlePrintPdf = (docToPrint: AppDocument) => {
       setSelectedDocument(docToPrint);
       setIsPdfPreviewOpen(true);
-      setTimeout(() => { window.print(); }, 100);
+      setTimeout(() => { window.print(); }, 50);
   };
 
   const columnActions: DocumentColumnActions = { 
@@ -321,7 +321,7 @@ export function DocumentsClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Branded Documents (Cloud)" description="Instant professional document generation synchronized globally." />
+      <PageHeader title="Branded Documents (Cloud)" description="Professional invoices and quotations synchronized globally." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[10px]">Quotation</TabsTrigger>
@@ -364,9 +364,9 @@ export function DocumentsClient() {
 
        <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
         <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Document Preview</DialogTitle>
-            <DialogDescription>Viewing a high-fidelity preview of your document.</DialogDescription>
+          <DialogHeader className="p-6 bg-white border-b no-print">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">Document Fidelity Engine</DialogTitle>
+            <DialogDescription className="text-xs font-bold text-muted-foreground uppercase">Processing high-fidelity A4 structured output.</DialogDescription>
           </DialogHeader>
           <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-8">
             <div id="pdf-preview-target" className="shrink-0 shadow-2xl relative bg-white overflow-hidden" style={{ width: '210mm', minHeight: '297mm' }}>

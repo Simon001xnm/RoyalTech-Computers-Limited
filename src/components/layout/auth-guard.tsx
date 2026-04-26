@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
@@ -18,6 +19,7 @@ import { NotificationCenter } from './notification-center';
 import { cn } from "@/lib/utils";
 
 const PUBLIC_PATHS = ['/login', '/signup'];
+const MASTER_KEYS = ["master@royaltech.com", "admin@royaltech.com"];
 
 function AuthenticatedLayout({ children, userProfile }: { children: React.ReactNode, userProfile: AppUser | null }) {
     const { user } = useUser();
@@ -27,7 +29,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
         if (auth) auth.signOut();
     };
 
-    const isSuperAdmin = userProfile?.role === 'super_admin';
+    const isSuperAdmin = userProfile?.role === 'super_admin' || (user?.email && MASTER_KEYS.includes(user.email.toLowerCase()));
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -132,14 +134,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       if (!user && !isPublicPath) {
         router.push('/login');
       } else if (user && isPublicPath) {
-        // Redirection on sign in based on role
-        if (userProfile?.role === 'super_admin') {
+        const isMaster = user.email && MASTER_KEYS.includes(user.email.toLowerCase());
+        if (userProfile?.role === 'super_admin' || isMaster) {
             router.push('/admin');
         } else {
             router.push('/');
         }
-      } else if (user && userProfile?.role === 'super_admin' && pathname === '/') {
-        // Super Admins should always be at the command center unless specifically on a module
+      } else if (user && (userProfile?.role === 'super_admin' || (user.email && MASTER_KEYS.includes(user.email.toLowerCase()))) && pathname === '/') {
         router.push('/admin');
       }
     }
@@ -147,9 +148,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (isUserLoading || (user && isProfileLoading)) {
     return (
-      <div className="flex flex-col h-screen w-full items-center justify-center bg-background space-y-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
-        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Cloud Identity...</p>
+      <div className="flex flex-col h-screen w-full items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
