@@ -19,6 +19,10 @@ const DEFAULT_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
 
 const SaaSContext = createContext<SaaSContextState | undefined>(undefined);
 
+/**
+ * @fileOverview SaaS Infrastructure Provider
+ * Manages the transition from un-onboarded identity to a fully integrated business node.
+ */
 export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();

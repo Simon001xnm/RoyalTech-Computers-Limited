@@ -26,6 +26,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 
+/**
+ * @fileOverview Platform Command Center (Super Admin Dashboard)
+ * Fully integrated with Firestore to provide global oversight of all tenant nodes.
+ */
 export default function PlatformCommandCenter() {
   const { toast } = useToast();
   const firestore = useFirestore();
