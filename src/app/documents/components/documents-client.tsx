@@ -166,7 +166,7 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // No artificial delays
+    // ZERO LATENCY - NO DELAYS
     await new Promise(r => setTimeout(r, 50)); 
 
     const element = document.getElementById('pdf-preview-target');

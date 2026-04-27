@@ -94,14 +94,24 @@ export async function nuclearPurgePlatform(): Promise<{ success: boolean; error?
             'users', 'companies', 'assets', 'accessories', 'customers', 
             'sales_transactions', 'leases', 'tickets', 'notifications', 
             'platform_logs', 'messages', 'campaigns', 'projects', 
-            'job_postings', 'applicants', 'expenses', 'documents'
+            'job_postings', 'applicants', 'expenses', 'documents', 'item_issuances'
         ];
 
         for (const colName of collections) {
-            const snap = await firestore.collection(colName).limit(500).get();
+            const snap = await firestore.collection(colName).get();
             const batch = firestore.batch();
             snap.docs.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
+        }
+
+        // Wipe Auth Users if possible
+        if (!isPrototypeMode) {
+            const auth = getAuth(adminApp);
+            const listUsersResult = await auth.listUsers(1000);
+            for (const userRecord of listUsersResult.users) {
+                // Keep the current admin user if possible, or just delete all
+                await auth.deleteUser(userRecord.uid);
+            }
         }
 
         return { success: true };
