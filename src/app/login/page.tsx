@@ -39,23 +39,18 @@ export default function LoginPage() {
     setIsProcessing(true);
     try {
         await initiateEmailSignIn(auth, email, password);
-        // AuthGuard handles redirection on success
     } catch (e: any) {
         setIsProcessing(false);
         let description = 'Please check your credentials and try again.';
         if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
             description = 'The email or password you entered is incorrect.';
-        } else if (e.code === 'auth/network-request-failed') {
-            description = 'Network error. Please check your internet connection.';
         }
         toast({ variant: 'destructive', title: 'Sign In Failed', description });
     }
   };
 
   const handlePasswordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (typeof e.getModifierState === 'function') {
-      setIsCapsLockOn(e.getModifierState('CapsLock'));
-    }
+    if (typeof e.getModifierState === 'function') setIsCapsLockOn(e.getModifierState('CapsLock'));
   };
   
   if (isUserLoading || user) {
@@ -71,12 +66,7 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-black overflow-hidden">
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 scale-105 transition-transform duration-[2000ms] ease-out"
-        style={{ backgroundImage: 'url("https://picsum.photos/seed/auth/1920/1080")' }}
-        data-ai-hint="business office"
-      />
-      
+      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 scale-105" style={{ backgroundImage: 'url("https://picsum.photos/seed/auth/1920/1080")' }} />
       <Card className="relative w-full max-w-[400px] mx-4 bg-white/5 backdrop-blur-2xl border-white/10 shadow-2xl text-white">
         <CardHeader className="text-center items-center pt-8">
           <CardTitle className="text-3xl font-black uppercase tracking-tighter mb-2">{APP_NAME}</CardTitle>
@@ -84,58 +74,21 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent className="space-y-6 px-8">
           <div className="space-y-2">
-            <Label htmlFor="email-signin" className="text-white/80 text-[10px] uppercase tracking-widest font-black">Email Address</Label>
-            <Input
-              id="email-signin"
-              type="email"
-              placeholder="name@company.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isProcessing}
-              className="h-12 bg-black/40 border-white/5 text-white placeholder:text-white/20 focus:ring-primary/50 focus:bg-black/60 transition-all"
-            />
+            <Label className="text-white/80 text-[10px] uppercase tracking-widest font-black">Email Address</Label>
+            <Input type="email" placeholder="name@company.com" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={isProcessing} className="h-12 bg-black/40 border-white/5 text-white" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password-signin" className="text-white/80 text-[10px] uppercase tracking-widest font-black">Password</Label>
-            <Input
-              id="password-signin"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={handlePasswordKeyDown}
-              onKeyUp={handlePasswordKeyDown}
-              disabled={isProcessing}
-              className="h-12 bg-black/40 border-white/5 text-white focus:ring-primary/50 focus:bg-black/60 transition-all"
-            />
+            <Label className="text-white/80 text-[10px] uppercase tracking-widest font-black">Password</Label>
+            <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={handlePasswordKeyDown} disabled={isProcessing} className="h-12 bg-black/40 border-white/5 text-white" />
              {isCapsLockOn && <p className="text-[10px] text-orange-400 mt-1 font-medium flex items-center gap-1 uppercase">⚠️ Caps Lock is active</p>}
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-6 px-8 pb-10">
-          <Button onClick={handleSignIn} className="w-full h-12 text-base font-black uppercase tracking-widest shadow-xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-white text-black hover:bg-white/90" disabled={isProcessing}>
-            {isProcessing ? (
-                <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Syncing...</span>
-                </div>
-            ) : 'Establish Connection'}
+          <Button onClick={handleSignIn} className="w-full h-12 text-base font-black uppercase tracking-widest shadow-xl bg-white text-black hover:bg-white/90" disabled={isProcessing}>
+            {isProcessing ? 'Syncing...' : 'Establish Connection'}
           </Button>
-
-          <div className="flex flex-col items-center gap-4 w-full">
-            <div className="text-center text-sm text-white/40">
-                New workspace?{' '}
-                <Link href="/signup" className="text-white hover:underline transition-colors font-bold uppercase text-xs">
-                Initialize Node
-                </Link>
-            </div>
-            
-            <div className="pt-4 border-t border-white/5 w-full">
-                <p className="text-[9px] uppercase font-black tracking-tighter text-white/30 text-center flex items-center justify-center gap-2">
-                    <ShieldCheck className="h-3 w-3" /> 
-                    Technician Entry Node
-                </p>
-            </div>
+          <div className="text-center text-sm text-white/40">
+                New workspace? <Link href="/signup" className="text-white hover:underline font-bold uppercase text-xs">Initialize Node</Link>
           </div>
         </CardFooter>
       </Card>

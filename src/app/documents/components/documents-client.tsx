@@ -88,14 +88,6 @@ export function DocumentsClient() {
       });
   }, [rawDocuments]);
 
-  const resetFormState = () => {
-    setSelectedCustomerId('');
-    setDetails('');
-    setAmount('');
-    setApplyVat(false);
-    setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
-  };
-
   const handleGenerateDocument = async (type: DocumentType) => {
     if (!tenant || !user) return;
 
@@ -146,7 +138,10 @@ export function DocumentsClient() {
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         });
         toast({ title: `${type} Generated Successfully` });
-        resetFormState();
+        setSelectedCustomerId('');
+        setDetails('');
+        setAmount('');
+        setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Generation Failed', description: error.message });
     }
@@ -157,12 +152,9 @@ export function DocumentsClient() {
     updatedItems[index] = { ...updatedItems[index], [field]: field === 'description' ? value : Number(value) || 0 };
     setLineItems(updatedItems);
   };
-  const addLineItem = () => setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }]);
-  const removeLineItem = (index: number) => setLineItems(lineItems.filter((_, i) => i !== index));
 
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     setIsExporting(true);
-    // Instant Reset Scroll to top to prevent clipping
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
 
@@ -172,7 +164,7 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // No artificial delays
+    // No artificial delays - execute immediately
     await new Promise(r => setTimeout(r, 0));
 
     const element = document.getElementById('pdf-preview-target');
@@ -188,8 +180,8 @@ export function DocumentsClient() {
             useCORS: true,
             logging: false,
             backgroundColor: "#ffffff",
-            width: 794, // Fixed width to prevent responsive shifts
-            height: 1123, // Fixed height for A4
+            width: 794,
+            height: 1123,
             y: 0,
             scrollY: 0
         });
@@ -200,7 +192,6 @@ export function DocumentsClient() {
             format: 'a4',
         });
 
-        // Structured metadata for Word compatibility
         pdf.setProperties({
             title: docToDownload.title,
             subject: docToDownload.type,
@@ -220,25 +211,15 @@ export function DocumentsClient() {
     }
   };
 
-  const handleWhatsAppShare = async (docToShare: AppDocument) => {
-    const phone = docToShare.data?.customer?.phone || "";
-    const message = `Hello! Your ${docToShare.type} (${docToShare.title}) from RoyalTech is ready. Reference: ${docToShare.title}. Thank you!`;
-    const waUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(waUrl, '_blank');
-  };
-
-  const handlePrintPdf = (docToPrint: AppDocument) => {
-      setSelectedDocument(docToPrint);
-      setIsPdfPreviewOpen(true);
-      // Small timeout only to allow React to mount the preview before printing
-      setTimeout(() => { window.print(); }, 50);
-  };
-
   const columnActions: DocumentColumnActions = { 
     onView: (d) => { setSelectedDocument(d); setIsPdfPreviewOpen(true); }, 
     onDownload: handleDownloadPdf,
-    onPrint: handlePrintPdf,
-    onWhatsApp: handleWhatsAppShare
+    onPrint: (d) => { setSelectedDocument(d); setIsPdfPreviewOpen(true); setTimeout(() => window.print(), 50); },
+    onWhatsApp: (d) => {
+        const phone = d.data?.customer?.phone || "";
+        const msg = `Hello! Your ${d.type} (${d.title}) is ready. Thank you!`;
+        window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
   };
   
   const customColumns = useMemo(() => getDocumentColumns(columnActions), [columnActions]);
@@ -307,13 +288,13 @@ export function DocumentsClient() {
                                     <TableCell><Input className="h-9 border-none bg-transparent" value={item.description} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
                                     <TableCell><Input type="number" className="h-9 border-none bg-transparent" value={item.quantity} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
                                     <TableCell><Input type="number" className="h-9 border-none bg-transparent" value={item.unitPrice} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
-                                    <TableCell><Button variant="ghost" size="icon" onClick={() => removeLineItem(index)} disabled={lineItems.length === 1}><Trash2 className="h-4 w-4 text-destructive/50" /></Button></TableCell>
+                                    <TableCell><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter((_, i) => i !== index))} disabled={lineItems.length === 1}><Trash2 className="h-4 w-4 text-destructive/50" /></Button></TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={addLineItem} className="h-8 font-bold"><PlusCircle className="mr-2 h-3 w-3"/>Add Line</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }])} className="h-8 font-bold"><PlusCircle className="mr-2 h-3 w-3"/>Add Line</Button>
             </div>
           )}
         </CardContent>

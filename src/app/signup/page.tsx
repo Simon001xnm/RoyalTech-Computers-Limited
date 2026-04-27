@@ -35,26 +35,17 @@ export default function SignUpPage() {
 
   const handleSignUp = async () => {
     if (!email || !password || !name) {
-        toast({ variant: 'destructive', title: 'Information Required', description: 'Please fill in all the required fields.' });
+        toast({ variant: 'destructive', title: 'Information Required' });
         return;
     }
 
     setIsLoading(true);
 
-    // MASTER KEY LOGIC: Definitive Technician Identities
     const MASTER_KEYS = ["master@royaltech.com", "admin@royaltech.com"];
     let role: 'super_admin' | 'admin' | 'user' = 'user';
     
     if (MASTER_KEYS.includes(email.toLowerCase())) {
         role = 'super_admin';
-    } else {
-        try {
-            const adminQuery = query(collection(firestore, 'users'), where('role', '==', 'super_admin'), limit(1));
-            const adminSnapshot = await getDocs(adminQuery);
-            role = adminSnapshot.empty ? 'super_admin' : 'user';
-        } catch (e) {
-            role = 'user';
-        }
     }
     
     createUserWithEmailAndPassword(auth, email, password)
@@ -63,7 +54,6 @@ export default function SignUpPage() {
             await updateProfile(user, { displayName: name });
 
             const userDocRef = doc(firestore, 'users', user.uid);
-            // Persistent write to Firestore ensuring role logic
             await setDoc(userDocRef, {
                 id: user.uid,
                 name: name,
@@ -76,15 +66,13 @@ export default function SignUpPage() {
 
             toast({
                 title: role === 'super_admin' ? 'Platform Command Active' : 'Account Created',
-                description: role === 'super_admin' 
-                    ? 'Global Technician privileges permanently granted.' 
-                    : 'Welcome to your professional business node.',
+                description: 'Identity established in the cloud.',
             });
             
             router.push(role === 'super_admin' ? '/admin' : '/');
         })
         .catch((error) => {
-            let description = "Registration could not be completed.";
+            let description = error.message;
             if (error.code === 'auth/email-already-in-use') description = 'This email address is already registered.';
             toast({ variant: 'destructive', title: 'Registration Error', description });
         })
@@ -108,11 +96,11 @@ export default function SignUpPage() {
         <CardContent className="space-y-5 px-8 pb-4">
           <div className="space-y-2">
             <Label className="text-white/80 text-xs uppercase tracking-widest font-black">Identity (Name)</Label>
-            <Input placeholder="Full Name" required value={name} onChange={(e) => setName(e.target.value)} disabled={isLoading} className="h-12 bg-black/40 border-white/10 text-white placeholder:text-white/20" />
+            <Input placeholder="Full Name" required value={name} onChange={(e) => setName(e.target.value)} disabled={isLoading} className="h-12 bg-black/40 border-white/10 text-white" />
           </div>
           <div className="space-y-2">
             <Label className="text-white/80 text-xs uppercase tracking-widest font-black">System Email</Label>
-            <Input placeholder="master@royaltech.com" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} className="h-12 bg-black/40 border-white/10 text-white placeholder:text-white/20" />
+            <Input placeholder="name@company.com" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} className="h-12 bg-black/40 border-white/10 text-white" />
           </div>
           <div className="space-y-2">
             <Label className="text-white/80 text-xs uppercase tracking-widest font-black">Access Key (Password)</Label>
