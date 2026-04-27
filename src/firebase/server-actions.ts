@@ -1,8 +1,7 @@
-
 'use server';
 /**
  * @fileOverview Server-side actions for Firebase management.
- * Includes a resilient initialization and a Force Reset mechanism for Master Keys.
+ * Includes a resilient initialization and a Nuclear Reset mechanism.
  */
 
 import { config } from 'dotenv';
@@ -79,6 +78,35 @@ export async function createUser(input: CreateUserInput): Promise<{ success: boo
       return { success: true, uid };
     } catch (error: any) {
       return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Nuclear Purge: Permanently erases all documents in core collections.
+ */
+export async function nuclearPurgePlatform(): Promise<{ success: boolean; error?: string }> {
+    try {
+        const adminApp = getAdminApp();
+        if (!adminApp) throw new Error("Admin infrastructure unavailable.");
+        
+        const firestore = getFirestore(adminApp);
+        const collections = [
+            'users', 'companies', 'assets', 'accessories', 'customers', 
+            'sales_transactions', 'leases', 'tickets', 'notifications', 
+            'platform_logs', 'messages', 'campaigns', 'projects', 
+            'job_postings', 'applicants', 'expenses', 'documents'
+        ];
+
+        for (const colName of collections) {
+            const snap = await firestore.collection(colName).limit(500).get();
+            const batch = firestore.batch();
+            snap.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
     }
 }
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,9 +12,10 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { Loader2, RefreshCcw, ShieldAlert } from 'lucide-react';
+import { Loader2, RefreshCcw, ShieldAlert, Trash2, AlertTriangle } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
-import { forceResetMasterAccount } from '@/firebase/server-actions';
+import { forceResetMasterAccount, nuclearPurgePlatform } from '@/firebase/server-actions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
@@ -25,6 +25,11 @@ export default function SignUpPage() {
   const [isResetting, setIsResetting] = useState(false);
   const [showForceReset, setShowForceReset] = useState(false);
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
+  
+  // Nuclear Reset State
+  const [isNuclearOpen, setIsNuclearOpen] = useState(false);
+  const [nuclearConfirm, setNuclearConfirm] = useState('');
+  const [isPurging, setIsPurging] = useState(false);
 
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -68,7 +73,6 @@ export default function SignUpPage() {
     } catch (error: any) {
         if (error.code === 'auth/email-already-in-use' && isMaster) {
             try {
-                // Attempt repair via login
                 const repairCred = await signInWithEmailAndPassword(auth, email, password);
                 await setDoc(doc(firestore, 'users', repairCred.user.uid), {
                     role: 'super_admin',
@@ -78,7 +82,7 @@ export default function SignUpPage() {
                 router.push('/admin');
             } catch (repairError: any) {
                 setShowForceReset(true);
-                toast({ variant: 'destructive', title: 'Repair Failed', description: 'Check credentials or use Force Overwrite.' });
+                toast({ variant: 'destructive', title: 'Repair Failed', description: 'Existing account found. Use Force Overwrite below.' });
             }
         } else {
             toast({ variant: 'destructive', title: 'Registration Error', description: error.message });
@@ -93,7 +97,7 @@ export default function SignUpPage() {
       try {
           const res = await forceResetMasterAccount(email);
           if (res.success) {
-              toast({ title: "Account Deregistered", description: "You can now register this identity again." });
+              toast({ title: "Master ID Cleared", description: "The existing account has been removed. You can now register fresh." });
               setShowForceReset(false);
           } else {
               throw new Error(res.error);
@@ -105,12 +109,31 @@ export default function SignUpPage() {
       }
   };
 
+  const handleNuclearPurge = async () => {
+    if (nuclearConfirm !== 'PURGE ALL') return;
+    setIsPurging(true);
+    try {
+        const res = await nuclearPurgePlatform();
+        if (res.success) {
+            toast({ title: "Database Wiped", description: "All business nodes and accounts have been deleted." });
+            setIsNuclearOpen(false);
+            window.location.reload();
+        } else {
+            throw new Error(res.error);
+        }
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Purge Failed', description: e.message });
+    } finally {
+        setIsPurging(false);
+    }
+  };
+
   const handlePasswordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (typeof e.getModifierState === 'function') setIsCapsLockOn(e.getModifierState('CapsLock'));
   };
   
   return (
-    <div className="relative flex h-screen w-full items-center justify-center bg-black overflow-hidden">
+    <div className="relative flex min-h-screen w-full items-center justify-center bg-black overflow-hidden py-12">
       <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 scale-105" style={{ backgroundImage: 'url("https://picsum.photos/seed/setup/1920/1080")' }} />
       <Card className="relative w-full max-w-[420px] mx-4 bg-white/5 backdrop-blur-3xl border-white/10 shadow-2xl text-white">
         <CardHeader className="text-center items-center pt-10">
@@ -140,15 +163,50 @@ export default function SignUpPage() {
           {showForceReset && (
               <Button onClick={handleForceReset} variant="destructive" className="w-full h-11 font-bold gap-2 animate-in zoom-in-95" disabled={isResetting}>
                   {isResetting ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
-                  Force Overwrite Master Node
+                  Force Deregister Existing Account
               </Button>
           )}
 
-          <div className="text-center text-[10px] uppercase font-bold tracking-widest text-white/30 border-t border-white/5 pt-6 w-full">
-            Registered Node? <Link href="/login" className="text-white hover:underline">Return to Access</Link>
+          <div className="flex flex-col items-center gap-6 mt-6 w-full">
+            <div className="text-center text-[10px] uppercase font-bold tracking-widest text-white/30 border-t border-white/5 pt-6 w-full">
+                Registered Node? <Link href="/login" className="text-white hover:underline">Return to Access</Link>
+            </div>
+            
+            <Button variant="ghost" size="sm" className="text-[9px] font-black uppercase tracking-[0.2em] text-destructive/40 hover:text-destructive hover:bg-destructive/10" onClick={() => setIsNuclearOpen(true)}>
+                <AlertTriangle className="h-3 w-3 mr-2" /> Nuclear Reset Utility
+            </Button>
           </div>
         </CardFooter>
       </Card>
+
+      <Dialog open={isNuclearOpen} onOpenChange={setIsNuclearOpen}>
+        <DialogContent className="sm:max-w-md bg-white text-black">
+            <DialogHeader>
+                <DialogTitle className="text-2xl font-black uppercase text-destructive">Nuclear Reset</DialogTitle>
+                <DialogDescription className="font-bold text-xs uppercase text-muted-foreground">This will permanently erase ALL users, workspaces, and inventory.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <p className="text-sm leading-relaxed">
+                    This action cannot be undone. All cloud documents and user accounts will be purged from Firestore. Use this only if you want to start the platform from absolute scratch.
+                </p>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase">Type "PURGE ALL" to confirm</Label>
+                    <Input 
+                        value={nuclearConfirm} 
+                        onChange={e => setNuclearConfirm(e.target.value)} 
+                        placeholder="Confirmation string..." 
+                        className="h-12 border-destructive/20 font-black uppercase tracking-widest text-center"
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsNuclearOpen(false)}>Cancel</Button>
+                <Button onClick={handleNuclearPurge} disabled={isPurging || nuclearConfirm !== 'PURGE ALL'} variant="destructive" className="font-black uppercase tracking-widest px-8">
+                    {isPurging ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />} Execute Purge
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
