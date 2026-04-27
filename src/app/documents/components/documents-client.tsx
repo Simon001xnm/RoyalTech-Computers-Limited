@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -168,7 +167,7 @@ export function DocumentsClient() {
     setIsPdfPreviewOpen(true);
 
     // No artificial delays
-    await new Promise(r => setTimeout(r, 50)); // Small tick for layout paint
+    await new Promise(r => setTimeout(r, 50)); 
 
     const element = document.getElementById('pdf-preview-target');
     if (!element) {

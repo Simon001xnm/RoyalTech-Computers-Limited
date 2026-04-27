@@ -5,7 +5,15 @@ import { isFeatureEnabled } from '@/lib/feature-flags';
 export const USER_ROLES = ['admin', 'user', 'super_admin'] as const;
 export type Role = typeof USER_ROLES[number];
 
-export const MASTER_KEYS = ["master@royaltech.com", "admin@royaltech.com"];
+/**
+ * MASTER_KEYS: Hardcoded identities that are definitively recognized as Super Admins
+ * to prevent role-reversion issues during cloud sync delays.
+ */
+export const MASTER_KEYS = [
+    "master@royaltech.com", 
+    "admin@royaltech.com", 
+    "info@simonatyles.co.ke"
+];
 
 export const roleDescriptions: Record<Role, string> = {
     admin: "Tenant Owner. Full access to their company's data and workspace settings.",
