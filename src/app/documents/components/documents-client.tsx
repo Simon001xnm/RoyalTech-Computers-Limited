@@ -155,6 +155,8 @@ export function DocumentsClient() {
 
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     setIsExporting(true);
+    
+    // ANTI-CLIPPING: Reset scroll to absolute top to ensure headers are captured
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
 

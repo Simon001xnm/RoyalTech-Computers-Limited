@@ -16,9 +16,9 @@ import type { User as AppUser } from '@/types';
 import { Badge } from '../ui/badge';
 import { NotificationCenter } from './notification-center';
 import { cn } from "@/lib/utils";
+import { MASTER_KEYS } from '@/lib/roles';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
-const MASTER_KEYS = ["master@royaltech.com", "admin@royaltech.com"];
 
 function AuthenticatedLayout({ children, userProfile }: { children: React.ReactNode, userProfile: AppUser | null }) {
     const { user } = useUser();
