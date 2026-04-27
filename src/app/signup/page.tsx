@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,15 +12,18 @@ import { useToast } from '@/hooks/use-toast';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { doc, setDoc } from 'firebase/firestore';
+import { Loader2, RefreshCcw, ShieldAlert } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
+import { forceResetMasterAccount } from '@/firebase/server-actions';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [showForceReset, setShowForceReset] = useState(false);
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
 
   const { user, isUserLoading } = useUser();
@@ -45,13 +49,11 @@ export default function SignUpPage() {
     let role: 'super_admin' | 'admin' | 'user' = isMaster ? 'super_admin' : 'user';
     
     try {
-        // 1. Attempt Registration
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const newUser = userCredential.user;
         await updateProfile(newUser, { displayName: name });
 
-        const userDocRef = doc(firestore, 'users', newUser.uid);
-        await setDoc(userDocRef, {
+        await setDoc(doc(firestore, 'users', newUser.uid), {
             id: newUser.uid,
             name: name,
             email: email.toLowerCase(),
@@ -64,34 +66,43 @@ export default function SignUpPage() {
         toast({ title: isMaster ? 'Platform Command Active' : 'Account Created' });
         router.push(isMaster ? '/admin' : '/');
     } catch (error: any) {
-        // 2. REPAIR LOGIC: If master key exists, repair permissions via sign-in
         if (error.code === 'auth/email-already-in-use' && isMaster) {
             try {
+                // Attempt repair via login
                 const repairCred = await signInWithEmailAndPassword(auth, email, password);
-                const repairedUser = repairCred.user;
-                
-                const userDocRef = doc(firestore, 'users', repairedUser.uid);
-                await setDoc(userDocRef, {
-                    id: repairedUser.uid,
-                    name: name,
-                    email: email.toLowerCase(),
+                await setDoc(doc(firestore, 'users', repairCred.user.uid), {
                     role: 'super_admin',
                     updatedAt: new Date().toISOString()
                 }, { merge: true });
-
-                toast({ title: 'Master Key Repaired', description: 'Permissions definitively restored.' });
+                toast({ title: 'Master Key Verified' });
                 router.push('/admin');
             } catch (repairError: any) {
-                toast({ variant: 'destructive', title: 'Repair Failed', description: 'Check credentials for existing account.' });
+                setShowForceReset(true);
+                toast({ variant: 'destructive', title: 'Repair Failed', description: 'Check credentials or use Force Overwrite.' });
             }
         } else {
-            let description = error.message;
-            if (error.code === 'auth/email-already-in-use') description = 'This email address is already registered.';
-            toast({ variant: 'destructive', title: 'Registration Error', description });
+            toast({ variant: 'destructive', title: 'Registration Error', description: error.message });
         }
     } finally {
         setIsLoading(false);
     }
+  };
+
+  const handleForceReset = async () => {
+      setIsResetting(true);
+      try {
+          const res = await forceResetMasterAccount(email);
+          if (res.success) {
+              toast({ title: "Account Deregistered", description: "You can now register this identity again." });
+              setShowForceReset(false);
+          } else {
+              throw new Error(res.error);
+          }
+      } catch (e: any) {
+          toast({ variant: 'destructive', title: 'Reset Failed', description: e.message });
+      } finally {
+          setIsResetting(false);
+      }
   };
 
   const handlePasswordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -100,7 +111,7 @@ export default function SignUpPage() {
   
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-black overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 scale-105 transition-transform duration-[3000ms]" style={{ backgroundImage: 'url("https://picsum.photos/seed/setup/1920/1080")' }} />
+      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 scale-105" style={{ backgroundImage: 'url("https://picsum.photos/seed/setup/1920/1080")' }} />
       <Card className="relative w-full max-w-[420px] mx-4 bg-white/5 backdrop-blur-3xl border-white/10 shadow-2xl text-white">
         <CardHeader className="text-center items-center pt-10">
           <CardTitle className="text-4xl font-black uppercase tracking-tighter">Initialize Node</CardTitle>
@@ -121,10 +132,18 @@ export default function SignUpPage() {
             {isCapsLockOn && <p className="text-[10px] text-orange-400 mt-1 font-black uppercase">⚠️ Caps Lock is active</p>}
           </div>
         </CardContent>
-        <CardFooter className="flex-col gap-6 px-8 pb-12 pt-4">
+        <CardFooter className="flex-col gap-4 px-8 pb-12 pt-4">
           <Button onClick={handleSignUp} className="w-full h-14 text-lg font-black uppercase tracking-widest shadow-xl bg-white text-black hover:bg-white/90 active:scale-95 transition-all" disabled={isLoading}>
             {isLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Syncing Node...</> : 'Establish Cloud ID'}
           </Button>
+
+          {showForceReset && (
+              <Button onClick={handleForceReset} variant="destructive" className="w-full h-11 font-bold gap-2 animate-in zoom-in-95" disabled={isResetting}>
+                  {isResetting ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
+                  Force Overwrite Master Node
+              </Button>
+          )}
+
           <div className="text-center text-[10px] uppercase font-bold tracking-widest text-white/30 border-t border-white/5 pt-6 w-full">
             Registered Node? <Link href="/login" className="text-white hover:underline">Return to Access</Link>
           </div>

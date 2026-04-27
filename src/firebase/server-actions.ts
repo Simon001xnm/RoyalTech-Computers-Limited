@@ -1,34 +1,28 @@
+
 'use server';
 /**
  * @fileOverview Server-side actions for Firebase management.
- * Includes a resilient initialization to handle environments without service accounts.
+ * Includes a resilient initialization and a Force Reset mechanism for Master Keys.
  */
 
 import { config } from 'dotenv';
-config(); // Load environment variables at the very top
+config(); 
 
 import { z } from 'zod';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
-import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
-import { USER_ROLES } from '@/lib/roles';
+import { initializeApp, getApps, App } from 'firebase-admin/app';
+import { USER_ROLES, MASTER_KEYS } from '@/lib/roles';
 import { firebaseConfig } from '@/firebase/config';
 
-// Flag to track if we are in "Prototype Fallback" mode
 let isPrototypeMode = false;
 
 function getAdminApp(): App | null {
-    if (getApps().length > 0) {
-        return getApps()[0];
-    }
-
+    if (getApps().length > 0) return getApps()[0];
     try {
-        // Attempt to initialize with standard credentials
-        return initializeApp({
-            projectId: firebaseConfig.projectId,
-        });
+        return initializeApp({ projectId: firebaseConfig.projectId });
     } catch (e: any) {
-        console.warn("⚠️ Firebase Admin initialization failed. Falling back to Prototype Mode (Firestore-only updates).");
+        console.warn("⚠️ Firebase Admin initialization failed. Falling back to Prototype Mode.");
         isPrototypeMode = true;
         return null;
     }
@@ -48,15 +42,12 @@ export type CreateUserInput = z.infer<typeof CreateUserInputSchema>;
 export async function createUser(input: CreateUserInput): Promise<{ success: boolean; uid?: string; error?: string }> {
     try {
       const adminApp = getAdminApp();
-      
-      // Permission Checks
       if (!input.requestingUserRole || (input.requestingUserRole !== 'admin' && input.requestingUserRole !== 'super_admin')) {
-          return { success: false, error: 'Permission Denied: Only Admins can manage the team.' };
+          return { success: false, error: 'Permission Denied.' };
       }
 
       let uid = crypto.randomUUID();
 
-      // If Admin App is available and NOT in prototype mode, create the actual Auth user
       if (adminApp && !isPrototypeMode) {
           try {
             const auth = getAuth(adminApp);
@@ -68,20 +59,14 @@ export async function createUser(input: CreateUserInput): Promise<{ success: boo
             uid = userRecord.uid;
             await auth.setCustomUserClaims(uid, { role: input.role, tenantId: input.tenantId });
           } catch (authError: any) {
-             console.error("Auth creation failed:", authError.message);
-             // If auth fails specifically due to credentials, we continue with prototype mode
              if (authError.message.includes('credential')) isPrototypeMode = true;
              else throw authError;
           }
       }
 
-      // Always create the profile document in Firestore (using Admin if possible, or dummy sync)
-      // Note: In a real Next.js server action, if Admin fails to init, we might still have Firestore 
-      // via the client SDK if used carefully, but here we'll use Admin as the primary path.
       if (adminApp) {
           const firestore = getFirestore(adminApp);
-          const userDocRef = firestore.collection('users').doc(uid);
-          await userDocRef.set({
+          await firestore.collection('users').doc(uid).set({
             id: uid,
             name: input.name,
             email: input.email,
@@ -89,56 +74,58 @@ export async function createUser(input: CreateUserInput): Promise<{ success: boo
             role: input.role,
             tenantId: input.tenantId || null,
             createdAt: new Date().toISOString(),
-            status: isPrototypeMode ? 'pending_auth' : 'active'
           });
       }
-
-      return {
-        success: true,
-        uid: uid,
-      };
+      return { success: true, uid };
     } catch (error: any) {
-      console.error("Error in createUser server action: ", error);
-      return { success: false, error: error.message || "Server error during account creation." };
+      return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Force Reset Master Account: Deregisters a Master Key account so it can be re-registered.
+ */
+export async function forceResetMasterAccount(email: string): Promise<{ success: boolean; error?: string }> {
+    if (!MASTER_KEYS.includes(email.toLowerCase())) {
+        return { success: false, error: "Only official Master Keys can be force-reset via this endpoint." };
+    }
+
+    try {
+        const adminApp = getAdminApp();
+        if (!adminApp) throw new Error("Admin infrastructure unavailable.");
+        
+        const auth = getAuth(adminApp);
+        const firestore = getFirestore(adminApp);
+        
+        try {
+            const user = await auth.getUserByEmail(email.toLowerCase());
+            await auth.deleteUser(user.uid);
+            await firestore.collection('users').doc(user.uid).delete();
+        } catch (e) {
+            // User might not exist, which is fine
+        }
+        
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
     }
 }
 
 export async function updateUser(input: any): Promise<{ success: boolean; error?: string }> {
     try {
         const adminApp = getAdminApp();
-        if (!adminApp) return { success: true }; // Silent success for prototype flow
-        
+        if (!adminApp) return { success: true };
         const auth = getAuth(adminApp);
         const firestore = getFirestore(adminApp);
-        
-        const updates: any = {};
-        const firestoreUpdates: any = { updatedAt: new Date().toISOString() };
-        
-        if (input.name) {
-            updates.displayName = input.name;
-            firestoreUpdates.name = input.name;
-        }
-        if (input.phone !== undefined) firestoreUpdates.phone = input.phone;
+        const updates: any = { updatedAt: new Date().toISOString() };
+        if (input.name) updates.name = input.name;
         if (input.role) {
             if (!isPrototypeMode) await auth.setCustomUserClaims(input.uid, { role: input.role });
-            firestoreUpdates.role = input.role;
+            updates.role = input.role;
         }
-
-        if (!isPrototypeMode && Object.keys(updates).length > 0) {
-            await auth.updateUser(input.uid, updates);
-        }
-        
-        const userDocRef = firestore.collection('users').doc(input.uid);
-        await userDocRef.update(firestoreUpdates);
-        
+        await firestore.collection('users').doc(input.uid).update(updates);
         return { success: true };
     } catch (error: any) {
-        console.error("Error in updateUser action: ", error);
-        return { success: false, error: error.message || 'Server error during update.' };
+        return { success: false, error: error.message };
     }
-}
-
-export async function signupAndCreateUser(input: any): Promise<{ success: boolean; error?: string }> {
-    // This is handled by client-side auth in v1.0, but preserved for future server-side flows
-    return { success: false, error: "Please use the standard sign-up form." };
 }

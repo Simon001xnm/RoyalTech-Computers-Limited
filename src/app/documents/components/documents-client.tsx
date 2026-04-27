@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Trash2, PlusCircle, Loader2 } from "lucide-react";
@@ -156,7 +157,7 @@ export function DocumentsClient() {
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     setIsExporting(true);
     
-    // ANTI-CLIPPING: Reset scroll to absolute top to ensure headers are captured
+    // ANTI-CLIPPING: Force scroll to absolute top to ensure headers are captured
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
 
@@ -167,7 +168,7 @@ export function DocumentsClient() {
     setIsPdfPreviewOpen(true);
 
     // No artificial delays
-    await new Promise(r => setTimeout(r, 0));
+    await new Promise(r => setTimeout(r, 50)); // Small tick for layout paint
 
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
@@ -202,7 +203,7 @@ export function DocumentsClient() {
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
-        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
+        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
         pdf.save(`${docToDownload.title.replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
         toast({ variant: 'destructive', title: 'Export Failed' });
@@ -216,10 +217,14 @@ export function DocumentsClient() {
   const columnActions: DocumentColumnActions = { 
     onView: (d) => { setSelectedDocument(d); setIsPdfPreviewOpen(true); }, 
     onDownload: handleDownloadPdf,
-    onPrint: (d) => { setSelectedDocument(d); setIsPdfPreviewOpen(true); setTimeout(() => window.print(), 50); },
+    onPrint: (d) => { 
+        setSelectedDocument(d); 
+        setIsPdfPreviewOpen(true); 
+        setTimeout(() => window.print(), 100); 
+    },
     onWhatsApp: (d) => {
         const phone = d.data?.customer?.phone || "";
-        const msg = `Hello! Your ${d.type} (${d.title}) is ready. Thank you!`;
+        const msg = `Hello! Your ${d.type} (${d.title}) from RoyalTech is ready. Thank you!`;
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
     }
   };
@@ -272,7 +277,10 @@ export function DocumentsClient() {
               </div>
           </div>
           {type === 'Receipt' && (
-            <div className="max-w-xs"><Label>Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+            <div className="max-w-xs space-y-2">
+                <Label>Amount Paid (KES)</Label>
+                <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11" placeholder="0.00" />
+            </div>
           )}
           {showsItemEntry && (
             <div className="space-y-4">
