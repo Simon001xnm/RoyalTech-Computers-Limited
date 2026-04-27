@@ -41,7 +41,7 @@ export default function SignUpPage() {
 
     setIsLoading(true);
 
-    // MASTER KEY LOGIC: Hardened Super Admin Identities
+    // MASTER KEY LOGIC: Definitive Technician Identities
     const MASTER_KEYS = ["master@royaltech.com", "admin@royaltech.com"];
     let role: 'super_admin' | 'admin' | 'user' = 'user';
     
@@ -51,9 +51,9 @@ export default function SignUpPage() {
         try {
             const adminQuery = query(collection(firestore, 'users'), where('role', '==', 'super_admin'), limit(1));
             const adminSnapshot = await getDocs(adminQuery);
-            role = adminSnapshot.empty ? 'super_admin' : 'admin';
+            role = adminSnapshot.empty ? 'super_admin' : 'user';
         } catch (e) {
-            role = 'admin';
+            role = 'user';
         }
     }
     
@@ -63,8 +63,8 @@ export default function SignUpPage() {
             await updateProfile(user, { displayName: name });
 
             const userDocRef = doc(firestore, 'users', user.uid);
-            // non-blocking write for prototype
-            setDoc(userDocRef, {
+            // Persistent write to Firestore ensuring role logic
+            await setDoc(userDocRef, {
                 id: user.uid,
                 name: name,
                 email: email.toLowerCase(),

@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarSeparator, SidebarTrigger } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { APP_NAME } from '@/lib/constants';
@@ -149,7 +148,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   if (isUserLoading || (user && isProfileLoading)) {
     return (
       <div className="flex flex-col h-screen w-full items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Cloud Node...</p>
+        </div>
       </div>
     );
   }

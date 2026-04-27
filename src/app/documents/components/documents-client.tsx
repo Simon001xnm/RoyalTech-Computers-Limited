@@ -162,6 +162,7 @@ export function DocumentsClient() {
 
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     setIsExporting(true);
+    // Instant Reset Scroll to top to prevent clipping
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
 
@@ -171,7 +172,7 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // Minor sync delay for React paint
+    // No artificial delays
     await new Promise(r => setTimeout(r, 0));
 
     const element = document.getElementById('pdf-preview-target');
@@ -187,8 +188,8 @@ export function DocumentsClient() {
             useCORS: true,
             logging: false,
             backgroundColor: "#ffffff",
-            width: 794,
-            height: 1123,
+            width: 794, // Fixed width to prevent responsive shifts
+            height: 1123, // Fixed height for A4
             y: 0,
             scrollY: 0
         });
@@ -199,10 +200,12 @@ export function DocumentsClient() {
             format: 'a4',
         });
 
+        // Structured metadata for Word compatibility
         pdf.setProperties({
             title: docToDownload.title,
             subject: docToDownload.type,
             author: 'RoyalTech ERP',
+            creator: 'High Fidelity Document Engine'
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
@@ -227,6 +230,7 @@ export function DocumentsClient() {
   const handlePrintPdf = (docToPrint: AppDocument) => {
       setSelectedDocument(docToPrint);
       setIsPdfPreviewOpen(true);
+      // Small timeout only to allow React to mount the preview before printing
       setTimeout(() => { window.print(); }, 50);
   };
 
