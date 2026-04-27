@@ -127,9 +127,6 @@ export default function SignUpPage() {
           <div className="text-center text-[10px] uppercase font-bold tracking-widest text-white/30 border-t border-white/5 pt-6 w-full">
             Registered Node? <Link href="/login" className="text-white hover:underline">Return to Access</Link>
           </div>
-          <div className="text-center text-[8px] uppercase font-black text-white/20 tracking-tighter pt-2">
-            Technician Key: master@royaltech.com | Pass: RoyalTech2024!
-          </div>
         </CardFooter>
       </Card>
     </div>

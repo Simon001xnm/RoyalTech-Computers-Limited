@@ -135,9 +135,6 @@ export default function LoginPage() {
                     <ShieldCheck className="h-3 w-3" /> 
                     Technician Entry Node
                 </p>
-                <p className="text-[9px] text-white/20 text-center mt-1">
-                    master@royaltech.com &bull; admin@royaltech.com
-                </p>
             </div>
           </div>
         </CardFooter>

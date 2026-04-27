@@ -7,9 +7,9 @@ import {
   UserCredential,
 } from 'firebase/auth';
 
-/** Initiate anonymous sign-in (non-blocking). */
-export function initiateAnonymousSignIn(authInstance: Auth): void {
-  signInAnonymously(authInstance);
+/** Initiate anonymous sign-in. Returns promise. */
+export function initiateAnonymousSignIn(authInstance: Auth): Promise<UserCredential> {
+  return signInAnonymously(authInstance);
 }
 
 /** Initiate email/password sign-up. Returns promise for UI error handling. */

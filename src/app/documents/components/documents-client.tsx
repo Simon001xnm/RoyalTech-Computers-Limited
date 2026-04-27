@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, FileText, Loader2 } from "lucide-react";
+import { Trash2, PlusCircle, Loader2 } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
 import {
   Table,
@@ -162,7 +162,6 @@ export function DocumentsClient() {
 
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     setIsExporting(true);
-    // Instant trigger - force top of document for clean capture
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
 
@@ -172,8 +171,8 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // Minor delay to ensure React paint
-    await new Promise(r => setTimeout(r, 100));
+    // Minor sync delay for React paint
+    await new Promise(r => setTimeout(r, 0));
 
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
@@ -228,7 +227,7 @@ export function DocumentsClient() {
   const handlePrintPdf = (docToPrint: AppDocument) => {
       setSelectedDocument(docToPrint);
       setIsPdfPreviewOpen(true);
-      setTimeout(() => { window.print(); }, 150);
+      setTimeout(() => { window.print(); }, 50);
   };
 
   const columnActions: DocumentColumnActions = { 
@@ -261,7 +260,7 @@ export function DocumentsClient() {
       case 'LPO': return <LpoPdf document={selectedDocument} />;
       default: return null;
     }
-  }
+  };
 
   const renderForm = (type: DocumentType) => {
     const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'DeliveryNote', 'LPO'].includes(type);
