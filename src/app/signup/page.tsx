@@ -10,9 +10,10 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { collection, doc, getDocs, limit, query, setDoc, where } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
+import { MASTER_KEYS } from '@/lib/roles';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
@@ -40,45 +41,57 @@ export default function SignUpPage() {
     }
 
     setIsLoading(true);
-
-    const MASTER_KEYS = ["master@royaltech.com", "admin@royaltech.com"];
-    let role: 'super_admin' | 'admin' | 'user' = 'user';
+    const isMaster = MASTER_KEYS.includes(email.toLowerCase());
+    let role: 'super_admin' | 'admin' | 'user' = isMaster ? 'super_admin' : 'user';
     
-    if (MASTER_KEYS.includes(email.toLowerCase())) {
-        role = 'super_admin';
-    }
-    
-    createUserWithEmailAndPassword(auth, email, password)
-        .then(async (userCredential) => {
-            const user = userCredential.user;
-            await updateProfile(user, { displayName: name });
+    try {
+        // 1. Attempt Registration
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const newUser = userCredential.user;
+        await updateProfile(newUser, { displayName: name });
 
-            const userDocRef = doc(firestore, 'users', user.uid);
-            await setDoc(userDocRef, {
-                id: user.uid,
-                name: name,
-                email: email.toLowerCase(),
-                role: role,
-                tenantId: null, 
-                tenantIds: [],
-                createdAt: new Date().toISOString()
-            });
+        const userDocRef = doc(firestore, 'users', newUser.uid);
+        await setDoc(userDocRef, {
+            id: newUser.uid,
+            name: name,
+            email: email.toLowerCase(),
+            role: role,
+            tenantId: null, 
+            tenantIds: [],
+            createdAt: new Date().toISOString()
+        });
 
-            toast({
-                title: role === 'super_admin' ? 'Platform Command Active' : 'Account Created',
-                description: 'Identity established in the cloud.',
-            });
-            
-            router.push(role === 'super_admin' ? '/admin' : '/');
-        })
-        .catch((error) => {
+        toast({ title: isMaster ? 'Platform Command Active' : 'Account Created' });
+        router.push(isMaster ? '/admin' : '/');
+    } catch (error: any) {
+        // 2. REPAIR LOGIC: If master key exists, repair permissions via sign-in
+        if (error.code === 'auth/email-already-in-use' && isMaster) {
+            try {
+                const repairCred = await signInWithEmailAndPassword(auth, email, password);
+                const repairedUser = repairCred.user;
+                
+                const userDocRef = doc(firestore, 'users', repairedUser.uid);
+                await setDoc(userDocRef, {
+                    id: repairedUser.uid,
+                    name: name,
+                    email: email.toLowerCase(),
+                    role: 'super_admin',
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+
+                toast({ title: 'Master Key Repaired', description: 'Permissions definitively restored.' });
+                router.push('/admin');
+            } catch (repairError: any) {
+                toast({ variant: 'destructive', title: 'Repair Failed', description: 'Check credentials for existing account.' });
+            }
+        } else {
             let description = error.message;
             if (error.code === 'auth/email-already-in-use') description = 'This email address is already registered.';
             toast({ variant: 'destructive', title: 'Registration Error', description });
-        })
-        .finally(() => {
-            setIsLoading(false);
-        });
+        }
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   const handlePasswordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

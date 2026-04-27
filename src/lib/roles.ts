@@ -14,7 +14,7 @@ export const roleDescriptions: Record<Role, string> = {
 };
 
 const getRolePermissions = (role: Role | string, email?: string | null): string[] => {
-    // Hard fallback for master keys to ensure persistence
+    // Definitive fallback for master keys to ensure Technicians are never locked out
     const isMaster = email && MASTER_KEYS.includes(email.toLowerCase());
     
     if (role === 'super_admin' || isMaster) {
@@ -26,6 +26,18 @@ const getRolePermissions = (role: Role | string, email?: string | null): string[
             '/profile',
             '/reports',
             '/audit',
+            '/',
+            '/pos',
+            '/stock',
+            '/accessories',
+            '/customers',
+            '/documents',
+            '/tracking',
+            '/salesiq',
+            '/projects',
+            '/campaigns',
+            '/resellers',
+            '/recruit'
         ];
     }
     

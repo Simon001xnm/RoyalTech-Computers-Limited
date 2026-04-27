@@ -19,5 +19,6 @@ export function initiateEmailSignUp(authInstance: Auth, email: string, password:
 
 /** Initiate email/password sign-in. Returns promise for UI error handling. */
 export function initiateEmailSignIn(authInstance: Auth, email: string, password: string): Promise<UserCredential> {
+  // CRITICAL: Must return the promise so the UI can catch errors
   return signInWithEmailAndPassword(authInstance, email, password);
 }

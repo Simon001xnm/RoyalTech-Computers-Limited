@@ -166,7 +166,7 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // No artificial delays - execute immediately
+    // No artificial delays
     await new Promise(r => setTimeout(r, 0));
 
     const element = document.getElementById('pdf-preview-target');
@@ -253,7 +253,10 @@ export function DocumentsClient() {
     const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'DeliveryNote', 'LPO'].includes(type);
     return (
       <Card className="shadow-lg border-primary/10">
-        <CardHeader className="bg-primary/5 border-b"><CardTitle className="text-lg font-black uppercase">Generate Branded {type}</CardTitle></CardHeader>
+        <CardHeader className="bg-primary/5 border-b">
+            <CardTitle className="text-lg font-black uppercase">Generate Branded {type}</CardTitle>
+            <CardDescription>Configure document metadata for your workspace.</CardDescription>
+        </CardHeader>
         <CardContent className="space-y-6 pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
