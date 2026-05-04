@@ -115,7 +115,7 @@ export default function SignUpPage() {
     try {
         const res = await nuclearPurgePlatform();
         if (res.success) {
-            toast({ title: "Database Wiped", description: "All business nodes and accounts have been deleted." });
+            toast({ title: "Database Wiped", description: "All normal accounts have been deregistered and forced to logout." });
             setIsNuclearOpen(false);
             window.location.reload();
         } else {
@@ -183,11 +183,11 @@ export default function SignUpPage() {
         <DialogContent className="sm:max-w-md bg-white text-black">
             <DialogHeader>
                 <DialogTitle className="text-2xl font-black uppercase text-destructive">Nuclear Reset</DialogTitle>
-                <DialogDescription className="font-bold text-xs uppercase text-muted-foreground">This will permanently erase ALL users, workspaces, and inventory.</DialogDescription>
+                <DialogDescription className="font-bold text-xs uppercase text-muted-foreground">Force Deregister & Logout All Accounts</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
                 <p className="text-sm leading-relaxed">
-                    This action cannot be undone. All cloud documents and user accounts will be purged from Firestore. Use this only if you want to start the platform from absolute scratch.
+                    This action will permanently delete all records from Firestore and remove all user accounts from the authentication system. **Anyone currently logged in will be automatically logged out.**
                 </p>
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase">Type "PURGE ALL" to confirm</Label>

@@ -19,6 +19,7 @@ let isPrototypeMode = false;
 function getAdminApp(): App | null {
     if (getApps().length > 0) return getApps()[0];
     try {
+        // Initialize with standard project config for Studio environment
         return initializeApp({ projectId: firebaseConfig.projectId });
     } catch (e: any) {
         console.warn("⚠️ Firebase Admin initialization failed. Falling back to Prototype Mode.");
@@ -82,7 +83,8 @@ export async function createUser(input: CreateUserInput): Promise<{ success: boo
 }
 
 /**
- * Nuclear Purge: Permanently erases all documents in core collections.
+ * Nuclear Purge: Permanently erases all documents in core collections and 
+ * DELETES Auth accounts to force-logout all users.
  */
 export async function nuclearPurgePlatform(): Promise<{ success: boolean; error?: string }> {
     try {
@@ -90,6 +92,8 @@ export async function nuclearPurgePlatform(): Promise<{ success: boolean; error?
         if (!adminApp) throw new Error("Admin infrastructure unavailable.");
         
         const firestore = getFirestore(adminApp);
+        const auth = getAuth(adminApp);
+        
         const collections = [
             'users', 'companies', 'assets', 'accessories', 'customers', 
             'sales_transactions', 'leases', 'tickets', 'notifications', 
@@ -97,6 +101,7 @@ export async function nuclearPurgePlatform(): Promise<{ success: boolean; error?
             'job_postings', 'applicants', 'expenses', 'documents', 'item_issuances'
         ];
 
+        // 1. Wipe Firestore Data
         for (const colName of collections) {
             const snap = await firestore.collection(colName).get();
             const batch = firestore.batch();
@@ -104,12 +109,12 @@ export async function nuclearPurgePlatform(): Promise<{ success: boolean; error?
             await batch.commit();
         }
 
-        // Wipe Auth Users if possible
-        if (!isPrototypeMode) {
-            const auth = getAuth(adminApp);
-            const listUsersResult = await auth.listUsers(1000);
-            for (const userRecord of listUsersResult.users) {
-                // Keep the current admin user if possible, or just delete all
+        // 2. Wipe Auth Users (Except Master Keys) to force global logout
+        const listUsersResult = await auth.listUsers(1000);
+        for (const userRecord of listUsersResult.users) {
+            const email = userRecord.email?.toLowerCase();
+            // Critical safety: Do not delete the master key that is performing the operation
+            if (email && !MASTER_KEYS.includes(email)) {
                 await auth.deleteUser(userRecord.uid);
             }
         }

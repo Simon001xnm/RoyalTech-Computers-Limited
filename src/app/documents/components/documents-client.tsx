@@ -156,7 +156,6 @@ export function DocumentsClient() {
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     setIsExporting(true);
     
-    // ANTI-CLIPPING: Force scroll to top to ensure branding is captured
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
 
@@ -166,7 +165,6 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // Wait minimal time for render
     await new Promise(r => setTimeout(r, 50)); 
 
     const element = document.getElementById('pdf-preview-target');
@@ -192,13 +190,6 @@ export function DocumentsClient() {
             orientation: 'p',
             unit: 'mm',
             format: 'a4',
-        });
-
-        pdf.setProperties({
-            title: docToDownload.title,
-            subject: docToDownload.type,
-            author: 'RoyalTech ERP',
-            creator: 'High Fidelity Document Engine'
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
