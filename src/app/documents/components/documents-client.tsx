@@ -156,7 +156,7 @@ export function DocumentsClient() {
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     setIsExporting(true);
     
-    // ANTI-CLIPPING: Force scroll to absolute top to ensure headers are captured
+    // ANTI-CLIPPING: Force scroll to top to ensure branding is captured
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
 
@@ -166,7 +166,7 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // ZERO LATENCY - NO DELAYS
+    // Wait minimal time for render
     await new Promise(r => setTimeout(r, 50)); 
 
     const element = document.getElementById('pdf-preview-target');

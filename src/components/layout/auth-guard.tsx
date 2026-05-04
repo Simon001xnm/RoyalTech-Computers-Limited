@@ -145,7 +145,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [user, isUserLoading, isProfileLoading, userProfile, router, pathname, isPublicPath]);
 
-  if (isUserLoading || (user && isProfileLoading)) {
+  // SPECIAL CASE: Instant access for Master Keys to prevent "long loading"
+  const isMasterInstant = user?.email && MASTER_KEYS.includes(user.email.toLowerCase());
+
+  if (isUserLoading || (user && isProfileLoading && !isMasterInstant)) {
     return (
       <div className="flex flex-col h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
