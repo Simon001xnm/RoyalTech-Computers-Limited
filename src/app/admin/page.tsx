@@ -137,7 +137,7 @@ export default function PlatformCommandCenter() {
               'users', 'companies', 'assets', 'accessories', 'customers', 
               'sales_transactions', 'leases', 'tickets', 'notifications', 
               'platform_logs', 'messages', 'campaigns', 'projects', 
-              'job_postings', 'applicants', 'item_issuances', 'expenses', 'documents'
+              'item_issuances', 'expenses', 'documents', 'resellers'
           ];
           
           for (const colName of collections) {
