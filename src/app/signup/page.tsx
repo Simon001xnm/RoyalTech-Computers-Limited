@@ -76,7 +76,11 @@ export default function SignUpPage() {
       } catch (e: any) {
           setIsLoading(false);
           if (e.code !== 'auth/popup-closed-by-user') {
-              toast({ variant: 'destructive', title: 'Google Identity Failed' });
+              toast({ 
+                variant: 'destructive', 
+                title: 'Google Identity Failed',
+                description: e.message || 'Please authorize this domain in Firebase Console.'
+              });
           }
       }
   };

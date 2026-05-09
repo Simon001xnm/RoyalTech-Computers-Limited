@@ -41,7 +41,7 @@ export default function LoginPage() {
         await initiateEmailSignIn(auth, email, password);
     } catch (e: any) {
         setIsProcessing(false);
-        toast({ variant: 'destructive', title: 'Sign In Failed', description: 'Incorrect email or password.' });
+        toast({ variant: 'destructive', title: 'Sign In Failed', description: e.message || 'Incorrect email or password.' });
     }
   };
 
@@ -52,7 +52,11 @@ export default function LoginPage() {
     } catch (e: any) {
         setIsProcessing(false);
         if (e.code !== 'auth/popup-closed-by-user') {
-            toast({ variant: 'destructive', title: 'Google Identity Failed' });
+            toast({ 
+                variant: 'destructive', 
+                title: 'Google Identity Failed', 
+                description: e.message || 'Domain not authorized or provider disabled.' 
+            });
         }
     }
   };
