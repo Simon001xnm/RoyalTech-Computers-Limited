@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
-import { createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { Loader2, AlertTriangle, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
@@ -120,7 +119,7 @@ export default function SignUpPage() {
       <Card className="w-full max-w-[440px] border-none shadow-none bg-transparent">
         <CardHeader className="text-center space-y-4 pb-8">
           <div className="mx-auto w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center p-3 mb-2">
-            <img src="/picture1.png" alt="Logo" className="w-full h-full object-contain" />
+            <img src="/favicon.ico" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-[32px] font-bold text-[#0e1217] tracking-tight leading-tight">Create your node</h1>
           <p className="text-[#5e6670] text-lg">Provision your business workspace identity.</p>
@@ -134,7 +133,7 @@ export default function SignUpPage() {
             className="w-full h-[52px] bg-white border-[#d0d5dd] text-[#344054] hover:bg-gray-50 font-semibold text-base rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
           >
             <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                <img src="/picture1.png" alt="Google" className="w-full h-full object-contain" />
+                <img src="/2a5758d6-4edb-4047-87bb-e6b94dbbbab0-cover.png" alt="Google" className="w-full h-full object-contain" />
             </div>
             <span>Continue with Google</span>
           </Button>

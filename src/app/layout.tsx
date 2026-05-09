@@ -52,7 +52,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/picture1.png" />
+        <link rel="icon" href="/favicon.ico" />
         <Script id="resilience-recovery" strategy="beforeInteractive">
           {`
             window.addEventListener('error', (event) => {
