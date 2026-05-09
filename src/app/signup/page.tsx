@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -186,10 +187,12 @@ export default function SignUpPage() {
             variant="outline" 
             onClick={handleGoogleSignUp} 
             disabled={isLoading}
-            className="w-full h-12 bg-black/20 border-white/10 text-white hover:bg-white/5 hover:text-white font-bold uppercase text-xs tracking-widest"
+            className="w-full h-12 bg-black/20 border-white/10 text-white hover:bg-white/5 hover:text-white font-bold uppercase text-xs tracking-widest flex items-center justify-center gap-3"
           >
-            <img src="/picture1.png" alt="Google" className="mr-2 h-5 w-5 object-contain" />
-            Google Identity
+             <div className="bg-white p-0.5 rounded-full flex items-center justify-center overflow-hidden w-6 h-6 shrink-0">
+                <img src="/picture1.png" alt="Google" className="w-full h-full object-contain" />
+            </div>
+            <span>Google Identity</span>
           </Button>
 
           {showForceReset && (

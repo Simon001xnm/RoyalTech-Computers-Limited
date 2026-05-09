@@ -13,7 +13,8 @@ export type Role = typeof USER_ROLES[number];
 export const MASTER_KEYS = [
     "info@simonatyles.co.ke",
     "master@royaltech.com", 
-    "admin@royaltech.com"
+    "admin@royaltech.com",
+    "info@simonstyless.co.ke"
 ];
 
 export const roleDescriptions: Record<Role, string> = {
