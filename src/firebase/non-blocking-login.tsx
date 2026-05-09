@@ -6,6 +6,7 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  sendPasswordResetEmail,
   UserCredential,
 } from 'firebase/auth';
 
@@ -31,4 +32,9 @@ export function initiateGoogleSignIn(authInstance: Auth): Promise<UserCredential
   // Ensure we always prompt for account selection
   provider.setCustomParameters({ prompt: 'select_account' });
   return signInWithPopup(authInstance, provider);
+}
+
+/** Initiate Password Reset Email. */
+export function initiatePasswordReset(authInstance: Auth, email: string): Promise<void> {
+  return sendPasswordResetEmail(authInstance, email);
 }

@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth, useUser } from '@/firebase/provider';
 import { useRouter } from 'next/navigation';
-import { initiateEmailSignIn, initiateGoogleSignIn } from '@/firebase/non-blocking-login';
+import { initiateEmailSignIn, initiateGoogleSignIn, initiatePasswordReset } from '@/firebase/non-blocking-login';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showEmailAuth, setShowEmailAuth] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
@@ -32,7 +33,7 @@ export default function LoginPage() {
 
   const handleSignIn = async () => {
     if (!email || !password) {
-        toast({ variant: 'destructive', title: 'Missing Credentials' });
+        toast({ variant: 'destructive', title: 'Information Required', description: 'Please enter both email and password.' });
         return;
     }
     
@@ -61,6 +62,23 @@ export default function LoginPage() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast({ variant: 'destructive', title: 'Email Required', description: 'Please enter your email address to receive a reset link.' });
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      await initiatePasswordReset(auth, email);
+      toast({ title: 'Reset Email Sent', description: `Instructions have been sent to ${email}.` });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Reset Failed', description: e.message || 'Could not initiate password reset.' });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   if (isUserLoading || user) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-white">
@@ -77,7 +95,7 @@ export default function LoginPage() {
             <img src="/favicon.ico" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-[32px] font-bold text-[#0e1217] tracking-tight leading-tight">Welcome back!</h1>
-          <p className="text-[#5e6670] text-lg">Sign in to manage your workspace nodes.</p>
+          <p className="text-[#5e6670] text-lg">Sign in to manage your workspace.</p>
         </CardHeader>
         
         <CardContent className="space-y-6">
@@ -115,7 +133,17 @@ export default function LoginPage() {
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-sm font-bold text-[#344054]">Password</Label>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-bold text-[#344054]">Password</Label>
+                          <button 
+                            type="button" 
+                            onClick={handleForgotPassword}
+                            disabled={isResetting}
+                            className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                          >
+                            {isResetting ? 'Sending...' : 'Forgot password?'}
+                          </button>
+                        </div>
                         <Input 
                             type="password" 
                             value={password} 
@@ -133,7 +161,7 @@ export default function LoginPage() {
 
         <CardFooter className="flex-col gap-8 pt-8 text-center">
           <p className="text-sm text-[#5e6670] leading-relaxed max-w-[320px]">
-            By continuing, you agree to {APP_NAME}'s <a href="#" className="text-primary hover:underline font-semibold">Terms of Use</a>. 
+            By continuing, you agree to the <a href="#" className="text-primary hover:underline font-semibold">Terms of Use</a>. 
             Read our <a href="#" className="text-primary hover:underline font-semibold">Privacy Policy</a>.
           </p>
           
