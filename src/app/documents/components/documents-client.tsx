@@ -156,6 +156,7 @@ export function DocumentsClient() {
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     setIsExporting(true);
     
+    // ANTI-CLIPPING: Force window to top before capture
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
 
@@ -165,7 +166,8 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    await new Promise(r => setTimeout(r, 50)); 
+    // ZERO LATENCY: Millisecond delay only for hydration reset
+    await new Promise(r => setTimeout(r, 10)); 
 
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
@@ -210,7 +212,8 @@ export function DocumentsClient() {
     onPrint: (d) => { 
         setSelectedDocument(d); 
         setIsPdfPreviewOpen(true); 
-        setTimeout(() => window.print(), 100); 
+        // INSTANT TRIGGER
+        setTimeout(() => window.print(), 10); 
     },
     onWhatsApp: (d) => {
         const phone = d.data?.customer?.phone || "";

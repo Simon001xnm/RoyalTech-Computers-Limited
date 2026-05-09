@@ -9,6 +9,7 @@ import { Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { User as AppUser } from '@/types';
+import { MASTER_KEYS } from '@/lib/roles';
 
 const DEFAULT_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   free: { id: 'plan_free', name: 'Standard Workspace', tier: 'free', maxAssets: 50, maxSalesPerMonth: 100, enableBranding: false, enableTracking: false, priceMonthly: 0, currency: 'KES' },
@@ -94,11 +95,12 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
         const provision = async () => {
             const ref = doc(firestore, 'users', user.uid);
             try {
+                const isMaster = user.email && MASTER_KEYS.includes(user.email.toLowerCase());
                 await setDoc(ref, {
                     id: user.uid,
                     name: user.displayName || 'System User',
                     email: user.email || '',
-                    role: 'user',
+                    role: isMaster ? 'super_admin' : 'user',
                     tenantIds: [],
                     createdAt: new Date().toISOString()
                 }, { merge: true });
