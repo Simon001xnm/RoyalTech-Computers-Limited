@@ -1,13 +1,11 @@
-
 import { ProjectsClient } from './components/projects-client';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Projects',
-  description: 'Project management for RoyalTech.',
+  description: 'Professional project management and collaboration.',
 };
 
 export default function ProjectsPage() {
   return <ProjectsClient />;
 }
-

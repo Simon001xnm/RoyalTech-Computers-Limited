@@ -1,11 +1,9 @@
-
 import type { Metadata } from 'next';
 import { StockClient } from '../stock/components/stock-client';
 
-
 export const metadata: Metadata = {
-  title: 'Laptop Inventory',
-  description: 'Laptop inventory management for RoyalTech.',
+  title: 'Hardware Inventory',
+  description: 'Comprehensive hardware inventory management.',
 };
 
 export default function InventoryPage() {

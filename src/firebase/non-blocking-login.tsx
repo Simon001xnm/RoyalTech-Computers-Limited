@@ -34,7 +34,16 @@ export function initiateGoogleSignIn(authInstance: Auth): Promise<UserCredential
   return signInWithPopup(authInstance, provider);
 }
 
-/** Initiate Password Reset Email. */
+/** 
+ * Initiate Password Reset Email with Custom Action URL. 
+ * Redirects user to the custom domain after reset.
+ */
 export function initiatePasswordReset(authInstance: Auth, email: string): Promise<void> {
-  return sendPasswordResetEmail(authInstance, email);
+  const actionCodeSettings = {
+    // URL to redirect back to after password reset
+    url: "https://businesshub.co.ke/login",
+    handleCodeInApp: false,
+  };
+  
+  return sendPasswordResetEmail(authInstance, email, actionCodeSettings);
 }

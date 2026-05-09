@@ -59,8 +59,8 @@ export async function initiateStkPush(phoneNumber: string, amount: number) {
         PartyB: MPESA_CONFIG.BUSINESS_SHORTCODE,
         PhoneNumber: formattedPhone,
         CallBackURL: MPESA_CONFIG.CALLBACK_URL,
-        AccountReference: 'RoyalTechPOS',
-        TransactionDesc: 'Purchase',
+        AccountReference: 'BusinessHubPOS',
+        TransactionDesc: 'Workspace Purchase',
       }),
     });
 
