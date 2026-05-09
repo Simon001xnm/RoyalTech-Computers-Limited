@@ -66,10 +66,10 @@ export default function SignUpPage() {
             createdAt: new Date().toISOString()
         });
 
-        toast({ title: 'Account Initialized' });
+        toast({ title: 'Account Created' });
         router.push(isMaster ? '/admin' : '/');
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Registration Failed', description: error.message });
+        toast({ variant: 'destructive', title: 'Signup Failed', description: error.message });
     } finally {
         setIsLoading(false);
     }
@@ -121,8 +121,8 @@ export default function SignUpPage() {
           <div className="mx-auto w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center p-3 mb-2">
             <img src="/favicon.ico" alt="Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-[32px] font-bold text-[#0e1217] tracking-tight leading-tight">Create your node</h1>
-          <p className="text-[#5e6670] text-lg">Provision your business workspace identity.</p>
+          <h1 className="text-[32px] font-bold text-[#0e1217] tracking-tight leading-tight">Create your account</h1>
+          <p className="text-[#5e6670] text-lg">Join the platform to manage your workspace.</p>
         </CardHeader>
         
         <CardContent className="space-y-6">

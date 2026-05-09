@@ -12,7 +12,6 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -74,7 +73,7 @@ export default function LoginPage() {
             <img src="/favicon.ico" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-[32px] font-bold text-[#0e1217] tracking-tight leading-tight">Welcome back!</h1>
-          <p className="text-[#5e6670] text-lg">Process transactions and manage your node.</p>
+          <p className="text-[#5e6670] text-lg">Sign in to manage your workspace nodes.</p>
         </CardHeader>
         
         <CardContent className="space-y-6">
@@ -136,7 +135,7 @@ export default function LoginPage() {
           
           <div className="pt-4 border-t border-gray-200 w-full">
             <p className="text-[#5e6670] text-sm">
-                New to the platform? <Link href="/signup" className="text-primary hover:underline font-bold">Initialize Node</Link>
+                New to the platform? <Link href="/signup" className="text-primary hover:underline font-bold">Create Account</Link>
             </p>
           </div>
         </CardFooter>
