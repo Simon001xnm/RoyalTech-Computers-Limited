@@ -2,21 +2,25 @@
 
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { isFeatureEnabled } from '@/lib/feature-flags';
-import { ShieldAlert, Lock } from 'lucide-react';
+import { ShieldAlert, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { doc } from 'firebase/firestore';
 import type { User as AppUser } from '@/types';
+import { isMasterKey } from '@/lib/roles';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile } = useDoc<AppUser>(userProfileRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
 
   const isPanelEnabled = isFeatureEnabled('SUPER_ADMIN_PANEL');
-  const isSuperAdmin = userProfile?.role === 'super_admin';
+  
+  // DOUBLE-LOCK IDENTITY: Check email (instant) OR Firestore role (synced)
+  const isMaster = isMasterKey(user?.email);
+  const isSuperAdmin = isMaster || userProfile?.role === 'super_admin';
 
   if (!isPanelEnabled) {
     return (
@@ -33,6 +37,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  // While checking, show a minimal loader but allow master keys to bypass faster
+  if (isUserLoading || (isProfileLoading && !isMaster)) {
+    return (
+        <div className="flex h-[80vh] w-full items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-primary opacity-20" />
+        </div>
+    );
+  }
+
   if (!isSuperAdmin) {
     return (
         <div className="p-8 h-[80vh] flex flex-col items-center justify-center text-center">
@@ -42,13 +55,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
              <div className="max-w-md space-y-4">
                 <h1 className="text-3xl font-black uppercase tracking-tighter">Access Restricted</h1>
                 <p className="text-muted-foreground">
-                    You are attempting to access the **SaaS Platform Command Center**. This area is reserved for the Global Platform Technician only.
+                    You are attempting to access the **Platform Command Center**. This area is reserved for the Global Platform Technician only.
                 </p>
                 <p className="text-xs font-bold text-destructive uppercase bg-destructive/10 p-2 rounded">
                     Unauthorized access attempts are logged.
                 </p>
                 <Button asChild className="mt-4 w-full h-12 font-bold" variant="outline">
-                    <Link href="/">Back to Shop Dashboard</Link>
+                    <Link href="/">Back to Dashboard</Link>
                 </Button>
              </div>
         </div>

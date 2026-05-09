@@ -13,7 +13,8 @@ export const MASTER_KEYS = [
     "info@simonatyles.co.ke",
     "master@royaltech.com", 
     "admin@royaltech.com",
-    "info@simonstyless.co.ke"
+    "info@simonstyless.co.ke",
+    "info@simonstyles.co.ke"
 ];
 
 export const roleDescriptions: Record<Role, string> = {
@@ -22,9 +23,14 @@ export const roleDescriptions: Record<Role, string> = {
     super_admin: "Platform Technician. Global oversight for infrastructure maintenance.",
 };
 
+export const isMasterKey = (email?: string | null): boolean => {
+    if (!email) return false;
+    return MASTER_KEYS.includes(email.toLowerCase());
+};
+
 const getRolePermissions = (role: Role | string, email?: string | null): string[] => {
     // Fast-path: check email before role to ensure millisecond access for Master Keys
-    const isMaster = email && MASTER_KEYS.includes(email.toLowerCase());
+    const isMaster = isMasterKey(email);
     
     if (role === 'super_admin' || isMaster) {
         return [
