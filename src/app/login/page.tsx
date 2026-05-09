@@ -12,14 +12,14 @@ import { initiateEmailSignIn, initiateGoogleSignIn } from '@/firebase/non-blocki
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
+import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isCapsLockOn, setIsCapsLockOn] = useState(false);
+  const [showEmailAuth, setShowEmailAuth] = useState(false);
 
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
@@ -43,11 +43,7 @@ export default function LoginPage() {
         await initiateEmailSignIn(auth, email, password);
     } catch (e: any) {
         setIsProcessing(false);
-        let description = 'Please check your credentials and try again.';
-        if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
-            description = 'The email or password you entered is incorrect.';
-        }
-        toast({ variant: 'destructive', title: 'Sign In Failed', description });
+        toast({ variant: 'destructive', title: 'Sign In Failed', description: 'Incorrect email or password.' });
     }
   };
 
@@ -55,76 +51,94 @@ export default function LoginPage() {
     setIsProcessing(true);
     try {
         await initiateGoogleSignIn(auth);
-        toast({ title: 'Google Identity Verified' });
     } catch (e: any) {
         setIsProcessing(false);
         if (e.code !== 'auth/popup-closed-by-user') {
-            toast({ variant: 'destructive', title: 'Google Sign In Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Google Identity Failed' });
         }
     }
   };
 
-  const handlePasswordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (typeof e.getModifierState === 'function') setIsCapsLockOn(e.getModifierState('CapsLock'));
-  };
-  
   if (isUserLoading || user) {
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-            <div className="flex flex-col items-center gap-4">
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                <p className="animate-pulse text-xs font-bold uppercase tracking-widest opacity-50">Authenticating session...</p>
-            </div>
+        <div className="flex h-screen w-full items-center justify-center bg-white">
+            <Loader2 className="w-6 h-6 text-primary animate-spin opacity-20" />
         </div>
     );
   }
 
   return (
-    <div className="relative flex h-screen w-full items-center justify-center bg-black overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 scale-105" style={{ backgroundImage: 'url("https://picsum.photos/seed/auth/1920/1080")' }} />
-      <Card className="relative w-full max-w-[400px] mx-4 bg-white/5 backdrop-blur-2xl border-white/10 shadow-2xl text-white">
-        <CardHeader className="text-center items-center pt-8">
-          <img src="/picture1.png" alt="Logo" className="h-16 w-16 mb-4 drop-shadow-lg" />
-          <CardTitle className="text-3xl font-black uppercase tracking-tighter mb-2">{APP_NAME}</CardTitle>
-          <CardDescription className="text-white/60 font-bold uppercase text-[10px] tracking-widest">Workspace Node Authentication</CardDescription>
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#f8f9fa] p-4 font-sans">
+      <Card className="w-full max-w-[440px] border-none shadow-none bg-transparent">
+        <CardHeader className="text-center space-y-4 pb-8">
+          <div className="mx-auto w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center p-3 mb-2">
+            <img src="/picture1.png" alt="Logo" className="w-full h-full object-contain" />
+          </div>
+          <h1 className="text-[32px] font-bold text-[#0e1217] tracking-tight leading-tight">Welcome back!</h1>
+          <p className="text-[#5e6670] text-lg">Process transactions and manage your node.</p>
         </CardHeader>
-        <CardContent className="space-y-6 px-8">
-          <div className="space-y-2">
-            <Label className="text-white/80 text-[10px] uppercase tracking-widest font-black">Email Address</Label>
-            <Input type="email" placeholder="name@company.com" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={isProcessing} className="h-12 bg-black/40 border-white/5 text-white" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-white/80 text-[10px] uppercase tracking-widest font-black">Password</Label>
-            <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={handlePasswordKeyDown} disabled={isProcessing} className="h-12 bg-black/40 border-white/5 text-white" />
-             {isCapsLockOn && <p className="text-[10px] text-orange-400 mt-1 font-medium flex items-center gap-1 uppercase">⚠️ Caps Lock is active</p>}
-          </div>
-          
-          <Button onClick={handleSignIn} className="w-full h-12 text-base font-black uppercase tracking-widest shadow-xl bg-white text-black hover:bg-white/90" disabled={isProcessing}>
-            {isProcessing ? 'Syncing...' : 'Establish Connection'}
-          </Button>
-
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center"><Separator className="bg-white/10" /></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest">
-              <span className="bg-transparent px-2 text-white/40">Or continue with</span>
-            </div>
-          </div>
-
+        
+        <CardContent className="space-y-6">
           <Button 
             variant="outline" 
             onClick={handleGoogleSignIn} 
             disabled={isProcessing}
-            className="w-full h-12 bg-black/20 border-white/10 text-white hover:bg-white/5 hover:text-white font-bold uppercase text-xs tracking-widest flex items-center justify-center gap-3"
+            className="w-full h-[52px] bg-white border-[#d0d5dd] text-[#344054] hover:bg-gray-50 font-semibold text-base rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
           >
-            <div className="bg-white p-0.5 rounded-full flex items-center justify-center overflow-hidden w-6 h-6 shrink-0">
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
                 <img src="/picture1.png" alt="Google" className="w-full h-full object-contain" />
             </div>
-            <span>Google Identity</span>
+            <span>Continue with Google</span>
           </Button>
+
+          <div className="pt-2">
+            <button 
+                onClick={() => setShowEmailAuth(!showEmailAuth)}
+                className="w-full flex items-center justify-center gap-2 text-[#5e6670] hover:text-[#0e1217] font-semibold text-base transition-colors py-2"
+            >
+                Continue another way
+                {showEmailAuth ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+
+            {showEmailAuth && (
+                <div className="space-y-4 mt-6 animate-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-[#344054]">Email Address</Label>
+                        <Input 
+                            type="email" 
+                            placeholder="name@company.com" 
+                            value={email} 
+                            onChange={(e) => setEmail(e.target.value)} 
+                            className="h-12 border-[#d0d5dd] rounded-xl focus:ring-primary" 
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-[#344054]">Password</Label>
+                        <Input 
+                            type="password" 
+                            value={password} 
+                            onChange={(e) => setPassword(e.target.value)} 
+                            className="h-12 border-[#d0d5dd] rounded-xl focus:ring-primary" 
+                        />
+                    </div>
+                    <Button onClick={handleSignIn} className="w-full h-12 text-base font-bold rounded-xl mt-2" disabled={isProcessing}>
+                        {isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Log in'}
+                    </Button>
+                </div>
+            )}
+          </div>
         </CardContent>
-        <CardFooter className="flex-col gap-6 px-8 pb-10">
-          <div className="text-center text-sm text-white/40">
-                New workspace? <Link href="/signup" className="text-white hover:underline font-bold uppercase text-xs">Initialize Node</Link>
+
+        <CardFooter className="flex-col gap-8 pt-8 text-center">
+          <p className="text-sm text-[#5e6670] leading-relaxed max-w-[320px]">
+            By continuing, you agree to {APP_NAME}'s <a href="#" className="text-primary hover:underline font-semibold">Terms of Use</a>. 
+            Read our <a href="#" className="text-primary hover:underline font-semibold">Privacy Policy</a>.
+          </p>
+          
+          <div className="pt-4 border-t border-gray-200 w-full">
+            <p className="text-[#5e6670] text-sm">
+                New to the platform? <Link href="/signup" className="text-primary hover:underline font-bold">Initialize Node</Link>
+            </p>
           </div>
         </CardFooter>
       </Card>

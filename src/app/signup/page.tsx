@@ -13,23 +13,19 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { Loader2, RefreshCcw, ShieldAlert, Trash2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
-import { forceResetMasterAccount, nuclearPurgePlatform } from '@/firebase/server-actions';
+import { nuclearPurgePlatform } from '@/firebase/server-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { initiateGoogleSignIn } from '@/firebase/non-blocking-login';
-import { Separator } from '@/components/ui/separator';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
-  const [showForceReset, setShowForceReset] = useState(false);
-  const [isCapsLockOn, setIsCapsLockOn] = useState(false);
+  const [showEmailAuth, setShowEmailAuth] = useState(false);
   
-  // Nuclear Reset State
   const [isNuclearOpen, setIsNuclearOpen] = useState(false);
   const [nuclearConfirm, setNuclearConfirm] = useState('');
   const [isPurging, setIsPurging] = useState(false);
@@ -71,25 +67,10 @@ export default function SignUpPage() {
             createdAt: new Date().toISOString()
         });
 
-        toast({ title: isMaster ? 'Platform Command Active' : 'Account Created' });
+        toast({ title: 'Account Initialized' });
         router.push(isMaster ? '/admin' : '/');
     } catch (error: any) {
-        if (error.code === 'auth/email-already-in-use' && isMaster) {
-            try {
-                const repairCred = await signInWithEmailAndPassword(auth, email, password);
-                await setDoc(doc(firestore, 'users', repairCred.user.uid), {
-                    role: 'super_admin',
-                    updatedAt: new Date().toISOString()
-                }, { merge: true });
-                toast({ title: 'Master Key Verified' });
-                router.push('/admin');
-            } catch (repairError: any) {
-                setShowForceReset(true);
-                toast({ variant: 'destructive', title: 'Repair Failed', description: 'Existing account found. Use Force Overwrite below.' });
-            }
-        } else {
-            toast({ variant: 'destructive', title: 'Registration Error', description: error.message });
-        }
+        toast({ variant: 'destructive', title: 'Registration Failed', description: error.message });
     } finally {
         setIsLoading(false);
     }
@@ -99,29 +80,11 @@ export default function SignUpPage() {
       setIsLoading(true);
       try {
           await initiateGoogleSignIn(auth);
-          toast({ title: 'Google Identity Connected' });
       } catch (e: any) {
           setIsLoading(false);
           if (e.code !== 'auth/popup-closed-by-user') {
-              toast({ variant: 'destructive', title: 'Google Setup Failed', description: e.message });
+              toast({ variant: 'destructive', title: 'Google Identity Failed' });
           }
-      }
-  };
-
-  const handleForceReset = async () => {
-      setIsResetting(true);
-      try {
-          const res = await forceResetMasterAccount(email);
-          if (res.success) {
-              toast({ title: "Master ID Cleared", description: "The existing account has been removed. You can now register fresh." });
-              setShowForceReset(false);
-          } else {
-              throw new Error(res.error);
-          }
-      } catch (e: any) {
-          toast({ variant: 'destructive', title: 'Reset Failed', description: e.message });
-      } finally {
-          setIsResetting(false);
       }
   };
 
@@ -131,113 +94,123 @@ export default function SignUpPage() {
     try {
         const res = await nuclearPurgePlatform();
         if (res.success) {
-            toast({ title: "Database Wiped", description: "All normal accounts have been deregistered and forced to logout." });
+            toast({ title: "Database Wiped" });
             setIsNuclearOpen(false);
             window.location.reload();
         } else {
             throw new Error(res.error);
         }
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Purge Failed', description: e.message });
+        toast({ variant: 'destructive', title: 'Purge Failed' });
     } finally {
         setIsPurging(false);
     }
   };
 
-  const handlePasswordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (typeof e.getModifierState === 'function') setIsCapsLockOn(e.getModifierState('CapsLock'));
-  };
-  
+  if (isUserLoading || user) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-white">
+            <Loader2 className="w-6 h-6 text-primary animate-spin opacity-20" />
+        </div>
+    );
+  }
+
   return (
-    <div className="relative flex min-h-screen w-full items-center justify-center bg-black overflow-hidden py-12">
-      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 scale-105" style={{ backgroundImage: 'url("https://picsum.photos/seed/setup/1920/1080")' }} />
-      <Card className="relative w-full max-w-[420px] mx-4 bg-white/5 backdrop-blur-3xl border-white/10 shadow-2xl text-white">
-        <CardHeader className="text-center items-center pt-10">
-          <img src="/picture1.png" alt="Logo" className="h-16 w-16 mb-4 drop-shadow-lg" />
-          <CardTitle className="text-4xl font-black uppercase tracking-tighter">Initialize Node</CardTitle>
-          <CardDescription className="text-white/60 font-bold uppercase text-[10px] tracking-widest mt-2">Provision your cloud business identity</CardDescription>
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#f8f9fa] p-4 font-sans py-12">
+      <Card className="w-full max-w-[440px] border-none shadow-none bg-transparent">
+        <CardHeader className="text-center space-y-4 pb-8">
+          <div className="mx-auto w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center p-3 mb-2">
+            <img src="/picture1.png" alt="Logo" className="w-full h-full object-contain" />
+          </div>
+          <h1 className="text-[32px] font-bold text-[#0e1217] tracking-tight leading-tight">Create your node</h1>
+          <p className="text-[#5e6670] text-lg">Provision your business workspace identity.</p>
         </CardHeader>
-        <CardContent className="space-y-5 px-8 pb-4">
-          <div className="space-y-2">
-            <Label className="text-white/80 text-xs uppercase tracking-widest font-black">Identity (Name)</Label>
-            <Input placeholder="Full Name" required value={name} onChange={(e) => setName(e.target.value)} disabled={isLoading} className="h-12 bg-black/40 border-white/10 text-white" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-white/80 text-xs uppercase tracking-widest font-black">System Email</Label>
-            <Input placeholder="name@company.com" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} className="h-12 bg-black/40 border-white/10 text-white" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-white/80 text-xs uppercase tracking-widest font-black">Access Key (Password)</Label>
-            <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={handlePasswordKeyDown} disabled={isLoading} className="h-12 bg-black/40 border-white/10 text-white" />
-            {isCapsLockOn && <p className="text-[10px] text-orange-400 mt-1 font-black uppercase">⚠️ Caps Lock is active</p>}
-          </div>
-
-          <Button onClick={handleSignUp} className="w-full h-14 text-lg font-black uppercase tracking-widest shadow-xl bg-white text-black hover:bg-white/90 active:scale-95 transition-all mt-2" disabled={isLoading}>
-            {isLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Syncing Node...</> : 'Establish Cloud ID'}
-          </Button>
-
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center"><Separator className="bg-white/10" /></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest">
-              <span className="bg-transparent px-2 text-white/40">Or register with</span>
-            </div>
-          </div>
-
+        
+        <CardContent className="space-y-6">
           <Button 
             variant="outline" 
             onClick={handleGoogleSignUp} 
             disabled={isLoading}
-            className="w-full h-12 bg-black/20 border-white/10 text-white hover:bg-white/5 hover:text-white font-bold uppercase text-xs tracking-widest flex items-center justify-center gap-3"
+            className="w-full h-[52px] bg-white border-[#d0d5dd] text-[#344054] hover:bg-gray-50 font-semibold text-base rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
           >
-             <div className="bg-white p-0.5 rounded-full flex items-center justify-center overflow-hidden w-6 h-6 shrink-0">
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
                 <img src="/picture1.png" alt="Google" className="w-full h-full object-contain" />
             </div>
-            <span>Google Identity</span>
+            <span>Continue with Google</span>
           </Button>
 
-          {showForceReset && (
-              <Button onClick={handleForceReset} variant="destructive" className="w-full h-11 font-bold gap-2 animate-in zoom-in-95" disabled={isResetting}>
-                  {isResetting ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
-                  Force Deregister Existing Account
-              </Button>
-          )}
+          <div className="pt-2">
+            <button 
+                onClick={() => setShowEmailAuth(!showEmailAuth)}
+                className="w-full flex items-center justify-center gap-2 text-[#5e6670] hover:text-[#0e1217] font-semibold text-base transition-colors py-2"
+            >
+                Continue another way
+                {showEmailAuth ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
 
-          <div className="flex flex-col items-center gap-6 mt-6 w-full">
-            <div className="text-center text-[10px] uppercase font-bold tracking-widest text-white/30 border-t border-white/5 pt-6 w-full">
-                Registered Node? <Link href="/login" className="text-white hover:underline">Return to Access</Link>
-            </div>
-            
-            <Button variant="ghost" size="sm" className="text-[9px] font-black uppercase tracking-[0.2em] text-destructive/40 hover:text-destructive hover:bg-destructive/10" onClick={() => setIsNuclearOpen(true)}>
-                <AlertTriangle className="h-3 w-3 mr-2" /> Nuclear Reset Utility
-            </Button>
+            {showEmailAuth && (
+                <div className="space-y-4 mt-6 animate-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-[#344054]">Full Name</Label>
+                        <Input value={name} onChange={(e) => setName(e.target.value)} className="h-12 border-[#d0d5dd] rounded-xl" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-[#344054]">Work Email</Label>
+                        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12 border-[#d0d5dd] rounded-xl" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-[#344054]">Access Key</Label>
+                        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 border-[#d0d5dd] rounded-xl" />
+                    </div>
+                    <Button onClick={handleSignUp} className="w-full h-12 text-base font-bold rounded-xl mt-2" disabled={isLoading}>
+                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Create Account'}
+                    </Button>
+                </div>
+            )}
           </div>
         </CardContent>
+
+        <CardFooter className="flex-col gap-10 pt-8 text-center">
+          <p className="text-sm text-[#5e6670] leading-relaxed max-w-[320px]">
+            By continuing, you agree to {APP_NAME}'s <a href="#" className="text-primary hover:underline font-semibold">Terms of Use</a>. 
+            Read our <a href="#" className="text-primary hover:underline font-semibold">Privacy Policy</a>.
+          </p>
+          
+          <div className="space-y-6 pt-4 border-t border-gray-200 w-full">
+            <p className="text-[#5e6670] text-sm">
+                Already registered? <Link href="/login" className="text-primary hover:underline font-bold">Return to Access</Link>
+            </p>
+            
+            <Button variant="ghost" size="sm" className="text-[10px] font-black uppercase tracking-widest text-destructive/30 hover:text-destructive hover:bg-destructive/5" onClick={() => setIsNuclearOpen(true)}>
+                <AlertTriangle className="h-3 w-3 mr-2" /> Platform Maintenance
+            </Button>
+          </div>
+        </CardFooter>
       </Card>
 
       <Dialog open={isNuclearOpen} onOpenChange={setIsNuclearOpen}>
-        <DialogContent className="sm:max-w-md bg-white text-black">
-            <DialogHeader>
-                <DialogTitle className="text-2xl font-black uppercase text-destructive">Nuclear Reset</DialogTitle>
-                <DialogDescription className="font-bold text-xs uppercase text-muted-foreground">Force Deregister & Logout All Accounts</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-                <p className="text-sm leading-relaxed">
-                    This action will permanently delete all records from Firestore and remove all user accounts from the authentication system. **Anyone currently logged in will be automatically logged out.**
-                </p>
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase">Type "PURGE ALL" to confirm</Label>
-                    <Input 
-                        value={nuclearConfirm} 
-                        onChange={e => setNuclearConfirm(e.target.value)} 
-                        placeholder="Confirmation string..." 
-                        className="h-12 border-destructive/20 font-black uppercase tracking-widest text-center"
-                    />
+        <DialogContent className="sm:max-w-md bg-white border-none shadow-2xl rounded-2xl p-8">
+            <DialogHeader className="text-center items-center">
+                <div className="bg-destructive/10 p-3 rounded-full mb-2">
+                    <Trash2 className="h-8 w-8 text-destructive" />
                 </div>
+                <DialogTitle className="text-2xl font-bold text-destructive">Wipe Platform Data</DialogTitle>
+                <DialogDescription className="text-[#5e6670] pt-2">
+                    This will permanently delete all records and deregister all normal accounts. Type "PURGE ALL" to confirm.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+                <Input 
+                    value={nuclearConfirm} 
+                    onChange={e => setNuclearConfirm(e.target.value)} 
+                    placeholder="Confirmation string..." 
+                    className="h-12 border-destructive/20 text-center font-bold uppercase tracking-widest"
+                />
             </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsNuclearOpen(false)}>Cancel</Button>
-                <Button onClick={handleNuclearPurge} disabled={isPurging || nuclearConfirm !== 'PURGE ALL'} variant="destructive" className="font-black uppercase tracking-widest px-8">
-                    {isPurging ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />} Execute Purge
+            <DialogFooter className="sm:justify-center gap-2">
+                <Button variant="outline" onClick={() => setIsNuclearOpen(false)} className="rounded-xl px-8 h-11">Cancel</Button>
+                <Button onClick={handleNuclearPurge} disabled={isPurging || nuclearConfirm !== 'PURGE ALL'} variant="destructive" className="rounded-xl px-8 h-11 font-bold">
+                    {isPurging ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : 'Execute Purge'}
                 </Button>
             </DialogFooter>
         </DialogContent>

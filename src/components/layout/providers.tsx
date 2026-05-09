@@ -9,11 +9,11 @@ import { AuthGuard } from '@/components/layout/auth-guard';
 import { OnboardingGuard } from '@/components/layout/onboarding-guard';
 import { BackgroundErrorGuard } from '@/components/layout/background-error-guard';
 import { Toaster } from "@/components/ui/toaster";
-import { APP_NAME } from '@/lib/constants';
+import { Loader2 } from 'lucide-react';
 
 /**
- * Providers: The definitive client-side wrapper.
- * Optimized for rapid mounting to reduce initial white-screen duration.
+ * Providers: Optimized for rapid mounting.
+ * Removed heavy full-screen overlays to improve initial paint speed.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
@@ -24,11 +24,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-        <div className="relative w-12 h-12">
-            <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
-            <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+        <Loader2 className="w-6 h-6 text-primary animate-spin opacity-10" />
       </div>
     );
   }
