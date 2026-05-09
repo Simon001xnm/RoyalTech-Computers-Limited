@@ -12,10 +12,8 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { Loader2, AlertTriangle, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
-import { nuclearPurgePlatform } from '@/firebase/server-actions';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { initiateGoogleSignIn } from '@/firebase/non-blocking-login';
 
 export default function SignUpPage() {
@@ -25,10 +23,6 @@ export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showEmailAuth, setShowEmailAuth] = useState(false);
   
-  const [isNuclearOpen, setIsNuclearOpen] = useState(false);
-  const [nuclearConfirm, setNuclearConfirm] = useState('');
-  const [isPurging, setIsPurging] = useState(false);
-
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
@@ -85,25 +79,6 @@ export default function SignUpPage() {
               toast({ variant: 'destructive', title: 'Google Identity Failed' });
           }
       }
-  };
-
-  const handleNuclearPurge = async () => {
-    if (nuclearConfirm !== 'PURGE ALL') return;
-    setIsPurging(true);
-    try {
-        const res = await nuclearPurgePlatform();
-        if (res.success) {
-            toast({ title: "Database Wiped" });
-            setIsNuclearOpen(false);
-            window.location.reload();
-        } else {
-            throw new Error(res.error);
-        }
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Purge Failed' });
-    } finally {
-        setIsPurging(false);
-    }
   };
 
   if (isUserLoading || user) {
@@ -179,41 +154,9 @@ export default function SignUpPage() {
             <p className="text-[#5e6670] text-sm">
                 Already registered? <Link href="/login" className="text-primary hover:underline font-bold">Return to Access</Link>
             </p>
-            
-            <Button variant="ghost" size="sm" className="text-[10px] font-black uppercase tracking-widest text-destructive/30 hover:text-destructive hover:bg-destructive/5" onClick={() => setIsNuclearOpen(true)}>
-                <AlertTriangle className="h-3 w-3 mr-2" /> Platform Maintenance
-            </Button>
           </div>
         </CardFooter>
       </Card>
-
-      <Dialog open={isNuclearOpen} onOpenChange={setIsNuclearOpen}>
-        <DialogContent className="sm:max-w-md bg-white border-none shadow-2xl rounded-2xl p-8">
-            <DialogHeader className="text-center items-center">
-                <div className="bg-destructive/10 p-3 rounded-full mb-2">
-                    <Trash2 className="h-8 w-8 text-destructive" />
-                </div>
-                <DialogTitle className="text-2xl font-bold text-destructive">Wipe Platform Data</DialogTitle>
-                <DialogDescription className="text-[#5e6670] pt-2">
-                    This will permanently delete all records and deregister all normal accounts. Type "PURGE ALL" to confirm.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-                <Input 
-                    value={nuclearConfirm} 
-                    onChange={e => setNuclearConfirm(e.target.value)} 
-                    placeholder="Confirmation string..." 
-                    className="h-12 border-destructive/20 text-center font-bold uppercase tracking-widest"
-                />
-            </div>
-            <DialogFooter className="sm:justify-center gap-2">
-                <Button variant="outline" onClick={() => setIsNuclearOpen(false)} className="rounded-xl px-8 h-11">Cancel</Button>
-                <Button onClick={handleNuclearPurge} disabled={isPurging || nuclearConfirm !== 'PURGE ALL'} variant="destructive" className="rounded-xl px-8 h-11 font-bold">
-                    {isPurging ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : 'Execute Purge'}
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

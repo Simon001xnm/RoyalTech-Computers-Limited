@@ -29,7 +29,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 /**
  * @fileOverview Platform Command Center (Super Admin Dashboard)
- * Enhanced with "Nuclear Reset" to deregister all accounts and purge cloud data.
+ * Provides global SaaS oversight and network metrics.
  */
 export default function PlatformCommandCenter() {
   const { toast } = useToast();
@@ -50,10 +50,6 @@ export default function PlatformCommandCenter() {
   const [postToChat, setPostToChat] = useState(true);
   const [isSendingMsg, setIsSendingMsg] = useState(false);
   
-  // Danger Zone State
-  const [isPurging, setIsPurging] = useState(false);
-  const [purgeConfirmText, setPurgeConfirmText] = useState('');
-
   // GLOBAL CLOUD QUERIES (Index-free: sort in memory)
   const companiesQuery = useMemoFirebase(() => query(collection(firestore, 'companies')), []);
   const { data: tenants } = useCollection(companiesQuery);
@@ -120,41 +116,6 @@ export default function PlatformCommandCenter() {
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Action Failed' });
     }
-  };
-
-  /**
-   * Nuclear Reset: Deregisters all accounts and purges all cloud collections.
-   */
-  const handleNuclearPurge = async () => {
-      if (purgeConfirmText !== 'DEREGISTER ALL') {
-          toast({ variant: 'destructive', title: 'Verification Failed', description: 'Please type the confirmation text correctly.' });
-          return;
-      }
-
-      setIsPurging(true);
-      try {
-          const collections = [
-              'users', 'companies', 'assets', 'accessories', 'customers', 
-              'sales_transactions', 'leases', 'tickets', 'notifications', 
-              'platform_logs', 'messages', 'campaigns', 'projects', 
-              'item_issuances', 'expenses', 'documents', 'resellers'
-          ];
-          
-          for (const colName of collections) {
-              const snap = await getDocs(collection(firestore, colName));
-              const batch = writeBatch(firestore);
-              snap.docs.forEach(d => batch.delete(d.ref));
-              await batch.commit();
-          }
-          
-          toast({ title: "Platform Data Purged", description: "All accounts and business nodes have been deregistered." });
-          window.location.href = '/';
-      } catch (e: any) {
-          toast({ variant: 'destructive', title: 'Purge Failed', description: e.message });
-      } finally {
-          setIsPurging(false);
-          setPurgeConfirmText('');
-      }
   };
 
   const handleSendPlatformMessage = async () => {
@@ -232,11 +193,10 @@ export default function PlatformCommandCenter() {
       </div>
 
       <Tabs defaultValue="tenants" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
+        <TabsList className="grid w-full grid-cols-3 mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="tenants" className="font-black uppercase tracking-widest text-[10px]">Workspaces</TabsTrigger>
           <TabsTrigger value="activity" className="font-black uppercase tracking-widest text-[10px]">Global Audit</TabsTrigger>
           <TabsTrigger value="comms" className="font-black uppercase tracking-widest text-[10px]">Platform Comms</TabsTrigger>
-          <TabsTrigger value="danger" className="font-black uppercase tracking-widest text-[10px] text-destructive">Danger Zone</TabsTrigger>
         </TabsList>
         
         <TabsContent value="tenants">
@@ -352,59 +312,6 @@ export default function PlatformCommandCenter() {
                             ))}
                         </TableBody>
                     </Table>
-                </CardContent>
-            </Card>
-        </TabsContent>
-        
-        <TabsContent value="danger">
-            <Card className="shadow-2xl border-2 border-destructive/20 overflow-hidden bg-destructive/5">
-                <CardHeader className="bg-destructive/10 p-8">
-                    <div className="flex items-center gap-3">
-                        <AlertTriangle className="h-10 w-10 text-destructive" />
-                        <div>
-                            <CardTitle className="text-3xl font-black uppercase tracking-tighter text-destructive">Danger Zone</CardTitle>
-                            <CardDescription className="text-destructive font-bold">Platform Maintenance & Purge Utilities</CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-8 space-y-8">
-                    <div className="bg-white rounded-xl p-6 border border-destructive/10 shadow-sm space-y-6">
-                        <div className="space-y-2">
-                            <h3 className="text-lg font-black uppercase tracking-tight text-destructive">Nuclear Reset: Deregister All Accounts</h3>
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                                This action will permanently erase **ALL** user accounts, business workspaces, inventory records, and transaction logs from the cloud database. This process is irreversible and will return the platform to a blank state.
-                            </p>
-                        </div>
-                        
-                        <Alert variant="destructive" className="bg-destructive/5 border-destructive/20">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle className="font-black uppercase text-xs">Final Warning</AlertTitle>
-                            <AlertDescription className="text-xs">
-                                All connected staff will lose access immediately. Only proceed if you intend to wipe the entire prototype environment.
-                            </AlertDescription>
-                        </Alert>
-                        
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase">Type "DEREGISTER ALL" to confirm</Label>
-                                <Input 
-                                    value={purgeConfirmText} 
-                                    onChange={e => setPurgeConfirmText(e.target.value)} 
-                                    placeholder="Confirmation string..." 
-                                    className="h-12 border-destructive/20 focus:ring-destructive font-black uppercase tracking-widest text-center"
-                                />
-                            </div>
-                            <Button 
-                                onClick={handleNuclearPurge} 
-                                disabled={isPurging || purgeConfirmText !== 'DEREGISTER ALL'}
-                                variant="destructive" 
-                                className="w-full h-14 font-black uppercase tracking-[0.2em] shadow-xl hover:bg-destructive/90 transition-all active:scale-[0.98]"
-                            >
-                                {isPurging ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : <Trash2 className="h-6 w-6 mr-2" />}
-                                Purge All Platform Data
-                            </Button>
-                        </div>
-                    </div>
                 </CardContent>
             </Card>
         </TabsContent>
