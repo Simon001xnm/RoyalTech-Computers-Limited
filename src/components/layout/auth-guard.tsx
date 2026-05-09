@@ -2,7 +2,7 @@
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarSeparator, SidebarTrigger } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { APP_NAME } from '@/lib/constants';
@@ -20,7 +20,7 @@ import { MASTER_KEYS } from '@/lib/roles';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
-function AuthenticatedLayout({ children, userProfile }: { children: React.ReactNode, userProfile: AppUser | null }) {
+function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { children: React.ReactNode, userProfile: AppUser | null, isFastTrackAdmin: boolean }) {
     const { user } = useUser();
     const auth = useAuth();
 
@@ -28,7 +28,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
         if (auth) auth.signOut();
     };
 
-    const isSuperAdmin = userProfile?.role === 'super_admin' || (user?.email && MASTER_KEYS.includes(user.email.toLowerCase()));
+    const isSuperAdmin = isFastTrackAdmin || userProfile?.role === 'super_admin';
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -125,36 +125,35 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
 
+  // Instant recognition for Master Keys to bypass Firestore profile sync delay
+  const isFastTrackAdmin = useMemo(() => {
+    return user?.email ? MASTER_KEYS.includes(user.email.toLowerCase()) : false;
+  }, [user?.email]);
+
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
 
   useEffect(() => {
-    if (!isUserLoading && !isProfileLoading) {
+    if (!isUserLoading) {
       if (!user && !isPublicPath) {
         router.push('/login');
       } else if (user && isPublicPath) {
-        const isMaster = user.email && MASTER_KEYS.includes(user.email.toLowerCase());
-        if (userProfile?.role === 'super_admin' || isMaster) {
+        if (isFastTrackAdmin || userProfile?.role === 'super_admin') {
             router.push('/admin');
         } else {
             router.push('/');
         }
-      } else if (user && (userProfile?.role === 'super_admin' || (user.email && MASTER_KEYS.includes(user.email.toLowerCase()))) && pathname === '/') {
+      } else if (user && isFastTrackAdmin && pathname === '/') {
         router.push('/admin');
       }
     }
-  }, [user, isUserLoading, isProfileLoading, userProfile, router, pathname, isPublicPath]);
+  }, [user, isUserLoading, isFastTrackAdmin, userProfile, router, pathname, isPublicPath]);
 
-  // SPECIAL CASE: Instant access for Master Keys to prevent "long loading"
-  const isMasterInstant = user?.email && MASTER_KEYS.includes(user.email.toLowerCase());
-
-  if (isUserLoading || (user && isProfileLoading && !isMasterInstant)) {
+  // Zero-Wait Rendering: Only block if truly anonymous on a private route
+  if (isUserLoading) {
     return (
-      <div className="flex flex-col h-screen w-full items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Cloud Node...</p>
-        </div>
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="w-6 h-6 text-primary animate-spin opacity-20" />
       </div>
     );
   }
@@ -164,7 +163,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (user) {
-    return <AuthenticatedLayout userProfile={userProfile}>{children}</AuthenticatedLayout>;
+    // We render the shell even while userProfile is loading IF the admin is fast-tracked
+    if (isProfileLoading && !isFastTrackAdmin) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <Loader2 className="w-6 h-6 text-primary animate-spin opacity-20" />
+            </div>
+        );
+    }
+    return <AuthenticatedLayout userProfile={userProfile || null} isFastTrackAdmin={isFastTrackAdmin}>{children}</AuthenticatedLayout>;
   }
 
   return null;

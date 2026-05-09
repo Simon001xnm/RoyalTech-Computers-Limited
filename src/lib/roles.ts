@@ -1,4 +1,3 @@
-
 import type { NavItem } from '@/lib/constants';
 import { NAV_ITEMS } from '@/lib/constants';
 import { isFeatureEnabled } from '@/lib/feature-flags';
@@ -24,7 +23,7 @@ export const roleDescriptions: Record<Role, string> = {
 };
 
 const getRolePermissions = (role: Role | string, email?: string | null): string[] => {
-    // Definitive fallback for master keys to ensure Technicians are never locked out
+    // Fast-path: check email before role to ensure millisecond access for Master Keys
     const isMaster = email && MASTER_KEYS.includes(email.toLowerCase());
     
     if (role === 'super_admin' || isMaster) {
