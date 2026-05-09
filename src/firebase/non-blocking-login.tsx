@@ -4,6 +4,8 @@ import {
   signInAnonymously,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
   UserCredential,
 } from 'firebase/auth';
 
@@ -21,4 +23,12 @@ export function initiateEmailSignUp(authInstance: Auth, email: string, password:
 export function initiateEmailSignIn(authInstance: Auth, email: string, password: string): Promise<UserCredential> {
   // CRITICAL: Must return the promise so the UI can catch errors
   return signInWithEmailAndPassword(authInstance, email, password);
+}
+
+/** Initiate Google sign-in. Returns promise for UI error handling. */
+export function initiateGoogleSignIn(authInstance: Auth): Promise<UserCredential> {
+  const provider = new GoogleAuthProvider();
+  // Ensure we always prompt for account selection
+  provider.setCustomParameters({ prompt: 'select_account' });
+  return signInWithPopup(authInstance, provider);
 }
