@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Package as PackageIcon, Users, Printer, MapPin, ClipboardList, BookOpen, Inbox, Phone, ListChecks, Presentation, UserPlus, BarChart3, User, ShieldCheck, History, ShoppingCart } from 'lucide-react';
+import { LayoutDashboard, Package as PackageIcon, Users, Printer, MapPin, ClipboardList, BookOpen, Inbox, Phone, ListChecks, Presentation, UserPlus, BarChart3, User, ShieldCheck, History, ShoppingCart, Briefcase } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
 
@@ -37,10 +37,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/audit', label: 'Audit Trail', icon: History },
   { href: '/users', label: 'System Users', icon: UserPlus },
   { href: '/resellers', label: 'Resellers', icon: Briefcase },
-  { href: '/recruit', label: 'Recruitment', icon: Briefcase },
   { href: '/profile', label: 'Settings', icon: User },
   { href: '/admin', label: 'Platform Admin', icon: ShieldCheck },
 ];
 
 export const APP_NAME = "Professional ERP Suite";
-import { Briefcase } from 'lucide-react';

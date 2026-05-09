@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Server-side actions for Firebase management.
@@ -98,7 +99,7 @@ export async function nuclearPurgePlatform(): Promise<{ success: boolean; error?
             'users', 'companies', 'assets', 'accessories', 'customers', 
             'sales_transactions', 'leases', 'tickets', 'notifications', 
             'platform_logs', 'messages', 'campaigns', 'projects', 
-            'job_postings', 'applicants', 'expenses', 'documents', 'item_issuances'
+            'expenses', 'documents', 'item_issuances', 'resellers'
         ];
 
         // 1. Wipe Firestore Data

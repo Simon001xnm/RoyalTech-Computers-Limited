@@ -214,29 +214,6 @@ export interface ItemIssuance extends Auditable {
   status: 'Issued' | 'Sold' | 'Returned';
 }
 
-export interface JobPosting extends Auditable {
-  id: string;
-  tenantId?: string;
-  title: string;
-  description: string;
-  department: string;
-  status: 'Open' | 'Closed' | 'Archived';
-}
-
-export interface Applicant extends Auditable {
-  id: string;
-  tenantId?: string;
-  name: string;
-  email: string;
-  phone?: string;
-  jobId: string;
-  jobTitle?: string; 
-  status: 'New' | 'Screening' | 'Interview' | 'Offered' | 'Hired' | 'Rejected';
-  resumeUrl?: string;
-  notes?: string;
-  appliedAt: string; 
-}
-
 export interface Notification extends Auditable {
   id: string;
   tenantId: string;

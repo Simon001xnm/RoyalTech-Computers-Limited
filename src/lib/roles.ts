@@ -1,3 +1,4 @@
+
 import type { NavItem } from '@/lib/constants';
 import { NAV_ITEMS } from '@/lib/constants';
 import { isFeatureEnabled } from '@/lib/feature-flags';
@@ -43,8 +44,7 @@ const getRolePermissions = (role: Role | string, email?: string | null): string[
             '/salesiq',
             '/projects',
             '/campaigns',
-            '/resellers',
-            '/recruit'
+            '/resellers'
         ];
     }
     
