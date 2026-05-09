@@ -10,11 +10,11 @@ export type Role = typeof USER_ROLES[number];
  * to prevent role-reversion issues during cloud sync delays.
  */
 export const MASTER_KEYS = [
-    "info@simonatyles.co.ke",
-    "master@royaltech.com", 
-    "admin@royaltech.com",
     "info@simonstyless.co.ke",
-    "info@simonstyles.co.ke"
+    "info@simonstyles.co.ke",
+    "info@simonatyles.co.ke",
+    "master@businesshub.co.ke",
+    "admin@businesshub.co.ke"
 ];
 
 export const roleDescriptions: Record<Role, string> = {
