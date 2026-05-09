@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Sale } from "@/types";
@@ -14,13 +13,14 @@ export interface SaleColumnActions {
   onView: (sale: Sale) => void;
   onGenerateDelivery?: (sale: Sale) => void;
   onWhatsApp?: (sale: Sale) => void;
+  onDownload?: (sale: Sale) => void;
 }
 
 export const getSaleColumns = (actions: SaleColumnActions): ColumnDef<Sale>[] => [
   {
     accessorKey: "id",
     header: "ID",
-    cell: ({ row }) => <span className="font-mono text-xs uppercase font-bold">{`RCL-${row.original.id.slice(0, 4)}`}</span>,
+    cell: ({ row }) => <span className="font-mono text-xs uppercase font-bold">{`#${row.original.id.slice(0, 4)}`}</span>,
   },
   {
     accessorKey: "date",
@@ -70,11 +70,11 @@ export const getSaleColumns = (actions: SaleColumnActions): ColumnDef<Sale>[] =>
                 </Tooltip>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 w-9 text-blue-600 border-blue-200 hover:bg-blue-50 shadow-sm" onClick={() => actions.onView(sale)}>
-                            <Printer className="h-5 w-5" />
+                        <Button variant="outline" size="sm" className="h-9 w-9 text-blue-600 border-blue-200 hover:bg-blue-50 shadow-sm" onClick={() => actions.onDownload?.(sale)}>
+                            <Download className="h-5 w-5" />
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Print/Download</TooltipContent>
+                    <TooltipContent>Download PDF</TooltipContent>
                 </Tooltip>
             </TooltipProvider>
 
@@ -87,7 +87,10 @@ export const getSaleColumns = (actions: SaleColumnActions): ColumnDef<Sale>[] =>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel>Sale Workflows</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => actions.onView(sale)}>
-                <FileText className="mr-2 h-4 w-4" /> Open Full Receipt
+                <FileText className="mr-2 h-4 w-4" /> Open Details
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => actions.onDownload?.(sale)}>
+                <Download className="mr-2 h-4 w-4" /> Export Receipt
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => actions.onGenerateDelivery?.(sale)} className="font-bold text-primary">

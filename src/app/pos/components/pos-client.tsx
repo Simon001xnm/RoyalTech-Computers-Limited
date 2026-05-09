@@ -6,7 +6,7 @@ import type { Asset, SaleItem, Sale, Customer, Document as AppDocument } from '@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,12 +14,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { RecentSales } from './recent-sales';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { SaleService } from '@/services/sale-service';
+import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 
 type Product = Asset & { productType: 'asset'; displayName: string; price?: number; };
 type CartItem = SaleItem & { productType: 'asset' | 'accessory'; quantity: number; unitPrice: number; discount: number; };
@@ -41,6 +42,11 @@ export function PosClient() {
   const [amountPaid, setAmountPaid] = useState('');
   const [applyVat, setApplyVat] = useState(false);
 
+  // Success Dialog & PDF Export State
+  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [lastGeneratedDoc, setLastGeneratedDoc] = useState<AppDocument | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
   // CLOUD QUERY: Assets available in this tenant
   const assetsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -58,7 +64,6 @@ export function PosClient() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState('');
-  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
   const availableProducts = useMemo<Product[]>(() => {
     if (!assets) return [];
@@ -103,6 +108,7 @@ export function PosClient() {
     try {
         const saleId = crypto.randomUUID();
         const saleDate = new Date().toISOString();
+        const prefix = (tenant.name || 'DOC').slice(0, 3).toUpperCase();
         
         const saleData: Sale = {
             id: saleId, tenantId: tenant.id, date: saleDate, amount: grandTotal, subtotal, vat: vatAmount,
@@ -112,20 +118,66 @@ export function PosClient() {
         };
 
         const docData: AppDocument = {
-            id: crypto.randomUUID(), tenantId: tenant.id, type: 'Receipt', title: `Receipt #RCL-${saleId.slice(0, 5).toUpperCase()}`,
+            id: crypto.randomUUID(), tenantId: tenant.id, type: 'Receipt', title: `Receipt #${prefix}-${saleId.slice(0, 5).toUpperCase()}`,
             generatedDate: saleDate, relatedTo: `Sale to ${selectedCustomer.name}`, saleId: saleId, 
             data: { ...saleData, applyVat }, createdAt: saleDate, createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
         await SaleService.finalizeSale(firestore, saleData, docData);
 
-        toast({ title: 'Sale Finalized' });
+        setLastGeneratedDoc(docData);
         setIsSuccessOpen(true);
         setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode('');
+        toast({ title: 'Sale Finalized' });
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Sale Failed', description: e.message });
     } finally {
         setIsProcessing(false);
+    }
+  };
+
+  const handleDownloadReceipt = async () => {
+    if (!lastGeneratedDoc) return;
+    setIsExporting(true);
+    
+    const { default: html2canvas } = await import('html2canvas');
+    const { default: jsPDF } = await import('jspdf');
+
+    // Force scroll to top to prevent clipping during capture
+    const originalScrollY = window.scrollY;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    
+    // Wait for render
+    await new Promise(r => setTimeout(r, 100));
+
+    const element = document.getElementById('pos-receipt-target');
+    if (!element) {
+        window.scrollTo({ top: originalScrollY });
+        setIsExporting(false);
+        return;
+    }
+
+    try {
+        const canvas = await html2canvas(element, { 
+            scale: 2, 
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            width: 794,
+            height: 1123,
+            y: 0,
+            scrollY: 0
+        });
+        
+        const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        pdf.save(`${lastGeneratedDoc.title.replace(/\s+/g, '_')}.pdf`);
+        toast({ title: "Receipt Downloaded" });
+    } catch (err) {
+        toast({ variant: 'destructive', title: 'Export Failed' });
+    } finally {
+        setIsExporting(false);
+        window.scrollTo({ top: originalScrollY });
     }
   };
 
@@ -174,7 +226,29 @@ export function PosClient() {
 
       <RecentSales onViewReceipt={() => {}} />
 
-      <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}><DialogContent className="sm:max-w-md text-center p-8"><Check className="h-12 w-12 text-green-600 mx-auto mb-4" /><DialogHeader><DialogTitle className="text-2xl font-black">Sale Completed!</DialogTitle></DialogHeader><DialogFooter className="pt-6"><Button className="w-full h-11" onClick={() => setIsSuccessOpen(false)}>Continue</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
+        <DialogContent className="sm:max-w-md text-center p-8">
+            <Check className="h-12 w-12 text-green-600 mx-auto mb-4" />
+            <DialogHeader>
+                <DialogTitle className="text-2xl font-black">Sale Completed!</DialogTitle>
+                <DialogDescription>The transaction has been recorded securely in the cloud.</DialogDescription>
+            </DialogHeader>
+            <div className="pt-6 space-y-3">
+                <Button variant="outline" className="w-full h-12 font-bold" onClick={handleDownloadReceipt} disabled={isExporting}>
+                    {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    Download Receipt PDF
+                </Button>
+                <Button className="w-full h-11" onClick={() => setIsSuccessOpen(false)}>Continue to Next Sale</Button>
+            </div>
+            
+            {/* Hidden capture target for PDF generation */}
+            <div className="fixed left-[-9999px] top-0 pointer-events-none">
+                <div id="pos-receipt-target" className="bg-white" style={{ width: '210mm', minHeight: '297mm' }}>
+                    {lastGeneratedDoc && <ReceiptPdf document={lastGeneratedDoc} />}
+                </div>
+            </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

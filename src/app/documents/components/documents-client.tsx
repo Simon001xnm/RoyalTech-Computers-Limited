@@ -92,7 +92,8 @@ export function DocumentsClient() {
     if (!tenant || !user) return;
 
     const docCount = rawDocuments?.length || 0;
-    let title = `${type.replace(/([A-Z])/g, ' $1').trim()} #${type.slice(0,3).toUpperCase()}-2024-${String(docCount + 1).padStart(3,'0')}`;
+    const prefix = (tenant.name || 'DOC').slice(0, 3).toUpperCase();
+    let title = `${type.replace(/([A-Z])/g, ' $1').trim()} #${prefix}-${new Date().getFullYear()}-${String(docCount + 1).padStart(3,'0')}`;
     let relatedTo = "N/A";
     const documentData: any = { details: details || '', applyVat };
 
@@ -217,7 +218,7 @@ export function DocumentsClient() {
     },
     onWhatsApp: (d) => {
         const phone = d.data?.customer?.phone || "";
-        const msg = `Hello! Your ${d.type} (${d.title}) from RoyalTech is ready. Thank you!`;
+        const msg = `Hello! Your ${d.type} (${d.title}) is ready. Thank you!`;
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
     }
   };

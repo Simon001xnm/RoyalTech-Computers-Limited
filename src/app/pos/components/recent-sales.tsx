@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { Sale } from '@/types';
+import type { Sale, Document as AppDocument } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef, getPaginationRowModel, type PaginationState } from "@tanstack/react-table";
@@ -11,7 +11,8 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc, getDocs, limit } from 'firebase/firestore';
+import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 
 interface RecentSalesProps {
     onViewReceipt: (sale: Sale) => void;
@@ -24,6 +25,8 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const firestore = useFirestore();
 
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 5 });
+    const [isExporting, setIsExporting] = useState(false);
+    const [exportDoc, setExportDoc] = useState<AppDocument | null>(null);
 
     // CLOUD QUERY
     const salesQuery = useMemoFirebase(() => {
@@ -45,7 +48,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const handleGenerateDelivery = async (sale: Sale) => {
         if (!tenant) return;
         
-        // DEFENSIVE SANITIZATION: Ensure no undefined fields are passed to Firestore
         const deliveryData = {
             tenantId: tenant.id,
             type: 'DeliveryNote' as const,
@@ -63,7 +65,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                     serialNumber: item.serialNumber || 'N/A',
                     quantity: item.quantity || 1
                 })),
-                details: `Generated from Sale RCL-${sale.id.slice(0, 4)}`,
+                details: `Generated from Sale ${sale.id.slice(0, 4)}`,
             },
             createdAt: new Date().toISOString(),
         };
@@ -73,20 +75,80 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             toast({ title: "Delivery Note Generated" });
             router.push('/documents');
         } catch (error: any) {
-            toast({ variant: 'destructive', title: "Error", description: "Cloud sync failed. Check parameters." });
+            toast({ variant: 'destructive', title: "Error", description: "Cloud sync failed." });
+        }
+    };
+
+    const handleDownloadReceipt = async (sale: Sale) => {
+        setIsExporting(true);
+        const { default: html2canvas } = await import('html2canvas');
+        const { default: jsPDF } = await import('jspdf');
+
+        try {
+            // Find existing document in cloud
+            const docsRef = collection(firestore, 'documents');
+            const q = query(docsRef, where('saleId', '==', sale.id), limit(1));
+            const snap = await getDocs(q);
+            
+            let docToUse: AppDocument;
+
+            if (snap.empty) {
+                // Temporary mock if doc not found
+                docToUse = {
+                    id: 'temp',
+                    tenantId: tenant?.id || '',
+                    type: 'Receipt',
+                    title: `Receipt #${sale.id.slice(0, 5).toUpperCase()}`,
+                    generatedDate: sale.date,
+                    data: { ...sale, applyVat: false },
+                    createdAt: sale.createdAt
+                };
+            } else {
+                docToUse = snap.docs[0].data() as AppDocument;
+            }
+
+            setExportDoc(docToUse);
+            
+            // Wait for React to render the hidden receipt
+            await new Promise(r => setTimeout(r, 200));
+
+            const element = document.getElementById('recent-sale-export-target');
+            if (!element) throw new Error("Export target not found");
+
+            const canvas = await html2canvas(element, { 
+                scale: 2, 
+                useCORS: true,
+                backgroundColor: "#ffffff",
+                width: 794,
+                height: 1123,
+                y: 0,
+                scrollY: 0
+            });
+            
+            const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+            pdf.save(`${docToUse.title.replace(/\s+/g, '_')}.pdf`);
+            toast({ title: "Receipt Downloaded" });
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Export Failed" });
+        } finally {
+            setIsExporting(false);
+            setExportDoc(null);
         }
     };
 
     const handleShareWhatsApp = (sale: Sale) => {
         const phone = sale.customerPhone || "";
-        const text = `Hello! Your purchase of ${sale.amount.toLocaleString()} KES from RoyalTech is confirmed. Reference: RCL-${sale.id.slice(0,4)}. Thank you!`;
+        const text = `Hello! Your purchase of ${sale.amount.toLocaleString()} KES is confirmed. Thank you!`;
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
     };
 
     const saleColumnActions: SaleColumnActions = { 
         onView: onViewReceipt,
         onGenerateDelivery: handleGenerateDelivery,
-        onWhatsApp: handleShareWhatsApp
+        onWhatsApp: handleShareWhatsApp,
+        onDownload: handleDownloadReceipt
     };
     const saleColumns = useMemo<ColumnDef<Sale>[]>(() => getSaleColumns(saleColumnActions), [saleColumnActions]);
     
@@ -133,6 +195,13 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                         <DataTablePagination table={salesTable} />
                     </div>
                 )}
+                
+                {/* Hidden export target */}
+                <div className="fixed left-[-9999px] top-0 pointer-events-none">
+                    <div id="recent-sale-export-target" className="bg-white" style={{ width: '210mm', minHeight: '297mm' }}>
+                        {exportDoc && <ReceiptPdf document={exportDoc} />}
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );
