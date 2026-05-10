@@ -8,13 +8,11 @@ export type Role = typeof USER_ROLES[number];
 /**
  * MASTER_KEYS: Hardcoded identities that are definitively recognized as Super Admins
  * to prevent role-reversion issues during cloud sync delays.
+ * Restricted to exactly 2 authorized emails.
  */
 export const MASTER_KEYS = [
     "info@simonstyless.co.ke",
-    "info@simonstyles.co.ke",
-    "info@simonatyles.co.ke",
-    "master@businesshub.co.ke",
-    "admin@businesshub.co.ke"
+    "master@businesshub.co.ke"
 ];
 
 export const roleDescriptions: Record<Role, string> = {
