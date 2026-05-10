@@ -11,7 +11,8 @@ import { initiateEmailSignIn, initiateGoogleSignIn, initiatePasswordReset } from
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronRight, ShieldCheck } from 'lucide-react';
+import { MASTER_KEYS } from '@/lib/roles';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -25,11 +26,13 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const isMasterEmail = MASTER_KEYS.includes(email.toLowerCase().trim());
+
   useEffect(() => {
     if (!isUserLoading && user) {
-      router.push('/');
+      router.push(isMasterEmail ? '/admin' : '/');
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, isMasterEmail]);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -39,7 +42,7 @@ export default function LoginPage() {
     
     setIsProcessing(true);
     try {
-        await initiateEmailSignIn(auth, email, password);
+        await initiateEmailSignIn(auth, email.toLowerCase().trim(), password);
     } catch (e: any) {
         setIsProcessing(false);
         toast({ variant: 'destructive', title: 'Sign In Failed', description: e.message || 'Incorrect email or password.' });
@@ -70,7 +73,7 @@ export default function LoginPage() {
 
     setIsResetting(true);
     try {
-      await initiatePasswordReset(auth, email);
+      await initiatePasswordReset(auth, email.toLowerCase().trim());
       toast({ title: 'Reset Email Sent', description: `Instructions have been sent to ${email}.` });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Reset Failed', description: e.message || 'Could not initiate password reset.' });
@@ -131,6 +134,12 @@ export default function LoginPage() {
                             onChange={(e) => setEmail(e.target.value)} 
                             className="h-12 border-[#d0d5dd] rounded-xl focus:ring-primary" 
                         />
+                        {isMasterEmail && (
+                          <div className="flex items-center gap-2 p-2 mt-1 bg-primary/5 border border-primary/20 rounded-lg text-primary text-[10px] font-black uppercase tracking-widest animate-in fade-in duration-300">
+                            <ShieldCheck className="h-3 w-3" />
+                            Technician Session Detected
+                          </div>
+                        )}
                     </div>
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">

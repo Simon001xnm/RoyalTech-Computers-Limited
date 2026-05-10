@@ -12,7 +12,7 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronRight, ShieldCheck, Zap } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
 import { initiateGoogleSignIn } from '@/firebase/non-blocking-login';
 
@@ -29,11 +29,13 @@ export default function SignUpPage() {
   const firestore = useFirestore();
   const auth = useAuth();
 
+  const isMasterEmail = MASTER_KEYS.includes(email.toLowerCase().trim());
+
   useEffect(() => {
     if (!isUserLoading && user) {
-      router.push('/');
+      router.push(isMasterEmail ? '/admin' : '/');
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, isMasterEmail]);
 
   const handleSignUp = async () => {
     if (!email || !password || !name) {
@@ -42,25 +44,26 @@ export default function SignUpPage() {
     }
 
     setIsLoading(true);
-    const isMaster = MASTER_KEYS.includes(email.toLowerCase());
+    const normalizedEmail = email.toLowerCase().trim();
+    const isMaster = MASTER_KEYS.includes(normalizedEmail);
     let role: 'super_admin' | 'admin' | 'user' = isMaster ? 'super_admin' : 'user';
     
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
         const newUser = userCredential.user;
         await updateProfile(newUser, { displayName: name });
 
         await setDoc(doc(firestore, 'users', newUser.uid), {
             id: newUser.uid,
             name: name,
-            email: email.toLowerCase(),
+            email: normalizedEmail,
             role: role,
             tenantId: null, 
             tenantIds: [],
             createdAt: new Date().toISOString()
         });
 
-        toast({ title: 'Account Created' });
+        toast({ title: 'Account Created Successfully' });
         router.push(isMaster ? '/admin' : '/');
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Signup Failed', description: error.message });
@@ -134,11 +137,29 @@ export default function SignUpPage() {
                     </div>
                     <div className="space-y-2">
                         <Label className="text-sm font-bold text-[#344054]">Work Email</Label>
-                        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12 border-[#d0d5dd] rounded-xl" />
+                        <Input 
+                          type="email" 
+                          value={email} 
+                          onChange={(e) => setEmail(e.target.value)} 
+                          className="h-12 border-[#d0d5dd] rounded-xl" 
+                          placeholder="name@company.com"
+                        />
+                        {isMasterEmail && (
+                          <div className="flex items-center gap-2 p-2 mt-1 bg-primary/5 border border-primary/20 rounded-lg text-primary text-[10px] font-black uppercase tracking-widest animate-in fade-in duration-300">
+                            <ShieldCheck className="h-3 w-3" />
+                            Platform Technician Identity Recognized
+                          </div>
+                        )}
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-sm font-bold text-[#344054]">Access Key</Label>
-                        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 border-[#d0d5dd] rounded-xl" />
+                        <Label className="text-sm font-bold text-[#344054]">Set Password</Label>
+                        <Input 
+                          type="password" 
+                          value={password} 
+                          onChange={(e) => setPassword(e.target.value)} 
+                          className="h-12 border-[#d0d5dd] rounded-xl" 
+                          placeholder="Choose a strong password"
+                        />
                     </div>
                     <Button onClick={handleSignUp} className="w-full h-12 text-base font-bold rounded-xl mt-2" disabled={isLoading}>
                         {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Create Account'}
