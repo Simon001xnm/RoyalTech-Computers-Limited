@@ -1,4 +1,3 @@
-
 import type { LucideIcon } from 'lucide-react';
 import { LayoutDashboard, Package as PackageIcon, Users, Printer, MapPin, ClipboardList, BookOpen, Inbox, Phone, ListChecks, Presentation, UserPlus, BarChart3, User, ShieldCheck, History, ShoppingCart, Briefcase } from 'lucide-react';
 
@@ -20,6 +19,11 @@ export interface NavItem {
   group?: string;
 }
 
+/**
+ * NAV_ITEMS: Standard navigation list.
+ * Note: Admin routes are excluded here to maintain anonymity. 
+ * They are injected dynamically in SidebarNav for Master Keys only.
+ */
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/pos', label: 'Point of Sale', icon: ShoppingCart },
@@ -38,7 +42,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/users', label: 'System Users', icon: UserPlus },
   { href: '/resellers', label: 'Resellers', icon: Briefcase },
   { href: '/profile', label: 'Settings', icon: User },
-  { href: '/admin', label: 'Platform Admin', icon: ShieldCheck },
 ];
 
 export const APP_NAME = "Professional ERP Suite";

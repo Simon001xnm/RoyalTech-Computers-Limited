@@ -7,12 +7,13 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarMenuSkeleton,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from 'firebase/firestore';
-import { getPermittedNavItems } from '@/lib/roles';
+import { getPermittedNavItems, isMasterKey } from '@/lib/roles';
 import { useSaaS } from "@/components/saas/saas-provider";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { parseISO, differenceInDays } from "date-fns";
 import { useMemo } from "react";
 import type { User as AppUser } from '@/types';
@@ -23,29 +24,25 @@ export function SidebarNav() {
   const { tenant, plan, usage, isLegacyUser } = useSaaS();
   const firestore = useFirestore();
 
-  // Firestore: Fetch user details
   const userProfileRef = useMemoFirebase(() => 
     user ? doc(firestore, 'users', user.uid) : null, 
     [firestore, user]
   );
   const { data: currentUser, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
 
+  const isMaster = useMemo(() => isMasterKey(user?.email), [user?.email]);
+
   const hasHealthIssue = useMemo(() => {
     if (!plan || isLegacyUser) return false;
-    
-    // Check if usage > 80% or expiry within 7 days
     const isHighUsage = usage.assets >= plan.maxAssets * 0.8 || usage.salesThisMonth >= plan.maxSalesPerMonth * 0.8;
     let isExpiringSoon = false;
     if (tenant?.expiresAt) {
         const daysLeft = differenceInDays(parseISO(tenant.expiresAt), new Date());
         isExpiringSoon = daysLeft <= 7;
     }
-    
     return isHighUsage || isExpiringSoon;
   }, [plan, usage, isLegacyUser, tenant]);
 
-  // Use a stable fallback if loading or missing to keep modules visible
-  // PASSING EMAIL as a second argument for hard fallback check
   const permittedNavItems = useMemo(() => {
     return getPermittedNavItems(currentUser?.role, user?.email);
   }, [currentUser?.role, user?.email]);
@@ -61,26 +58,47 @@ export function SidebarNav() {
   if (!user) return null;
   
   return (
-    <SidebarMenu>
-      {permittedNavItems.map((item) => (
-        <SidebarMenuItem key={item.href}>
-          <Link href={item.href} legacyBehavior passHref>
-            <SidebarMenuButton
-              isActive={pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))}
-              tooltip={{ children: item.label, side: "right", align: "center" }}
-              className="justify-start relative"
-            >
-              <item.icon className="h-5 w-5" />
-              <span>{item.label}</span>
-              {item.href === '/profile' && hasHealthIssue && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                    <AlertTriangle className="h-3 w-3 text-destructive animate-pulse" />
-                  </div>
-              )}
-            </SidebarMenuButton>
-          </Link>
-        </SidebarMenuItem>
-      ))}
-    </SidebarMenu>
+    <div className="flex flex-col h-full">
+      <SidebarMenu>
+        {permittedNavItems.map((item) => (
+          <SidebarMenuItem key={item.href}>
+            <Link href={item.href} legacyBehavior passHref>
+              <SidebarMenuButton
+                isActive={pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))}
+                tooltip={{ children: item.label, side: "right", align: "center" }}
+                className="justify-start relative"
+              >
+                <item.icon className="h-5 w-5" />
+                <span>{item.label}</span>
+                {item.href === '/profile' && hasHealthIssue && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <AlertTriangle className="h-3 w-3 text-destructive animate-pulse" />
+                    </div>
+                )}
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
+        ))}
+      </SidebarMenu>
+
+      {isMaster && (
+          <div className="mt-auto pt-4 pb-4">
+              <SidebarSeparator className="mb-4" />
+              <SidebarMenu>
+                  <SidebarMenuItem>
+                      <Link href="/admin" legacyBehavior passHref>
+                        <SidebarMenuButton 
+                            isActive={pathname.startsWith('/admin')}
+                            className="text-primary font-bold hover:bg-primary/5"
+                        >
+                            <ShieldCheck className="h-5 w-5" />
+                            <span>Platform Command</span>
+                        </SidebarMenuButton>
+                      </Link>
+                  </SidebarMenuItem>
+              </SidebarMenu>
+          </div>
+      )}
+    </div>
   );
 }

@@ -16,7 +16,7 @@ import type { User as AppUser } from '@/types';
 import { Badge } from '../ui/badge';
 import { NotificationCenter } from './notification-center';
 import { cn } from "@/lib/utils";
-import { MASTER_KEYS } from '@/lib/roles';
+import { isMasterKey } from '@/lib/roles';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
@@ -124,11 +124,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
 
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
-
-  // Instant recognition for Master Keys to bypass Firestore profile sync delay
-  const isFastTrackAdmin = useMemo(() => {
-    return user?.email ? MASTER_KEYS.includes(user.email.toLowerCase()) : false;
-  }, [user?.email]);
+  const isFastTrackAdmin = useMemo(() => isMasterKey(user?.email), [user?.email]);
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
@@ -138,18 +134,19 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       if (!user && !isPublicPath) {
         router.push('/login');
       } else if (user && isPublicPath) {
-        if (isFastTrackAdmin || userProfile?.role === 'super_admin') {
+        // Redirection on login
+        if (isFastTrackAdmin) {
             router.push('/admin');
         } else {
             router.push('/');
         }
       } else if (user && isFastTrackAdmin && pathname === '/') {
+        // If master key is on root, push to hidden admin
         router.push('/admin');
       }
     }
   }, [user, isUserLoading, isFastTrackAdmin, userProfile, router, pathname, isPublicPath]);
 
-  // Zero-Wait Rendering: Only block if truly anonymous on a private route
   if (isUserLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -163,7 +160,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (user) {
-    // We render the shell even while userProfile is loading IF the admin is fast-tracked
     if (isProfileLoading && !isFastTrackAdmin) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">

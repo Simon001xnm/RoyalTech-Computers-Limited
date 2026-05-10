@@ -6,9 +6,8 @@ export const USER_ROLES = ['admin', 'user', 'super_admin'] as const;
 export type Role = typeof USER_ROLES[number];
 
 /**
- * MASTER_KEYS: Hardcoded identities that are definitively recognized as Super Admins
- * to prevent role-reversion issues during cloud sync delays.
- * Restricted to exactly 2 authorized emails.
+ * MASTER_KEYS: Hardcoded identities restricted to exactly 2 authorized emails.
+ * These bypass cloud database checks for instant, zero-latency admin access.
  */
 export const MASTER_KEYS = [
     "info@simonstyless.co.ke",
@@ -27,7 +26,6 @@ export const isMasterKey = (email?: string | null): boolean => {
 };
 
 const getRolePermissions = (role: Role | string, email?: string | null): string[] => {
-    // Fast-path: check email before role to ensure millisecond access for Master Keys
     const isMaster = isMasterKey(email);
     
     if (role === 'super_admin' || isMaster) {
@@ -56,7 +54,6 @@ const getRolePermissions = (role: Role | string, email?: string | null): string[
         return NAV_ITEMS.map(i => i.href).filter(h => h !== '/admin');
     }
     
-    // Standard User (Staff)
     return [
         '/',
         '/pos',
@@ -76,7 +73,8 @@ export const getPermittedNavItems = (role?: Role | string, email?: string | null
     const permissions = getRolePermissions(effectiveRole, email);
     
     return NAV_ITEMS.filter(item => {
-        if (item.href === '/admin' && !isFeatureEnabled('SUPER_ADMIN_PANEL')) return false;
+        // Explicitly hide admin from public list to maintain anonymity
+        if (item.href === '/admin') return false; 
         return permissions.includes(item.href);
     });
 };
