@@ -412,7 +412,7 @@ export default function PlatformCommandCenter() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {allNotifications?.map(notif => (
+                            {rawNotifications?.map(notif => (
                                 <TableRow key={notif.id} className="hover:bg-muted/5">
                                     <TableCell className="px-6 py-4 font-black uppercase text-xs text-primary">{tenants?.find(t => t.id === notif.tenantId)?.name || 'Unknown'}</TableCell>
                                     <TableCell className="font-bold text-sm">{notif.subject}</TableCell>
