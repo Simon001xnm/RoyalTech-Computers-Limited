@@ -182,7 +182,7 @@ export function PosClient() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8">
       <PageHeader title="Point of Sale" description="Process transactions instantly with cloud synchronization." />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -191,43 +191,97 @@ export function PosClient() {
             <CardContent className="space-y-6">
                 <div className="space-y-2">
                     <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
-                        <PopoverTrigger asChild><Button variant="outline" className="w-full justify-between h-11">{selectedCustomer ? selectedCustomer.name : "Search clients..."}</Button></PopoverTrigger>
+                        <PopoverTrigger asChild><Button variant="outline" className="w-full justify-between h-11 text-left font-normal">{selectedCustomer ? selectedCustomer.name : "Search clients..."}</Button></PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Client name..." /><CommandList><CommandEmpty>None found.</CommandEmpty><CommandGroup>{(customers || []).map(c => <CommandItem key={c.id} onSelect={() => { setSelectedCustomer(c); setIsCustomerSearchOpen(false); }}>{c.name}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent>
                     </Popover>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-[2fr_80px_1fr_auto] gap-4 items-end bg-muted/30 p-4 rounded-xl">
                     <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-black opacity-50">Select Product</Label>
                         <Popover open={searchOpen} onOpenChange={setSearchOpen}>
-                        <PopoverTrigger asChild><Button variant="outline" className="w-full h-10 truncate">{selectedProduct ? selectedProduct.displayName : "Select product..."}</Button></PopoverTrigger>
+                        <PopoverTrigger asChild><Button variant="outline" className="w-full h-10 truncate text-left font-normal">{selectedProduct ? selectedProduct.displayName : "Select item..."}</Button></PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Model/SN..." /><CommandList><CommandGroup>{availableProducts.map(p => <CommandItem key={p.id} onSelect={() => { setSelectedProduct(p); setUnitPrice((p.price || 0).toString()); setSearchOpen(false); }}>{p.displayName}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent>
                         </Popover>
                     </div>
-                    <Input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)} className="h-10" />
-                    <Input type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="h-10" />
-                    <Button onClick={handleAddToCart} disabled={!selectedProduct} className="h-10"><PlusCircle className="h-4 w-4 mr-2" /> Add</Button>
+                    <div className="grid grid-cols-2 md:grid-cols-1 gap-4 w-full">
+                        <div className="space-y-2">
+                             <Label className="text-[10px] uppercase font-black opacity-50">Qty</Label>
+                             <Input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)} className="h-10" />
+                        </div>
+                        <div className="space-y-2">
+                             <Label className="text-[10px] uppercase font-black opacity-50">Price</Label>
+                             <Input type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="h-10" />
+                        </div>
+                    </div>
+                    <Button onClick={handleAddToCart} disabled={!selectedProduct} className="h-10 w-full md:w-auto"><PlusCircle className="h-4 w-4 mr-2" /> Add to Basket</Button>
                 </div>
                 {cart.length > 0 ? (
-                    <div className="border rounded-xl overflow-hidden"><Table><TableHeader className="bg-muted/50"><TableRow><TableHead>Item</TableHead><TableHead className="text-center">Qty</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="w-[50px]"></TableHead></TableRow></TableHeader><TableBody>{cart.map(item => (<TableRow key={item.id} className="hover:bg-muted/20"><TableCell><p className="font-semibold text-sm">{item.name}</p><p className="text-[10px] opacity-60">S/N: {item.serialNumber}</p></TableCell><TableCell className="text-center text-sm">{item.quantity}</TableCell><TableCell className="text-right font-bold text-sm">KES {(item.unitPrice * item.quantity).toLocaleString()}</TableCell><TableCell><Button variant="ghost" size="icon" onClick={() => setCart(cart.filter(c => c.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell></TableRow>))}</TableBody></Table></div>
-                ) : <div className="py-12 border-2 border-dashed rounded-2xl text-center opacity-60"><p className="text-sm uppercase tracking-widest">Basket Empty</p></div>}
+                    <div className="border rounded-xl overflow-hidden overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead className="min-w-[150px]">Item</TableHead>
+                                    <TableHead className="text-center">Qty</TableHead>
+                                    <TableHead className="text-right">Total</TableHead>
+                                    <TableHead className="w-[50px]"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {cart.map(item => (
+                                    <TableRow key={item.id} className="hover:bg-muted/20">
+                                        <TableCell>
+                                            <p className="font-semibold text-sm">{item.name}</p>
+                                            <p className="text-[10px] opacity-60">S/N: {item.serialNumber}</p>
+                                        </TableCell>
+                                        <TableCell className="text-center text-sm">{item.quantity}</TableCell>
+                                        <TableCell className="text-right font-bold text-sm">KES {(item.unitPrice * item.quantity).toLocaleString()}</TableCell>
+                                        <TableCell><Button variant="ghost" size="icon" onClick={() => setCart(cart.filter(c => c.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                ) : (
+                    <div className="py-12 border-2 border-dashed rounded-2xl text-center opacity-60">
+                        <p className="text-sm uppercase tracking-widest">Basket Empty</p>
+                    </div>
+                )}
             </CardContent>
         </Card>
 
-        <Card className="shadow-lg border-primary/10">
-            <CardHeader className="bg-primary/5"><CardTitle className="text-lg">Payment Service</CardTitle></CardHeader>
-            <CardContent className="space-y-5 pt-6">
-                <Select onValueChange={(v: any) => setPaymentMethod(v)} value={paymentMethod}><SelectTrigger className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Cash">Cash</SelectItem><SelectItem value="M-Pesa">M-Pesa</SelectItem><SelectItem value="Bank">Bank</SelectItem></SelectContent></Select>
-                <Input placeholder="Reference..." value={referenceCode} onChange={e => setReferenceCode(e.target.value)} className="h-10 shadow-sm" />
-                <div className="flex items-center space-x-2 pt-2"><Switch id="vat-pos" checked={applyVat} onCheckedChange={setApplyVat} /><Label htmlFor="vat-pos" className="text-xs">Apply 16% VAT</Label></div>
-                <div className="space-y-2 p-4 rounded-xl bg-muted/20 border"><div className="flex justify-between text-xl font-black"><span>Total Due:</span><span className="text-primary">KES {grandTotal.toLocaleString()}</span></div></div>
+        <Card className="shadow-lg border-primary/10 flex flex-col">
+            <CardHeader className="bg-primary/5">
+                <CardTitle className="text-lg">Payment Service</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5 pt-6 flex-grow">
+                <div className="space-y-2">
+                    <Label className="text-[10px] uppercase font-black opacity-50">Method</Label>
+                    <Select onValueChange={(v: any) => setPaymentMethod(v)} value={paymentMethod}><SelectTrigger className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Cash">Cash</SelectItem><SelectItem value="M-Pesa">M-Pesa</SelectItem><SelectItem value="Bank">Bank</SelectItem></SelectContent></Select>
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] uppercase font-black opacity-50">Ref Code</Label>
+                    <Input placeholder="Reference..." value={referenceCode} onChange={e => setReferenceCode(e.target.value)} className="h-10 shadow-sm" />
+                </div>
+                <div className="flex items-center space-x-2 pt-2"><Switch id="vat-pos" checked={applyVat} onCheckedChange={setApplyVat} /><Label htmlFor="vat-pos" className="text-xs font-bold cursor-pointer">Apply 16% VAT</Label></div>
+                <div className="space-y-2 p-4 rounded-xl bg-muted/20 border mt-auto">
+                    <div className="flex justify-between text-xl font-black">
+                        <span>Total Due:</span>
+                        <span className="text-primary">KES {grandTotal.toLocaleString()}</span>
+                    </div>
+                </div>
             </CardContent>
-            <CardFooter className="pb-8"><Button onClick={handleFinalizeSale} className="w-full h-14 text-lg font-black" disabled={isProcessing || !selectedCustomer || cart.length === 0}>{isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Finalize Sale'}</Button></CardFooter>
+            <CardFooter className="pb-8">
+                <Button onClick={handleFinalizeSale} className="w-full h-14 text-lg font-black" disabled={isProcessing || !selectedCustomer || cart.length === 0}>
+                    {isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Finalize Sale'}
+                </Button>
+            </CardFooter>
         </Card>
       </div>
 
       <RecentSales onViewReceipt={() => {}} />
 
       <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
-        <DialogContent className="sm:max-w-md text-center p-8">
+        <DialogContent className="sm:max-w-md text-center p-8 max-h-[90vh] overflow-y-auto">
             <Check className="h-12 w-12 text-green-600 mx-auto mb-4" />
             <DialogHeader>
                 <DialogTitle className="text-2xl font-black">Sale Completed!</DialogTitle>

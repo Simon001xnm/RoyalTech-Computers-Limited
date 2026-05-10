@@ -279,11 +279,11 @@ export function DocumentsClient() {
           {showsItemEntry && (
             <div className="space-y-4">
                 <Label className="text-[10px] font-black uppercase opacity-60">Line Items</Label>
-                <div className="border rounded-xl overflow-hidden">
+                <div className="border rounded-xl overflow-hidden overflow-x-auto">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="text-[10px] font-black uppercase">Description</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase min-w-[200px]">Description</TableHead>
                                 <TableHead className="w-24 text-[10px] font-black uppercase">Qty</TableHead>
                                 <TableHead className="w-32 text-[10px] font-black uppercase">Price</TableHead>
                                 <TableHead className="w-10"></TableHead>
@@ -305,7 +305,7 @@ export function DocumentsClient() {
             </div>
           )}
         </CardContent>
-        <CardFooter className="bg-muted/10 border-t py-4"><Button onClick={() => handleGenerateDocument(type)} className="ml-auto font-black uppercase" disabled={docsLoading}>Generate Document</Button></CardFooter>
+        <CardFooter className="bg-muted/10 border-t py-4"><Button onClick={() => handleGenerateDocument(type)} className="w-full sm:w-auto ml-auto font-black uppercase" disabled={docsLoading}>Generate Document</Button></CardFooter>
       </Card>
     );
   };
@@ -314,12 +314,12 @@ export function DocumentsClient() {
     <div className="space-y-6">
       <PageHeader title="Branded Documents (Cloud)" description="Professional invoices and quotations synchronized globally." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
-          <TabsTrigger value="Quotation" className="font-black uppercase text-[10px]">Quotation</TabsTrigger>
-          <TabsTrigger value="Invoice" className="font-black uppercase text-[10px]">Invoice</TabsTrigger>
-          <TabsTrigger value="Proforma" className="font-black uppercase text-[10px]">Proforma</TabsTrigger>
-          <TabsTrigger value="Receipt" className="font-black uppercase text-[10px]">Receipt</TabsTrigger>
-          <TabsTrigger value="DeliveryNote" className="font-black uppercase text-[10px]">Delivery</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
+          <TabsTrigger value="Quotation" className="font-black uppercase text-[9px] md:text-[10px] py-3">Quotation</TabsTrigger>
+          <TabsTrigger value="Invoice" className="font-black uppercase text-[9px] md:text-[10px] py-3">Invoice</TabsTrigger>
+          <TabsTrigger value="Proforma" className="font-black uppercase text-[9px] md:text-[10px] py-3">Proforma</TabsTrigger>
+          <TabsTrigger value="Receipt" className="font-black uppercase text-[9px] md:text-[10px] py-3">Receipt</TabsTrigger>
+          <TabsTrigger value="DeliveryNote" className="font-black uppercase text-[9px] md:text-[10px] py-3">Delivery</TabsTrigger>
         </TabsList>
         <TabsContent value="Quotation">{renderForm("Quotation")}</TabsContent>
         <TabsContent value="Invoice">{renderForm("Invoice")}</TabsContent>
@@ -330,12 +330,12 @@ export function DocumentsClient() {
       
       <Card className="mt-8 shadow-2xl border-none overflow-hidden">
           <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase">Recent Cloud Documents</CardTitle></CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="p-0 overflow-auto">
             <Table>
                 <TableHeader className="bg-muted/20">
                     {table.getHeaderGroups().map(hg => (
                         <TableRow key={hg.id}>
-                            {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
+                            {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase min-w-[120px]">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
                         </TableRow>
                     ))}
                 </TableHeader>
@@ -359,15 +359,15 @@ export function DocumentsClient() {
             <DialogTitle className="text-xl font-black uppercase tracking-tight">Document Fidelity Engine</DialogTitle>
             <DialogDescription className="text-xs font-bold text-muted-foreground uppercase">Processing high-fidelity A4 structured output.</DialogDescription>
           </DialogHeader>
-          <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-8">
-            <div id="pdf-preview-target" className="shrink-0 shadow-2xl relative bg-white overflow-hidden" style={{ width: '210mm', minHeight: '297mm' }}>
+          <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-4 md:p-8">
+            <div id="pdf-preview-target" className="shrink-0 shadow-2xl relative bg-white overflow-hidden origin-top scale-[0.4] sm:scale-[0.6] md:scale-100" style={{ width: '210mm', minHeight: '297mm' }}>
                 {renderPdfPreview()}
             </div>
           </div>
-          <div className="p-4 border-t flex justify-end gap-3 bg-white no-print">
+          <div className="p-4 border-t flex flex-col sm:flex-row justify-end gap-3 bg-white no-print">
             {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold">Close Preview</Button>
-            <Button onClick={() => window.print()} className="font-black uppercase">Execute Print (A4)</Button>
+            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold w-full sm:w-auto">Close Preview</Button>
+            <Button onClick={() => window.print()} className="font-black uppercase w-full sm:w-auto">Execute Print (A4)</Button>
           </div>
         </DialogContent>
       </Dialog>

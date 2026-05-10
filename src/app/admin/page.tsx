@@ -165,26 +165,26 @@ export default function PlatformCommandCenter() {
   };
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6 md:space-y-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-            <h1 className="text-4xl font-black uppercase tracking-tighter flex items-center gap-3">
-                <Gauge className="h-10 w-10 text-primary" />
+        <div className="text-center md:text-left">
+            <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter flex items-center justify-center md:justify-start gap-3">
+                <Gauge className="h-8 w-8 md:h-10 md:w-10 text-primary shrink-0" />
                 Platform Command
             </h1>
             <p className="text-muted-foreground font-medium mt-1">Global SaaS Oversight & Network Metrics</p>
         </div>
-        <div className="flex gap-2">
-            <Button onClick={() => setIsMessageOpen(true)} className="h-9 px-4 font-bold bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all active:scale-95">
+        <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={() => setIsMessageOpen(true)} className="w-full sm:w-auto h-9 px-4 font-bold bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all active:scale-95">
                 <SendHorizonal className="h-4 w-4 mr-2" /> Global Broadcast
             </Button>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-9 px-4 font-bold">
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-9 px-4 font-bold justify-center">
                 <Server className="h-3 w-3 mr-2" /> Global Node Online
             </Badge>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard title="Active Workspaces" value={platformStats.totalTenants} icon={Building2} description="Registered cloud tenancies" />
         <SummaryCard title="Global Identity" value={platformStats.totalUsers} icon={Users} description="Consolidated staff accounts" />
         <SummaryCard title="Aggregate GMV" value={formatCurrency(platformStats.totalRevenue)} icon={CreditCard} description="Cumulative transaction volume" />
@@ -192,23 +192,23 @@ export default function PlatformCommandCenter() {
       </div>
 
       <Tabs defaultValue="tenants" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
-          <TabsTrigger value="tenants" className="font-black uppercase tracking-widest text-[10px]">Workspaces</TabsTrigger>
-          <TabsTrigger value="activity" className="font-black uppercase tracking-widest text-[10px]">Global Audit</TabsTrigger>
-          <TabsTrigger value="comms" className="font-black uppercase tracking-widest text-[10px]">Platform Comms</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 mb-6 md:mb-8 h-12 p-1 bg-muted/50 border shadow-inner">
+          <TabsTrigger value="tenants" className="font-black uppercase tracking-widest text-[9px] md:text-[10px]">Workspaces</TabsTrigger>
+          <TabsTrigger value="activity" className="font-black uppercase tracking-widest text-[9px] md:text-[10px]">Audit</TabsTrigger>
+          <TabsTrigger value="comms" className="font-black uppercase tracking-widest text-[9px] md:text-[10px]">Comms</TabsTrigger>
         </TabsList>
         
         <TabsContent value="tenants">
             <Card className="shadow-2xl border-none overflow-hidden">
                 <CardHeader className="p-6"><CardTitle className="text-xl font-black uppercase tracking-tight">Cloud Workspace Registry</CardTitle></CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="p-0 overflow-auto">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="font-black uppercase text-[10px] py-4 px-6">Business Entity</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Staff Size</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Plan</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Status</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] py-4 px-6 min-w-[200px]">Business Entity</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] min-w-[120px]">Staff Size</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] min-w-[100px]">Plan</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] min-w-[100px]">Status</TableHead>
                                 <TableHead className="text-right font-black uppercase text-[10px] px-6">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -255,21 +255,21 @@ export default function PlatformCommandCenter() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <ScrollArea className="h-[600px]">
+                    <ScrollArea className="h-[500px] md:h-[600px]">
                         <div className="divide-y">
                             {logs?.map(log => (
-                                <div key={log.id} className="p-5 hover:bg-muted/20">
-                                    <div className="flex items-start justify-between gap-6">
+                                <div key={log.id} className="p-4 md:p-5 hover:bg-muted/20">
+                                    <div className="flex items-start justify-between gap-4 md:gap-6">
                                         <div className="space-y-2">
-                                            <div className="flex items-center gap-3">
-                                                <Badge variant="outline" className={cn("font-black text-[9px] uppercase", log.level === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700')}>
+                                            <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                                                <Badge variant="outline" className={cn("font-black text-[8px] md:text-[9px] uppercase", log.level === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700')}>
                                                     {log.level}
                                                 </Badge>
-                                                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{log.module}</span>
+                                                <span className="text-[9px] md:text-[10px] font-black text-muted-foreground uppercase tracking-widest">{log.module}</span>
                                             </div>
-                                            <p className="text-sm font-bold">{log.event}</p>
-                                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium">
-                                                <Building2 className="h-3 w-3" /> {tenants?.find(t => t.id === log.tenantId)?.name || 'Platform'}
+                                            <p className="text-sm font-bold leading-tight">{log.event}</p>
+                                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground font-medium">
+                                                <Building2 className="h-3 w-3 shrink-0" /> {tenants?.find(t => t.id === log.tenantId)?.name || 'Platform'}
                                                 <span className="opacity-40">&bull;</span>
                                                 {log.timestamp ? format(parseISO(log.timestamp), 'MMM d, HH:mm') : 'Recent'}
                                             </div>
@@ -286,13 +286,13 @@ export default function PlatformCommandCenter() {
         <TabsContent value="comms">
             <Card className="shadow-2xl border-none overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b p-6"><CardTitle className="text-xl font-black uppercase tracking-tight">Communication Audit Log</CardTitle></CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="p-0 overflow-auto">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="font-black uppercase text-[10px] py-4 px-6">Destination Node</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Subject</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Sent</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] py-4 px-6 min-w-[150px]">Destination Node</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] min-w-[200px]">Subject</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] min-w-[100px]">Sent</TableHead>
                                 <TableHead className="font-black uppercase text-[10px]">Status</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -318,9 +318,9 @@ export default function PlatformCommandCenter() {
 
       {/* Messaging Dialog */}
       <Dialog open={isMessageOpen} onOpenChange={setIsMessageOpen}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-                <DialogTitle className="text-2xl font-black uppercase flex items-center gap-2"><Send className="h-6 w-6 text-primary" /> platform alert</DialogTitle>
+                <DialogTitle className="text-xl md:text-2xl font-black uppercase flex items-center gap-2"><Send className="h-6 w-6 text-primary" /> platform alert</DialogTitle>
                 <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">Admin broadcast service for security & status updates</DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-4">
@@ -329,7 +329,7 @@ export default function PlatformCommandCenter() {
                     <Select value={msgTargetTenantId} onValueChange={setMsgTargetTenantId}><SelectTrigger className="h-12 font-bold uppercase text-xs"><SelectValue placeholder="Select Business Node" /></SelectTrigger><SelectContent>{tenants?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent></Select>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase">priority level</Label>
                         <Select value={msgPriority} onValueChange={(v: any) => setMsgPriority(v)}>
@@ -361,9 +361,9 @@ export default function PlatformCommandCenter() {
                     <Textarea value={msgBody} onChange={e => setMsgBody(e.target.value)} rows={6} placeholder="Compose your platform communication here..." />
                 </div>
             </div>
-            <DialogFooter className="border-t pt-6">
-                <Button variant="outline" onClick={() => setIsMessageOpen(false)}>Cancel</Button>
-                <Button onClick={handleSendPlatformMessage} disabled={isSendingMsg || !msgTargetTenantId || !msgSubject} className="font-black uppercase tracking-widest text-xs px-8 shadow-lg">
+            <DialogFooter className="border-t pt-6 flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => setIsMessageOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+                <Button onClick={handleSendPlatformMessage} disabled={isSendingMsg || !msgTargetTenantId || !msgSubject} className="w-full sm:w-auto font-black uppercase tracking-widest text-xs px-8 shadow-lg">
                     {isSendingMsg ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />} Execute Broadcast
                 </Button>
             </DialogFooter>
