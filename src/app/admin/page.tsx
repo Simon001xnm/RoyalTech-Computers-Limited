@@ -38,7 +38,6 @@ export default function PlatformCommandCenter() {
   // State for Filtering
   const [logLevelFilter, setLogLevelFilter] = useState<string>('all');
   const [tenantFilter, setTenantFilter] = useState<string>('all');
-  const [inspectingTenantId, setInspectingTenantId] = useState<string | null>(null);
 
   // Messaging State
   const [isMessageOpen, setIsMessageOpen] = useState(false);
@@ -50,7 +49,7 @@ export default function PlatformCommandCenter() {
   const [postToChat, setPostToChat] = useState(true);
   const [isSendingMsg, setIsSendingMsg] = useState(false);
   
-  // GLOBAL CLOUD QUERIES (Index-free: sort in memory)
+  // GLOBAL CLOUD QUERIES
   const companiesQuery = useMemoFirebase(() => query(collection(firestore, 'companies')), []);
   const { data: tenants } = useCollection(companiesQuery);
 
