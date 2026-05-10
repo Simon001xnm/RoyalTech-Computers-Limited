@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ChevronDown, ChevronRight, ShieldCheck } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
+import { logger } from '@/lib/logger';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -43,6 +44,8 @@ export default function LoginPage() {
     setIsProcessing(true);
     try {
         await initiateEmailSignIn(auth, email.toLowerCase().trim(), password);
+        // Sync Login to Admin Dashboard
+        logger.business('Identity', 'User Signed In', { email: email.toLowerCase().trim(), method: 'Email' });
     } catch (e: any) {
         setIsProcessing(false);
         toast({ variant: 'destructive', title: 'Sign In Failed', description: e.message || 'Incorrect email or password.' });
@@ -52,7 +55,10 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     setIsProcessing(true);
     try {
-        await initiateGoogleSignIn(auth);
+        const result = await initiateGoogleSignIn(auth);
+        if (result.user.email) {
+            logger.business('Identity', 'User Signed In', { email: result.user.email, method: 'Google' });
+        }
     } catch (e: any) {
         setIsProcessing(false);
         if (e.code !== 'auth/popup-closed-by-user') {

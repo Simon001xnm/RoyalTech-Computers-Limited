@@ -15,6 +15,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { Loader2, ChevronDown, ChevronRight, ShieldCheck, Zap } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
 import { initiateGoogleSignIn } from '@/firebase/non-blocking-login';
+import { logger } from '@/lib/logger';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
@@ -63,6 +64,9 @@ export default function SignUpPage() {
             createdAt: new Date().toISOString()
         });
 
+        // Instant Log for Platform Command Center
+        logger.business('Identity', 'New User Registered', { email: normalizedEmail, method: 'Email' });
+
         toast({ title: 'Account Created Successfully' });
         router.push(isMaster ? '/admin' : '/');
     } catch (error: any) {
@@ -75,7 +79,8 @@ export default function SignUpPage() {
   const handleGoogleSignUp = async () => {
       setIsLoading(true);
       try {
-          await initiateGoogleSignIn(auth);
+          const result = await initiateGoogleSignIn(auth);
+          // Logging is handled by SaaSProvider for Google signups to ensure profile existance
       } catch (e: any) {
           setIsLoading(false);
           if (e.code !== 'auth/popup-closed-by-user') {

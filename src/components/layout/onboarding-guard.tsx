@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import type { User as AppUser } from '@/types';
+import { logger } from '@/lib/logger';
 
 const COLOR_PRESETS = [
   { name: 'Executive Navy', primary: '#1e293b', secondary: '#f1f5f9' },
@@ -82,6 +83,9 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         tenantIds: [...new Set([...currentIds, companyId])],
         role: 'admin' 
       });
+
+      // Log for Admin Dashboard
+      logger.business('Identity', 'Business Node Setup Complete', { companyName: name, companyId });
 
       toast({ title: 'Workspace Initialized' });
     } catch (err: any) {
