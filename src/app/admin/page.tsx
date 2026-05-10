@@ -5,7 +5,7 @@ import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
     Building2, Users, CreditCard, Activity, ShieldCheck, Server, 
     History, MoreHorizontal, Lock, Unlock, Zap, Crown, 
-    ChevronRight, Inbox, Gauge, Eye, Mail, Phone, Clock, Send, SendHorizonal, MailCheck, MailQuestion, Loader2, MessageSquare, AlertCircle, Trash2, AlertTriangle, UserPlus
+    ChevronRight, Inbox, Gauge, Eye, Mail, Phone, Clock, Send, SendHorizonal, MailCheck, MailQuestion, Loader2, MessageSquare, AlertCircle, Trash2, AlertTriangle, UserPlus, BarChart3, LineChart, PieChart, TrendingUp, Package, Search
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, limit, addDoc, updateDoc, doc, writeBatch, getDocs } from 'firebase/firestore';
@@ -19,17 +19,30 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { 
+    ResponsiveContainer, 
+    AreaChart, 
+    Area, 
+    XAxis, 
+    YAxis, 
+    CartesianGrid, 
+    Tooltip, 
+    BarChart, 
+    Bar, 
+    Legend,
+    Cell
+} from 'recharts';
 
 /**
  * @fileOverview Platform Command Center (Super Admin Dashboard)
- * Optimized for real-time global oversight.
+ * Optimized for real-time global oversight with deep business-node intelligence.
  */
 export default function PlatformCommandCenter() {
   const { toast } = useToast();
@@ -38,6 +51,7 @@ export default function PlatformCommandCenter() {
   // State for Filtering
   const [logLevelFilter, setLogLevelFilter] = useState<string>('all');
   const [tenantFilter, setTenantFilter] = useState<string>('all');
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   // Messaging State
   const [isMessageOpen, setIsMessageOpen] = useState(false);
@@ -56,18 +70,58 @@ export default function PlatformCommandCenter() {
   const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), []);
   const { data: users, isLoading: isUsersLoading } = useCollection(usersQuery);
 
-  const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales_transactions'), limit(1000)), []);
+  const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales_transactions'), limit(2000)), []);
   const { data: rawGlobalSales } = useCollection(salesQuery);
+
+  const assetsQuery = useMemoFirebase(() => query(collection(firestore, 'assets')), []);
+  const { data: rawGlobalAssets } = useCollection(assetsQuery);
 
   const ticketsQuery = useMemoFirebase(() => query(collection(firestore, 'tickets')), []);
   const { data: globalTickets } = useCollection(ticketsQuery);
 
-  // LOGS: Increased limit and sorting in memory to ensure new registrations/logins show up instantly
   const logsQuery = useMemoFirebase(() => query(collection(firestore, 'platform_logs'), limit(500)), []);
   const { data: rawLogs, isLoading: isLogsLoading } = useCollection(logsQuery);
 
   const notifsQuery = useMemoFirebase(() => query(collection(firestore, 'notifications'), limit(100)), []);
   const { data: rawNotifications } = useCollection(notifsQuery);
+
+  // Drill-down Logic
+  const activeDetailCompany = useMemo(() => 
+    tenants?.find(t => t.id === selectedCompanyId), 
+  [tenants, selectedCompanyId]);
+
+  const companyStats = useMemo(() => {
+    if (!selectedCompanyId || !rawGlobalSales || !rawGlobalAssets) return null;
+    
+    const companySales = rawGlobalSales.filter(s => s.tenantId === selectedCompanyId);
+    const companyAssets = rawGlobalAssets.filter(a => a.tenantId === selectedCompanyId);
+    const companyUsers = users?.filter(u => u.tenantId === selectedCompanyId) || [];
+
+    const totalRevenue = companySales.reduce((acc, s) => acc + (s.amount || 0), 0);
+    const totalInventoryValue = companyAssets.reduce((acc, a) => acc + ((a.purchasePrice || 0) * (a.quantity || 1)), 0);
+    
+    // Group sales by month for the chart
+    const monthlyData = companySales.reduce((acc: any, s) => {
+        const month = format(parseISO(s.date), 'MMM');
+        acc[month] = (acc[month] || 0) + s.amount;
+        return acc;
+    }, {});
+
+    const chartData = Object.keys(monthlyData).map(month => ({
+        name: month,
+        sales: monthlyData[month],
+        inventory: totalInventoryValue / 12 // Simple comparative visualization
+    }));
+
+    return {
+        totalRevenue,
+        totalInventoryValue,
+        userCount: companyUsers.length,
+        assetCount: companyAssets.length,
+        chartData,
+        users: companyUsers
+    };
+  }, [selectedCompanyId, rawGlobalSales, rawGlobalAssets, users]);
 
   // In-memory Sorting & Derivation
   const globalSalesSorted = useMemo(() => {
@@ -99,17 +153,8 @@ export default function PlatformCommandCenter() {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
-    }).slice(0, 5);
+    }).slice(0, 10);
   }, [users]);
-
-  const allNotifications = useMemo(() => {
-    if (!rawNotifications) return [];
-    return [...rawNotifications].sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-    });
-  }, [rawNotifications]);
 
   const platformStats = useMemo(() => ({
     totalRevenue: globalSalesSorted?.reduce((acc, s) => acc + s.amount, 0) || 0,
@@ -230,7 +275,9 @@ export default function PlatformCommandCenter() {
                                 <TableCell><Badge variant={tenant.status === 'suspended' ? 'destructive' : 'secondary'} className="uppercase text-[9px] font-black">{tenant.status || 'Active'}</Badge></TableCell>
                                 <TableCell className="text-right px-6">
                                     <div className="flex justify-end gap-1">
-                                        <Button variant="ghost" size="icon" title="Quick Message" onClick={() => { setMsgTargetTenantId(tenant.id); setMsgTargetUserId('all'); setIsMessageOpen(true); }}><Mail className="h-4 w-4" /></Button>
+                                        <Button variant="outline" size="sm" className="h-8 font-black uppercase text-[10px]" onClick={() => setSelectedCompanyId(tenant.id)}>
+                                            <BarChart3 className="h-3 w-3 mr-1" /> View Intelligence
+                                        </Button>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-56 p-2">
@@ -383,6 +430,125 @@ export default function PlatformCommandCenter() {
             </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Intelligence Drill-down Sheet */}
+      <Sheet open={!!selectedCompanyId} onOpenChange={(open) => !open && setSelectedCompanyId(null)}>
+        <SheetContent className="w-full sm:max-w-4xl overflow-y-auto p-0 border-none shadow-2xl">
+            {activeDetailCompany && companyStats && (
+                <div className="flex flex-col h-full bg-background">
+                    <div className="p-8 bg-primary text-primary-foreground">
+                        <div className="flex justify-between items-start gap-6">
+                            <div className="space-y-1">
+                                <Badge variant="secondary" className="font-black uppercase text-[10px] tracking-widest bg-white/20 text-white border-none mb-2">Workspace Intelligence</Badge>
+                                <h2 className="text-4xl font-black uppercase tracking-tighter">{activeDetailCompany.name}</h2>
+                                <div className="flex items-center gap-4 text-xs font-bold opacity-80 pt-2">
+                                    <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {activeDetailCompany.email}</span>
+                                    <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {activeDetailCompany.phone || 'No Phone'}</span>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <Badge variant="outline" className="bg-white text-primary border-none font-black h-8 px-4 uppercase">{activeDetailCompany.plan || 'Free'}</Badge>
+                                <p className="text-[10px] opacity-60 mt-2 font-mono uppercase">Node ID: {activeDetailCompany.id.slice(0,12)}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-8 space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <Card className="bg-muted/20 border-none">
+                                <CardContent className="pt-6">
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Lifetime GMV</p>
+                                    <p className="text-xl font-black">{formatCurrency(companyStats.totalRevenue)}</p>
+                                </CardContent>
+                            </Card>
+                            <Card className="bg-muted/20 border-none">
+                                <CardContent className="pt-6">
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Inventory Value</p>
+                                    <p className="text-xl font-black">{formatCurrency(companyStats.totalInventoryValue)}</p>
+                                </CardContent>
+                            </Card>
+                            <Card className="bg-muted/20 border-none">
+                                <CardContent className="pt-6">
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Hardware Units</p>
+                                    <p className="text-xl font-black">{companyStats.assetCount}</p>
+                                </CardContent>
+                            </Card>
+                            <Card className="bg-muted/20 border-none">
+                                <CardContent className="pt-6">
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Active Staff</p>
+                                    <p className="text-xl font-black">{companyStats.userCount}</p>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        <Card className="border-none shadow-sm ring-1 ring-muted overflow-hidden">
+                            <CardHeader className="bg-muted/10 border-b">
+                                <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4 text-primary" />
+                                    Performance Analytics: Sales vs. Inventory
+                                </CardTitle>
+                                <CardDescription>Visualization of revenue generation vs. stock overhead.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                <div className="h-[300px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={companyStats.chartData}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} fontStyle="bold" />
+                                            <YAxis axisLine={false} tickLine={false} fontSize={10} />
+                                            <Tooltip 
+                                                cursor={{fill: 'hsl(var(--muted)/0.2)'}}
+                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                                            />
+                                            <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
+                                            <Bar dataKey="sales" name="Actual Sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="inventory" name="Inventory Value (Avg)" fill="hsl(var(--muted-foreground)/0.3)" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                <Users className="h-4 w-4" /> Node Identity Registry (Staff)
+                            </h3>
+                            <div className="rounded-xl border overflow-hidden">
+                                <Table>
+                                    <TableHeader className="bg-muted/50">
+                                        <TableRow>
+                                            <TableHead className="text-[10px] font-black uppercase py-4">Name</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase">Email</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase">Role</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {companyStats.users.map(u => (
+                                            <TableRow key={u.id}>
+                                                <TableCell className="font-bold text-sm py-4">{u.name}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">{u.email}</TableCell>
+                                                <TableCell><Badge variant="outline" className="text-[9px] uppercase font-bold">{u.role}</Badge></TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+
+                        <div className="bg-muted/20 p-6 rounded-2xl border border-dashed flex flex-col items-center justify-center text-center space-y-4">
+                            <div className="space-y-1">
+                                <p className="text-sm font-bold">Node Geographic Data</p>
+                                <p className="text-xs text-muted-foreground">{activeDetailCompany.address}</p>
+                            </div>
+                            <Button variant="outline" className="w-full h-11 font-black uppercase text-xs" onClick={() => { setMsgTargetTenantId(activeDetailCompany.id); setMsgTargetUserId('all'); setIsMessageOpen(true); }}>
+                                <Send className="h-3 w-3 mr-2" /> Transmission official Alert to Node
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </SheetContent>
+      </Sheet>
 
       {/* Messaging Dialog */}
       <Dialog open={isMessageOpen} onOpenChange={setIsMessageOpen}>
