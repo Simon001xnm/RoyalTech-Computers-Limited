@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
   Package, 
-  Component, 
+  Component as ComponentIcon, 
   Users, 
   TrendingUp,
   History,
@@ -139,7 +139,7 @@ export default function DashboardPage() {
         ) : (
             <>
                 <SummaryCard title="Stock Available" value={stats.availableAssets} icon={Package} description="Active hardware assets" />
-                <SummaryCard title="Accessory Stock" value={stats.accessoryItems} icon={Component} description="Total units in node" />
+                <SummaryCard title="Accessory Stock" value={stats.accessoryItems} icon={ComponentIcon} description="Total units in node" />
                 <SummaryCard title="Total Clients" value={stats.totalClients} icon={Users} description="Registered in CRM" />
                 <SummaryCard title="Monthly Sales" value={stats.recentSalesCount} icon={TrendingUp} description="Transactions this month" />
             </>

@@ -1,11 +1,10 @@
-
 "use client";
 
 import type { ItemIssuance } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, DollarSign, CornerDownLeft, Laptop, Component } from "lucide-react";
+import { MoreHorizontal, DollarSign, CornerDownLeft, Laptop, Component as ComponentIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -19,7 +18,7 @@ export const getIssuanceColumns = (actions: IssuanceColumnActions): ColumnDef<It
     accessorKey: "itemName",
     header: "Item",
     cell: ({ row }) => {
-        const Icon = row.original.itemType === 'laptop' ? Laptop : Component;
+        const Icon = row.original.itemType === 'laptop' ? Laptop : ComponentIcon;
         return (
             <div className="flex items-center gap-2">
                 <Icon className="h-4 w-4 text-muted-foreground" />

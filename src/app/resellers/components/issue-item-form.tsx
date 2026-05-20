@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { LaptopIcon, Component, Plus, X, ShoppingCart } from 'lucide-react';
+import { LaptopIcon, Component as ComponentIcon, Plus, X, ShoppingCart } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 /**
@@ -71,7 +71,7 @@ export function IssueItemForm({ availableItems, onSubmit, onCancel }: IssueItemF
         return (
             <div key={item.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md">
                 <div className="flex items-center gap-3">
-                    {item.type === 'laptop' ? <LaptopIcon className="h-5 w-5 text-muted-foreground" /> : <Component className="h-5 w-5 text-muted-foreground" />}
+                    {item.type === 'laptop' ? <LaptopIcon className="h-5 w-5 text-muted-foreground" /> : <ComponentIcon className="h-5 w-5 text-muted-foreground" />}
                     <div className="flex flex-col">
                         <span className="text-sm font-medium">{displayName}</span>
                         <span className="text-xs text-muted-foreground">S/N: {item.serialNumber}</span>
@@ -98,7 +98,7 @@ export function IssueItemForm({ availableItems, onSubmit, onCancel }: IssueItemF
                     <Input 
                         placeholder="Search by name or serial number..."
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     <ScrollArea className="h-72 w-full rounded-md border">
                         <div className="p-2">
