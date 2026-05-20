@@ -23,6 +23,7 @@ const SaaSContext = createContext<SaaSContextState | undefined>(undefined);
 /**
  * @fileOverview SaaS Infrastructure Provider
  * Optimized to perform usage calculations in memory to avoid "Missing Index" errors.
+ * Now handles automatic profile provisioning for Google Sign-In users.
  */
 export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -44,7 +45,6 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   }, [firestore, userProfile?.tenantIds]);
   const { data: availableWorkspaces = [] } = useCollection(portfolioQuery);
 
-  // INDEX-FREE USAGE QUERIES: Fetch all and filter in memory
   const assetQuery = useMemoFirebase(() => 
     userProfile?.tenantId ? query(collection(firestore, 'assets'), where('tenantId', '==', userProfile.tenantId)) : null,
     [firestore, userProfile?.tenantId]
@@ -91,21 +91,27 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   }, [tenantData]);
 
   useEffect(() => {
+    // AUTOMATIC PROVISIONING FOR GOOGLE SIGN-IN
     if (!isUserLoading && user && !isProfileLoading && !userProfile) {
         const provision = async () => {
             const ref = doc(firestore, 'users', user.uid);
             try {
-                const isMaster = user.email && MASTER_KEYS.includes(user.email.toLowerCase());
+                const normalizedEmail = user.email?.toLowerCase() || '';
+                const isMaster = MASTER_KEYS.includes(normalizedEmail);
+                
                 await setDoc(ref, {
                     id: user.uid,
                     name: user.displayName || 'System User',
-                    email: user.email || '',
+                    email: normalizedEmail,
                     role: isMaster ? 'super_admin' : 'user',
+                    tenantId: null, // Forces onboarding guard for non-admins
                     tenantIds: [],
                     createdAt: new Date().toISOString()
                 }, { merge: true });
+                
+                console.log(`Cloud Profile Provisioned: ${normalizedEmail}`);
             } catch (e) {
-                console.warn("Profile provisioning...");
+                console.warn("Profile provisioning delayed or failed...");
             }
         };
         provision();

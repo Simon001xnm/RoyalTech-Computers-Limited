@@ -64,9 +64,7 @@ export default function SignUpPage() {
             createdAt: new Date().toISOString()
         });
 
-        // Instant Log for Platform Command Center
         logger.business('Identity', 'New User Registered', { email: normalizedEmail, method: 'Email' });
-
         toast({ title: 'Account Created Successfully' });
         router.push(isMaster ? '/admin' : '/');
     } catch (error: any) {
@@ -80,10 +78,18 @@ export default function SignUpPage() {
       setIsLoading(true);
       try {
           const result = await initiateGoogleSignIn(auth);
-          // Logging is handled by SaaSProvider for Google signups to ensure profile existance
+          if (result.user.email) {
+            logger.business('Identity', 'Google Identity Registration', { email: result.user.email });
+          }
       } catch (e: any) {
           setIsLoading(false);
-          if (e.code !== 'auth/popup-closed-by-user') {
+          if (e.code === 'auth/unauthorized-domain') {
+              toast({ 
+                variant: 'destructive', 
+                title: 'Authorized Domain Required',
+                description: 'Add this domain to the Authorized Domains list in Firebase Console.'
+              });
+          } else if (e.code !== 'auth/popup-closed-by-user') {
               toast({ 
                 variant: 'destructive', 
                 title: 'Google Identity Failed',

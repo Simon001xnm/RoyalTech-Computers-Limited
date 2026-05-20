@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -32,7 +31,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isUserLoading && user) {
-      // Check actual authenticated user email for master status, not just input
       const userEmail = user.email?.toLowerCase().trim() || "";
       const isActuallyMaster = MASTER_KEYS.includes(userEmail);
       router.push(isActuallyMaster ? '/admin' : '/');
@@ -51,7 +49,6 @@ export default function LoginPage() {
         logger.business('Identity', 'User Signed In', { email: email.toLowerCase().trim(), method: 'Email' });
     } catch (e: any) {
         setIsProcessing(false);
-        // auth/invalid-credential is the standard Firebase error for wrong pass or non-existent user
         const message = e.code === 'auth/invalid-credential' 
           ? "Account not found or password incorrect. If you are new, please use the 'Create Account' link below." 
           : e.message;
@@ -65,11 +62,17 @@ export default function LoginPage() {
     try {
         const result = await initiateGoogleSignIn(auth);
         if (result.user.email) {
-            logger.business('Identity', 'User Signed In', { email: result.user.email, method: 'Google' });
+            logger.business('Identity', 'Google Identity Auth', { email: result.user.email });
         }
     } catch (e: any) {
         setIsProcessing(false);
-        if (e.code !== 'auth/popup-closed-by-user') {
+        if (e.code === 'auth/unauthorized-domain') {
+            toast({ 
+                variant: 'destructive', 
+                title: 'Authorized Domain Required', 
+                description: 'Please add this domain to authorized domains in Firebase Console.' 
+            });
+        } else if (e.code !== 'auth/popup-closed-by-user') {
             toast({ 
                 variant: 'destructive', 
                 title: 'Google Identity Failed', 
