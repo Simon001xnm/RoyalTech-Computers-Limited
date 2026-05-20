@@ -36,8 +36,7 @@ import {
     Tooltip, 
     BarChart, 
     Bar, 
-    Legend,
-    Cell
+    Legend
 } from 'recharts';
 
 /**
@@ -106,7 +105,6 @@ export default function PlatformCommandCenter() {
     const totalRevenue = companySales.reduce((acc, s) => acc + (s.amount || 0), 0);
     const totalInventoryValue = companyAssets.reduce((acc, a) => acc + ((a.purchasePrice || 0) * (a.quantity || 1)), 0);
     
-    // Group sales by month for the chart
     const monthlyData = companySales.reduce((acc: any, s) => {
         try {
             const month = format(parseISO(s.date), 'MMM');
@@ -131,7 +129,6 @@ export default function PlatformCommandCenter() {
     };
   }, [selectedCompanyId, rawGlobalSales, rawGlobalAssets, users]);
 
-  // In-memory Sorting & Derivation
   const globalSalesSorted = useMemo(() => {
     if (!rawGlobalSales) return [];
     return [...rawGlobalSales].sort((a, b) => {
@@ -164,12 +161,14 @@ export default function PlatformCommandCenter() {
     }).slice(0, 10);
   }, [users]);
 
-  const platformStats = useMemo(() => ({
-    totalRevenue: globalSalesSorted?.reduce((acc, s) => acc + s.amount, 0) || 0,
-    totalTenants: tenants?.length || 0,
-    totalUsers: users?.length || 0,
-    openTickets: globalTickets?.filter(t => t.status !== 'Closed').length || 0
-  }), [tenants, users, globalSalesSorted, globalTickets]);
+  const platformStats = useMemo(() => {
+    return {
+        totalRevenue: globalSalesSorted?.reduce((acc, s) => acc + s.amount, 0) || 0,
+        totalTenants: tenants?.length || 0,
+        totalUsers: users?.length || 0,
+        openTickets: globalTickets?.filter(t => t.status !== 'Closed').length || 0
+    };
+  }, [tenants, users, globalSalesSorted, globalTickets]);
 
   const handleUpdateTenantStatus = async (tenantId: string, status: 'active' | 'suspended') => {
     try {
@@ -286,9 +285,13 @@ export default function PlatformCommandCenter() {
                             className="h-8 w-8" 
                             title={isRegistryFullWidth ? "Standard View" : "Maximize"}
                             onClick={() => {
-                                setIsRegistryFullWidth(!isRegistryFullWidth);
-                                if (!isRegistryFullWidth) setShowSignups(false);
-                                else setShowSignups(true);
+                                if (!isRegistryFullWidth) {
+                                    setIsRegistryFullWidth(true);
+                                    setShowSignups(false);
+                                } else {
+                                    setIsRegistryFullWidth(false);
+                                    setShowSignups(true);
+                                }
                             }}
                         >
                             {isRegistryFullWidth ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -466,7 +469,9 @@ export default function PlatformCommandCenter() {
                                     <div className="flex items-start justify-between gap-4 md:gap-6">
                                         <div className="space-y-2">
                                             <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                                                <Badge variant="outline" className={cn("font-black text-[8px] md:text-[9px] uppercase", log.level === 'error' ? 'bg-red-50 text-red-700' : log.level === 'business' ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700')}>
+                                                <Badge variant="outline" className={cn("font-black text-[8px] md:text-[9px] uppercase", 
+                                                    log.level === 'error' ? 'bg-red-50 text-red-700' : 
+                                                    log.level === 'business' ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700')}>
                                                     {log.level}
                                                 </Badge>
                                                 <span className="text-[9px] md:text-[10px] font-black text-muted-foreground uppercase tracking-widest">{log.module}</span>
@@ -523,7 +528,6 @@ export default function PlatformCommandCenter() {
         </TabsContent>
       </Tabs>
 
-      {/* Intelligence Drill-down Sheet */}
       <Sheet open={!!selectedCompanyId} onOpenChange={(open) => !open && setSelectedCompanyId(null)}>
         <SheetContent className="w-full sm:max-w-4xl overflow-y-auto p-0 border-none shadow-2xl">
             {activeDetailCompany && companyStats && (
@@ -570,14 +574,14 @@ export default function PlatformCommandCenter() {
                                     <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Active Staff</p>
                                     <p className="text-xl font-black">{companyStats.userCount}</p>
                                 </CardContent>
-                            </div>
+                            </Card>
                         </div>
 
                         <Card className="border-none shadow-sm ring-1 ring-muted overflow-hidden">
                             <CardHeader className="bg-muted/10 border-b">
                                 <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
                                     <TrendingUp className="h-4 w-4 text-primary" />
-                                    Performance Analytics: Sales vs. Inventory
+                                    Performance Analytics
                                 </CardTitle>
                                 <CardDescription>Visualization of revenue generation vs. stock overhead.</CardDescription>
                             </CardHeader>
@@ -586,7 +590,7 @@ export default function PlatformCommandCenter() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={companyStats.chartData}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} fontStyle="bold" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} fontWeight="bold" />
                                             <YAxis axisLine={false} tickLine={false} fontSize={10} />
                                             <Tooltip 
                                                 cursor={{fill: 'hsl(var(--muted)/0.2)'}}
@@ -594,7 +598,7 @@ export default function PlatformCommandCenter() {
                                             />
                                             <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
                                             <Bar dataKey="sales" name="Actual Sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                                            <Bar dataKey="inventory" name="Inventory Value (Avg)" fill="hsl(var(--muted-foreground)/0.3)" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="inventory" name="Inventory Value" fill="hsl(var(--muted-foreground)/0.3)" radius={[4, 4, 0, 0]} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -633,7 +637,7 @@ export default function PlatformCommandCenter() {
                                 <p className="text-xs text-muted-foreground">{activeDetailCompany.address}</p>
                             </div>
                             <Button variant="outline" className="w-full h-11 font-black uppercase text-xs" onClick={() => { setMsgTargetTenantId(activeDetailCompany.id); setMsgTargetUserId('all'); setIsMessageOpen(true); }}>
-                                <Send className="h-3 w-3 mr-2" /> Transmission official Alert to Node
+                                <Send className="h-3 w-3 mr-2" /> Transmission Alert to Node
                             </Button>
                         </div>
                     </div>
@@ -642,7 +646,6 @@ export default function PlatformCommandCenter() {
         </SheetContent>
       </Sheet>
 
-      {/* Messaging Dialog */}
       <Dialog open={isMessageOpen} onOpenChange={setIsMessageOpen}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -652,7 +655,14 @@ export default function PlatformCommandCenter() {
             <div className="space-y-6 py-4">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase">target node</Label>
-                    <Select value={msgTargetTenantId} onValueChange={setMsgTargetTenantId}><SelectTrigger className="h-12 font-bold uppercase text-xs"><SelectValue placeholder="Select Business Node" /></SelectTrigger><SelectContent>{tenants?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent></Select>
+                    <Select value={msgTargetTenantId} onValueChange={setMsgTargetTenantId}>
+                        <SelectTrigger className="h-12 font-bold uppercase text-xs">
+                            <SelectValue placeholder="Select Business Node" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {tenants?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
