@@ -126,7 +126,9 @@ export interface Sale extends Auditable {
   customerPhone?: string;
   resellerId?: string;
   resellerName?: string;
-  status: 'Paid' | 'Pending' | 'Void';
+  status: 'Paid' | 'Pending' | 'Void' | 'Failed';
+  paymentError?: string;
+  mpesaReceipt?: string;
   vat?: number;
   subtotal?: number;
   totalDiscount?: number;

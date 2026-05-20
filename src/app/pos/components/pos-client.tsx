@@ -7,7 +7,7 @@ import type { Asset, SaleItem, Sale, Customer, Document as AppDocument } from '@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone, Clock } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone, Clock, AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,7 +54,7 @@ export function PosClient() {
   const [lastGeneratedDoc, setLastGeneratedDoc] = useState<AppDocument | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // CLOUD QUERY: Assets available in this tenant
+  // CLOUD QUERY
   const assetsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id), where('status', '==', 'Available'));
@@ -67,7 +67,6 @@ export function PosClient() {
   }, [firestore, tenant?.id]);
   const { data: customers } = useCollection(customersQuery);
 
-  // FETCH WORKSPACE PROFILE FOR DEEP BAKING
   const companyRef = useMemoFirebase(() => 
     tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
     [firestore, tenant?.id]
@@ -94,12 +93,7 @@ export function PosClient() {
     const vatAmount = applyVat ? subtotal * VAT_RATE : 0;
     const grandTotal = subtotal + vatAmount;
     const parsedAmountPaid = parseFloat(amountPaid) || grandTotal;
-    return { 
-        subtotal, 
-        vatAmount, 
-        grandTotal, 
-        changeDue: Math.max(0, parsedAmountPaid - grandTotal) 
-    };
+    return { subtotal, vatAmount, grandTotal, changeDue: Math.max(0, parsedAmountPaid - grandTotal) };
   }, [cart, amountPaid, applyVat]);
 
   // PAYMENT CONFIRMATION LISTENER
@@ -109,29 +103,36 @@ export function PosClient() {
     const unsubscribe = onSnapshot(doc(firestore, 'sales_transactions', pendingSaleId), (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data() as Sale;
+        
         if (data.status === 'Paid') {
           setIsWaitingForConfirmation(false);
           setPendingSaleId(null);
           setIsSuccessOpen(true);
+          setIsProcessing(false);
           toast({ title: 'Payment Confirmed!', description: 'Transaction completed successfully.' });
+        } else if (data.status === 'Failed') {
+          setIsWaitingForConfirmation(false);
+          setPendingSaleId(null);
+          setIsProcessing(false);
+          toast({ 
+            variant: 'destructive', 
+            title: 'Payment Failed', 
+            description: data.paymentError || 'Safaricom declined the transaction.' 
+          });
         }
       }
     });
 
-    // Auto-timeout after 90 seconds to prevent infinite waiting
     const timeout = setTimeout(() => {
         if (isWaitingForConfirmation) {
             setIsWaitingForConfirmation(false);
             setPendingSaleId(null);
             setIsProcessing(false);
-            toast({ variant: 'destructive', title: 'Payment Timeout', description: 'We did not receive confirmation in time. Please check M-Pesa manually.' });
+            toast({ variant: 'destructive', title: 'Payment Timeout', description: 'No confirmation received. Check M-Pesa manually.' });
         }
-    }, 90000);
+    }, 120000); // 2 minute timeout
 
-    return () => {
-        unsubscribe();
-        clearTimeout(timeout);
-    };
+    return () => { unsubscribe(); clearTimeout(timeout); };
   }, [pendingSaleId, isWaitingForConfirmation, firestore, toast]);
 
   const handleAddToCart = () => {
@@ -149,27 +150,23 @@ export function PosClient() {
 
   const handleFinalizeSale = async () => {
     if (cart.length === 0 || !selectedCustomer || !user || !tenant) return;
-
     setIsProcessing(true);
     let mpesaCheckoutId = referenceCode;
 
-    // M-PESA STK PUSH LOGIC
     if (paymentMethod === 'M-Pesa') {
         if (!customerPhone || customerPhone.length < 10) {
-            toast({ variant: 'destructive', title: 'Phone Required', description: 'Please enter a valid phone number for M-Pesa STK Push.' });
+            toast({ variant: 'destructive', title: 'Phone Required', description: 'Enter a valid number.' });
             setIsProcessing(false);
             return;
         }
-
         const mpesaResult = await initiateStkPush(customerPhone, grandTotal);
         if (!mpesaResult.success) {
             toast({ variant: 'destructive', title: 'M-Pesa Failed', description: mpesaResult.error });
             setIsProcessing(false);
             return;
         }
-        
         mpesaCheckoutId = mpesaResult.checkoutRequestId || '';
-        toast({ title: 'STK Push Initiated', description: 'Please check customer phone for PIN prompt.' });
+        toast({ title: 'STK Push Initiated', description: 'Waiting for PIN entry...' });
     }
 
     try {
@@ -177,51 +174,30 @@ export function PosClient() {
         const saleDate = new Date().toISOString();
         const prefix = (tenant.name || 'DOC').slice(0, 3).toUpperCase();
         
-        // CAPTURE BRANDING FOR BAKING
         const workspaceMetadata = workspaceProfile ? {
-            name: workspaceProfile.name,
-            address: workspaceProfile.address,
-            phone: workspaceProfile.phone,
-            email: workspaceProfile.email,
-            logoUrl: workspaceProfile.logoUrl,
-            primaryColor: workspaceProfile.primaryColor,
+            name: workspaceProfile.name, address: workspaceProfile.address,
+            phone: workspaceProfile.phone, email: workspaceProfile.email,
+            logoUrl: workspaceProfile.logoUrl, primaryColor: workspaceProfile.primaryColor,
             secondaryColor: workspaceProfile.secondaryColor
         } : null;
 
         const saleData: Sale = {
-            id: saleId, 
-            tenantId: tenant.id, 
-            date: saleDate, 
-            amount: grandTotal, 
-            subtotal, 
-            vat: vatAmount,
-            amountPaid: parseFloat(amountPaid) || grandTotal, 
-            changeDue, 
-            paymentMethod, 
-            referenceCode: mpesaCheckoutId,
-            items: cart.map(i => ({ ...i, price: i.unitPrice })), 
-            customerName: selectedCustomer.name, 
-            customerId: selectedCustomer.id,
-            customerPhone: customerPhone || selectedCustomer.phone,
-            status: paymentMethod === 'M-Pesa' ? 'Pending' : 'Paid', 
-            createdAt: saleDate, 
+            id: saleId, tenantId: tenant.id, date: saleDate, amount: grandTotal, subtotal, vat: vatAmount,
+            amountPaid: parseFloat(amountPaid) || grandTotal, changeDue, paymentMethod, referenceCode: mpesaCheckoutId,
+            items: cart.map(i => ({ ...i, price: i.unitPrice })), customerName: selectedCustomer.name, 
+            customerId: selectedCustomer.id, customerPhone: customerPhone || selectedCustomer.phone,
+            status: paymentMethod === 'M-Pesa' ? 'Pending' : 'Paid', createdAt: saleDate, 
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
         const docData: AppDocument = {
-            id: crypto.randomUUID(), 
-            tenantId: tenant.id, 
-            type: 'Receipt', 
+            id: crypto.randomUUID(), tenantId: tenant.id, type: 'Receipt', 
             title: `Receipt #${prefix}-${saleId.slice(0, 5).toUpperCase()}`,
-            generatedDate: saleDate, 
-            relatedTo: `Sale to ${selectedCustomer.name}`, 
-            saleId: saleId, 
-            data: { ...saleData, applyVat, workspace: workspaceMetadata }, 
-            createdAt: saleDate, 
+            generatedDate: saleDate, relatedTo: `Sale to ${selectedCustomer.name}`, saleId: saleId, 
+            data: { ...saleData, applyVat, workspace: workspaceMetadata }, createdAt: saleDate, 
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
-        // Save to Firestore
         await SaleService.finalizeSale(firestore, saleData, docData);
         setLastGeneratedDoc(docData);
 
@@ -234,7 +210,6 @@ export function PosClient() {
             setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode(''); setCustomerPhone('');
             toast({ title: 'Sale Finalized' });
         }
-
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Sale Failed', description: e.message });
         setIsProcessing(false);
@@ -244,41 +219,24 @@ export function PosClient() {
   const handleDownloadReceipt = async () => {
     if (!lastGeneratedDoc) return;
     setIsExporting(true);
-    
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
-
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
-    
     await new Promise(r => setTimeout(r, 200));
-
     const element = document.getElementById('pos-receipt-target');
     if (!element) {
         window.scrollTo({ top: originalScrollY });
         setIsExporting(false);
         return;
     }
-
     try {
-        const canvas = await html2canvas(element, { 
-            scale: 2, 
-            useCORS: true,
-            backgroundColor: "#ffffff",
-            width: 794,
-            height: 1123,
-            y: 0,
-            scrollY: 0
-        });
-        
+        const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: "#ffffff", width: 794, height: 1123, y: 0, scrollY: 0 });
         const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         const imgData = canvas.toDataURL('image/png', 1.0);
         pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
         pdf.save(`${lastGeneratedDoc.title.replace(/\s+/g, '_')}.pdf`);
-        toast({ title: "Receipt Downloaded" });
-    } catch (err) {
-        toast({ variant: 'destructive', title: 'Export Failed' });
-    } finally {
+    } catch (err) { toast({ variant: 'destructive', title: 'Export Failed' }); } finally {
         setIsExporting(false);
         window.scrollTo({ top: originalScrollY });
     }
@@ -287,7 +245,6 @@ export function PosClient() {
   return (
     <div className="space-y-6 md:space-y-8">
       <PageHeader title="Point of Sale" description="Process transactions instantly with cloud synchronization." />
-      
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-md">
             <CardHeader><CardTitle className="flex items-center gap-2"><ShoppingCart className="h-5 w-5" /> Basket</CardTitle></CardHeader>

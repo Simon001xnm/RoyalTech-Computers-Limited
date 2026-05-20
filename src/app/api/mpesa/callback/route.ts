@@ -1,10 +1,12 @@
+
 import { NextResponse } from 'next/server';
 import { initializeFirebase } from '@/firebase';
 import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 
 /**
- * STEP 11: HANDLE CALLBACK
- * This endpoint is public and receives the POST from Safaricom.
+ * M-Pesa Callback Handler
+ * Receives POST requests from Safaricom Daraja API.
+ * Handles both Success and Failure codes (e.g., Insufficient Balance).
  */
 export async function POST(request: Request) {
   try {
@@ -14,32 +16,42 @@ export async function POST(request: Request) {
     const result = body.Body.stkCallback;
     const checkoutRequestId = result.CheckoutRequestID;
     const resultCode = result.ResultCode;
+    const resultDesc = result.ResultDesc;
 
-    // STEP 12: UPDATE DATABASE
-    if (resultCode === 0) {
-      // Payment Successful
-      const { firestore } = initializeFirebase();
-      
-      // Find the sale record associated with this request
-      // (Note: In production, you should save checkoutRequestId when initiating)
-      const salesRef = collection(firestore, 'sales_transactions');
-      const q = query(salesRef, where('referenceCode', '==', checkoutRequestId));
-      const snap = await getDocs(q);
+    const { firestore } = initializeFirebase();
+    
+    // Find the sale record associated with this request
+    const salesRef = collection(firestore, 'sales_transactions');
+    const q = query(salesRef, where('referenceCode', '==', checkoutRequestId));
+    const snap = await getDocs(q);
 
-      if (!snap.empty) {
-          const saleDoc = snap.docs[0];
-          await updateDoc(doc(firestore, 'sales_transactions', saleDoc.id), {
-              status: 'Paid',
-              paymentConfirmedAt: new Date().toISOString(),
-              mpesaReceipt: result.CallbackMetadata.Item.find((i: any) => i.Name === 'MpesaReceiptNumber')?.Value
-          });
-          console.log('Sale payment status updated successfully.');
-      }
+    if (!snap.empty) {
+        const saleDoc = snap.docs[0];
+        const saleRef = doc(firestore, 'sales_transactions', saleDoc.id);
+
+        if (resultCode === 0) {
+            // SUCCESS
+            await updateDoc(saleRef, {
+                status: 'Paid',
+                paymentConfirmedAt: new Date().toISOString(),
+                mpesaReceipt: result.CallbackMetadata?.Item?.find((i: any) => i.Name === 'MpesaReceiptNumber')?.Value || 'N/A',
+                updatedAt: new Date().toISOString()
+            });
+            console.log(`Sale ${saleDoc.id} paid successfully.`);
+        } else {
+            // FAILURE (e.g., Code 1: Insufficient Balance, Code 1032: Cancelled)
+            await updateDoc(saleRef, {
+                status: 'Failed',
+                paymentError: resultDesc,
+                updatedAt: new Date().toISOString()
+            });
+            console.warn(`Sale ${saleDoc.id} failed: ${resultDesc}`);
+        }
     }
 
     return NextResponse.json({ ResultCode: 0, ResultDesc: "Success" });
   } catch (error) {
     console.error('Callback processing failed:', error);
-    return NextResponse.json({ ResultCode: 1, ResultDesc: "Failed" }, { status: 500 });
+    return NextResponse.json({ ResultCode: 1, ResultDesc: "Internal Server Error" }, { status: 500 });
   }
 }
