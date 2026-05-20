@@ -35,10 +35,10 @@ export function IssueItemForm({ availableItems, onSubmit, onCancel }: IssueItemF
         const searchLower = search.toLowerCase();
 
         return unselectedItems.filter(item => {
-            // Using Option B: Bulletproof property check for 'model' vs 'name'
+            // Using property check for 'model' vs 'name'
             const displayName = (item.type === 'laptop' && 'model' in item) 
-                ? item.model 
-                : ('name' in item ? item.name : 'Unknown Item');
+                ? (item as any).model 
+                : ('name' in item ? (item as any).name : 'Unknown Item');
             
             return displayName.toLowerCase().includes(searchLower) ||
                    item.serialNumber.toLowerCase().includes(searchLower);
@@ -63,10 +63,9 @@ export function IssueItemForm({ availableItems, onSubmit, onCancel }: IssueItemF
     };
 
     const renderItem = (item: Item, action: 'add' | 'remove') => {
-        // Using Option B: Bulletproof property check
         const displayName = (item.type === 'laptop' && 'model' in item) 
-            ? item.model 
-            : ('name' in item ? item.name : 'Unknown Item');
+            ? (item as any).model 
+            : ('name' in item ? (item as any).name : 'Unknown Item');
 
         return (
             <div key={item.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md">
@@ -98,7 +97,7 @@ export function IssueItemForm({ availableItems, onSubmit, onCancel }: IssueItemF
                     <Input 
                         placeholder="Search by name or serial number..."
                         value={search}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) => setSearch(e.target.value)}
                     />
                     <ScrollArea className="h-72 w-full rounded-md border">
                         <div className="p-2">

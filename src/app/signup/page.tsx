@@ -9,7 +9,7 @@ import { useUser, useFirestore, useAuth } from '@/firebase/provider';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { APP_NAME } from '@/lib/constants';
-import Link from 'link';
+import Link from 'next/link';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { Loader2, ChevronDown, ChevronRight, ShieldCheck, Zap } from 'lucide-react';
