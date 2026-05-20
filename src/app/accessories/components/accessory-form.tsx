@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -83,7 +82,7 @@ export function AccessoryForm({ accessory, onSubmit, onCancel, isLoading }: Acce
               <FormItem>
                 <FormLabel>Accessory Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Laptop Charger" {...field} />
+                  <Input placeholder="e.g., Laptop Charger" {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -96,7 +95,7 @@ export function AccessoryForm({ accessory, onSubmit, onCancel, isLoading }: Acce
               <FormItem>
                 <FormLabel>Serial Number</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., CHRG12345" {...field} />
+                  <Input placeholder="e.g., CHRG12345" {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -177,7 +176,7 @@ export function AccessoryForm({ accessory, onSubmit, onCancel, isLoading }: Acce
             <FormItem>
               <FormLabel>Quantity</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="e.g., 10" {...field} />
+                <Input type="number" placeholder="e.g., 10" {...field} value={field.value ?? ''} />
               </FormControl>
               <FormMessage />
             </FormItem>

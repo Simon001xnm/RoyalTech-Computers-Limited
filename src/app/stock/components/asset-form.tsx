@@ -57,15 +57,18 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
     ? {
         ...asset,
         purchaseDate: new Date(asset.purchaseDate),
-        ram: asset.specifications?.ram,
-        storage: asset.specifications?.storage,
-        processor: asset.specifications?.processor,
+        ram: asset.specifications?.ram || "",
+        storage: asset.specifications?.storage || "",
+        processor: asset.specifications?.processor || "",
       }
     : {
         model: "",
         serialNumber: "",
         status: "Available",
         quantity: 1,
+        ram: "",
+        storage: "",
+        processor: "",
         purchasePrice: undefined,
         leasePrice: undefined,
       };
@@ -90,7 +93,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
               <FormItem>
                 <FormLabel>Asset Model/Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., iPhone 15 Pro, HP EliteBook" {...field} />
+                  <Input placeholder="e.g., iPhone 15 Pro, HP EliteBook" {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -103,7 +106,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
               <FormItem>
                 <FormLabel>Serial Number / IMEI</FormLabel>
                 <FormControl>
-                  <Input placeholder="Unique identifier for the asset" {...field} />
+                  <Input placeholder="Unique identifier for the asset" {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -186,7 +189,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
             <FormItem>
               <FormLabel>Quantity</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="e.g., 1" {...field} />
+                <Input type="number" placeholder="e.g., 1" {...field} value={field.value ?? ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -202,7 +205,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
               <FormItem>
                 <FormLabel>Memory (RAM)</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., 8GB, 16GB" {...field} />
+                  <Input placeholder="e.g., 8GB, 16GB" {...field} value={field.value ?? ''} />
                 </FormControl>
               </FormItem>
             )}
@@ -214,7 +217,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
               <FormItem>
                 <FormLabel>Storage</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., 256GB SSD, 1TB" {...field} />
+                  <Input placeholder="e.g., 256GB SSD, 1TB" {...field} value={field.value ?? ''} />
                 </FormControl>
               </FormItem>
             )}
@@ -226,7 +229,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
               <FormItem>
                 <FormLabel>Processor/Chipset</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Apple A17, Intel i7" {...field} />
+                  <Input placeholder="e.g., Apple A17, Intel i7" {...field} value={field.value ?? ''} />
                 </FormControl>
               </FormItem>
             )}

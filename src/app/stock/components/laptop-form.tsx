@@ -58,15 +58,18 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopForm
     ? {
         ...laptop,
         purchaseDate: new Date(laptop.purchaseDate),
-        ram: laptop.specifications?.ram,
-        storage: laptop.specifications?.storage,
-        processor: laptop.specifications?.processor,
+        ram: laptop.specifications?.ram || "",
+        storage: laptop.specifications?.storage || "",
+        processor: laptop.specifications?.processor || "",
       }
     : {
         model: "",
         serialNumber: "",
         status: "Available",
         quantity: 1,
+        ram: "",
+        storage: "",
+        processor: "",
         purchasePrice: undefined,
         leasePrice: undefined,
       };
@@ -91,7 +94,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopForm
               <FormItem>
                 <FormLabel>Model Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., MacBook Pro 16 M3" {...field} />
+                  <Input placeholder="e.g., MacBook Pro 16 M3" {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -104,7 +107,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopForm
               <FormItem>
                 <FormLabel>Serial Number</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., C02X1234J1GJ" {...field} />
+                  <Input placeholder="e.g., C02X1234J1GJ" {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -187,7 +190,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopForm
             <FormItem>
               <FormLabel>Quantity</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="e.g., 10" {...field} />
+                <Input type="number" placeholder="e.g., 10" {...field} value={field.value ?? ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -203,7 +206,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopForm
               <FormItem>
                 <FormLabel>RAM</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., 16GB" {...field} />
+                  <Input placeholder="e.g., 16GB" {...field} value={field.value ?? ''} />
                 </FormControl>
               </FormItem>
             )}
@@ -215,7 +218,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopForm
               <FormItem>
                 <FormLabel>Storage</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., 512GB SSD" {...field} />
+                  <Input placeholder="e.g., 512GB SSD" {...field} value={field.value ?? ''} />
                 </FormControl>
               </FormItem>
             )}
@@ -227,7 +230,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopForm
               <FormItem>
                 <FormLabel>Processor</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Apple M3 Pro" {...field} />
+                  <Input placeholder="e.g., Apple M3 Pro" {...field} value={field.value ?? ''} />
                 </FormControl>
               </FormItem>
             )}
@@ -275,5 +278,3 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopForm
     </Form>
   );
 }
-
-    
