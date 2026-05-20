@@ -1,12 +1,13 @@
+
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import type { Asset, SaleItem, Sale, Customer, Document as AppDocument } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone, Clock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { RecentSales } from './recent-sales';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { SaleService } from '@/services/sale-service';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
@@ -43,6 +44,10 @@ export function PosClient() {
   const [referenceCode, setReferenceCode] = useState('');
   const [amountPaid, setAmountPaid] = useState('');
   const [applyVat, setApplyVat] = useState(false);
+
+  // M-Pesa Waiting States
+  const [isWaitingForConfirmation, setIsWaitingForConfirmation] = useState(false);
+  const [pendingSaleId, setPendingSaleId] = useState<string | null>(null);
 
   // Success Dialog & PDF Export State
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
@@ -97,6 +102,38 @@ export function PosClient() {
     };
   }, [cart, amountPaid, applyVat]);
 
+  // PAYMENT CONFIRMATION LISTENER
+  useEffect(() => {
+    if (!pendingSaleId || !isWaitingForConfirmation) return;
+
+    const unsubscribe = onSnapshot(doc(firestore, 'sales_transactions', pendingSaleId), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data() as Sale;
+        if (data.status === 'Paid') {
+          setIsWaitingForConfirmation(false);
+          setPendingSaleId(null);
+          setIsSuccessOpen(true);
+          toast({ title: 'Payment Confirmed!', description: 'Transaction completed successfully.' });
+        }
+      }
+    });
+
+    // Auto-timeout after 90 seconds to prevent infinite waiting
+    const timeout = setTimeout(() => {
+        if (isWaitingForConfirmation) {
+            setIsWaitingForConfirmation(false);
+            setPendingSaleId(null);
+            setIsProcessing(false);
+            toast({ variant: 'destructive', title: 'Payment Timeout', description: 'We did not receive confirmation in time. Please check M-Pesa manually.' });
+        }
+    }, 90000);
+
+    return () => {
+        unsubscribe();
+        clearTimeout(timeout);
+    };
+  }, [pendingSaleId, isWaitingForConfirmation, firestore, toast]);
+
   const handleAddToCart = () => {
     if (!selectedProduct || !unitPrice) return;
     const price = parseFloat(unitPrice);
@@ -114,6 +151,7 @@ export function PosClient() {
     if (cart.length === 0 || !selectedCustomer || !user || !tenant) return;
 
     setIsProcessing(true);
+    let mpesaCheckoutId = referenceCode;
 
     // M-PESA STK PUSH LOGIC
     if (paymentMethod === 'M-Pesa') {
@@ -130,6 +168,7 @@ export function PosClient() {
             return;
         }
         
+        mpesaCheckoutId = mpesaResult.checkoutRequestId || '';
         toast({ title: 'STK Push Initiated', description: 'Please check customer phone for PIN prompt.' });
     }
 
@@ -150,28 +189,54 @@ export function PosClient() {
         } : null;
 
         const saleData: Sale = {
-            id: saleId, tenantId: tenant.id, date: saleDate, amount: grandTotal, subtotal, vat: vatAmount,
-            amountPaid: parseFloat(amountPaid) || grandTotal, changeDue, paymentMethod, referenceCode,
-            items: cart.map(i => ({ ...i, price: i.unitPrice })), customerName: selectedCustomer.name, customerId: selectedCustomer.id,
+            id: saleId, 
+            tenantId: tenant.id, 
+            date: saleDate, 
+            amount: grandTotal, 
+            subtotal, 
+            vat: vatAmount,
+            amountPaid: parseFloat(amountPaid) || grandTotal, 
+            changeDue, 
+            paymentMethod, 
+            referenceCode: mpesaCheckoutId,
+            items: cart.map(i => ({ ...i, price: i.unitPrice })), 
+            customerName: selectedCustomer.name, 
+            customerId: selectedCustomer.id,
             customerPhone: customerPhone || selectedCustomer.phone,
-            status: 'Paid', createdAt: saleDate, createdBy: { uid: user.uid, name: user.displayName || 'User' }
+            status: paymentMethod === 'M-Pesa' ? 'Pending' : 'Paid', 
+            createdAt: saleDate, 
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
         const docData: AppDocument = {
-            id: crypto.randomUUID(), tenantId: tenant.id, type: 'Receipt', title: `Receipt #${prefix}-${saleId.slice(0, 5).toUpperCase()}`,
-            generatedDate: saleDate, relatedTo: `Sale to ${selectedCustomer.name}`, saleId: saleId, 
-            data: { ...saleData, applyVat, workspace: workspaceMetadata }, createdAt: saleDate, createdBy: { uid: user.uid, name: user.displayName || 'User' }
+            id: crypto.randomUUID(), 
+            tenantId: tenant.id, 
+            type: 'Receipt', 
+            title: `Receipt #${prefix}-${saleId.slice(0, 5).toUpperCase()}`,
+            generatedDate: saleDate, 
+            relatedTo: `Sale to ${selectedCustomer.name}`, 
+            saleId: saleId, 
+            data: { ...saleData, applyVat, workspace: workspaceMetadata }, 
+            createdAt: saleDate, 
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
+        // Save to Firestore
         await SaleService.finalizeSale(firestore, saleData, docData);
-
         setLastGeneratedDoc(docData);
-        setIsSuccessOpen(true);
-        setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode(''); setCustomerPhone('');
-        toast({ title: 'Sale Finalized' });
+
+        if (paymentMethod === 'M-Pesa') {
+            setPendingSaleId(saleId);
+            setIsWaitingForConfirmation(true);
+        } else {
+            setIsSuccessOpen(true);
+            setIsProcessing(false);
+            setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode(''); setCustomerPhone('');
+            toast({ title: 'Sale Finalized' });
+        }
+
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Sale Failed', description: e.message });
-    } finally {
         setIsProcessing(false);
     }
   };
@@ -336,11 +401,11 @@ export function PosClient() {
                 </div>
             </CardContent>
             <CardFooter className="pb-8">
-                <Button onClick={handleFinalizeSale} className="w-full h-14 text-lg font-black shadow-xl active:scale-95 transition-all" disabled={isProcessing || !selectedCustomer || cart.length === 0}>
+                <Button onClick={handleFinalizeSale} className="w-full h-14 text-lg font-black shadow-xl active:scale-95 transition-all" disabled={isProcessing || isWaitingForConfirmation || !selectedCustomer || cart.length === 0}>
                     {isProcessing ? (
                         <div className="flex items-center gap-3">
                             <Loader2 className="h-6 w-6 animate-spin" />
-                            {paymentMethod === 'M-Pesa' ? 'Awaiting M-Pesa PIN...' : 'Finalizing...'}
+                            {paymentMethod === 'M-Pesa' ? 'Initiating...' : 'Finalizing...'}
                         </div>
                     ) : (
                         paymentMethod === 'M-Pesa' ? 'Initiate M-Pesa' : 'Finalize Sale'
@@ -352,19 +417,53 @@ export function PosClient() {
 
       <RecentSales onViewReceipt={() => {}} />
 
-      <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
-        <DialogContent className="sm:max-w-md text-center p-8 max-h-[90vh] overflow-y-auto">
-            <Check className="h-12 w-12 text-green-600 mx-auto mb-4" />
+      {/* WAITING FOR PAYMENT DIALOG */}
+      <Dialog open={isWaitingForConfirmation} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md text-center p-12">
+            <div className="relative mx-auto w-24 h-24 mb-6">
+                <div className="absolute inset-0 rounded-full border-4 border-primary/20 animate-pulse"></div>
+                <div className="absolute inset-0 rounded-full border-t-4 border-primary animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <Clock className="h-10 w-10 text-primary" />
+                </div>
+            </div>
             <DialogHeader>
-                <DialogTitle className="text-2xl font-black">Sale Completed!</DialogTitle>
-                <DialogDescription>The transaction has been recorded securely in the cloud.</DialogDescription>
+                <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Awaiting PIN...</DialogTitle>
+                <DialogDescription className="text-base font-medium">
+                    The STK Push has been sent to <strong>{customerPhone}</strong>.<br/>
+                    Please ask the customer to enter their M-Pesa PIN.
+                </DialogDescription>
             </DialogHeader>
-            <div className="pt-6 space-y-3">
-                <Button variant="outline" className="w-full h-12 font-bold" onClick={handleDownloadReceipt} disabled={isExporting}>
+            <div className="pt-8 flex flex-col gap-2">
+                <p className="text-[10px] font-black uppercase text-muted-foreground animate-bounce">Listening for Safaricom Confirmation...</p>
+                <Button variant="ghost" className="text-xs text-destructive mt-4" onClick={() => { setIsWaitingForConfirmation(false); setIsProcessing(false); }}>Cancel and Go Back</Button>
+            </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isSuccessOpen} onOpenChange={(open) => {
+          if (!open) {
+              setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode(''); setCustomerPhone(''); setLastGeneratedDoc(null);
+          }
+          setIsSuccessOpen(open);
+      }}>
+        <DialogContent className="sm:max-w-md text-center p-8 max-h-[90vh] overflow-y-auto">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check className="h-10 w-10 text-green-600" />
+            </div>
+            <DialogHeader>
+                <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Sale Completed!</DialogTitle>
+                <DialogDescription className="font-medium">The transaction has been recorded and inventory updated.</DialogDescription>
+            </DialogHeader>
+            <div className="pt-8 space-y-3">
+                <Button variant="outline" className="w-full h-12 font-bold shadow-sm" onClick={handleDownloadReceipt} disabled={isExporting}>
                     {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                     Download Receipt PDF
                 </Button>
-                <Button className="w-full h-11" onClick={() => setIsSuccessOpen(false)}>Continue to Next Sale</Button>
+                <Button className="w-full h-12 font-black uppercase" onClick={() => {
+                    setIsSuccessOpen(false);
+                    setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode(''); setCustomerPhone('');
+                }}>Process Next Sale</Button>
             </div>
             
             <div className="fixed left-[-9999px] top-0 pointer-events-none">
