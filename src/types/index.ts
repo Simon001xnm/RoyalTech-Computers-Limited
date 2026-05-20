@@ -18,14 +18,43 @@ export interface Company extends Auditable {
   id: string;
   tenantId?: string; // Link to SaaS tenant
   name: string;
+  businessType: string;
+  industry: string;
+  description?: string;
   logoUrl?: string;
   address: string;
+  city: string;
+  country: string;
   phone: string;
+  altPhone?: string;
   email: string;
-  location?: string;
   website?: string;
+  
+  // Verification
+  kraPin?: string;
+  certRegistration?: string;
+  businessPermit?: string;
+  nationalId?: string;
+
+  // Admin Context
+  adminPosition: string;
+
+  // Billing & SaaS
   plan?: string;
   status?: 'active' | 'suspended';
+  currency: string;
+  timezone: string;
+  paymentMethod: string;
+  billingIdentifier?: string; // Till/Paybill number
+  
+  // Daraja API Integration (Encrypted on real backend, stored here for prototype)
+  mpesaShortcode?: string;
+  mpesaConsumerKey?: string;
+  mpesaConsumerSecret?: string;
+  mpesaPasskey?: string;
+  mpesaCallbackUrl?: string;
+
+  // Theming
   primaryColor?: string; // Hex color
   secondaryColor?: string; // Hex color
 }
@@ -183,11 +212,13 @@ export interface Project extends Auditable {
 
 export interface Message extends Omit<Auditable, 'updatedAt'> {
   id: string;
-  tenantId?: string;
+  tenantId: string;
   text: string;
   userId: string;
   userName: string;
   userAvatar?: string;
+  createdAt: string;
+  isSystemMessage?: boolean;
 }
 
 export interface Reseller extends Auditable {
