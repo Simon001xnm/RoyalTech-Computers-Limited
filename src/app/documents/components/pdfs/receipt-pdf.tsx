@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Document as AppDocument, SaleItem } from "@/types";
@@ -17,11 +16,14 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
     tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
     [firestore, tenant?.id]
   );
-  const { data: company } = useDoc(companyRef);
+  const { data: cloudCompany } = useDoc(companyRef);
 
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
+
+  // PREFER BAKED METADATA
+  const workspace = document.data.workspace || cloudCompany;
   const { customer, items, paymentMethod, referenceCode, amount, amountPaid, changeDue, subtotal, totalDiscount, vat, createdBy, applyVat } = document.data;
 
   const formatCurrency = (value: number | undefined) => {
@@ -33,22 +35,22 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
   
   const receiptNumber = document.title.split('-').pop() || 'N/A';
   const finalTotal = amount || subtotal || 0;
-  const primaryColor = company?.primaryColor || '#2c3e50';
+  const primaryColor = workspace?.primaryColor || '#2c3e50';
 
   return (
     <div className="print-container p-[20mm] font-sans text-sm bg-white text-gray-900 w-[210mm] min-h-[297mm] flex flex-col box-border">
       {/* Header */}
       <header className="flex justify-between items-start pb-6 border-b-2" style={{ borderColor: primaryColor }}>
         <div className="flex items-center gap-4">
-          {company?.logoUrl ? (
-            <img src={company.logoUrl} alt="Logo" className="h-24 w-auto object-contain" />
+          {workspace?.logoUrl ? (
+            <img src={workspace.logoUrl} alt="Logo" className="h-24 w-auto object-contain" />
           ) : (
             <div className="h-24 w-24 bg-muted flex items-center justify-center text-[10px] text-muted-foreground uppercase font-bold border">No Logo</div>
           )}
           <div>
-            <h1 className="text-2xl font-bold uppercase" style={{ color: primaryColor }}>{company?.name || 'Your Company'}</h1>
-            <p className="text-[11px] text-gray-500 mt-1">{company?.address}</p>
-            <p className="text-[11px] text-gray-500">Tel: {company?.phone} | E-mail: {company?.email}</p>
+            <h1 className="text-2xl font-bold uppercase" style={{ color: primaryColor }}>{workspace?.name || 'Your Company'}</h1>
+            <p className="text-[11px] text-gray-500 mt-1">{workspace?.address}</p>
+            <p className="text-[11px] text-gray-500">Tel: {workspace?.phone} | E-mail: {workspace?.email}</p>
           </div>
         </div>
         <div className="text-right">
@@ -171,7 +173,7 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
 
       {/* Footer */}
       <footer className="text-[10px] text-gray-400 border-t-2 pt-8 mt-16 text-center space-y-4" style={{ borderColor: primaryColor }}>
-         <p className="font-black text-gray-700 uppercase tracking-widest text-lg">Thank you for choosing {company?.name || 'us'}!</p>
+         <p className="font-black text-gray-700 uppercase tracking-widest text-lg">Thank you for choosing {workspace?.name || 'us'}!</p>
          <p className="max-w-[80%] mx-auto leading-relaxed">
            Software licenses once activated are non-refundable. Hardware items may be subject to a manufacturer's warranty. Goods once sold cannot be returned or exchanged without a valid authorization.
          </p>

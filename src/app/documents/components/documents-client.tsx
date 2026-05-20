@@ -16,8 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc } from "firebase/firestore";
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, where, addDoc, doc } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -68,6 +68,13 @@ export function DocumentsClient() {
   }, [firestore, tenant?.id]);
   const { data: customers } = useCollection(customersQuery);
 
+  // FETCH WORKSPACE PROFILE FOR DEEP BAKING
+  const companyRef = useMemoFirebase(() => 
+    tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
+    [firestore, tenant?.id]
+  );
+  const { data: workspaceProfile } = useDoc(companyRef);
+
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [details, setDetails] = useState('');
   const [amount, setAmount] = useState<string>('');
@@ -95,7 +102,21 @@ export function DocumentsClient() {
     const prefix = (tenant.name || 'DOC').slice(0, 3).toUpperCase();
     let title = `${type.replace(/([A-Z])/g, ' $1').trim()} #${prefix}-${new Date().getFullYear()}-${String(docCount + 1).padStart(3,'0')}`;
     let relatedTo = "N/A";
-    const documentData: any = { details: details || '', applyVat };
+    
+    // DEEP METADATA BAKE: Capture workspace branding at time of generation
+    const documentData: any = { 
+        details: details || '', 
+        applyVat,
+        workspace: workspaceProfile ? {
+            name: workspaceProfile.name,
+            address: workspaceProfile.address,
+            phone: workspaceProfile.phone,
+            email: workspaceProfile.email,
+            logoUrl: workspaceProfile.logoUrl,
+            primaryColor: workspaceProfile.primaryColor,
+            secondaryColor: workspaceProfile.secondaryColor
+        } : null
+    };
 
     const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
     
@@ -157,7 +178,6 @@ export function DocumentsClient() {
   const handleDownloadPdf = async (docToDownload: AppDocument) => {
     setIsExporting(true);
     
-    // ANTI-CLIPPING: Force window to top before capture
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
 
@@ -167,8 +187,8 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // ZERO LATENCY: Millisecond delay only for hydration reset
-    await new Promise(r => setTimeout(r, 10)); 
+    // INCREASED DELAY FOR HYDRATION STABILITY
+    await new Promise(r => setTimeout(r, 200)); 
 
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
@@ -213,8 +233,7 @@ export function DocumentsClient() {
     onPrint: (d) => { 
         setSelectedDocument(d); 
         setIsPdfPreviewOpen(true); 
-        // INSTANT TRIGGER
-        setTimeout(() => window.print(), 10); 
+        setTimeout(() => window.print(), 300); 
     },
     onWhatsApp: (d) => {
         const phone = d.data?.customer?.phone || "";

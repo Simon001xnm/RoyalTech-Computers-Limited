@@ -16,8 +16,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { RecentSales } from './recent-sales';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { SaleService } from '@/services/sale-service';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
@@ -59,6 +59,13 @@ export function PosClient() {
     return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
   const { data: customers } = useCollection(customersQuery);
+
+  // FETCH WORKSPACE PROFILE FOR DEEP BAKING
+  const companyRef = useMemoFirebase(() => 
+    tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
+    [firestore, tenant?.id]
+  );
+  const { data: workspaceProfile } = useDoc(companyRef);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -110,6 +117,17 @@ export function PosClient() {
         const saleDate = new Date().toISOString();
         const prefix = (tenant.name || 'DOC').slice(0, 3).toUpperCase();
         
+        // CAPTURE BRANDING FOR BAKING
+        const workspaceMetadata = workspaceProfile ? {
+            name: workspaceProfile.name,
+            address: workspaceProfile.address,
+            phone: workspaceProfile.phone,
+            email: workspaceProfile.email,
+            logoUrl: workspaceProfile.logoUrl,
+            primaryColor: workspaceProfile.primaryColor,
+            secondaryColor: workspaceProfile.secondaryColor
+        } : null;
+
         const saleData: Sale = {
             id: saleId, tenantId: tenant.id, date: saleDate, amount: grandTotal, subtotal, vat: vatAmount,
             amountPaid: parseFloat(amountPaid) || grandTotal, changeDue, paymentMethod, referenceCode,
@@ -120,7 +138,7 @@ export function PosClient() {
         const docData: AppDocument = {
             id: crypto.randomUUID(), tenantId: tenant.id, type: 'Receipt', title: `Receipt #${prefix}-${saleId.slice(0, 5).toUpperCase()}`,
             generatedDate: saleDate, relatedTo: `Sale to ${selectedCustomer.name}`, saleId: saleId, 
-            data: { ...saleData, applyVat }, createdAt: saleDate, createdBy: { uid: user.uid, name: user.displayName || 'User' }
+            data: { ...saleData, applyVat, workspace: workspaceMetadata }, createdAt: saleDate, createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
         await SaleService.finalizeSale(firestore, saleData, docData);
@@ -143,12 +161,11 @@ export function PosClient() {
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
 
-    // Force scroll to top to prevent clipping during capture
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
     
-    // Wait for render
-    await new Promise(r => setTimeout(r, 100));
+    // INCREASED DELAY FOR BAKED HYDRATION
+    await new Promise(r => setTimeout(r, 200));
 
     const element = document.getElementById('pos-receipt-target');
     if (!element) {

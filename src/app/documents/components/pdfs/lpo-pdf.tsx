@@ -14,11 +14,14 @@ export function LpoPdf({ document }: { document: AppDocument }) {
     tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
     [firestore, tenant?.id]
   );
-  const { data: company } = useDoc(companyRef);
+  const { data: cloudCompany } = useDoc(companyRef);
 
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
+
+  // PREFER BAKED METADATA
+  const workspace = document.data.workspace || cloudCompany;
   const { supplier, items, subtotal, total, notes } = document.data;
   
   const formatCurrency = (amount: number) => {
@@ -28,21 +31,21 @@ export function LpoPdf({ document }: { document: AppDocument }) {
     }).format(amount);
   };
 
-  const companyName = company?.name || 'The Company';
+  const companyName = workspace?.name || 'The Company';
 
   return (
     <div className="p-[20mm] font-sans text-sm bg-white text-gray-800 w-[210mm] min-h-[297mm] flex flex-col box-border">
       <header className="flex justify-between items-start pb-4">
         <div className="flex items-center gap-4">
-          {company?.logoUrl ? (
-            <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain" />
+          {workspace?.logoUrl ? (
+            <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain" />
           ) : (
             <div className="h-28 w-28 bg-muted flex items-center justify-center text-xs text-muted-foreground uppercase font-bold border">No Logo</div>
           )}
           <div>
               <h1 className="text-2xl font-bold text-black uppercase">{companyName}</h1>
-              <p className="text-xs text-gray-600 mt-1">{company?.address}</p>
-              <p className="text-xs text-gray-500">Tel: {company?.phone} | E-mail: {company?.email}</p>
+              <p className="text-xs text-gray-600 mt-1">{workspace?.address}</p>
+              <p className="text-xs text-gray-500">Tel: {workspace?.phone} | E-mail: {workspace?.email}</p>
           </div>
         </div>
         <div className="text-right">

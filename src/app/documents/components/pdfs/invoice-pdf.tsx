@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
@@ -17,11 +16,14 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
     tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
     [firestore, tenant?.id]
   );
-  const { data: company } = useDoc(companyRef);
+  const { data: cloudCompany } = useDoc(companyRef);
 
   if (!document.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
+
+  // PREFER BAKED METADATA OVER CLOUD SYNC FOR EXPORT STABILITY
+  const workspace = document.data.workspace || cloudCompany;
   const { customer, items, details, subtotal, vat, total, applyVat } = document.data;
   
   const formatCurrency = (amount: number) => {
@@ -31,22 +33,22 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
     }).format(amount);
   };
 
-  const primaryColor = company?.primaryColor || '#22345e';
+  const primaryColor = workspace?.primaryColor || '#22345e';
 
   return (
     <div className="print-container p-[20mm] font-sans text-sm bg-white text-gray-800 w-[210mm] min-h-[297mm] flex flex-col box-border">
       {/* Header */}
       <header className="flex justify-between items-start pb-4">
         <div className="flex items-center gap-4">
-          {company?.logoUrl ? (
-            <img src={company.logoUrl} alt="Logo" className="h-24 w-auto object-contain" />
+          {workspace?.logoUrl ? (
+            <img src={workspace.logoUrl} alt="Logo" className="h-24 w-auto object-contain" />
           ) : (
             <div className="h-24 w-24 bg-muted flex items-center justify-center text-[10px] text-muted-foreground uppercase font-bold border">No Logo</div>
           )}
           <div>
-              <h1 className="text-2xl font-bold uppercase" style={{ color: primaryColor }}>{company?.name || 'Your Company'}</h1>
-              <p className="text-[11px] text-gray-600 mt-1">{company?.address}</p>
-              <p className="text-[11px] text-gray-500">Tel: {company?.phone} | E-mail: {company?.email}</p>
+              <h1 className="text-2xl font-bold uppercase" style={{ color: primaryColor }}>{workspace?.name || 'Your Company'}</h1>
+              <p className="text-[11px] text-gray-600 mt-1">{workspace?.address}</p>
+              <p className="text-[11px] text-gray-500">Tel: {workspace?.phone} | E-mail: {workspace?.email}</p>
           </div>
         </div>
         <div className="text-right">
@@ -122,7 +124,7 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
             )}
             <div className="mt-8">
                 <h4 className="font-bold text-[10px] uppercase text-gray-500 mb-2">Payment Terms</h4>
-                <p className="text-[10px] text-gray-400">Payment is due upon receipt of invoice. Bank transfers should be addressed to {company?.name || 'the company'}. Goods once sold cannot be returned.</p>
+                <p className="text-[10px] text-gray-400">Payment is due upon receipt of invoice. Bank transfers should be addressed to {workspace?.name || 'the company'}. Goods once sold cannot be returned.</p>
             </div>
          </div>
         <div className="w-[35%] space-y-2">
@@ -150,11 +152,11 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
             <div className="space-y-1">
                 <p className="font-bold text-gray-600">Authorized Signature:</p>
                 <div className="h-10 w-48 border-b border-dashed border-gray-300"></div>
-                <p className="uppercase">{company?.name || 'Your Business Name'}</p>
+                <p className="uppercase">{workspace?.name || 'Your Business Name'}</p>
             </div>
             <div className="text-right">
                 <p className="font-black text-gray-800 uppercase tracking-widest text-[12px]">THANK YOU FOR YOUR BUSINESS</p>
-                <p className="mt-1">For support, please contact: {company?.email}</p>
+                <p className="mt-1">For support, please contact: {workspace?.email}</p>
             </div>
         </div>
 
