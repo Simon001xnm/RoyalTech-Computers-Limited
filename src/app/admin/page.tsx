@@ -102,15 +102,17 @@ export default function PlatformCommandCenter() {
     
     // Group sales by month for the chart
     const monthlyData = companySales.reduce((acc: any, s) => {
-        const month = format(parseISO(s.date), 'MMM');
-        acc[month] = (acc[month] || 0) + s.amount;
+        try {
+            const month = format(parseISO(s.date), 'MMM');
+            acc[month] = (acc[month] || 0) + s.amount;
+        } catch(e) {}
         return acc;
     }, {});
 
     const chartData = Object.keys(monthlyData).map(month => ({
         name: month,
         sales: monthlyData[month],
-        inventory: totalInventoryValue / 12 // Simple comparative visualization
+        inventory: totalInventoryValue / Math.max(1, Object.keys(monthlyData).length) 
     }));
 
     return {
