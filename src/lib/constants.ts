@@ -4,11 +4,13 @@ import { LayoutDashboard, Package as PackageIcon, Users, Printer, MapPin, Clipbo
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
 
 // M-PESA DARAJA API CONFIGURATION
+// Update these with your real credentials from Safaricom Daraja Portal
 export const MPESA_CONFIG = {
   CONSUMER_KEY: "YOUR_CONSUMER_KEY",
   CONSUMER_SECRET: "YOUR_CONSUMER_SECRET",
   BUSINESS_SHORTCODE: "174379", 
   PASSKEY: "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919",
+  // CALLBACK_URL must be a public URL (e.g., https://your-ngrok-id.ngrok-free.app/api/mpesa/callback)
   CALLBACK_URL: "https://your-domain.com/api/mpesa/callback",
 };
 
@@ -19,11 +21,6 @@ export interface NavItem {
   group?: string;
 }
 
-/**
- * NAV_ITEMS: Standard navigation list.
- * Note: Admin routes are excluded here to maintain anonymity. 
- * They are injected dynamically in SidebarNav for Master Keys only.
- */
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/pos', label: 'Point of Sale', icon: ShoppingCart },
