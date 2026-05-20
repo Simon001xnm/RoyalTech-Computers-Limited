@@ -16,7 +16,7 @@ export const MASTER_KEYS = [
 
 export const roleDescriptions: Record<Role, string> = {
     admin: "Tenant Owner. Full access to their company's data and workspace settings.",
-    user: "Standard Employee. Can perform day-to-day operations but cannot manage workspace branding.",
+    user: "Standard Employee. Can perform day-to-day operations but cannot manage workspace branding or staff accounts.",
     super_admin: "Platform Technician. Global oversight for infrastructure maintenance.",
 };
 
@@ -28,6 +28,7 @@ export const isMasterKey = (email?: string | null): boolean => {
 const getRolePermissions = (role: Role | string, email?: string | null): string[] => {
     const isMaster = isMasterKey(email);
     
+    // Super Admin (Master Keys): Everything
     if (role === 'super_admin' || isMaster) {
         return [
             '/admin',
@@ -46,14 +47,18 @@ const getRolePermissions = (role: Role | string, email?: string | null): string[
             '/salesiq',
             '/projects',
             '/campaigns',
-            '/resellers'
+            '/resellers',
+            '/books'
         ];
     }
     
+    // Workspace Admin: Everything except Platform Command
     if (role === 'admin') {
         return NAV_ITEMS.map(i => i.href).filter(h => h !== '/admin');
     }
     
+    // Standard User: Everything except System Users and Platform Command
+    // They now have access to Books, Reports, Audit, Desk, etc.
     return [
         '/',
         '/pos',
@@ -64,7 +69,13 @@ const getRolePermissions = (role: Role | string, email?: string | null): string[
         '/tracking',
         '/salesiq',
         '/projects',
-        '/profile'
+        '/profile',
+        '/books',
+        '/desk',
+        '/campaigns',
+        '/reports',
+        '/audit',
+        '/resellers'
     ];
 };
 

@@ -183,7 +183,7 @@ export function UsersClient() {
   return (
     <>
       <PageHeader
-        title="Team Management (Cloud)"
+        title="Team Management"
         description="Manage staff members belonging strictly to your business workspace."
         actionLabel={canManageUsers ? "Invite Team Member" : undefined}
         onAction={canManageUsers ? handleAddUser : undefined}
@@ -191,82 +191,90 @@ export function UsersClient() {
       />
 
        {!canManageUsers && !isLoading && (
-        <Alert variant="destructive" className="mb-4">
-          <UserX className="h-4 w-4" />
-          <AlertTitle>Access Restricted</AlertTitle>
-          <AlertDescription>
-            You do not have the required permissions to manage users for this tenant.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <div className="mb-4">
-        <Input
-          placeholder="Search team by name or email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm bg-card"
-        />
-      </div>
-      
-      {isLoading ? (
-          <p className="text-muted-foreground animate-pulse">Syncing team directory...</p>
-      ) : (
-        <div className="rounded-lg border shadow-sm bg-card">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map(headerGroup => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.length ? (
-                table.getRowModel().rows.map(row => (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                 <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">No users found.</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          <DataTablePagination table={table} />
+        <div className="flex h-[60vh] flex-col items-center justify-center p-8 text-center space-y-6">
+            <div className="bg-destructive/10 p-6 rounded-full">
+                <UserX className="h-12 w-12 text-destructive" />
+            </div>
+            <div className="max-w-md space-y-2">
+                <h2 className="text-2xl font-black uppercase tracking-tight">Access Restricted</h2>
+                <p className="text-muted-foreground">
+                    Only workspace owners (Admins) are permitted to manage staff accounts and system access.
+                </p>
+            </div>
         </div>
       )}
 
-      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingUser(null); }}}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingUser ? 'Edit Team Member' : 'Invite Team Member'}</DialogTitle>
-            <DialogDescription>Provision an account within your workspace.</DialogDescription>
-          </DialogHeader>
-          <UserForm user={editingUser} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isProcessing} />
-        </DialogContent>
-      </Dialog>
+      {canManageUsers && (
+        <>
+            <div className="mb-4">
+                <Input
+                placeholder="Search team by name or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm bg-card"
+                />
+            </div>
+            
+            {isLoading ? (
+                <p className="text-muted-foreground animate-pulse">Syncing team directory...</p>
+            ) : (
+                <div className="rounded-lg border shadow-sm bg-card">
+                <Table>
+                    <TableHeader>
+                    {table.getHeaderGroups().map(headerGroup => (
+                        <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map(header => (
+                            <TableHead key={header.id}>
+                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                            </TableHead>
+                        ))}
+                        </TableRow>
+                    ))}
+                    </TableHeader>
+                    <TableBody>
+                    {table.getRowModel().rows.length ? (
+                        table.getRowModel().rows.map(row => (
+                        <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                            {row.getVisibleCells().map(cell => (
+                            <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                            ))}
+                        </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                        <TableCell colSpan={columns.length} className="h-24 text-center">No users found.</TableCell>
+                        </TableRow>
+                    )}
+                    </TableBody>
+                </Table>
+                <DataTablePagination table={table} />
+                </div>
+            )}
 
-      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Revoke Access</DialogTitle>
-            <DialogDescription>Remove <strong>{userToDelete?.name}</strong> from your workspace?</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete}>Confirm Revocation</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingUser(null); }}}>
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>{editingUser ? 'Edit Team Member' : 'Invite Team Member'}</DialogTitle>
+                    <DialogDescription>Provision an account within your workspace.</DialogDescription>
+                </DialogHeader>
+                <UserForm user={editingUser} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isProcessing} />
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+                <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Revoke Access</DialogTitle>
+                    <DialogDescription>Remove <strong>{userToDelete?.name}</strong> from your workspace?</DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
+                    <Button variant="destructive" onClick={confirmDelete}>Confirm Revocation</Button>
+                </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
+      )}
     </>
   );
 }
