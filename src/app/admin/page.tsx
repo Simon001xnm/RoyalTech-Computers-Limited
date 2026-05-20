@@ -5,7 +5,7 @@ import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
     Building2, Users, CreditCard, Activity, ShieldCheck, Server, 
     History, MoreHorizontal, Lock, Unlock, Zap, Crown, 
-    ChevronRight, Inbox, Gauge, Eye, Mail, Phone, Clock, Send, SendHorizonal, MailCheck, MailQuestion, Loader2, MessageSquare, AlertCircle, Trash2, AlertTriangle, UserPlus, BarChart3, LineChart, PieChart, TrendingUp, Package, Search
+    ChevronRight, Inbox, Gauge, Eye, Mail, Phone, Clock, Send, SendHorizonal, MailCheck, MailQuestion, Loader2, MessageSquare, AlertCircle, Trash2, AlertTriangle, UserPlus, BarChart3, LineChart, PieChart, TrendingUp, Package, Search, Maximize2, Minimize2, EyeOff, LayoutTemplate
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, limit, addDoc, updateDoc, doc, writeBatch, getDocs } from 'firebase/firestore';
@@ -43,11 +43,17 @@ import {
 /**
  * @fileOverview Platform Command Center (Super Admin Dashboard)
  * Optimized for real-time global oversight with deep business-node intelligence.
+ * Enhanced with Dynamic Layout Controls for resizable/adjustable containers.
  */
 export default function PlatformCommandCenter() {
   const { toast } = useToast();
   const firestore = useFirestore();
   
+  // Layout Management State
+  const [showRegistry, setShowRegistry] = useState(true);
+  const [showSignups, setShowSignups] = useState(true);
+  const [isRegistryFullWidth, setIsRegistryFullWidth] = useState(false);
+
   // State for Filtering
   const [logLevelFilter, setLogLevelFilter] = useState<string>('all');
   const [tenantFilter, setTenantFilter] = useState<string>('all');
@@ -221,6 +227,12 @@ export default function PlatformCommandCenter() {
     return new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 }).format(amount);
   };
 
+  const handleResetLayout = () => {
+      setShowRegistry(true);
+      setShowSignups(true);
+      setIsRegistryFullWidth(false);
+  };
+
   return (
     <div className="space-y-6 md:space-y-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -232,6 +244,11 @@ export default function PlatformCommandCenter() {
             <p className="text-muted-foreground font-medium mt-1">Real-time Cloud Node Monitoring</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
+            {(!showRegistry || !showSignups || isRegistryFullWidth) && (
+                <Button variant="outline" onClick={handleResetLayout} className="h-9 px-4 font-bold border-dashed">
+                    <LayoutTemplate className="h-4 w-4 mr-2" /> Reset View
+                </Button>
+            )}
             <Button onClick={() => setIsMessageOpen(true)} className="w-full sm:w-auto h-9 px-4 font-bold bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all active:scale-95">
                 <SendHorizonal className="h-4 w-4 mr-2" /> Global Broadcast
             </Button>
@@ -248,98 +265,171 @@ export default function PlatformCommandCenter() {
         <SummaryCard title="Global Support" value={platformStats.openTickets} icon={Inbox} description="Pending helpdesk cases" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 shadow-xl border-none overflow-hidden">
-            <CardHeader className="bg-muted/30 p-6 flex flex-row items-center justify-between">
-                <CardTitle className="text-xl font-black uppercase tracking-tight">Cloud Workspace Registry</CardTitle>
-                <Badge variant="outline" className="font-bold">Live Sync Active</Badge>
-            </CardHeader>
-            <CardContent className="p-0 overflow-auto">
-                <Table>
-                    <TableHeader className="bg-muted/50">
-                        <TableRow>
-                            <TableHead className="font-black uppercase text-[10px] py-4 px-6 min-w-[200px]">Business Entity</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] min-w-[120px]">Staff Size</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] min-w-[100px]">Plan</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] min-w-[100px]">Status</TableHead>
-                            <TableHead className="text-right font-black uppercase text-[10px] px-6">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {tenants?.map(tenant => (
-                            <TableRow key={tenant.id} className="hover:bg-muted/5">
-                                <TableCell className="px-6 py-5">
-                                    <div className="font-black uppercase text-sm">{tenant.name}</div>
-                                    <div className="text-[10px] font-mono text-muted-foreground opacity-60">ID: {tenant.id.slice(0,8).toUpperCase()}</div>
-                                </TableCell>
-                                <TableCell><span className="font-bold text-xs">{users?.filter(u => u.tenantId === tenant.id).length || 0} Accounts</span></TableCell>
-                                <TableCell><Badge variant="outline" className="uppercase text-[9px] font-black">{tenant.plan || 'Free'}</Badge></TableCell>
-                                <TableCell><Badge variant={tenant.status === 'suspended' ? 'destructive' : 'secondary'} className="uppercase text-[9px] font-black">{tenant.status || 'Active'}</Badge></TableCell>
-                                <TableCell className="text-right px-6">
-                                    <div className="flex justify-end gap-1">
-                                        <Button variant="outline" size="sm" className="h-8 font-black uppercase text-[10px]" onClick={() => setSelectedCompanyId(tenant.id)}>
-                                            <BarChart3 className="h-3 w-3 mr-1" /> View Intelligence
-                                        </Button>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-56 p-2">
-                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => { setMsgTargetTenantId(tenant.id); setMsgTargetUserId('all'); setIsMessageOpen(true); }}><Mail className="h-4 w-4 mr-2" /> Message Tenant</DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem className={cn("font-bold text-xs", tenant.status === 'suspended' ? "text-green-600" : "text-destructive")} onClick={() => handleUpdateTenantStatus(tenant.id, tenant.status === 'suspended' ? 'active' : 'suspended')}>
-                                                    {tenant.status === 'suspended' ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
-                                                    {tenant.status === 'suspended' ? "Re-activate Node" : "Suspend Access"}
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </TableCell>
+      <div className={cn(
+          "grid gap-6 transition-all duration-500 ease-in-out",
+          (showRegistry && showSignups && !isRegistryFullWidth) ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1"
+      )}>
+        {showRegistry && (
+            <Card className={cn(
+                "shadow-xl border-none overflow-hidden transition-all duration-500",
+                (showRegistry && showSignups && !isRegistryFullWidth) ? "lg:col-span-2" : "col-span-1"
+            )}>
+                <CardHeader className="bg-muted/30 p-6 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <CardTitle className="text-xl font-black uppercase tracking-tight">Cloud Workspace Registry</CardTitle>
+                        <Badge variant="outline" className="font-bold hidden sm:flex">Live Sync</Badge>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8" 
+                            title={isRegistryFullWidth ? "Standard View" : "Maximize"}
+                            onClick={() => {
+                                setIsRegistryFullWidth(!isRegistryFullWidth);
+                                if (!isRegistryFullWidth) setShowSignups(false);
+                                else setShowSignups(true);
+                            }}
+                        >
+                            {isRegistryFullWidth ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive" 
+                            title="Hide Registry"
+                            onClick={() => setShowRegistry(false)}
+                        >
+                            <EyeOff className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0 overflow-auto">
+                    <Table>
+                        <TableHeader className="bg-muted/50">
+                            <TableRow>
+                                <TableHead className="font-black uppercase text-[10px] py-4 px-6 min-w-[200px]">Business Entity</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] min-w-[120px]">Staff Size</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] min-w-[100px]">Plan</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] min-w-[100px]">Status</TableHead>
+                                <TableHead className="text-right font-black uppercase text-[10px] px-6">Actions</TableHead>
                             </TableRow>
-                        ))}
-                        {tenants?.length === 0 && (
-                            <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No workspaces registered in this cloud node.</TableCell></TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
+                        </TableHeader>
+                        <TableBody>
+                            {tenants?.map(tenant => (
+                                <TableRow key={tenant.id} className="hover:bg-muted/5">
+                                    <TableCell className="px-6 py-5">
+                                        <div className="font-black uppercase text-sm">{tenant.name}</div>
+                                        <div className="text-[10px] font-mono text-muted-foreground opacity-60">ID: {tenant.id.slice(0,8).toUpperCase()}</div>
+                                    </TableCell>
+                                    <TableCell><span className="font-bold text-xs">{users?.filter(u => u.tenantId === tenant.id).length || 0} Accounts</span></TableCell>
+                                    <TableCell><Badge variant="outline" className="uppercase text-[9px] font-black">{tenant.plan || 'Free'}</Badge></TableCell>
+                                    <TableCell><Badge variant={tenant.status === 'suspended' ? 'destructive' : 'secondary'} className="uppercase text-[9px] font-black">{tenant.status || 'Active'}</Badge></TableCell>
+                                    <TableCell className="text-right px-6">
+                                        <div className="flex justify-end gap-1">
+                                            <Button variant="outline" size="sm" className="h-8 font-black uppercase text-[10px]" onClick={() => setSelectedCompanyId(tenant.id)}>
+                                                <BarChart3 className="h-3 w-3 mr-1" /> View Intelligence
+                                            </Button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-56 p-2">
+                                                    <DropdownMenuItem className="font-bold text-xs" onClick={() => { setMsgTargetTenantId(tenant.id); setMsgTargetUserId('all'); setIsMessageOpen(true); }}><Mail className="h-4 w-4 mr-2" /> Message Tenant</DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem className={cn("font-bold text-xs", tenant.status === 'suspended' ? "text-green-600" : "text-destructive")} onClick={() => handleUpdateTenantStatus(tenant.id, tenant.status === 'suspended' ? 'active' : 'suspended')}>
+                                                        {tenant.status === 'suspended' ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
+                                                        {tenant.status === 'suspended' ? "Re-activate Node" : "Suspend Access"}
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                            {tenants?.length === 0 && (
+                                <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No workspaces registered in this cloud node.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        )}
 
-        <Card className="shadow-xl border-none">
-            <CardHeader className="bg-muted/10">
-                <CardTitle className="text-lg font-black uppercase flex items-center gap-2">
-                    <UserPlus className="h-5 w-5 text-primary" />
-                    New Signups
-                </CardTitle>
-                <CardDescription>Latest identity registrations across nodes.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-                <ScrollArea className="h-[400px]">
-                    <div className="divide-y">
-                        {recentUsers.map(user => (
-                            <div key={user.id} className="p-4 hover:bg-muted/5 transition-colors">
-                                <div className="flex items-center justify-between">
-                                    <div className="overflow-hidden pr-4">
-                                        <p className="font-bold text-sm truncate">{user.name || 'Unnamed User'}</p>
-                                        <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <Badge variant="secondary" className="text-[8px] font-black uppercase mb-1">
-                                            {user.tenantId ? tenants?.find(t => t.id === user.tenantId)?.name?.slice(0, 8) : 'Pending Setup'}
-                                        </Badge>
-                                        <p className="text-[9px] text-muted-foreground italic">
-                                            {user.createdAt ? format(parseISO(user.createdAt), 'MMM d') : 'Recent'}
-                                        </p>
+        {showSignups && (
+            <Card className="shadow-xl border-none transition-all duration-500">
+                <CardHeader className="bg-muted/10 flex flex-row items-center justify-between space-y-0">
+                    <div>
+                        <CardTitle className="text-lg font-black uppercase flex items-center gap-2">
+                            <UserPlus className="h-5 w-5 text-primary" />
+                            New Signups
+                        </CardTitle>
+                        <CardDescription className="hidden sm:block">Latest identity registrations.</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8" 
+                            title={(!showRegistry) ? "Standard View" : "Maximize"}
+                            onClick={() => {
+                                if (showRegistry) {
+                                    setShowRegistry(false);
+                                    setIsRegistryFullWidth(false);
+                                } else {
+                                    setShowRegistry(true);
+                                }
+                            }}
+                        >
+                            {(!showRegistry) ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive" 
+                            title="Hide Signups"
+                            onClick={() => setShowSignups(false)}
+                        >
+                            <EyeOff className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <ScrollArea className="h-[400px]">
+                        <div className="divide-y">
+                            {recentUsers.map(user => (
+                                <div key={user.id} className="p-4 hover:bg-muted/5 transition-colors">
+                                    <div className="flex items-center justify-between">
+                                        <div className="overflow-hidden pr-4">
+                                            <p className="font-bold text-sm truncate">{user.name || 'Unnamed User'}</p>
+                                            <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <Badge variant="secondary" className="text-[8px] font-black uppercase mb-1">
+                                                {user.tenantId ? tenants?.find(t => t.id === user.tenantId)?.name?.slice(0, 8) : 'Pending Setup'}
+                                            </Badge>
+                                            <p className="text-[9px] text-muted-foreground italic">
+                                                {user.createdAt ? format(parseISO(user.createdAt), 'MMM d') : 'Recent'}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                        {recentUsers.length === 0 && (
-                            <div className="p-8 text-center text-muted-foreground italic text-xs">No signups detected yet.</div>
-                        )}
-                    </div>
-                </ScrollArea>
-            </CardContent>
-        </Card>
+                            ))}
+                            {recentUsers.length === 0 && (
+                                <div className="p-8 text-center text-muted-foreground italic text-xs">No signups detected yet.</div>
+                            )}
+                        </div>
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+        )}
       </div>
+
+      {!showRegistry && !showSignups && (
+          <div className="flex flex-col items-center justify-center p-20 border-2 border-dashed rounded-3xl opacity-40">
+              <Activity className="h-12 w-12 mb-4" />
+              <p className="font-black uppercase tracking-widest text-sm">Dashboard View Cleaned</p>
+              <Button variant="link" onClick={handleResetLayout} className="mt-2 font-bold">Restore Default Modules</Button>
+          </div>
+      )}
 
       <Tabs defaultValue="activity" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6 h-12 p-1 bg-muted/50 border shadow-inner">
@@ -480,7 +570,7 @@ export default function PlatformCommandCenter() {
                                     <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Active Staff</p>
                                     <p className="text-xl font-black">{companyStats.userCount}</p>
                                 </CardContent>
-                            </Card>
+                            </div>
                         </div>
 
                         <Card className="border-none shadow-sm ring-1 ring-muted overflow-hidden">
