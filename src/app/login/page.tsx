@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth, useUser } from '@/firebase/provider';
+import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignIn, initiateGoogleSignIn, initiatePasswordReset } from '@/firebase/non-blocking-login';
 import { APP_NAME } from '@/lib/constants';
@@ -14,6 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ChevronDown, ChevronRight, ShieldCheck } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
 import { logger } from '@/lib/logger';
+import { doc } from 'firebase/firestore';
+import type { User as AppUser, Company } from '@/types';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -24,18 +26,37 @@ export default function LoginPage() {
 
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
 
   const isMasterInput = MASTER_KEYS.includes(email.toLowerCase().trim());
 
+  // PRE-FETCH FOR LOGGING
+  const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile } = useDoc<AppUser>(userRef);
+
+  const companyRef = useMemoFirebase(() => 
+    userProfile?.tenantId ? doc(firestore, 'companies', userProfile.tenantId) : null,
+    [firestore, userProfile?.tenantId]
+  );
+  const { data: company } = useDoc<Company>(companyRef);
+
   useEffect(() => {
     if (!isUserLoading && user) {
       const userEmail = user.email?.toLowerCase().trim() || "";
       const isActuallyMaster = MASTER_KEYS.includes(userEmail);
+      
+      // LOG SESSION START
+      logger.business('Identity', 'Account Session Started', { 
+        email: userEmail, 
+        company: company?.name || 'ROOT',
+        uid: user.uid
+      });
+
       router.push(isActuallyMaster ? '/admin' : '/');
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, company]);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -46,11 +67,10 @@ export default function LoginPage() {
     setIsProcessing(true);
     try {
         await initiateEmailSignIn(auth, email.toLowerCase().trim(), password);
-        logger.business('Identity', 'User Signed In', { email: email.toLowerCase().trim(), method: 'Email' });
     } catch (e: any) {
         setIsProcessing(false);
         const message = e.code === 'auth/invalid-credential' 
-          ? "Account not found or password incorrect. If you are new, please use the 'Create Account' link below." 
+          ? "Account not found or password incorrect. Please sign up if you are new." 
           : e.message;
         
         toast({ variant: 'destructive', title: 'Sign In Failed', description: message });
@@ -60,10 +80,7 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     setIsProcessing(true);
     try {
-        const result = await initiateGoogleSignIn(auth);
-        if (result.user.email) {
-            logger.business('Identity', 'Google Identity Auth', { email: result.user.email });
-        }
+        await initiateGoogleSignIn(auth);
     } catch (e: any) {
         setIsProcessing(false);
         if (e.code === 'auth/popup-blocked') {

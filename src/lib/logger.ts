@@ -3,10 +3,10 @@
  * Migrated to persist logs directly to Firebase Firestore for cross-tenant audit trails.
  */
 
-import { collection, addDoc, getFirestore } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
-type LogLevel = 'info' | 'warn' | 'error' | 'business';
+type LogLevel = 'info' | 'warn' | 'error' | 'business' | 'identity';
 
 interface LogEntry {
   timestamp: string;
@@ -31,7 +31,7 @@ class Logger {
   }
 
   private format(entry: LogEntry): string {
-    const icon = entry.level === 'error' ? '🔴' : entry.level === 'business' ? '💰' : '🔹';
+    const icon = entry.level === 'error' ? '🔴' : entry.level === 'business' ? '💰' : entry.level === 'identity' ? '👤' : '🔹';
     return `${icon} [${entry.timestamp}] [${entry.level.toUpperCase()}] [${entry.module}] ${entry.event}`;
   }
 
@@ -40,7 +40,14 @@ class Logger {
    */
   public async log(level: LogLevel, module: string, event: string, metadata?: Record<string, any>) {
     const timestamp = new Date().toISOString();
-    const entry: LogEntry = { timestamp, level, module, event, metadata };
+    const entry: LogEntry = { 
+        timestamp, 
+        level, 
+        module, 
+        event, 
+        metadata,
+        tenantId: metadata?.tenantId || metadata?.companyId
+    };
 
     // Console mirror in development
     if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
@@ -50,8 +57,8 @@ class Logger {
         else console.log(message, metadata);
     }
 
-    // Persist business and error events to Cloud Firestore
-    if (typeof window !== 'undefined' && (level === 'business' || level === 'error')) {
+    // Persist business, identity, and error events to Cloud Firestore
+    if (typeof window !== 'undefined' && (level === 'business' || level === 'error' || level === 'identity')) {
         try {
             const { firestore } = initializeFirebase();
             if (firestore) {
@@ -76,6 +83,10 @@ class Logger {
 
   public warn(module: string, event: string, metadata?: Record<string, any>) {
     this.log('warn', module, event, metadata);
+  }
+  
+  public identity(module: string, event: string, metadata?: Record<string, any>) {
+      this.log('identity', module, event, metadata);
   }
 }
 

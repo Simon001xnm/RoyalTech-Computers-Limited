@@ -12,20 +12,33 @@ import { Button } from '../ui/button';
 import { LogOut, User as UserIcon, ShieldCheck, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc } from 'firebase/firestore';
-import type { User as AppUser } from '@/types';
-import { Badge } from '../ui/badge';
-import { NotificationCenter } from './notification-center';
-import { cn } from "@/lib/utils";
+import type { User as AppUser, Company } from '@/types';
 import { isMasterKey } from '@/lib/roles';
+import { logger } from '@/lib/logger';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
 function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { children: React.ReactNode, userProfile: AppUser | null, isFastTrackAdmin: boolean }) {
     const { user } = useUser();
     const auth = useAuth();
+    const firestore = useFirestore();
+
+    const companyRef = useMemoFirebase(() => 
+      userProfile?.tenantId ? doc(firestore, 'companies', userProfile.tenantId) : null,
+      [firestore, userProfile?.tenantId]
+    );
+    const { data: company } = useDoc<Company>(companyRef);
 
     const handleLogout = () => {
-        if (auth) auth.signOut();
+        if (auth) {
+            // LOG SESSION END
+            logger.business('Identity', 'Account Session Ended', { 
+                email: user?.email, 
+                company: company?.name || 'ROOT',
+                uid: user?.uid 
+            });
+            auth.signOut();
+        }
     };
 
     const isSuperAdmin = isFastTrackAdmin || userProfile?.role === 'super_admin';

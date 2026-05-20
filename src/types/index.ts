@@ -25,7 +25,7 @@ export interface Company extends Auditable {
   location?: string;
   website?: string;
   plan?: string;
-  status?: string;
+  status?: 'active' | 'suspended';
   primaryColor?: string; // Hex color
   secondaryColor?: string; // Hex color
 }
@@ -39,6 +39,8 @@ export interface User {
   tenantId?: string;
   tenantIds?: string[]; // Portfolio of workspaces
   avatarUrl?: string;
+  status?: 'active' | 'suspended';
+  createdAt: string;
 }
 
 export interface Asset extends Omit<Auditable, 'createdAt' | 'updatedAt'> {

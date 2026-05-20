@@ -92,6 +92,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // AUTOMATIC PROVISIONING FOR GOOGLE SIGN-IN
+    // Fixed: isProfileLoading check ensures we don't overwrite existing docs during page load
     if (!isUserLoading && user && !isProfileLoading && !userProfile) {
         const provision = async () => {
             const ref = doc(firestore, 'users', user.uid);
@@ -106,6 +107,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
                     role: isMaster ? 'super_admin' : 'user',
                     tenantId: null, // Forces onboarding guard for non-admins
                     tenantIds: [],
+                    status: 'active',
                     createdAt: new Date().toISOString()
                 }, { merge: true });
                 

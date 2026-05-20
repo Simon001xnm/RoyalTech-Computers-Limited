@@ -32,8 +32,9 @@ export function useDoc<T = any>(
 ): UseDocResult<T> {
   type StateDataType = WithId<T> | null;
 
+  // CRITICAL: Initialize isLoading to true if a ref is provided to prevent race conditions during refresh
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedDocRef);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
