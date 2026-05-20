@@ -6,7 +6,7 @@ import type { Asset, SaleItem, Sale, Customer, Document as AppDocument } from '@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ import { collection, query, where, doc } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { SaleService } from '@/services/sale-service';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
+import { initiateStkPush } from '../actions';
 
 type Product = Asset & { productType: 'asset'; displayName: string; price?: number; };
 type CartItem = SaleItem & { productType: 'asset' | 'accessory'; quantity: number; unitPrice: number; discount: number; };
@@ -36,7 +37,8 @@ export function PosClient() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Till' | 'M-Pesa' | 'Bank' | 'Paybill'>('Bank');
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Till' | 'M-Pesa' | 'Bank' | 'Paybill'>('M-Pesa');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [referenceCode, setReferenceCode] = useState('');
   const [amountPaid, setAmountPaid] = useState('');
@@ -112,6 +114,25 @@ export function PosClient() {
     if (cart.length === 0 || !selectedCustomer || !user || !tenant) return;
 
     setIsProcessing(true);
+
+    // M-PESA STK PUSH LOGIC
+    if (paymentMethod === 'M-Pesa') {
+        if (!customerPhone || customerPhone.length < 10) {
+            toast({ variant: 'destructive', title: 'Phone Required', description: 'Please enter a valid phone number for M-Pesa STK Push.' });
+            setIsProcessing(false);
+            return;
+        }
+
+        const mpesaResult = await initiateStkPush(customerPhone, grandTotal);
+        if (!mpesaResult.success) {
+            toast({ variant: 'destructive', title: 'M-Pesa Failed', description: mpesaResult.error });
+            setIsProcessing(false);
+            return;
+        }
+        
+        toast({ title: 'STK Push Initiated', description: 'Please check customer phone for PIN prompt.' });
+    }
+
     try {
         const saleId = crypto.randomUUID();
         const saleDate = new Date().toISOString();
@@ -132,6 +153,7 @@ export function PosClient() {
             id: saleId, tenantId: tenant.id, date: saleDate, amount: grandTotal, subtotal, vat: vatAmount,
             amountPaid: parseFloat(amountPaid) || grandTotal, changeDue, paymentMethod, referenceCode,
             items: cart.map(i => ({ ...i, price: i.unitPrice })), customerName: selectedCustomer.name, customerId: selectedCustomer.id,
+            customerPhone: customerPhone || selectedCustomer.phone,
             status: 'Paid', createdAt: saleDate, createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
@@ -145,7 +167,7 @@ export function PosClient() {
 
         setLastGeneratedDoc(docData);
         setIsSuccessOpen(true);
-        setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode('');
+        setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode(''); setCustomerPhone('');
         toast({ title: 'Sale Finalized' });
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Sale Failed', description: e.message });
@@ -164,7 +186,6 @@ export function PosClient() {
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
     
-    // INCREASED DELAY FOR BAKED HYDRATION
     await new Promise(r => setTimeout(r, 200));
 
     const element = document.getElementById('pos-receipt-target');
@@ -209,7 +230,7 @@ export function PosClient() {
                 <div className="space-y-2">
                     <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
                         <PopoverTrigger asChild><Button variant="outline" className="w-full justify-between h-11 text-left font-normal">{selectedCustomer ? selectedCustomer.name : "Search clients..."}</Button></PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Client name..." /><CommandList><CommandEmpty>None found.</CommandEmpty><CommandGroup>{(customers || []).map(c => <CommandItem key={c.id} onSelect={() => { setSelectedCustomer(c); setIsCustomerSearchOpen(false); }}>{c.name}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Client name..." /><CommandList><CommandEmpty>None found.</CommandEmpty><CommandGroup>{(customers || []).map(c => <CommandItem key={c.id} onSelect={() => { setSelectedCustomer(c); setCustomerPhone(c.phone || ''); setIsCustomerSearchOpen(false); }}>{c.name}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent>
                     </Popover>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-[2fr_80px_1fr_auto] gap-4 items-end bg-muted/30 p-4 rounded-xl">
@@ -273,12 +294,39 @@ export function PosClient() {
             <CardContent className="space-y-5 pt-6 flex-grow">
                 <div className="space-y-2">
                     <Label className="text-[10px] uppercase font-black opacity-50">Method</Label>
-                    <Select onValueChange={(v: any) => setPaymentMethod(v)} value={paymentMethod}><SelectTrigger className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Cash">Cash</SelectItem><SelectItem value="M-Pesa">M-Pesa</SelectItem><SelectItem value="Bank">Bank</SelectItem></SelectContent></Select>
+                    <Select onValueChange={(v: any) => setPaymentMethod(v)} value={paymentMethod}>
+                        <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="M-Pesa">M-Pesa STK Push</SelectItem>
+                            <SelectItem value="Cash">Cash</SelectItem>
+                            <SelectItem value="Bank">Bank Transfer</SelectItem>
+                            <SelectItem value="Till">Buy Goods (Till)</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
-                <div className="space-y-2">
-                    <Label className="text-[10px] uppercase font-black opacity-50">Ref Code</Label>
-                    <Input placeholder="Reference..." value={referenceCode} onChange={e => setReferenceCode(e.target.value)} className="h-10 shadow-sm" />
-                </div>
+                
+                {paymentMethod === 'M-Pesa' && (
+                    <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                         <Label className="text-[10px] uppercase font-black opacity-50 flex items-center gap-1">
+                            <Phone className="h-3 w-3" /> M-Pesa Number
+                         </Label>
+                         <Input 
+                            placeholder="0712345678" 
+                            value={customerPhone} 
+                            onChange={e => setCustomerPhone(e.target.value)} 
+                            className="h-11 font-bold tracking-widest border-primary/20 bg-primary/5" 
+                         />
+                         <p className="text-[9px] text-muted-foreground italic">Customer will receive a popup to enter their PIN.</p>
+                    </div>
+                )}
+
+                {(paymentMethod === 'Bank' || paymentMethod === 'Till') && (
+                    <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                        <Label className="text-[10px] uppercase font-black opacity-50">Ref Code</Label>
+                        <Input placeholder="Reference..." value={referenceCode} onChange={e => setReferenceCode(e.target.value)} className="h-10 shadow-sm" />
+                    </div>
+                )}
+
                 <div className="flex items-center space-x-2 pt-2"><Switch id="vat-pos" checked={applyVat} onCheckedChange={setApplyVat} /><Label htmlFor="vat-pos" className="text-xs font-bold cursor-pointer">Apply 16% VAT</Label></div>
                 <div className="space-y-2 p-4 rounded-xl bg-muted/20 border mt-auto">
                     <div className="flex justify-between text-xl font-black">
@@ -288,8 +336,15 @@ export function PosClient() {
                 </div>
             </CardContent>
             <CardFooter className="pb-8">
-                <Button onClick={handleFinalizeSale} className="w-full h-14 text-lg font-black" disabled={isProcessing || !selectedCustomer || cart.length === 0}>
-                    {isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Finalize Sale'}
+                <Button onClick={handleFinalizeSale} className="w-full h-14 text-lg font-black shadow-xl active:scale-95 transition-all" disabled={isProcessing || !selectedCustomer || cart.length === 0}>
+                    {isProcessing ? (
+                        <div className="flex items-center gap-3">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                            {paymentMethod === 'M-Pesa' ? 'Awaiting M-Pesa PIN...' : 'Finalizing...'}
+                        </div>
+                    ) : (
+                        paymentMethod === 'M-Pesa' ? 'Initiate M-Pesa' : 'Finalize Sale'
+                    )}
                 </Button>
             </CardFooter>
         </Card>
@@ -312,7 +367,6 @@ export function PosClient() {
                 <Button className="w-full h-11" onClick={() => setIsSuccessOpen(false)}>Continue to Next Sale</Button>
             </div>
             
-            {/* Hidden capture target for PDF generation */}
             <div className="fixed left-[-9999px] top-0 pointer-events-none">
                 <div id="pos-receipt-target" className="bg-white" style={{ width: '210mm', minHeight: '297mm' }}>
                     {lastGeneratedDoc && <ReceiptPdf document={lastGeneratedDoc} />}

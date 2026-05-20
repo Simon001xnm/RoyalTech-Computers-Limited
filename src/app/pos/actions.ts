@@ -33,6 +33,7 @@ async function getMpesaToken() {
  */
 export async function initiateStkPush(phoneNumber: string, amount: number) {
   try {
+    // Format number to 254XXXXXXXXX
     const formattedPhone = phoneNumber.replace(/\D/g, '').replace(/^0/, '254').replace(/^\+/, '');
     
     if (MPESA_CONFIG.CONSUMER_KEY === "YOUR_CONSUMER_KEY") {

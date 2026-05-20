@@ -36,11 +36,14 @@
     "@tanstack/react-query": "^5.66.0",
     "@tanstack/react-table": "^8.19.3",
     "@vis.gl/react-google-maps": "^1.1.0",
+    "axios": "^1.16.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
+    "cors": "^2.8.6",
     "date-fns": "^3.6.0",
-    "dotenv": "^16.5.0",
+    "dotenv": "^16.6.1",
+    "express": "^5.2.1",
     "firebase": "^11.7.0",
     "firebase-admin": "^13.2.0",
     "genkit": "^1.31.0",
@@ -65,5 +68,13 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
-  }
+  },
+  "description": "This is a NextJS starter in Firebase Studio.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }
