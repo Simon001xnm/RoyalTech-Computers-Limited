@@ -9,7 +9,7 @@ import { useUser, useFirestore, useAuth } from '@/firebase/provider';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { APP_NAME } from '@/lib/constants';
-import Link from 'next/link';
+import Link from 'link';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { Loader2, ChevronDown, ChevronRight, ShieldCheck, Zap } from 'lucide-react';
@@ -83,7 +83,13 @@ export default function SignUpPage() {
           }
       } catch (e: any) {
           setIsLoading(false);
-          if (e.code === 'auth/unauthorized-domain') {
+          if (e.code === 'auth/popup-blocked') {
+              toast({ 
+                variant: 'destructive', 
+                title: 'Popup Blocked',
+                description: 'Please allow popups for this site in your browser to complete Google registration.'
+              });
+          } else if (e.code === 'auth/unauthorized-domain') {
               toast({ 
                 variant: 'destructive', 
                 title: 'Authorized Domain Required',

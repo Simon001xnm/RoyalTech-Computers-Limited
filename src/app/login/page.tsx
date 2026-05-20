@@ -66,7 +66,13 @@ export default function LoginPage() {
         }
     } catch (e: any) {
         setIsProcessing(false);
-        if (e.code === 'auth/unauthorized-domain') {
+        if (e.code === 'auth/popup-blocked') {
+            toast({ 
+                variant: 'destructive', 
+                title: 'Popup Blocked', 
+                description: 'Please allow popups for this site in your browser settings to sign in with Google.' 
+            });
+        } else if (e.code === 'auth/unauthorized-domain') {
             toast({ 
                 variant: 'destructive', 
                 title: 'Authorized Domain Required', 
