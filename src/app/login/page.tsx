@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -27,13 +28,16 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const isMasterEmail = MASTER_KEYS.includes(email.toLowerCase().trim());
+  const isMasterInput = MASTER_KEYS.includes(email.toLowerCase().trim());
 
   useEffect(() => {
     if (!isUserLoading && user) {
-      router.push(isMasterEmail ? '/admin' : '/');
+      // Check actual authenticated user email for master status, not just input
+      const userEmail = user.email?.toLowerCase().trim() || "";
+      const isActuallyMaster = MASTER_KEYS.includes(userEmail);
+      router.push(isActuallyMaster ? '/admin' : '/');
     }
-  }, [user, isUserLoading, router, isMasterEmail]);
+  }, [user, isUserLoading, router]);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -44,11 +48,15 @@ export default function LoginPage() {
     setIsProcessing(true);
     try {
         await initiateEmailSignIn(auth, email.toLowerCase().trim(), password);
-        // Sync Login to Admin Dashboard
         logger.business('Identity', 'User Signed In', { email: email.toLowerCase().trim(), method: 'Email' });
     } catch (e: any) {
         setIsProcessing(false);
-        toast({ variant: 'destructive', title: 'Sign In Failed', description: e.message || 'Incorrect email or password.' });
+        // auth/invalid-credential is the standard Firebase error for wrong pass or non-existent user
+        const message = e.code === 'auth/invalid-credential' 
+          ? "Account not found or password incorrect. If you are new, please use the 'Create Account' link below." 
+          : e.message;
+        
+        toast({ variant: 'destructive', title: 'Sign In Failed', description: message });
     }
   };
 
@@ -140,7 +148,7 @@ export default function LoginPage() {
                             onChange={(e) => setEmail(e.target.value)} 
                             className="h-12 border-[#d0d5dd] rounded-xl focus:ring-primary" 
                         />
-                        {isMasterEmail && (
+                        {isMasterInput && (
                           <div className="flex items-center gap-2 p-2 mt-1 bg-primary/5 border border-primary/20 rounded-lg text-primary text-[10px] font-black uppercase tracking-widest animate-in fade-in duration-300">
                             <ShieldCheck className="h-3 w-3" />
                             Technician Session Detected
