@@ -15,6 +15,9 @@ import { doc } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
 import { isMasterKey } from '@/lib/roles';
 import { logger } from '@/lib/logger';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { NotificationCenter } from '@/components/layout/notification-center';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
