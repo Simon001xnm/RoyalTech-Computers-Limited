@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
@@ -24,7 +25,16 @@ export function ProformaInvoicePdf({ document }: { document: AppDocument }) {
 
   // PREFER BAKED METADATA
   const workspace = document.data.workspace || cloudCompany;
-  const { customer, items, details, subtotal, vat, total, applyVat, invoiceType, leaseDetails } = document.data;
+  const data = document.data;
+
+  const customer = data.customer || {
+    name: data.customerName,
+    phone: data.customerPhone,
+    email: data.customerEmail || '',
+    address: data.customerAddress || ''
+  };
+
+  const { items, details, subtotal, vat, total, applyVat, invoiceType, leaseDetails } = data;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
@@ -35,6 +45,7 @@ export function ProformaInvoicePdf({ document }: { document: AppDocument }) {
   
   const isLease = invoiceType === 'lease' && leaseDetails;
   const companyName = workspace?.name || 'The Company';
+  const hasCustomerDetails = !!(customer.name);
 
   return (
     <div className="p-[20mm] font-sans text-sm bg-white text-gray-900 w-[210mm] min-h-[297mm] flex flex-col box-border">
@@ -59,11 +70,12 @@ export function ProformaInvoicePdf({ document }: { document: AppDocument }) {
       <section className="flex justify-between mt-6 mb-8">
         <div>
           <h3 className="font-bold mb-1">Bill To:</h3>
-          {customer ? (
+          {hasCustomerDetails ? (
             <>
               <p className="font-semibold">{customer.name}</p>
               <p>{customer.address || 'Address not specified'}</p>
               <p>{customer.email}</p>
+              {customer.phone && <p>Tel: {customer.phone}</p>}
             </>
           ) : <p>Customer details not available.</p>}
         </div>

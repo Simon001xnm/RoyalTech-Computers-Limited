@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
@@ -24,7 +25,16 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
 
   // PREFER BAKED METADATA OVER CLOUD SYNC FOR EXPORT STABILITY
   const workspace = document.data.workspace || cloudCompany;
-  const { customer, items, details, subtotal, vat, total, applyVat } = document.data;
+  const data = document.data;
+  
+  const customer = data.customer || {
+    name: data.customerName,
+    phone: data.customerPhone,
+    email: data.customerEmail || '',
+    address: data.customerAddress || ''
+  };
+
+  const { items, details, subtotal, vat, total, applyVat } = data;
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
@@ -34,6 +44,7 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
   };
 
   const primaryColor = workspace?.primaryColor || '#22345e';
+  const hasCustomerDetails = !!(customer.name);
 
   return (
     <div className="print-container p-[20mm] font-sans text-sm bg-white text-gray-800 w-[210mm] min-h-[297mm] flex flex-col box-border">
@@ -62,7 +73,7 @@ export function InvoicePdf({ document }: { document: AppDocument }) {
       <section className="flex justify-between mt-8 mb-10">
         <div className="max-w-[50%]">
           <h3 className="font-semibold text-gray-500 text-[10px] uppercase tracking-wider mb-2">Bill To:</h3>
-          {customer ? (
+          {hasCustomerDetails ? (
             <>
               <p className="font-bold text-lg">{customer.name}</p>
               <p className="text-gray-600 leading-tight mt-1">{customer.address || 'Address not specified'}</p>

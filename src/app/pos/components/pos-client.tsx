@@ -184,8 +184,10 @@ export function PosClient() {
         const saleData: Sale = {
             id: saleId, tenantId: tenant.id, date: saleDate, amount: grandTotal, subtotal, vat: vatAmount,
             amountPaid: parseFloat(amountPaid) || grandTotal, changeDue, paymentMethod, referenceCode: mpesaCheckoutId,
-            items: cart.map(i => ({ ...i, price: i.unitPrice })), customerName: selectedCustomer.name, 
-            customerId: selectedCustomer.id, customerPhone: customerPhone || selectedCustomer.phone,
+            items: cart.map(i => ({ ...i, price: i.unitPrice })), 
+            customerName: selectedCustomer.name, 
+            customerId: selectedCustomer.id, 
+            customerPhone: customerPhone || selectedCustomer.phone,
             status: paymentMethod === 'M-Pesa' ? 'Pending' : 'Paid', createdAt: saleDate, 
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
@@ -194,7 +196,19 @@ export function PosClient() {
             id: crypto.randomUUID(), tenantId: tenant.id, type: 'Receipt', 
             title: `Receipt #${prefix}-${saleId.slice(0, 5).toUpperCase()}`,
             generatedDate: saleDate, relatedTo: `Sale to ${selectedCustomer.name}`, saleId: saleId, 
-            data: { ...saleData, applyVat, workspace: workspaceMetadata }, createdAt: saleDate, 
+            data: { 
+              ...saleData, 
+              customer: {
+                id: selectedCustomer.id,
+                name: selectedCustomer.name,
+                phone: customerPhone || selectedCustomer.phone || '',
+                email: selectedCustomer.email || '',
+                address: selectedCustomer.address || ''
+              },
+              applyVat, 
+              workspace: workspaceMetadata 
+            }, 
+            createdAt: saleDate, 
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 

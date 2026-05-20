@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
@@ -24,7 +25,16 @@ export function QuotationPdf({ document }: { document: AppDocument }) {
 
   // PREFER BAKED METADATA
   const workspace = document.data.workspace || cloudCompany;
-  const { customer, items, subtotal, vat, total, notes, applyVat, invoiceType, leaseDetails } = document.data;
+  const data = document.data;
+
+  const customer = data.customer || {
+    name: data.customerName,
+    phone: data.customerPhone,
+    email: data.customerEmail || '',
+    address: data.customerAddress || ''
+  };
+
+  const { items, subtotal, vat, total, notes, applyVat, invoiceType, leaseDetails } = data;
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
@@ -34,6 +44,7 @@ export function QuotationPdf({ document }: { document: AppDocument }) {
   };
 
   const isLease = invoiceType === 'lease' && leaseDetails;
+  const hasCustomerDetails = !!(customer.name);
 
   return (
     <div className="p-[20mm] font-sans text-sm bg-white text-gray-800 w-[210mm] min-h-[297mm] flex flex-col box-border">
@@ -60,11 +71,12 @@ export function QuotationPdf({ document }: { document: AppDocument }) {
       <section className="flex justify-between mt-8 mb-10">
         <div>
           <h3 className="font-semibold text-gray-500 mb-2">Quote For:</h3>
-          {customer ? (
+          {hasCustomerDetails ? (
             <>
               <p className="font-medium">{customer.name}</p>
               <p>{customer.address || 'Address not specified'}</p>
               <p>{customer.email}</p>
+              {customer.phone && <p>Tel: {customer.phone}</p>}
             </>
           ) : <p>Customer details not available.</p>}
         </div>

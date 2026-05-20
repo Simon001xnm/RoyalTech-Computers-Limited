@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument, SaleItem } from "@/types";
@@ -24,7 +25,29 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
 
   // PREFER BAKED METADATA
   const workspace = document.data.workspace || cloudCompany;
-  const { customer, items, paymentMethod, referenceCode, amount, amountPaid, changeDue, subtotal, totalDiscount, vat, createdBy, applyVat } = document.data;
+  const data = document.data;
+  
+  // Resilient customer mapping
+  const customer = data.customer || {
+    name: data.customerName,
+    phone: data.customerPhone,
+    email: data.customerEmail || '',
+    address: data.customerAddress || ''
+  };
+
+  const { 
+    items, 
+    paymentMethod, 
+    referenceCode, 
+    amount, 
+    amountPaid, 
+    changeDue, 
+    subtotal, 
+    totalDiscount, 
+    vat, 
+    createdBy, 
+    applyVat 
+  } = data;
 
   const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat("en-KE", {
@@ -36,6 +59,8 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
   const receiptNumber = document.title.split('-').pop() || 'N/A';
   const finalTotal = amount || subtotal || 0;
   const primaryColor = workspace?.primaryColor || '#2c3e50';
+
+  const hasCustomerDetails = !!(customer.name && customer.name !== 'General Walk-in Client');
 
   return (
     <div className="print-container p-[20mm] font-sans text-sm bg-white text-gray-900 w-[210mm] min-h-[297mm] flex flex-col box-border">
@@ -63,11 +88,12 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
       <section className="flex justify-between mt-10 mb-10 bg-gray-50 p-6 rounded-xl border border-gray-100">
         <div>
           <h3 className="font-bold text-gray-400 text-[10px] uppercase tracking-widest mb-2">Customer Details:</h3>
-          {customer ? (
+          {hasCustomerDetails ? (
             <>
               <p className="font-black text-lg uppercase">{customer.name}</p>
               <p className="text-gray-500 text-xs mt-1">{customer.phone || 'Contact not specified'}</p>
               <p className="text-gray-500 text-xs">{customer.email}</p>
+              {customer.address && <p className="text-gray-500 text-xs">{customer.address}</p>}
             </>
           ) : (
             <p className="font-black text-lg uppercase">General Walk-in Client</p>
