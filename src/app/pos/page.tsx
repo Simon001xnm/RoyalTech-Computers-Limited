@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next';
 import { PosClient } from './components/pos-client';
 
