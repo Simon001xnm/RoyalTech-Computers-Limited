@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, updateDoc, setDoc, addDoc, getDocs, limit } from 'firebase/firestore';
 import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier } from '@/types/saas';
@@ -22,20 +22,32 @@ const SaaSContext = createContext<SaaSContextState | undefined>(undefined);
 
 /**
  * @fileOverview SaaS Infrastructure Provider
- * Optimized to perform usage calculations in memory to avoid "Missing Index" errors.
- * Now handles automatic profile provisioning for Google Sign-In users.
+ * Optimized to perform usage calculations in memory and persist state across refreshes.
  */
 export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   
+  // SESSION RECOVERY: Check for cached tenant ID to prevent flicker
+  const [cachedTenantId, setCachedTenantId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('rcl_last_tenant_id');
+        if (saved) setCachedTenantId(saved);
+    }
+  }, []);
+
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userRef);
 
+  // Source of truth for tenant ID: Profile or Cache
+  const effectiveTenantId = userProfile?.tenantId || cachedTenantId;
+
   const companyRef = useMemoFirebase(() => 
-    userProfile?.tenantId ? doc(firestore, 'companies', userProfile.tenantId) : null,
-    [firestore, userProfile?.tenantId]
+    effectiveTenantId ? doc(firestore, 'companies', effectiveTenantId) : null,
+    [firestore, effectiveTenantId]
   );
   const { data: activeCompany, isLoading: isCompanyLoading } = useDoc(companyRef);
 
@@ -46,14 +58,14 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const { data: availableWorkspaces = [] } = useCollection(portfolioQuery);
 
   const assetQuery = useMemoFirebase(() => 
-    userProfile?.tenantId ? query(collection(firestore, 'assets'), where('tenantId', '==', userProfile.tenantId)) : null,
-    [firestore, userProfile?.tenantId]
+    effectiveTenantId ? query(collection(firestore, 'assets'), where('tenantId', '==', effectiveTenantId)) : null,
+    [firestore, effectiveTenantId]
   );
   const { data: assets } = useCollection(assetQuery);
 
   const salesQuery = useMemoFirebase(() => 
-    userProfile?.tenantId ? query(collection(firestore, 'sales_transactions'), where('tenantId', '==', userProfile.tenantId)) : null,
-    [firestore, userProfile?.tenantId]
+    effectiveTenantId ? query(collection(firestore, 'sales_transactions'), where('tenantId', '==', effectiveTenantId)) : null,
+    [firestore, effectiveTenantId]
   );
   const { data: allSales } = useCollection(salesQuery);
 
@@ -92,7 +104,6 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // AUTOMATIC PROVISIONING FOR GOOGLE SIGN-IN
-    // Fixed: isProfileLoading check ensures we don't overwrite existing docs during page load
     if (!isUserLoading && user && !isProfileLoading && !userProfile) {
         const provision = async () => {
             const ref = doc(firestore, 'users', user.uid);
@@ -105,7 +116,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
                     name: user.displayName || 'System User',
                     email: normalizedEmail,
                     role: isMaster ? 'super_admin' : 'user',
-                    tenantId: null, // Forces onboarding guard for non-admins
+                    tenantId: null, 
                     tenantIds: [],
                     status: 'active',
                     createdAt: new Date().toISOString()
@@ -119,6 +130,12 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
         provision();
     }
 
+    // PERSIST TENANT SELECTION
+    if (userProfile?.tenantId) {
+        localStorage.setItem('rcl_last_tenant_id', userProfile.tenantId);
+    }
+
+    // SUBSCRIPTION ALERT LOGIC
     if (tenantData?.expiresAt && userProfile?.role === 'admin') {
         const daysLeft = differenceInDays(parseISO(tenantData.expiresAt), new Date());
         if (daysLeft <= 7 && daysLeft > 0) {
@@ -153,6 +170,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     if (!user || !userRef) return;
     try {
         await updateDoc(userRef, { tenantId: newTenantId });
+        localStorage.setItem('rcl_last_tenant_id', newTenantId);
         toast({ title: 'Workspace Switched' });
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Switch Failed', description: e.message });
@@ -163,11 +181,11 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     tenant: tenantData,
     plan: activePlan,
     usage: usageStats,
-    isLoading: isUserLoading || isProfileLoading || (!!userProfile?.tenantId && isCompanyLoading),
+    isLoading: isUserLoading || isProfileLoading || (!!effectiveTenantId && isCompanyLoading),
     isLegacyUser: activePlan?.tier === 'legacy_pro' || userProfile?.role === 'super_admin',
     availableWorkspaces: (availableWorkspaces || []) as any,
     switchTenant
-  }), [tenantData, activePlan, usageStats, isUserLoading, isProfileLoading, isCompanyLoading, availableWorkspaces, userProfile?.role]);
+  }), [tenantData, activePlan, usageStats, isUserLoading, isProfileLoading, isCompanyLoading, availableWorkspaces, userProfile?.role, effectiveTenantId]);
 
   const isSuspended = user && tenantData?.status === 'suspended' && userProfile?.role !== 'super_admin';
 

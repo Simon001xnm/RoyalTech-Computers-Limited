@@ -26,15 +26,15 @@ export interface UseDocResult<T> {
 
 /**
  * React hook to subscribe to a single Firestore document in real-time.
+ * Reinforced to prevent "flashing" null states during data transitions.
  */
 export function useDoc<T = any>(
   memoizedDocRef: DocumentReference<DocumentData> | null | undefined,
 ): UseDocResult<T> {
   type StateDataType = WithId<T> | null;
 
-  // CRITICAL: Initialize isLoading to true if a ref is provided to prevent race conditions during refresh
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedDocRef);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
@@ -68,11 +68,9 @@ export function useDoc<T = any>(
             setError(contextualError);
             errorEmitter.emit('permission-error', contextualError);
         } else {
-            console.error(`Firestore Document Error [${serverError.code}]: ${serverError.message}`, { path: memoizedDocRef.path });
             setError(serverError);
         }
         
-        setData(null);
         setIsLoading(false);
       }
     );

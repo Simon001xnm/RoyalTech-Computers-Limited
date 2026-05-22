@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +27,10 @@ const COLOR_PRESETS = [
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
+/**
+ * OnboardingGuard: Ensures users have an active workspace before accessing the app.
+ * Reinforced with session persistence to prevent flicker on refresh.
+ */
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -40,7 +43,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
   const [isSaving, setIsSaving] = useState(false);
   
-  // State Overhaul
   const [formData, setFormData] = useState({
     name: '',
     businessType: '',
@@ -113,6 +115,9 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         role: 'admin' 
       });
 
+      // Cache ID for instant recovery
+      localStorage.setItem('rcl_last_tenant_id', companyId);
+
       logger.business('Identity', 'Professional Node Setup Complete', { companyName: formData.name, companyId });
       toast({ title: 'Workspace Initialized' });
     } catch (err: any) {
@@ -122,19 +127,28 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (isUserLoading || isProfileLoading || PUBLIC_PATHS.includes(pathname)) {
-    return <>{children}</>;
+  // Wait for auth AND profile to be absolutely certain before showing setup
+  if (isUserLoading || isProfileLoading) {
+    if (PUBLIC_PATHS.includes(pathname)) return <>{children}</>;
+    return (
+        <div className="h-screen w-full flex flex-col items-center justify-center bg-background space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary opacity-20" />
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground animate-pulse">Synchronizing Node Registry</p>
+        </div>
+    );
   }
 
-  if (!user) return <>{children}</>;
+  if (!user || PUBLIC_PATHS.includes(pathname)) return <>{children}</>;
+  
+  // Super Admins bypass onboarding
   if (userProfile?.role === 'super_admin') return <>{children}</>;
 
+  // Only show onboarding if profile is confirmed present but has no tenantId
   if (userProfile && !userProfile.tenantId) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-[#f8f9fa] p-4 md:p-10 font-sans">
           <Card className="w-full max-w-5xl shadow-2xl overflow-hidden border-none ring-1 ring-black/5">
             <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] h-full">
-              {/* Sidebar Branding Panel */}
               <div className="bg-primary p-8 text-primary-foreground hidden lg:flex flex-col justify-between relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10 pointer-events-none">
                     <Zap className="h-[400px] w-[400px] absolute -right-20 -bottom-20" />
@@ -163,7 +177,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
 
-              {/* Form Content */}
               <div className="flex flex-col h-[85vh] lg:h-[800px]">
                 <CardHeader className="border-b bg-white/50 backdrop-blur sticky top-0 z-20 px-8 py-6">
                   <div className="flex items-center justify-between">
@@ -177,7 +190,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                 
                 <ScrollArea className="flex-grow">
                     <form onSubmit={handleSetup} className="p-8 space-y-12">
-                        {/* SECTION 1: IDENTITY */}
                         <section className="space-y-6">
                             <div className="flex items-center gap-3 border-b pb-2">
                                 <Building2 className="h-5 w-5 text-primary" />
@@ -219,7 +231,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                             </div>
                         </section>
 
-                        {/* SECTION 2: CONTACT */}
                         <section className="space-y-6">
                             <div className="flex items-center gap-3 border-b pb-2">
                                 <Phone className="h-5 w-5 text-primary" />
@@ -249,7 +260,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                             </div>
                         </section>
 
-                        {/* SECTION 3: ADMIN & VERIFICATION */}
                         <section className="space-y-6">
                             <div className="flex items-center gap-3 border-b pb-2">
                                 <ShieldCheck className="h-5 w-5 text-primary" />
@@ -275,7 +285,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                             </div>
                         </section>
 
-                        {/* SECTION 4: PAYMENT & API */}
                         <section className="space-y-6 p-6 bg-muted/20 rounded-2xl border-2 border-dashed border-primary/20">
                             <div className="flex items-center gap-3 border-b border-primary/10 pb-2">
                                 <Wallet className="h-5 w-5 text-primary" />
@@ -299,98 +308,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                     <Input value={formData.billingIdentifier} onChange={e => handleInputChange('billingIdentifier', e.target.value)} placeholder="For collection" />
                                 </div>
                             </div>
-                            <div className="p-4 bg-primary/5 rounded-xl space-y-4">
-                                <p className="text-[10px] font-black uppercase text-primary">M-Pesa Daraja API (For STK Push Integration)</p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-bold uppercase opacity-60">Shortcode</Label>
-                                        <Input value={formData.mpesaShortcode} onChange={e => handleInputChange('mpesaShortcode', e.target.value)} className="h-8 text-xs font-mono" placeholder="174379" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-bold uppercase opacity-60">Passkey</Label>
-                                        <Input value={formData.mpesaPasskey} onChange={e => handleInputChange('mpesaPasskey', e.target.value)} className="h-8 text-xs font-mono" placeholder="bfb279f..." />
-                                    </div>
-                                    <div className="md:col-span-2 space-y-1">
-                                        <Label className="text-[9px] font-bold uppercase opacity-60">Consumer Key</Label>
-                                        <Input value={formData.mpesaConsumerKey} onChange={e => handleInputChange('mpesaConsumerKey', e.target.value)} className="h-8 text-xs font-mono" />
-                                    </div>
-                                    <div className="md:col-span-2 space-y-1">
-                                        <Label className="text-[9px] font-bold uppercase opacity-60">Consumer Secret</Label>
-                                        <Input type="password" value={formData.mpesaConsumerSecret} onChange={e => handleInputChange('mpesaConsumerSecret', e.target.value)} className="h-8 text-xs font-mono" />
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* SECTION 5: SAAS CONFIG */}
-                        <section className="space-y-6">
-                            <div className="flex items-center gap-3 border-b pb-2">
-                                <Zap className="h-5 w-5 text-primary" />
-                                <h3 className="font-black uppercase tracking-widest text-xs text-muted-foreground">SaaS Configuration</h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Currency <span className="text-red-500">*</span></Label>
-                                    <Select onValueChange={v => handleInputChange('currency', v)} value={formData.currency}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="KES">KES (Shilling)</SelectItem>
-                                            <SelectItem value="USD">USD (Dollar)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Timezone <span className="text-red-500">*</span></Label>
-                                    <Select onValueChange={v => handleInputChange('timezone', v)} value={formData.timezone}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="EAT (UTC+3)">EAT (Nairobi)</SelectItem>
-                                            <SelectItem value="UTC">UTC (Universal)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Subscription <span className="text-red-500">*</span></Label>
-                                    <Select onValueChange={v => handleInputChange('plan', v)} value={formData.plan}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="free">Free Node</SelectItem>
-                                            <SelectItem value="basic">Growth Node</SelectItem>
-                                            <SelectItem value="pro">Enterprise Node</SelectItem>
-                                            <SelectItem value="legacy_pro">Legacy Pro (Gold)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* SECTION 6: BRANDING */}
-                        <section className="space-y-6">
-                            <div className="flex items-center gap-3 border-b pb-2">
-                                <Zap className="h-5 w-5 text-primary" />
-                                <h3 className="font-black uppercase tracking-widest text-xs text-muted-foreground">Node Branding</h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-8">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Logo</Label>
-                                    <div onClick={() => fileInputRef.current?.click()} className="w-full aspect-square border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer hover:bg-muted/50 overflow-hidden relative group">
-                                        {formData.logoUrl ? <img src={formData.logoUrl} className="w-full h-full object-contain" /> : <Upload className="h-8 w-8 text-muted-foreground" />}
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><Zap className="text-white h-6 w-6" /></div>
-                                    </div>
-                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-                                </div>
-                                <div className="space-y-6">
-                                    <Label className="text-[10px] font-black uppercase">System Theme</Label>
-                                    <div className="flex flex-wrap gap-4">
-                                        {COLOR_PRESETS.map((preset) => (
-                                            <button key={preset.name} type="button" className={cn("p-2 rounded-xl border-2 transition-all flex items-center gap-3", formData.primaryColor === preset.primary ? "border-primary bg-primary/5 ring-4 ring-primary/10" : "border-transparent hover:bg-muted")} onClick={() => setFormData(prev => ({ ...prev, primaryColor: preset.primary, secondaryColor: preset.secondary }))}>
-                                                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: preset.primary }} />
-                                                <span className="text-[10px] font-bold uppercase">{preset.name}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
                         </section>
 
                         <div className="pt-10">
@@ -402,7 +319,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                     </div>
                                 ) : 'Execute Node Activation'}
                             </Button>
-                            <p className="text-center text-[10px] text-muted-foreground uppercase font-bold mt-4 opacity-50">By activating, you agree to platform governance protocols.</p>
                         </div>
                     </form>
                 </ScrollArea>
