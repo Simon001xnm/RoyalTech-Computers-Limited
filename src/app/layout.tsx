@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { APP_NAME } from '@/lib/constants';
 import { PwaRegistration } from '@/components/layout/pwa-registration';
 import { Providers } from '@/components/layout/providers';
-import Script from 'next/script';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -17,7 +16,7 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-const VERSION = "2.2.0";
+const VERSION = "2.2.1";
 
 export const metadata: Metadata = {
   title: {
@@ -53,35 +52,21 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" />
-        <Script id="resilience-recovery" strategy="beforeInteractive">
-          {`
-            // GLOBAL NETWORK ERROR HANDLER
-            window.addEventListener('error', (event) => {
-              const msg = String(event.message || '').toLowerCase();
-              if (
-                msg.includes('chunkloaderror') || 
-                msg.includes('loading chunk') || 
-                msg.includes('failed to fetch') ||
-                msg.includes('timeout')
-              ) {
-                console.warn('Network resilience trigger: Reloading node components...');
-                // Smooth immediate reload to clear broken chunks
-                if (window.location.hash !== '#reloading') {
-                  window.location.hash = 'reloading';
-                  window.location.reload();
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Resilience Script: Handles chunk failures silently
+              window.addEventListener('error', (e) => {
+                if (e.message && (e.message.includes('ChunkLoadError') || e.message.includes('timeout'))) {
+                  if (window.location.hash !== '#retry') {
+                    window.location.hash = 'retry';
+                    window.location.reload();
+                  }
                 }
-              }
-            }, true);
-            
-            // HANDLES REJECTIONS (Promises failing due to network)
-            window.addEventListener('unhandledrejection', (event) => {
-                const reason = String(event.reason || '').toLowerCase();
-                if (reason.includes('chunkloaderror') || reason.includes('timeout')) {
-                  window.location.reload();
-                }
-            });
-          `}
-        </Script>
+              }, true);
+            `,
+          }}
+        />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <Providers>
