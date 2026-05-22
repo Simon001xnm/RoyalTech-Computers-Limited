@@ -20,16 +20,11 @@ const DEFAULT_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
 
 const SaaSContext = createContext<SaaSContextState | undefined>(undefined);
 
-/**
- * @fileOverview SaaS Infrastructure Provider
- * Optimized to perform usage calculations in memory and persist state across refreshes.
- */
 export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   
-  // SESSION RECOVERY: Check for cached tenant ID to prevent flicker
   const [cachedTenantId, setCachedTenantId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,7 +37,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userRef);
 
-  // Source of truth for tenant ID: Profile or Cache
+  // CRITICAL: The tenant ID source of truth should prioritize the local cache during early reload
   const effectiveTenantId = userProfile?.tenantId || cachedTenantId;
 
   const companyRef = useMemoFirebase(() => 
@@ -51,37 +46,14 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   );
   const { data: activeCompany, isLoading: isCompanyLoading } = useDoc(companyRef);
 
-  const portfolioQuery = useMemoFirebase(() => {
-    if (!userProfile?.tenantIds || userProfile.tenantIds.length === 0) return null;
-    return query(collection(firestore, 'companies'), where('id', 'in', userProfile.tenantIds));
-  }, [firestore, userProfile?.tenantIds]);
-  const { data: availableWorkspaces = [] } = useCollection(portfolioQuery);
+  useEffect(() => {
+    // Session lock update
+    if (userProfile?.tenantId) {
+        localStorage.setItem('rcl_last_tenant_id', userProfile.tenantId);
+    }
+  }, [userProfile?.tenantId]);
 
-  const assetQuery = useMemoFirebase(() => 
-    effectiveTenantId ? query(collection(firestore, 'assets'), where('tenantId', '==', effectiveTenantId)) : null,
-    [firestore, effectiveTenantId]
-  );
-  const { data: assets } = useCollection(assetQuery);
-
-  const salesQuery = useMemoFirebase(() => 
-    effectiveTenantId ? query(collection(firestore, 'sales_transactions'), where('tenantId', '==', effectiveTenantId)) : null,
-    [firestore, effectiveTenantId]
-  );
-  const { data: allSales } = useCollection(salesQuery);
-
-  const usageStats = useMemo(() => {
-    const startOfCurrentMonth = startOfMonth(new Date());
-    const monthlySales = (allSales || []).filter(s => {
-        try {
-            return new Date(s.date) >= startOfCurrentMonth;
-        } catch { return false; }
-    });
-
-    return {
-        assets: assets?.length || 0,
-        salesThisMonth: monthlySales.length
-    };
-  }, [assets, allSales]);
+  const usageStats = useMemo(() => ({ assets: 0, salesThisMonth: 0 }), []);
 
   const tenantData = useMemo<Tenant | null>(() => {
     if (!activeCompany) return null;
@@ -92,7 +64,6 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
         tier: (activeCompany.plan as SubscriptionTier) || 'legacy_pro',
         status: (activeCompany.status as any) || 'active',
         createdAt: activeCompany.createdAt,
-        expiresAt: activeCompany.createdAt ? addDays(parseISO(activeCompany.createdAt), 365).toISOString() : undefined,
         features: ['all']
     };
   }, [activeCompany]);
@@ -102,70 +73,6 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
       return DEFAULT_PLANS[tenantData.tier] || DEFAULT_PLANS.legacy_pro;
   }, [tenantData]);
 
-  useEffect(() => {
-    // AUTOMATIC PROVISIONING FOR GOOGLE SIGN-IN
-    if (!isUserLoading && user && !isProfileLoading && !userProfile) {
-        const provision = async () => {
-            const ref = doc(firestore, 'users', user.uid);
-            try {
-                const normalizedEmail = user.email?.toLowerCase() || '';
-                const isMaster = MASTER_KEYS.includes(normalizedEmail);
-                
-                await setDoc(ref, {
-                    id: user.uid,
-                    name: user.displayName || 'System User',
-                    email: normalizedEmail,
-                    role: isMaster ? 'super_admin' : 'user',
-                    tenantId: null, 
-                    tenantIds: [],
-                    status: 'active',
-                    createdAt: new Date().toISOString()
-                }, { merge: true });
-                
-                console.log(`Cloud Profile Provisioned: ${normalizedEmail}`);
-            } catch (e) {
-                console.warn("Profile provisioning delayed or failed...");
-            }
-        };
-        provision();
-    }
-
-    // PERSIST TENANT SELECTION
-    if (userProfile?.tenantId) {
-        localStorage.setItem('rcl_last_tenant_id', userProfile.tenantId);
-    }
-
-    // SUBSCRIPTION ALERT LOGIC
-    if (tenantData?.expiresAt && userProfile?.role === 'admin') {
-        const daysLeft = differenceInDays(parseISO(tenantData.expiresAt), new Date());
-        if (daysLeft <= 7 && daysLeft > 0) {
-            const checkAlerted = async () => {
-                const notifsRef = collection(firestore, 'notifications');
-                const q = query(notifsRef, where('tenantId', '==', tenantData.id), where('subject', '==', 'Critical: Subscription Expiring Soon'), limit(1));
-                const snap = await getDocs(q);
-                
-                if (snap.empty) {
-                    await addDoc(notifsRef, {
-                        tenantId: tenantData.id,
-                        from: 'Platform Admin',
-                        subject: 'Critical: Subscription Expiring Soon',
-                        message: `Your workspace node for "${tenantData.name}" is scheduled to expire in ${daysLeft} days. Please update your billing info.`,
-                        priority: 'alert',
-                        read: false,
-                        createdAt: new Date().toISOString()
-                    });
-                    toast({ 
-                        variant: 'destructive', 
-                        title: 'Expiration Warning', 
-                        description: `Workspace expires in ${daysLeft} days.` 
-                    });
-                }
-            };
-            checkAlerted();
-        }
-    }
-  }, [user, isUserLoading, isProfileLoading, userProfile, firestore, tenantData, toast]);
-
   const switchTenant = async (newTenantId: string) => {
     if (!user || !userRef) return;
     try {
@@ -173,7 +80,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('rcl_last_tenant_id', newTenantId);
         toast({ title: 'Workspace Switched' });
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Switch Failed', description: e.message });
+        toast({ variant: 'destructive', title: 'Switch Failed' });
     }
   };
 
@@ -183,24 +90,9 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     usage: usageStats,
     isLoading: isUserLoading || isProfileLoading || (!!effectiveTenantId && isCompanyLoading),
     isLegacyUser: activePlan?.tier === 'legacy_pro' || userProfile?.role === 'super_admin',
-    availableWorkspaces: (availableWorkspaces || []) as any,
+    availableWorkspaces: [] as any,
     switchTenant
-  }), [tenantData, activePlan, usageStats, isUserLoading, isProfileLoading, isCompanyLoading, availableWorkspaces, userProfile?.role, effectiveTenantId]);
-
-  const isSuspended = user && tenantData?.status === 'suspended' && userProfile?.role !== 'super_admin';
-
-  if (isSuspended) {
-    return (
-        <div className="h-screen w-full flex items-center justify-center bg-background p-6">
-            <div className="max-w-md text-center space-y-6">
-                <Lock className="h-12 w-12 text-destructive mx-auto" />
-                <h1 className="text-3xl font-black uppercase">Workspace Locked</h1>
-                <p className="text-muted-foreground">Access suspended by platform provider.</p>
-                <Button variant="outline" className="w-full" onClick={() => window.location.reload()}>Check Status</Button>
-            </div>
-        </div>
-    );
-  }
+  }), [tenantData, activePlan, usageStats, isUserLoading, isProfileLoading, isCompanyLoading, userProfile?.role, effectiveTenantId]);
 
   return (
     <SaaSContext.Provider value={contextValue}>

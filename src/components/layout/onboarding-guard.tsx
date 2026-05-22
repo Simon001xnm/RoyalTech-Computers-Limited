@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building2, Upload, Loader2, Globe, Phone, MapPin, Briefcase, ShieldCheck, Wallet, Zap, User } from 'lucide-react';
+import { Building2, Loader2, Phone, ShieldCheck, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
@@ -18,32 +18,32 @@ import type { User as AppUser, Company } from '@/types';
 import { logger } from '@/lib/logger';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-const COLOR_PRESETS = [
-  { name: 'Executive Navy', primary: '#1e293b', secondary: '#f1f5f9' },
-  { name: 'Forest Green', primary: '#064e3b', secondary: '#ecfdf5' },
-  { name: 'Royal Blue', primary: '#1e3a8a', secondary: '#eff6ff' },
-  { name: 'Modern Teal', primary: '#0d9488', secondary: '#f0fdfa' },
-];
-
 const PUBLIC_PATHS = ['/login', '/signup'];
 
 /**
- * OnboardingGuard: Ensures users have an active workspace before accessing the app.
- * Reinforced with session persistence to prevent flicker on refresh.
- * UPDATED: M-Pesa API connection is now optional during registration.
+ * OnboardingGuard: Ensures users have an active workspace.
+ * Reinforced with persistent cache detection to prevent "Setup Required" loop on reload.
  */
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const pathname = usePathname();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Cache check state to prevent UI flicker
+  const [hasActiveSession, setHasActiveSession] = useState<boolean | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
 
-  const [isSaving, setIsSaving] = useState(false);
-  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        const cachedId = localStorage.getItem('rcl_last_tenant_id');
+        setHasActiveSession(!!cachedId);
+    }
+  }, []);
+
   const [formData, setFormData] = useState({
     name: '',
     businessType: '',
@@ -68,25 +68,15 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     mpesaConsumerKey: '',
     mpesaConsumerSecret: '',
     mpesaPasskey: '',
-    mpesaCallbackUrl: '',
     plan: 'free',
     currency: 'KES',
     timezone: 'EAT (UTC+3)',
-    primaryColor: COLOR_PRESETS[0].primary,
-    secondaryColor: COLOR_PRESETS[0].secondary,
+    primaryColor: '#1e293b',
+    secondaryColor: '#f1f5f9',
   });
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setFormData(prev => ({ ...prev, logoUrl: reader.result as string }));
-      reader.readAsDataURL(file);
-    }
   };
 
   const handleSetup = async (e: React.FormEvent) => {
@@ -98,17 +88,19 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
       const companyId = crypto.randomUUID();
       const companyRef = doc(firestore, 'companies', companyId);
       
-      const setupData: Company = {
+      const setupData = {
         id: companyId,
         tenantId: companyId,
         ...formData,
         status: 'active',
         createdAt: new Date().toISOString(),
         createdBy: { uid: user.uid, name: user.displayName || 'Owner' }
-      } as any;
+      };
 
+      // 1. Create Company Document
       await setDoc(companyRef, setupData);
 
+      // 2. Link User to Workspace
       const currentIds = userProfile?.tenantIds || [];
       await updateDoc(userProfileRef, { 
         tenantId: companyId, 
@@ -116,11 +108,12 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         role: 'admin' 
       });
 
-      // Cache ID for instant recovery
+      // 3. PERSISTENT LOCK: Save locally to prevent refresh loop
       localStorage.setItem('rcl_last_tenant_id', companyId);
+      setHasActiveSession(true);
 
-      logger.business('Identity', 'Professional Node Setup Complete', { companyName: formData.name, companyId });
-      toast({ title: 'Workspace Initialized' });
+      logger.business('Identity', 'Node Setup Complete', { companyName: formData.name, companyId });
+      toast({ title: 'Workspace Activated Permanently' });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Setup Failed', description: err.message });
     } finally {
@@ -128,12 +121,13 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (isUserLoading || isProfileLoading) {
+  // While determining session or profile, show a deep loader
+  if (isUserLoading || isProfileLoading || hasActiveSession === null) {
     if (PUBLIC_PATHS.includes(pathname)) return <>{children}</>;
     return (
         <div className="h-screen w-full flex flex-col items-center justify-center bg-background space-y-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary opacity-20" />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground animate-pulse">Synchronizing Node Registry</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground animate-pulse">Synchronizing Data Node</p>
         </div>
     );
   }
@@ -142,7 +136,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   
   if (userProfile?.role === 'super_admin') return <>{children}</>;
 
-  if (userProfile && !userProfile.tenantId) {
+  // Only show setup if the cloud confirms no tenantId AND local storage confirms no previous session
+  if (userProfile && !userProfile.tenantId && !hasActiveSession) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-[#f8f9fa] p-4 md:p-10 font-sans">
           <Card className="w-full max-w-5xl shadow-2xl overflow-hidden border-none ring-1 ring-black/5">
@@ -155,22 +150,18 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                     <div className="bg-white/10 p-3 rounded-2xl w-fit mb-6">
                         <Building2 className="h-8 w-8" />
                     </div>
-                    <h2 className="text-3xl font-black tracking-tighter uppercase leading-none mb-4">Initialize your Node</h2>
+                    <h2 className="text-3xl font-black tracking-tighter uppercase leading-none mb-4">Finalize Activation</h2>
                     <p className="text-primary-foreground/70 text-sm font-medium leading-relaxed">
-                        Welcome to the ecosystem. Your professional node requires activation by providing your business credentials.
+                        Register your business entity once to unlock the full ecosystem. This setup is permanent and siloed.
                     </p>
                 </div>
                 <div className="relative z-10 space-y-6">
                     <div className="flex items-start gap-4">
                         <div className="bg-white/10 p-2 rounded-lg mt-1"><ShieldCheck className="h-4 w-4" /></div>
                         <div>
-                            <p className="font-bold text-xs uppercase tracking-widest">Encrypted Storage</p>
-                            <p className="text-[10px] opacity-60">Your credentials are cryptographically siloed.</p>
+                            <p className="font-bold text-xs uppercase tracking-widest">Permanent Lock</p>
+                            <p className="text-[10px] opacity-60">This registration will be saved across reloads.</p>
                         </div>
-                    </div>
-                    <div className="p-4 bg-black/20 rounded-xl border border-white/10">
-                        <p className="text-[10px] font-black uppercase mb-1">Technician Note</p>
-                        <p className="text-[11px] italic opacity-80">"M-Pesa API can be connected later in Settings > Billing. Only fields with * are mandatory now."</p>
                     </div>
                 </div>
               </div>
@@ -179,106 +170,71 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                 <CardHeader className="border-b bg-white/50 backdrop-blur sticky top-0 z-20 px-8 py-6">
                   <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-2xl font-black uppercase tracking-tighter">Business Node Setup</CardTitle>
-                        <CardDescription>Configuration for Simon Styles Technologies Ecosystem.</CardDescription>
+                        <CardTitle className="text-2xl font-black uppercase tracking-tighter">Business Registration</CardTitle>
+                        <CardDescription>SIMON STYLES TECHNOLOGIES LIMITED ECOSYSTEM</CardDescription>
                     </div>
-                    <Badge variant="secondary" className="font-black uppercase text-[10px] tracking-widest px-3 h-6">Action Required</Badge>
+                    <Badge variant="secondary" className="font-black uppercase text-[10px] tracking-widest px-3 h-6">Must Complete</Badge>
                   </div>
                 </CardHeader>
                 
                 <ScrollArea className="flex-grow">
-                    <form onSubmit={handleSetup} className="p-8 space-y-12">
+                    <form onSubmit={handleSetup} className="p-8 space-y-10">
                         <section className="space-y-6">
                             <div className="flex items-center gap-3 border-b pb-2">
-                                <Building2 className="h-5 w-5 text-primary" />
-                                <h3 className="font-black uppercase tracking-widest text-xs text-muted-foreground">Basic Company Information</h3>
+                                <h3 className="font-black uppercase tracking-widest text-xs text-muted-foreground">Entity Details</h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase">Company Name <span className="text-red-500">*</span></Label>
-                                    <Input value={formData.name} onChange={e => handleInputChange('name', e.target.value)} required placeholder="Official Entity Name" />
+                                    <Input value={formData.name} onChange={e => handleInputChange('name', e.target.value)} required placeholder="Official Name" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Business Type <span className="text-red-500">*</span></Label>
+                                    <Label className="text-[10px] font-black uppercase">Official Email <span className="text-red-500">*</span></Label>
+                                    <Input type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} required placeholder="public@company.com" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase">Phone <span className="text-red-500">*</span></Label>
+                                    <Input value={formData.phone} onChange={e => handleInputChange('phone', e.target.value)} required placeholder="+254..." />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase">Physical Address <span className="text-red-500">*</span></Label>
+                                    <Input value={formData.address} onChange={e => handleInputChange('address', e.target.value)} required placeholder="Location..." />
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="space-y-6">
+                            <div className="flex items-center gap-3 border-b pb-2">
+                                <h3 className="font-black uppercase tracking-widest text-xs text-muted-foreground">Identity & Roles</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase">Position <span className="text-red-500">*</span></Label>
+                                    <Input value={formData.adminPosition} onChange={e => handleInputChange('adminPosition', e.target.value)} required placeholder="CEO, Owner, etc." />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase">Business Type</Label>
                                     <Select onValueChange={v => handleInputChange('businessType', v)} value={formData.businessType}>
                                         <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="retail">Retail</SelectItem>
-                                            <SelectItem value="real-estate">Real Estate</SelectItem>
-                                            <SelectItem value="tech">Tech Services</SelectItem>
-                                            <SelectItem value="sacco">SACCO</SelectItem>
+                                            <SelectItem value="tech">Technology</SelectItem>
+                                            <SelectItem value="service">Service Industry</SelectItem>
                                             <SelectItem value="other">Other</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Industry Category <span className="text-red-500">*</span></Label>
-                                    <Input value={formData.industry} onChange={e => handleInputChange('industry', e.target.value)} required placeholder="e.g. IT, Finance, Trade" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Website URL</Label>
-                                    <div className="flex">
-                                        <div className="bg-muted border border-r-0 flex items-center px-3 rounded-l-md"><Globe className="h-3 w-3" /></div>
-                                        <Input value={formData.website} onChange={e => handleInputChange('website', e.target.value)} className="rounded-l-none" placeholder="https://..." />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase">Business Description</Label>
-                                <Textarea value={formData.description} onChange={e => handleInputChange('description', e.target.value)} placeholder="Short profile about your node..." />
                             </div>
                         </section>
 
-                        <section className="space-y-6">
-                            <div className="flex items-center gap-3 border-b pb-2">
-                                <Phone className="h-5 w-5 text-primary" />
-                                <h3 className="font-black uppercase tracking-widest text-xs text-muted-foreground">Contact & Localization</h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Official Email <span className="text-red-500">*</span></Label>
-                                    <Input type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} required placeholder="name@company.com" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Primary Phone <span className="text-red-500">*</span></Label>
-                                    <Input value={formData.phone} onChange={e => handleInputChange('phone', e.target.value)} required placeholder="+254 7..." />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">City/Town <span className="text-red-500">*</span></Label>
-                                    <Input value={formData.city} onChange={e => handleInputChange('city', e.target.value)} required placeholder="e.g. Nairobi" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Physical Address <span className="text-red-500">*</span></Label>
-                                    <Input value={formData.address} onChange={e => handleInputChange('address', e.target.value)} required placeholder="Street, Building, Floor" />
-                                </div>
-                            </div>
-                        </section>
-
-                        <section className="space-y-6">
-                            <div className="flex items-center gap-3 border-b pb-2">
-                                <ShieldCheck className="h-5 w-5 text-primary" />
-                                <h3 className="font-black uppercase tracking-widest text-xs text-muted-foreground">Verification & Admin</h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Your Position <span className="text-red-500">*</span></Label>
-                                    <Input value={formData.adminPosition} onChange={e => handleInputChange('adminPosition', e.target.value)} required placeholder="e.g. CEO, Founder, Director" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">National ID / Passport</Label>
-                                    <Input value={formData.nationalId} onChange={e => handleInputChange('nationalId', e.target.value)} placeholder="Personal verification" />
-                                </div>
-                            </div>
-                        </section>
-
-                        <div className="pt-10">
+                        <div className="pt-6">
                             <Button type="submit" className="w-full h-16 text-xl font-black uppercase tracking-widest shadow-2xl active:scale-[0.98] transition-all" disabled={isSaving}>
                                 {isSaving ? (
                                     <div className="flex items-center gap-3">
                                         <Loader2 className="h-6 w-6 animate-spin" />
-                                        Syncing Node...
+                                        Syncing Registration...
                                     </div>
-                                ) : 'Execute Node Activation'}
+                                ) : 'Initialize Business Node'}
                             </Button>
                         </div>
                     </form>
