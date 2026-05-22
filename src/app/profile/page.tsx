@@ -62,6 +62,11 @@ export default function ProfilePage() {
     mpesaConsumerKey: '',
     mpesaConsumerSecret: '',
     mpesaPasskey: '',
+    bankName: '',
+    bankBranch: '',
+    bankAccNo: '',
+    bankAccName: '',
+    bankCode: '',
     plan: '',
     currency: '',
     timezone: '',
@@ -331,6 +336,16 @@ export default function ProfilePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Payment Method *</Label><Input value={compData.paymentMethod} onChange={e => handleInputChange('paymentMethod', e.target.value)} className="h-11" /></div>
                                     <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Paybill/Till Number</Label><Input value={compData.billingIdentifier} onChange={e => handleInputChange('billingIdentifier', e.target.value)} className="h-11 font-bold" /></div>
+                                </div>
+                                <div className="p-8 bg-black/5 rounded-3xl space-y-6">
+                                    <div className="flex items-center gap-3"><Briefcase className="h-5 w-5 text-primary" /><h4 className="font-black uppercase tracking-widest text-xs">Official Bank Settlement</h4></div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">Bank Name</Label><Input value={compData.bankName} onChange={e => handleInputChange('bankName', e.target.value)} className="h-11" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">Branch</Label><Input value={compData.bankBranch} onChange={e => handleInputChange('bankBranch', e.target.value)} className="h-11" /></div>
+                                        <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase opacity-60">Account Holder Name</Label><Input value={compData.bankAccName} onChange={e => handleInputChange('bankAccName', e.target.value)} className="h-11" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">Account Number</Label><Input value={compData.bankAccNo} onChange={e => handleInputChange('bankAccNo', e.target.value)} className="h-11" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">Bank/Swift Code</Label><Input value={compData.bankCode} onChange={e => handleInputChange('bankCode', e.target.value)} className="h-11" /></div>
+                                    </div>
                                 </div>
                                 <div className="p-8 bg-black/5 rounded-3xl space-y-6">
                                     <div className="flex items-center gap-3"><Zap className="h-5 w-5 text-primary" /><h4 className="font-black uppercase tracking-widest text-xs">Daraja API Credentials</h4></div>

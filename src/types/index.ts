@@ -47,6 +47,13 @@ export interface Company extends Auditable {
   paymentMethod: string;
   billingIdentifier?: string; // Till/Paybill number
   
+  // Bank Details
+  bankName?: string;
+  bankBranch?: string;
+  bankAccNo?: string;
+  bankAccName?: string;
+  bankCode?: string;
+
   // Daraja API Integration (Encrypted on real backend, stored here for prototype)
   mpesaShortcode?: string;
   mpesaConsumerKey?: string;
