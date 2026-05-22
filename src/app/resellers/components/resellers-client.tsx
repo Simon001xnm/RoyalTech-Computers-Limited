@@ -1,11 +1,12 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import type { Reseller, Asset, Accessory, ItemIssuance, Sale } from "@/types";
+import type { Reseller, Accessory, ItemIssuance, Sale } from "@/types";
 import { SummaryCard } from "@/components/dashboard/summary-card";
-import { Briefcase, LaptopIcon, TrendingUp, CornerDownLeft, PlusCircle, Edit, Trash2, DownloadCloud } from "lucide-react";
+import { Briefcase, TrendingUp, CornerDownLeft, PlusCircle, Edit, Trash2, DownloadCloud, Component as ComponentIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -27,9 +28,7 @@ import { format } from "date-fns";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, writeBatch } from "firebase/firestore";
 
-type IssueableItem = 
-  | (Asset & { type: 'laptop' }) 
-  | (Accessory & { type: 'accessory' });
+type IssueableItem = Accessory & { type: 'accessory' };
 
 const ResellerCard = ({ reseller, onViewDashboard, onEdit, onDelete }: { reseller: Reseller, onViewDashboard: () => void, onEdit: () => void, onDelete: () => void }) => {
     return (
@@ -48,13 +47,13 @@ const ResellerCard = ({ reseller, onViewDashboard, onEdit, onDelete }: { reselle
             <CardContent className="flex-grow">
                  <div className="text-sm text-muted-foreground space-y-1">
                     <p>{reseller.email}</p>
-                    <p>{reseller.phone || 'No phone number'}</p>
+                    <p>{reseller.phone || 'No phone'}</p>
                  </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={onEdit}><Edit className="mr-2 h-4 w-4" />Edit</Button>
                 <Button variant="ghost" size="sm" className="text-destructive" onClick={onDelete}><Trash2 className="mr-2 h-4 w-4" />Delete</Button>
-                <Button size="sm" onClick={onViewDashboard}>View Dashboard</Button>
+                <Button size="sm" onClick={onViewDashboard}>Dashboard</Button>
             </CardFooter>
         </Card>
     );
@@ -78,13 +77,11 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
         const issued = issuances.length;
         const sold = issuances.filter(i => i.status === 'Sold').length;
         const returned = issuances.filter(i => i.status === 'Returned').length;
-        const held = issuances.filter(i => i.status === 'Issued').length;
-        return { issued, sold, returned, held };
+        return { issued, sold, returned };
     }, [issuances]);
 
-    const handleIssueItems = async (data: { items: { id: string; type: 'laptop' | 'accessory' }[] }) => {
+    const handleIssueItems = async (data: { items: { id: string; type: 'accessory' }[] }) => {
         if (!user || !tenant) return;
-
         const batch = writeBatch(firestore);
         try {
             for (const item of data.items) {
@@ -98,23 +95,21 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
                     resellerId: reseller.id,
                     resellerName: reseller.name,
                     itemId: itemToIssue.id,
-                    itemType: item.type as 'asset' | 'accessory',
+                    itemType: 'accessory',
                     itemSerialNumber: itemToIssue.serialNumber,
-                    itemName: 'name' in itemToIssue ? itemToIssue.name : itemToIssue.model,
+                    itemName: itemToIssue.name,
                     costPrice: itemToIssue.purchasePrice || 0,
-                    expectedSellingPrice: ('sellingPrice' in itemToIssue ? itemToIssue.sellingPrice : itemToIssue.leasePrice) || 0,
+                    expectedSellingPrice: itemToIssue.sellingPrice || 0,
                     dateIssued: new Date().toISOString(),
                     status: 'Issued',
                     createdAt: new Date().toISOString(),
                     createdBy: { uid: user.uid, name: user.displayName || 'User' }
                 };
                 batch.set(issuanceRef, issuanceData);
-                
-                const table = item.type === 'laptop' ? 'assets' : 'accessories';
-                batch.update(doc(firestore, table, item.id), { status: 'With Reseller', quantity: 0 });
+                batch.update(doc(firestore, 'accessories', item.id), { status: 'With Reseller', quantity: 0 });
             }
             await batch.commit();
-            toast({ title: `${data.items.length} Item(s) Issued` });
+            toast({ title: `${data.items.length} Accessory(s) Issued` });
             setIsIssueFormOpen(false);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -123,44 +118,28 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
     
     const handleMarkAsSold = async (data: { sellingPrice: number; paymentMethod: Sale['paymentMethod']; notes?: string; }) => {
         if (!selectedIssuance || !user || !tenant) return;
-        
         const batch = writeBatch(firestore);
         try {
             batch.update(doc(firestore, 'item_issuances', selectedIssuance.id), { status: 'Sold', dateSold: new Date().toISOString() });
-            
-            const itemTable = selectedIssuance.itemType === 'asset' ? 'assets' : 'accessories';
-            batch.update(doc(firestore, itemTable, selectedIssuance.itemId), { status: 'Sold' });
+            batch.update(doc(firestore, 'accessories', selectedIssuance.itemId), { status: 'Sold' });
             
             const saleRef = doc(collection(firestore, 'sales_transactions'));
-            const saleData: Sale = {
-                id: saleRef.id,
+            batch.set(saleRef, {
                 tenantId: tenant.id,
                 date: new Date().toISOString(),
                 amount: data.sellingPrice,
                 paymentMethod: data.paymentMethod,
                 cogs: selectedIssuance.costPrice,
-                notes: data.notes || `Sale by reseller: ${reseller.name}`,
-                items: [{ 
-                    id: selectedIssuance.itemId, 
-                    name: selectedIssuance.itemName, 
-                    serialNumber: selectedIssuance.itemSerialNumber, 
-                    price: data.sellingPrice, 
-                    quantity: 1, 
-                    type: selectedIssuance.itemType === 'asset' ? 'asset' : 'accessory', 
-                    cogs: selectedIssuance.costPrice 
-                }],
+                notes: data.notes || `Reseller: ${reseller.name}`,
+                items: [{ id: selectedIssuance.itemId, name: selectedIssuance.itemName, serialNumber: selectedIssuance.itemSerialNumber, price: data.sellingPrice, quantity: 1, type: 'accessory' }],
                 resellerId: reseller.id,
-                resellerName: reseller.name,
                 status: 'Paid',
-                createdAt: new Date().toISOString(),
-                createdBy: { uid: user.uid, name: user.displayName || 'User' }
-            };
-            batch.set(saleRef, saleData);
+                createdAt: new Date().toISOString()
+            });
 
             await batch.commit();
-            toast({ title: 'Sale Recorded!' });
+            toast({ title: 'Sale Recorded' });
             setIsSellFormOpen(false);
-            setSelectedIssuance(null);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
         }
@@ -171,14 +150,10 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
         const batch = writeBatch(firestore);
         try {
             batch.update(doc(firestore, 'item_issuances', selectedIssuance.id), { status: 'Returned', dateReturned: new Date().toISOString() });
-            
-            const itemTable = selectedIssuance.itemType === 'asset' ? 'assets' : 'accessories';
-            batch.update(doc(firestore, itemTable, selectedIssuance.itemId), { status: 'Available', quantity: 1 });
-
+            batch.update(doc(firestore, 'accessories', selectedIssuance.itemId), { status: 'Available', quantity: 1 });
             await batch.commit();
             toast({ title: 'Item Returned' });
             setIsReturnConfirmOpen(false);
-            setSelectedIssuance(null);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
         }
@@ -198,72 +173,33 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
     return (
         <>
             <SheetHeader className="p-6">
-                <SheetTitle className="text-2xl">{reseller.name}'s Dashboard</SheetTitle>
-                <SheetDescription>{reseller.email} | {reseller.company || 'No company'}</SheetDescription>
-                <div className="pt-2">
-                    <Button onClick={() => setIsIssueFormOpen(true)}><PlusCircle className="mr-2 h-4 w-4"/>Issue Items</Button>
-                </div>
+                <SheetTitle>{reseller.name}'s Dashboard</SheetTitle>
+                <div className="pt-2"><Button onClick={() => setIsIssueFormOpen(true)}><PlusCircle className="mr-2 h-4 w-4"/>Issue Accessories</Button></div>
             </SheetHeader>
-            <Separator />
             <div className="flex-grow overflow-y-auto p-6 space-y-6">
-                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <SummaryCard title="Total Items Issued" value={summaryStats.issued} icon={Briefcase} />
-                    <SummaryCard title="Items Sold" value={summaryStats.sold} icon={TrendingUp} />
-                    <SummaryCard title="Items Returned" value={summaryStats.returned} icon={CornerDownLeft} />
-                    <SummaryCard title="Items Currently Held" value={summaryStats.held} icon={LaptopIcon} />
+                 <div className="grid gap-4 md:grid-cols-3">
+                    <SummaryCard title="Issued" value={summaryStats.issued} icon={Briefcase} />
+                    <SummaryCard title="Sold" value={summaryStats.sold} icon={TrendingUp} />
+                    <SummaryCard title="Returned" value={summaryStats.returned} icon={CornerDownLeft} />
                 </div>
                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle>Issuance History</CardTitle>
-                            <CardDescription>All items currently or previously issued to {reseller.name}.</CardDescription>
-                        </div>
-                    </CardHeader>
+                    <CardHeader><CardTitle>History</CardTitle></CardHeader>
                     <CardContent>
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
-                                <TableBody>
-                                    {table.getRowModel().rows.length ? table.getRowModel().rows.map(row => (
-                                        <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
-                                    )) : (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No items issued yet.</TableCell></TableRow>)}
-                                </TableBody>
-                            </Table>
-                        </div>
+                        <Table>
+                            <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
+                            <TableBody>{table.getRowModel().rows.map(row => (<TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))}</TableBody>
+                        </Table>
                         <DataTablePagination table={table} />
                     </CardContent>
                 </Card>
             </div>
              <Dialog open={isIssueFormOpen} onOpenChange={setIsIssueFormOpen}>
                 <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Issue Items to {reseller.name}</DialogTitle>
-                        <DialogDescription>Select one or more available items to issue.</DialogDescription>
-                    </DialogHeader>
                     <IssueItemForm availableItems={allAvailableItems} onSubmit={handleIssueItems} onCancel={() => setIsIssueFormOpen(false)} />
                 </DialogContent>
             </Dialog>
-            <Dialog open={isSellFormOpen} onOpenChange={setIsSellFormOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Mark as Sold</DialogTitle>
-                        <DialogDescription>Record the sale for {selectedIssuance?.itemName}.</DialogDescription>
-                    </DialogHeader>
-                    <MarkSoldForm issuance={selectedIssuance} onSubmit={handleMarkAsSold} onCancel={() => setIsSellFormOpen(false)} />
-                </DialogContent>
-            </Dialog>
-            <AlertDialog open={isReturnConfirmOpen} onOpenChange={setIsReturnConfirmOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Confirm Item Return</AlertDialogTitle>
-                        <AlertDialogDescription>Are you sure you want to mark {selectedIssuance?.itemName} as returned?</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setSelectedIssuance(null)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmReturn}>Confirm Return</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <Dialog open={isSellFormOpen} onOpenChange={setIsSellFormOpen}><DialogContent><MarkSoldForm issuance={selectedIssuance} onSubmit={handleMarkAsSold} onCancel={() => setIsSellFormOpen(false)} /></DialogContent></Dialog>
+            <AlertDialog open={isReturnConfirmOpen} onOpenChange={setIsReturnConfirmOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Confirm Return?</AlertDialogTitle></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmReturn}>Confirm</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
         </>
     );
 }
@@ -278,7 +214,6 @@ export function ResellersClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
 
-  // FIRESTORE QUERIES: Strictly siloed by tenantId
   const resellersQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'resellers'), where('tenantId', '==', tenant.id));
@@ -291,12 +226,6 @@ export function ResellersClient() {
   }, [firestore, tenant?.id]);
   const { data: allIssuances, isLoading: issuancesLoading } = useCollection(issuancesQuery);
 
-  const assetsQuery = useMemoFirebase(() => {
-    if (!tenant) return null;
-    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id), where('status', '==', 'Available'));
-  }, [firestore, tenant?.id]);
-  const { data: availableAssets } = useCollection(assetsQuery);
-
   const accessoriesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id), where('status', '==', 'Available'));
@@ -306,173 +235,46 @@ export function ResellersClient() {
   const isLoading = resellersLoading || issuancesLoading;
 
   const allAvailableItems = useMemo<IssueableItem[]>(() => {
-        const mappedAssets = (availableAssets || []).map(item => ({ ...item, type: 'laptop' as const }));
-        const mappedAccessories = (availableAccessories || []).map(item => ({ ...item, type: 'accessory' as const }));
-        return [...mappedAssets, ...mappedAccessories];
-    }, [availableAssets, availableAccessories]);
+        return (availableAccessories || []).map(item => ({ ...item, type: 'accessory' as const }));
+    }, [availableAccessories]);
 
   const filteredResellers = useMemo(() => {
     if (!resellers) return [];
-    return resellers.filter((r) =>
-      (r.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (r.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (r.company || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return resellers.filter((r) => (r.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
   }, [resellers, searchTerm]);
-
-  const handleAddReseller = () => { setEditingReseller(null); setIsFormOpen(true); };
-  const handleEditReseller = (reseller: Reseller) => { setEditingReseller(reseller); setIsFormOpen(true); };
-  const handleDeleteReseller = (reseller: Reseller) => { setEditingReseller(reseller); setIsDeleteConfirmOpen(true); };
-
-  const confirmDelete = async () => {
-    if (editingReseller) {
-      try {
-        await deleteDoc(doc(firestore, 'resellers', editingReseller.id));
-        toast({ title: "Reseller Deleted" });
-      } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: e.message });
-      }
-    }
-    setIsDeleteConfirmOpen(false);
-    setEditingReseller(null);
-  };
 
   const handleSaveReseller = async (data: any) => {
     if (!tenant) return;
-
     try {
         if (editingReseller) {
             await updateDoc(doc(firestore, 'resellers', editingReseller.id), { ...data, updatedAt: new Date().toISOString() });
-            toast({ title: "Reseller Updated" });
+            toast({ title: "Updated" });
         } else {
-            await addDoc(collection(firestore, 'resellers'), { 
-                ...data, 
-                tenantId: tenant.id,
-                registrationDate: new Date().toISOString(),
-                createdAt: new Date().toISOString()
-            });
-            toast({ title: "Reseller Added" });
+            await addDoc(collection(firestore, 'resellers'), { ...data, tenantId: tenant.id, registrationDate: new Date().toISOString(), createdAt: new Date().toISOString() });
+            toast({ title: "Added" });
         }
         setIsFormOpen(false); setEditingReseller(null);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: e.message });
+        toast({ variant: 'destructive', title: 'Error' });
     }
   };
-  
-  const handleExportResellers = () => {
-    const filename = `RCL_Resellers_Export_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`;
-    const dataToExport = (resellers || []).map(r => ({
-      id: r.id,
-      name: r.name,
-      company: r.company || '',
-      email: r.email,
-      phone: r.phone || '',
-      status: r.status,
-      registrationDate: format(new Date(r.registrationDate), 'yyyy-MM-dd HH:mm:ss'),
-    }));
-    const columnMapping = {
-      id: 'Reseller ID',
-      name: 'Name',
-      company: 'Company',
-      email: 'Email',
-      phone: 'Phone',
-      status: 'Status',
-      registrationDate: 'Date Joined',
-    };
-    exportToCsv(filename, dataToExport, columnMapping);
-  };
-  
-  const handleExportIssuedItems = () => {
-    const filename = `RCL_IssuedItems_Report_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`;
-    const dataToExport = (allIssuances || []).map(issuance => ({
-        resellerName: issuance.resellerName,
-        itemName: issuance.itemName,
-        itemSerialNumber: issuance.itemSerialNumber,
-        status: issuance.status,
-        dateIssued: format(new Date(issuance.dateIssued), 'yyyy-MM-dd'),
-        dateSold: issuance.dateSold ? format(new Date(issuance.dateSold), 'yyyy-MM-dd') : '',
-        dateReturned: issuance.dateReturned ? format(new Date(issuance.dateReturned), 'yyyy-MM-dd') : '',
-        costPrice: issuance.costPrice,
-    }));
-     const columnMapping = {
-        resellerName: 'Reseller Name',
-        itemName: 'Item',
-        itemSerialNumber: 'Serial Number',
-        status: 'Status',
-        dateIssued: 'Date Issued',
-        dateSold: 'Date Sold',
-        dateReturned: 'Date Returned',
-        costPrice: 'Cost Price (KES)',
-    };
-    exportToCsv(filename, dataToExport, columnMapping);
-  }
-
-  const actions = (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button variant="outline" onClick={handleExportIssuedItems} disabled={isLoading || !allIssuances || allIssuances.length === 0}>
-        <DownloadCloud className="mr-2 h-4 w-4" /> Export Issued Items
-      </Button>
-      <Button variant="outline" onClick={handleExportResellers} disabled={isLoading || !resellers || resellers.length === 0}>
-        <DownloadCloud className="mr-2 h-4 w-4" /> Export Resellers
-      </Button>
-      <Button onClick={handleAddReseller}>
-        <PlusCircle className="mr-2 h-4 w-4" /> Add New Reseller
-      </Button>
-    </div>
-  );
 
   return (
     <>
-      <PageHeader 
-        title="Resellers (Cloud)" 
-        description="Manage workspace reseller accounts and track issued items globally."
-        actions={actions}
-      />
-      <div className="mb-4">
-          <Input placeholder="Search by name, email, or company..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm"/>
-      </div>
-      
-      {isLoading ? <p className="animate-pulse">Syncing reseller portfolio...</p> : (
+      <PageHeader title="Resellers" description="Manage reseller accounts." actionLabel="Add New Reseller" onAction={() => setIsFormOpen(true)} ActionIcon={PlusCircle} />
+      <div className="mb-4"><Input placeholder="Search name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm"/></div>
+      {isLoading ? <p>Syncing...</p> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredResellers.map(reseller => (
-                <ResellerCard 
-                    key={reseller.id} 
-                    reseller={reseller} 
-                    onViewDashboard={() => setSelectedReseller(reseller)}
-                    onEdit={() => handleEditReseller(reseller)}
-                    onDelete={() => handleDeleteReseller(reseller)}
-                />
+                <ResellerCard key={reseller.id} reseller={reseller} onViewDashboard={() => setSelectedReseller(reseller)} onEdit={() => { setEditingReseller(reseller); setIsFormOpen(true); }} onDelete={() => { setEditingReseller(reseller); setIsDeleteConfirmOpen(true); }} />
             ))}
         </div>
       )}
-      
-      <Sheet open={!!selectedReseller} onOpenChange={(isOpen) => !isOpen && setSelectedReseller(null)}>
-        <SheetContent className="w-full sm:max-w-4xl lg:max-w-5xl xl:max-w-7xl flex flex-col p-0">
-          {selectedReseller && <ResellerDashboardSheet reseller={selectedReseller} allIssuances={allIssuances || []} allAvailableItems={allAvailableItems} />}
-        </SheetContent>
-      </Sheet>
-
-      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingReseller(null); }}}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>{editingReseller ? "Edit Reseller" : "Add New Reseller"}</DialogTitle>
-            </DialogHeader>
-            <ResellerForm reseller={editingReseller} onSubmit={handleSaveReseller} onCancel={() => setIsFormOpen(false)} />
-        </DialogContent>
+      <Sheet open={!!selectedReseller} onOpenChange={(o) => !o && setSelectedReseller(null)}><SheetContent className="w-full sm:max-w-4xl lg:max-w-5xl flex flex-col p-0">{selectedReseller && <ResellerDashboardSheet reseller={selectedReseller} allIssuances={allIssuances || []} allAvailableItems={allAvailableItems} />}</SheetContent></Sheet>
+      <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingReseller(null); }}}>
+        <DialogContent><DialogHeader><DialogTitle>{editingReseller ? "Edit" : "Add"}</DialogTitle></DialogHeader><ResellerForm reseller={editingReseller} onSubmit={handleSaveReseller} onCancel={() => setIsFormOpen(false)} /></DialogContent>
       </Dialog>
-      
-      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Confirm Deletion</DialogTitle>
-                <DialogDescription>Are you sure you want to delete {editingReseller?.name} from this workspace?</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
-                <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Reseller?</AlertDialogTitle></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={async () => { if (editingReseller) await deleteDoc(doc(firestore, 'resellers', editingReseller.id)); setIsDeleteConfirmOpen(false); }}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </>
   );
 }

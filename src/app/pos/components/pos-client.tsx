@@ -3,11 +3,11 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
-import type { Asset, SaleItem, Sale, Customer, Document as AppDocument } from '@/types';
+import type { SaleItem, Sale, Customer, Document as AppDocument } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone, Clock, AlertCircle, Edit2 } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone, Clock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,18 +23,18 @@ import { useSaaS } from '@/components/saas/saas-provider';
 import { SaleService } from '@/services/sale-service';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 import { initiateStkPush } from '../actions';
-import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 type Product = { 
   id: string; 
   displayName: string; 
   price: number; 
   serialNumber?: string; 
-  type: 'asset' | 'accessory' | 'custom';
+  type: 'accessory' | 'custom';
   model?: string;
 };
 
-type CartItem = SaleItem & { productType: 'asset' | 'accessory' | 'custom'; quantity: number; unitPrice: number; discount: number; };
+type CartItem = SaleItem & { productType: 'accessory' | 'custom'; quantity: number; unitPrice: number; discount: number; };
 
 const VAT_RATE = 0.16;
 
@@ -54,21 +54,11 @@ export function PosClient() {
   const [amountPaid, setAmountPaid] = useState('');
   const [applyVat, setApplyVat] = useState(false);
 
-  // M-Pesa Waiting States
   const [isWaitingForConfirmation, setIsWaitingForConfirmation] = useState(false);
   const [pendingSaleId, setPendingSaleId] = useState<string | null>(null);
-
-  // Success Dialog & PDF Export State
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [lastGeneratedDoc, setLastGeneratedDoc] = useState<AppDocument | null>(null);
   const [isExporting, setIsExporting] = useState(false);
-
-  // CLOUD QUERIES
-  const assetsQuery = useMemoFirebase(() => {
-    if (!tenant) return null;
-    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id), where('status', '==', 'Available'));
-  }, [firestore, tenant?.id]);
-  const { data: assets } = useCollection(assetsQuery);
 
   const accessoriesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -96,16 +86,6 @@ export function PosClient() {
 
   const availableProducts = useMemo<Product[]>(() => {
     const list: Product[] = [];
-    if (assets) {
-      assets.forEach(a => list.push({ 
-        id: a.id, 
-        displayName: `${a.model} (S/N: ${a.serialNumber})`, 
-        price: a.purchasePrice || 0, 
-        serialNumber: a.serialNumber, 
-        type: 'asset',
-        model: a.model
-      }));
-    }
     if (accessories) {
       accessories.forEach(acc => list.push({
         id: acc.id,
@@ -117,7 +97,7 @@ export function PosClient() {
       }));
     }
     return list;
-  }, [assets, accessories]);
+  }, [accessories]);
 
   const { subtotal, grandTotal, vatAmount, changeDue } = useMemo(() => {
     const subtotal = cart.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
@@ -127,29 +107,23 @@ export function PosClient() {
     return { subtotal, vatAmount, grandTotal, changeDue: Math.max(0, parsedAmountPaid - grandTotal) };
   }, [cart, amountPaid, applyVat]);
 
-  // PAYMENT CONFIRMATION LISTENER
   useEffect(() => {
     if (!pendingSaleId || !isWaitingForConfirmation) return;
 
     const unsubscribe = onSnapshot(doc(firestore, 'sales_transactions', pendingSaleId), (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data() as Sale;
-        
         if (data.status === 'Paid') {
           setIsWaitingForConfirmation(false);
           setPendingSaleId(null);
           setIsSuccessOpen(true);
           setIsProcessing(false);
-          toast({ title: 'Payment Confirmed!', description: 'Transaction completed successfully.' });
+          toast({ title: 'Payment Confirmed!' });
         } else if (data.status === 'Failed') {
           setIsWaitingForConfirmation(false);
           setPendingSaleId(null);
           setIsProcessing(false);
-          toast({ 
-            variant: 'destructive', 
-            title: 'Payment Failed', 
-            description: data.paymentError || 'Safaricom declined the transaction.' 
-          });
+          toast({ variant: 'destructive', title: 'Payment Failed', description: data.paymentError });
         }
       }
     });
@@ -159,7 +133,7 @@ export function PosClient() {
             setIsWaitingForConfirmation(false);
             setPendingSaleId(null);
             setIsProcessing(false);
-            toast({ variant: 'destructive', title: 'Payment Timeout', description: 'No confirmation received. Check M-Pesa manually.' });
+            toast({ variant: 'destructive', title: 'Payment Timeout' });
         }
     }, 120000); 
 
@@ -204,7 +178,7 @@ export function PosClient() {
 
     if (paymentMethod === 'M-Pesa') {
         if (!customerPhone || customerPhone.length < 10) {
-            toast({ variant: 'destructive', title: 'Phone Required', description: 'Enter a valid number.' });
+            toast({ variant: 'destructive', title: 'Phone Required' });
             setIsProcessing(false);
             return;
         }
@@ -215,7 +189,6 @@ export function PosClient() {
             return;
         }
         mpesaCheckoutId = mpesaResult.checkoutRequestId || '';
-        toast({ title: 'STK Push Initiated', description: 'Waiting for PIN entry...' });
     }
 
     try {
@@ -274,7 +247,6 @@ export function PosClient() {
             setIsSuccessOpen(true);
             setIsProcessing(false);
             setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode(''); setCustomerPhone('');
-            toast({ title: 'Sale Finalized' });
         }
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Sale Failed', description: e.message });
@@ -325,11 +297,11 @@ export function PosClient() {
                 <div className="bg-muted/30 p-4 rounded-xl space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
                     <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-black opacity-50">Select Item or Type Name</Label>
+                        <Label className="text-[10px] uppercase font-black opacity-50">Select Accessory or Type Name</Label>
                         <Popover open={searchOpen} onOpenChange={setSearchOpen}>
                           <PopoverTrigger asChild>
                             <Button variant="outline" className="w-full h-11 truncate text-left font-normal">
-                              {selectedProduct ? selectedProduct.displayName : customName || "Search item or type here..."}
+                              {selectedProduct ? selectedProduct.displayName : customName || "Search accessory or type here..."}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
@@ -340,7 +312,7 @@ export function PosClient() {
                                 onValueChange={(v) => setCustomName(v)}
                               />
                               <CommandList>
-                                <CommandGroup heading="Inventory Items">
+                                <CommandGroup heading="Inventory Accessories">
                                   {availableProducts.map(p => (
                                     <CommandItem key={p.id} onSelect={() => { setSelectedProduct(p); setUnitPrice(p.price.toString()); setSearchOpen(false); }}>
                                       {p.displayName}
@@ -395,14 +367,12 @@ export function PosClient() {
                                         </TableCell>
                                         <TableCell className="text-center text-sm">{item.quantity}</TableCell>
                                         <TableCell className="text-right">
-                                          <div className="flex items-center justify-end gap-2">
-                                            <Input 
-                                              type="number" 
-                                              value={item.unitPrice} 
-                                              onChange={(e) => handleUpdateCartPrice(idx, e.target.value)}
-                                              className="h-8 w-24 text-right text-xs"
-                                            />
-                                          </div>
+                                          <Input 
+                                            type="number" 
+                                            value={item.unitPrice} 
+                                            onChange={(e) => handleUpdateCartPrice(idx, e.target.value)}
+                                            className="h-8 w-24 text-right text-xs"
+                                          />
                                         </TableCell>
                                         <TableCell className="text-right font-bold text-sm">KES {(item.unitPrice * item.quantity).toLocaleString()}</TableCell>
                                         <TableCell><Button variant="ghost" size="icon" onClick={() => setCart(cart.filter(c => c.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
@@ -461,14 +431,7 @@ export function PosClient() {
             </CardContent>
             <CardFooter className="pb-8">
                 <Button onClick={handleFinalizeSale} className="w-full h-14 text-lg font-black shadow-xl active:scale-95 transition-all" disabled={isProcessing || isWaitingForConfirmation || !selectedCustomer || cart.length === 0}>
-                    {isProcessing ? (
-                        <div className="flex items-center gap-3">
-                            <Loader2 className="h-6 w-6 animate-spin" />
-                            {paymentMethod === 'M-Pesa' ? 'Initiating...' : 'Finalizing...'}
-                        </div>
-                    ) : (
-                        paymentMethod === 'M-Pesa' ? 'Initiate M-Pesa' : 'Finalize Sale'
-                    )}
+                    {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Finalize Sale'}
                 </Button>
             </CardFooter>
         </Card>
@@ -478,23 +441,13 @@ export function PosClient() {
 
       <Dialog open={isWaitingForConfirmation} onOpenChange={() => {}}>
         <DialogContent className="sm:max-w-md text-center p-12">
-            <div className="relative mx-auto w-24 h-24 mb-6">
-                <div className="absolute inset-0 rounded-full border-4 border-primary/20 animate-pulse"></div>
-                <div className="absolute inset-0 rounded-full border-t-4 border-primary animate-spin"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <Clock className="h-10 w-10 text-primary" />
-                </div>
-            </div>
             <DialogHeader>
                 <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Awaiting PIN...</DialogTitle>
-                <DialogDescription className="text-base font-medium">
-                    The STK Push has been sent to <strong>{customerPhone}</strong>.<br/>
-                    Please ask the customer to enter their M-Pesa PIN.
-                </DialogDescription>
+                <DialogDescription>STK Push sent to {customerPhone}.</DialogDescription>
             </DialogHeader>
             <div className="pt-8 flex flex-col gap-2">
-                <p className="text-[10px] font-black uppercase text-muted-foreground animate-bounce">Listening for Safaricom Confirmation...</p>
-                <Button variant="ghost" className="text-xs text-destructive mt-4" onClick={() => { setIsWaitingForConfirmation(false); setIsProcessing(false); }}>Cancel and Go Back</Button>
+                <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
+                <Button variant="ghost" className="text-xs text-destructive mt-4" onClick={() => { setIsWaitingForConfirmation(false); setIsProcessing(false); }}>Cancel</Button>
             </div>
         </DialogContent>
       </Dialog>
@@ -505,25 +458,20 @@ export function PosClient() {
           }
           setIsSuccessOpen(open);
       }}>
-        <DialogContent className="sm:max-w-md text-center p-8 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-md text-center p-8">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Check className="h-10 w-10 text-green-600" />
             </div>
             <DialogHeader>
                 <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Sale Completed!</DialogTitle>
-                <DialogDescription className="font-medium">The transaction has been recorded and inventory updated.</DialogDescription>
             </DialogHeader>
             <div className="pt-8 space-y-3">
                 <Button variant="outline" className="w-full h-12 font-bold shadow-sm" onClick={handleDownloadReceipt} disabled={isExporting}>
                     {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                     Download Receipt PDF
                 </Button>
-                <Button className="w-full h-12 font-black uppercase" onClick={() => {
-                    setIsSuccessOpen(false);
-                    setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode(''); setCustomerPhone('');
-                }}>Process Next Sale</Button>
+                <Button className="w-full h-12 font-black uppercase" onClick={() => setIsSuccessOpen(false)}>Process Next Sale</Button>
             </div>
-            
             <div className="fixed left-[-9999px] top-0 pointer-events-none">
                 <div id="pos-receipt-target" className="bg-white" style={{ width: '210mm', minHeight: '297mm' }}>
                     {lastGeneratedDoc && <ReceiptPdf document={lastGeneratedDoc} />}

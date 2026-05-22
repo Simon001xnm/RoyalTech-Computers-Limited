@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -7,7 +8,6 @@ import { collection, query, where } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
-  Package, 
   Component as ComponentIcon, 
   Users, 
   TrendingUp,
@@ -28,20 +28,9 @@ import {
 import { useSaaS } from '@/components/saas/saas-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 
-/**
- * @fileOverview Integrated Executive Dashboard
- * Fully integrated with Firestore cloud synchronization.
- */
 export default function DashboardPage() {
   const { tenant, isLoading: isSaaSLoading } = useSaaS();
   const firestore = useFirestore();
-
-  // CLOUD QUERIES: Filtered by tenantId, sorted in memory to avoid index requirements
-  const assetsQuery = useMemoFirebase(() => {
-    if (!tenant) return null;
-    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
-  }, [firestore, tenant?.id]);
-  const { data: assets, isLoading: assetsLoading } = useCollection(assetsQuery);
 
   const accessoriesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -62,7 +51,6 @@ export default function DashboardPage() {
   const { data: sales, isLoading: salesLoading } = useCollection(salesQuery);
 
   const stats = useMemo(() => ({
-    availableAssets: assets?.filter(l => l.status === 'Available').length || 0,
     accessoryItems: accessories?.reduce((acc, curr) => acc + (curr.quantity || 0), 0) || 0,
     totalClients: customers?.length || 0,
     recentSalesCount: sales?.filter(s => {
@@ -72,7 +60,7 @@ export default function DashboardPage() {
             return saleDate.getMonth() === today.getMonth();
         } catch { return false; }
     }).length || 0
-  }), [assets, accessories, customers, sales]);
+  }), [accessories, customers, sales]);
 
   const chartData = useMemo(() => {
     if (!sales) return [];
@@ -117,7 +105,7 @@ export default function DashboardPage() {
     }).format(amount);
   };
 
-  const showMetricsLoading = isSaaSLoading || assetsLoading || accessoriesLoading || customersLoading || salesLoading;
+  const showMetricsLoading = isSaaSLoading || accessoriesLoading || customersLoading || salesLoading;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -126,9 +114,9 @@ export default function DashboardPage() {
         description={tenant ? `Real-time performance for ${tenant.name}.` : "Synchronizing cloud data..."} 
       />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {showMetricsLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
+            Array.from({ length: 3 }).map((_, i) => (
                 <Card key={i} className="h-32 shadow-sm border-muted/40">
                   <CardContent className="pt-6 space-y-4">
                     <Skeleton className="h-3 w-20" />
@@ -138,7 +126,6 @@ export default function DashboardPage() {
             ))
         ) : (
             <>
-                <SummaryCard title="Stock Available" value={stats.availableAssets} icon={Package} description="Active hardware assets" />
                 <SummaryCard title="Accessory Stock" value={stats.accessoryItems} icon={ComponentIcon} description="Total units in node" />
                 <SummaryCard title="Total Clients" value={stats.totalClients} icon={Users} description="Registered in CRM" />
                 <SummaryCard title="Monthly Sales" value={stats.recentSalesCount} icon={TrendingUp} description="Transactions this month" />
