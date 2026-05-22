@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Users, Printer, MapPin, ClipboardList, BookOpen, Inbox, Phone, ListChecks, Presentation, UserPlus, BarChart3, User, ShieldCheck, History, ShoppingCart, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Users, Printer, MapPin, ClipboardList, BookOpen, Inbox, Phone, ListChecks, Presentation, UserPlus, BarChart3, User, ShieldCheck, History, ShoppingCart, Briefcase, Package } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
 
@@ -24,10 +24,10 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'pos', href: '/pos', label: 'Point of Sale', icon: ShoppingCart },
+  { id: 'stock', href: '/stock', label: 'Inventory', icon: Package },
   { id: 'accessories', href: '/accessories', label: 'Accessories', icon: ShoppingCart },
   { id: 'customers', href: '/customers', label: 'Customers', icon: Users },
   { id: 'documents', href: '/documents', label: 'Documents', icon: Printer },
-  { id: 'tracking', href: '/tracking', label: 'Asset Tracking', icon: MapPin },
   { id: 'accounting', href: '/books', label: 'Accounting', icon: BookOpen },
   { id: 'support', href: '/desk', label: 'Support Desk', icon: Inbox },
   { id: 'chat', href: '/salesiq', label: 'Team Chat', icon: Phone },

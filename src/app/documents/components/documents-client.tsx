@@ -149,7 +149,17 @@ export function DocumentsClient() {
     } else if (['Quotation', 'Invoice', 'Proforma', 'LeaseAgreement'].includes(type)) {
         const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
         documentData.items = validLineItems;
-        const subtotal = validLineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+        
+        // LEASE CALCULATION: Total = (UnitPrice * Quantity * Duration) + VAT
+        // But for generic docs, UnitPrice * Qty is usually standard. 
+        // If it's a LeaseAgreement, we factor in the duration explicitly.
+        
+        const dur = parseInt(leaseDuration) || 1;
+        const subtotal = validLineItems.reduce((acc, item) => {
+            const base = item.quantity * item.unitPrice;
+            return acc + (type === 'LeaseAgreement' ? (base * dur) : base);
+        }, 0);
+
         const vat = applyVat ? subtotal * VAT_RATE : 0;
         documentData.subtotal = subtotal;
         documentData.vat = vat;
@@ -158,7 +168,6 @@ export function DocumentsClient() {
         if (type === 'LeaseAgreement') {
             const startDate = new Date();
             let endDate = new Date(startDate);
-            const dur = parseInt(leaseDuration) || 1;
             if (leaseUnit === "Day") endDate = addDays(startDate, dur);
             if (leaseUnit === "Week") endDate = addWeeks(startDate, dur);
             if (leaseUnit === "Month") endDate = addMonths(startDate, dur);
@@ -426,7 +435,7 @@ export function DocumentsClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Branded Documents (Cloud)" description="Professional invoices and quotations synchronized globally." />
+      <PageHeader title="Branded Documents" description="Professional invoices and quotations synchronized globally." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-4 md:grid-cols-6 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>

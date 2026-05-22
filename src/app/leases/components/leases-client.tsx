@@ -39,6 +39,8 @@ import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, writeBatch
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 
+const VAT_RATE = 0.16;
+
 export function LeasesClient() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -102,6 +104,13 @@ export function LeasesClient() {
      const selectedCustomer = customers?.find(c => c.id === data.customerId);
     if (!selectedCustomer || !user || !tenant) return;
 
+    // CALCULATION LOGIC: Total = (Rate * Duration) + VAT
+    const rate = Number(data.monthlyPayment) || 0;
+    const duration = Number(data.duration) || 1;
+    const subtotal = rate * duration;
+    const vat = data.applyVat ? subtotal * VAT_RATE : 0;
+    const total = subtotal + vat;
+
     const leaseData = {
         clientType: data.clientType,
         customerId: data.customerId,
@@ -110,9 +119,11 @@ export function LeasesClient() {
         serialNumber: data.serialNumber,
         startDate: data.startDate.toISOString(),
         endDate: data.endDate.toISOString(),
-        duration: data.duration,
+        duration: duration,
         durationUnit: data.durationUnit,
-        monthlyPayment: data.monthlyPayment,
+        monthlyPayment: rate, // This is our 'Rate per Unit'
+        totalLeaseValue: total,
+        vatAmount: vat,
         paymentStatus: data.paymentStatus,
         status: data.status,
         signature: data.signature,
@@ -141,7 +152,7 @@ export function LeasesClient() {
                 createdAt: new Date().toISOString(), 
                 createdBy: { uid: user.uid, name: user.displayName || user.email } 
             });
-            toast({ title: "Lease Created" });
+            toast({ title: "Lease Executed & Recorded" });
         }
     } catch (error: any) {
         toast({ variant: "destructive", title: "Error", description: error.message });
@@ -181,15 +192,15 @@ export function LeasesClient() {
 
   return (
     <>
-      <PageHeader title="Lease Tracking" description="Manage hire agreements manually." actionLabel="Create New Lease" onAction={handleAddLease} ActionIcon={PlusCircle} />
+      <PageHeader title="Lease Tracking" description="Manage hire agreements with precise duration and VAT calculations." actionLabel="Create New Lease" onAction={handleAddLease} ActionIcon={PlusCircle} />
       <div className="mb-4"><Input placeholder="Search client or model..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm bg-card" /></div>
-      {isLoading ? <p className="text-muted-foreground animate-pulse">Syncing...</p> : (
-        <div className="rounded-lg border shadow-sm bg-card">
+      {isLoading ? <p className="text-muted-foreground animate-pulse font-bold uppercase text-[10px] tracking-widest">Syncing cloud records...</p> : (
+        <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
           <Table>
-            <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
+            <TableHeader className="bg-muted/50">{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id} className="font-black uppercase text-[10px] py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
             <TableBody>
               {table.getRowModel().rows.map(row => (
-                <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
+                <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
               ))}
             </TableBody>
           </Table>
@@ -197,8 +208,8 @@ export function LeasesClient() {
         </div>
       )}
       <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingLease(null); }}}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle className="text-2xl font-black uppercase">Lease Agreement</DialogTitle></DialogHeader>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
+          <DialogHeader><DialogTitle className="text-2xl font-black uppercase tracking-tight">Lease Agreement Protocol</DialogTitle></DialogHeader>
           <LeaseForm lease={editingLease} customers={customers || []} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} />
         </DialogContent>
       </Dialog>

@@ -57,7 +57,7 @@ export function ValuationSummary({ assets }: ValuationSummaryProps) {
         description="Net Asset Value (Excl. Sold)" 
       />
       <SummaryCard 
-        title="Monthly Rent" 
+        title="Active Rent" 
         value={format(stats.leaseIncome)} 
         icon={Wallet} 
         description="Current recurring revenue" 

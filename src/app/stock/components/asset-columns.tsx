@@ -5,7 +5,7 @@ import type { Asset } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Laptop } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export interface AssetColumnActions {
@@ -39,21 +39,25 @@ export const getAssetColumns = (actions: AssetColumnActions) => [
   },
   {
     accessorKey: "model",
-    header: "Asset Model",
+    header: "Asset Identity",
     cell: ({ row }: any) => {
       const asset = row.original as Asset;
       return (
-        <span className="font-medium">{asset.model}</span>
+        <div className="flex items-center gap-3">
+            <div className="bg-primary/5 p-2 rounded-lg">
+                <Laptop className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+                <span className="font-bold text-sm block">{asset.model}</span>
+                <span className="text-[10px] font-mono text-muted-foreground uppercase">{asset.serialNumber}</span>
+            </div>
+        </div>
       );
     },
   },
   {
-    accessorKey: "serialNumber",
-    header: "Serial Number",
-  },
-  {
     accessorKey: "status",
-    header: "Status",
+    header: "Global Status",
     cell: ({ row }: any) => {
       const status = row.getValue("status") as Asset["status"];
       let variant: "default" | "secondary" | "destructive" | "outline" = "secondary";
@@ -61,50 +65,61 @@ export const getAssetColumns = (actions: AssetColumnActions) => [
       if (status === "Leased") variant = "outline";
       if (status === "Repair") variant = "destructive";
       
-      return <Badge variant={variant} className="capitalize">{status}</Badge>;
+      return <Badge variant={variant} className="capitalize font-black text-[9px] px-3">{status}</Badge>;
     },
   },
   {
     accessorKey: "quantity",
-    header: "Stock",
+    header: "Qty",
+    cell: ({ row }: any) => <span className="font-bold">{row.original.quantity}</span>
+  },
+    {
+    accessorKey: "purchasePrice",
+    header: "Valuation",
+     cell: ({ row }: any) => {
+      const amount = parseFloat(row.getValue("purchasePrice")) || 0;
+      const formatted = new Intl.NumberFormat("en-KE", {
+        style: "currency",
+        currency: "KES",
+        maximumFractionDigits: 0
+      }).format(amount)
+ 
+      return <div className="font-bold text-xs">{formatted}</div>
+    },
   },
   {
     accessorKey: "purchaseDate",
-    header: "Date Acquired",
+    header: "Acquired",
     cell: ({ row }: any) => {
       const date = row.getValue("purchaseDate") as string;
-      return new Date(date).toLocaleDateString();
+      return <span className="text-xs font-medium text-muted-foreground">{new Date(date).toLocaleDateString()}</span>;
     },
   },
   {
     id: "actions",
-    header: "Actions",
+    header: () => <div className="text-right">Manage</div>,
     cell: ({ row }: any) => {
       const asset = row.original as Asset;
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            {actions.onViewDetails && (
-              <DropdownMenuItem onClick={() => actions.onViewDetails?.(asset)}>
-                <Eye className="mr-2 h-4 w-4" /> View Details
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={() => actions.onEdit(asset)}>
-              <Edit className="mr-2 h-4 w-4" /> Edit Asset
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => actions.onDelete(asset)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-              <Trash2 className="mr-2 h-4 w-4" /> Delete Asset
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="text-right">
+            <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
+                <MoreHorizontal className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Unit Controls</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => actions.onEdit(asset)}>
+                <Edit className="mr-2 h-4 w-4" /> Edit Record
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => actions.onDelete(asset)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
       );
     },
   },

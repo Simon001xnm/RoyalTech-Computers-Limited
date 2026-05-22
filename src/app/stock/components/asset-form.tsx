@@ -25,22 +25,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 const assetFormSchema = z.object({
-  model: z.string().min(2, "Model must be at least 2 characters."),
-  serialNumber: z.string().min(5, "Serial number must be at least 5 characters."),
+  model: z.string().min(2, "Model name required."),
+  serialNumber: z.string().min(3, "Serial number is mandatory and must be unique."),
   purchaseDate: z.date({ required_error: "Acquisition date is required." }),
   status: z.enum(["Available", "Leased", "Repair", "Sold", "With Reseller"]),
   quantity: z.coerce.number().min(0, "Quantity cannot be negative."),
   ram: z.string().optional(),
   storage: z.string().optional(),
   processor: z.string().optional(),
-  purchasePrice: z.coerce.number().optional(),
-  leasePrice: z.coerce.number().optional(),
+  purchasePrice: z.coerce.number().optional().nullable(),
+  leasePrice: z.coerce.number().optional().nullable(),
 });
 
 type AssetFormValues = z.infer<typeof assetFormSchema>;
@@ -69,8 +69,8 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
         ram: "",
         storage: "",
         processor: "",
-        purchasePrice: undefined,
-        leasePrice: undefined,
+        purchasePrice: null,
+        leasePrice: null,
       };
 
   const form = useForm<AssetFormValues>({
@@ -84,16 +84,16 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8 py-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
             name="model"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Asset Model/Name</FormLabel>
+                <FormLabel>Asset Model / Name *</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., iPhone 15 Pro, HP EliteBook" {...field} value={field.value ?? ''} />
+                  <Input placeholder="e.g., HP EliteBook 840 G5" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -104,10 +104,11 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
             name="serialNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Serial Number / IMEI</FormLabel>
+                <FormLabel>Serial Number / IMEI *</FormLabel>
                 <FormControl>
-                  <Input placeholder="Unique identifier for the asset" {...field} value={field.value ?? ''} />
+                  <Input placeholder="Must be unique" {...field} disabled={!!asset} />
                 </FormControl>
+                <FormDescription className="text-[10px]">Unique hardware identifier.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -120,21 +121,21 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
             name="purchaseDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Date Acquired</FormLabel>
+                <FormLabel>Date Acquired *</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
                         variant={"outline"}
                         className={cn(
-                          "w-full pl-3 text-left font-normal",
+                          "w-full pl-3 text-left font-normal h-11",
                           !field.value && "text-muted-foreground"
                         )}
                       >
                         {field.value ? (
                           format(field.value, "PPP")
                         ) : (
-                          <span>Pick a date</span>
+                          <span>Pick acquisition date</span>
                         )}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
@@ -146,7 +147,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) =>
-                        date > new Date() || date < new Date("1900-01-01")
+                        date > new Date() || date < new Date("2000-01-01")
                       }
                       initialFocus
                     />
@@ -161,19 +162,19 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
             name="status"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Current Status</FormLabel>
+                <FormLabel>Current Status *</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="Available">Available</SelectItem>
-                    <SelectItem value="Leased">Leased</SelectItem>
-                    <SelectItem value="Repair">Under Repair</SelectItem>
-                    <SelectItem value="Sold">Sold</SelectItem>
-                    <SelectItem value="With Reseller">With Reseller</SelectItem>
+                    <SelectItem value="Available">Available for Lease/Sale</SelectItem>
+                    <SelectItem value="Leased">Currently Leased</SelectItem>
+                    <SelectItem value="Repair">In Repair Shop</SelectItem>
+                    <SelectItem value="With Reseller">With Reseller Partner</SelectItem>
+                    <SelectItem value="Sold">Permanently Sold</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -187,90 +188,93 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
           name="quantity"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Quantity</FormLabel>
+              <FormLabel>Quantity in Stock</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="e.g., 1" {...field} value={field.value ?? ''} />
+                <Input type="number" placeholder="e.g., 1" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <FormLabel className="text-lg font-semibold">Technical Specifications (Optional)</FormLabel>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 border rounded-md">
-           <FormField
-            control={form.control}
-            name="ram"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Memory (RAM)</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., 8GB, 16GB" {...field} value={field.value ?? ''} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="storage"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Storage</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., 256GB SSD, 1TB" {...field} value={field.value ?? ''} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="processor"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Processor/Chipset</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., Apple A17, Intel i7" {...field} value={field.value ?? ''} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+        <div className="space-y-4">
+            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Technical Specifications</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 border rounded-2xl bg-muted/20">
+            <FormField
+                control={form.control}
+                name="ram"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>RAM (Memory)</FormLabel>
+                    <FormControl>
+                    <Input placeholder="e.g., 16GB DDR4" {...field} />
+                    </FormControl>
+                </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="storage"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Storage</FormLabel>
+                    <FormControl>
+                    <Input placeholder="e.g., 512GB NVMe SSD" {...field} />
+                    </FormControl>
+                </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="processor"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Processor</FormLabel>
+                    <FormControl>
+                    <Input placeholder="e.g., Intel Core i7 8th Gen" {...field} />
+                    </FormControl>
+                </FormItem>
+                )}
+            />
+            </div>
         </div>
         
-        <FormLabel className="text-lg font-semibold">Financials (Optional)</FormLabel>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md">
-           <FormField
-            control={form.control}
-            name="purchasePrice"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Cost Price</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" placeholder="Amount spent to acquire" {...field} value={field.value ?? ''} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="leasePrice"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Monthly Lease Rate</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" placeholder="Recurring monthly income" {...field} value={field.value ?? ''} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+        <div className="space-y-4">
+            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Financial Valuation</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border rounded-2xl bg-muted/20">
+            <FormField
+                control={form.control}
+                name="purchasePrice"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Acquisition Cost (KES)</FormLabel>
+                    <FormControl>
+                    <Input type="number" step="0.01" placeholder="Cost price" {...field} value={field.value ?? ''} />
+                    </FormControl>
+                </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="leasePrice"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Standard Daily Lease Rate (KES)</FormLabel>
+                    <FormControl>
+                    <Input type="number" step="0.01" placeholder="Rental income per day" {...field} value={field.value ?? ''} />
+                    </FormControl>
+                </FormItem>
+                )}
+            />
+            </div>
         </div>
 
-
-        <div className="flex justify-end space-x-3 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+        <div className="flex justify-end space-x-3 pt-6 border-t">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading} className="h-11 px-6">
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Processing..." : (asset ? "Save Changes" : "Register Asset")}
+          <Button type="submit" disabled={isLoading} className="h-11 px-10 font-black uppercase tracking-widest shadow-lg">
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (asset ? "Save Changes" : "Confirm Registration")}
           </Button>
         </div>
       </form>

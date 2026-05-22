@@ -32,6 +32,7 @@ const leaseFormSchema = z.object({
   paymentStatus: z.enum(["Paid", "Pending", "Overdue"]),
   status: z.enum(["Active", "Expired", "Terminated", "Upcoming"]),
   signature: z.string().optional(),
+  applyVat: z.boolean().default(false),
   
   isStudent: z.boolean().default(false),
   nationalId: z.string().optional(),
@@ -77,6 +78,7 @@ export function LeaseForm({
         cr12Reference: lease.verification?.cr12Reference,
         directorId: lease.verification?.directorId,
         contactPerson: lease.verification?.contactPerson,
+        applyVat: (lease as any).applyVat || false,
       }
     : {
         clientType: "Individual",
@@ -90,6 +92,7 @@ export function LeaseForm({
         isStudent: false,
         laptopModel: "",
         serialNumber: "",
+        applyVat: false,
       };
 
   const form = useForm<LeaseFormValues>({
@@ -102,6 +105,8 @@ export function LeaseForm({
   const startDate = form.watch("startDate");
   const duration = form.watch("duration");
   const durationUnit = form.watch("durationUnit");
+  const rate = form.watch("monthlyPayment") || 0;
+  const applyVat = form.watch("applyVat");
 
   React.useEffect(() => {
     if (startDate && duration) {
@@ -113,6 +118,12 @@ export function LeaseForm({
         form.setValue("endDate", newEndDate);
     }
   }, [startDate, duration, durationUnit, form]);
+
+  const calculatedTotal = useMemo(() => {
+    const subtotal = rate * duration;
+    const vat = applyVat ? subtotal * 0.16 : 0;
+    return subtotal + vat;
+  }, [rate, duration, applyVat]);
 
   return (
     <Form {...form}>
@@ -230,7 +241,7 @@ export function LeaseForm({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField control={form.control} name="monthlyPayment" render={({ field }) => (
-                    <FormItem><FormLabel>Rental Rate (KES)</FormLabel><FormControl><Input type="number" {...field} className="h-11 font-bold" /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Rental Rate (KES per Unit)</FormLabel><FormControl><Input type="number" {...field} className="h-11 font-bold" /></FormControl><FormMessage /></FormItem>
                 )}/>
                 <div className="grid grid-cols-2 gap-2">
                     <FormField control={form.control} name="duration" render={({ field }) => (
@@ -263,6 +274,25 @@ export function LeaseForm({
                         <div className="h-11 border rounded-md flex items-center px-3 bg-muted/50 font-bold">{field.value ? format(field.value, "PPP") : "--"}</div>
                     </FormItem>
                 )}/>
+            </div>
+
+            <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10 mt-6 space-y-4">
+                <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                        <Label className="text-xs font-black uppercase">Financial Summary</Label>
+                        <p className="text-[10px] text-muted-foreground">Automatic computation based on duration and VAT.</p>
+                    </div>
+                    <FormField control={form.control} name="applyVat" render={({ field }) => (
+                        <FormItem className="flex items-center gap-2 space-y-0">
+                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            <FormLabel className="text-xs font-bold cursor-pointer">Apply 16% VAT</FormLabel>
+                        </FormItem>
+                    )}/>
+                </div>
+                <div className="flex justify-between items-end border-t pt-4">
+                    <span className="text-sm font-bold uppercase opacity-60 text-primary">Total Lease Value:</span>
+                    <span className="text-3xl font-black tracking-tighter text-primary">KES {calculatedTotal.toLocaleString()}</span>
+                </div>
             </div>
         </section>
 

@@ -1,12 +1,13 @@
+
 'use client';
 
 import { useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, getDocs, limit } from "firebase/firestore";
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, PackageSearch } from "lucide-react";
 import { AssetForm } from "./asset-form";
 import { getAssetColumns, type AssetColumnActions } from "./asset-columns";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender, type
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { ValuationSummary } from "./valuation-summary";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function StockClient() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -24,11 +26,12 @@ export function StockClient() {
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
-  const { tenant, plan, usage, isLegacyUser } = useSaaS();
+  const { tenant } = useSaaS();
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
@@ -55,13 +58,7 @@ export function StockClient() {
     );
   }, [rawAssets, searchTerm]);
 
-  const isAtCapacity = !isLegacyUser && plan && usage && usage.assets >= plan.maxAssets;
-
   const handleAddAsset = () => {
-    if (isAtCapacity) {
-        toast({ variant: 'destructive', title: 'Limit Reached', description: `Max ${plan.maxAssets} assets allowed.` });
-        return;
-    }
     setEditingAsset(null);
     setIsFormOpen(true);
   };
@@ -91,26 +88,46 @@ export function StockClient() {
   
   const handleFormSubmit = async (data: any) => {
     if (!tenant || !user) return;
-
-    // Explicitly map fields to avoid 'undefined' values which crash Firestore
-    const assetData = {
-      tenantId: tenant.id,
-      model: data.model || '',
-      serialNumber: data.serialNumber || '',
-      status: data.status,
-      quantity: Number(data.quantity) || 0,
-      purchaseDate: data.purchaseDate.toISOString(),
-      updatedAt: new Date().toISOString(),
-      purchasePrice: data.purchasePrice !== undefined ? Number(data.purchasePrice) : null,
-      leasePrice: data.leasePrice !== undefined ? Number(data.leasePrice) : null,
-      specifications: {
-        ram: data.ram || '',
-        storage: data.storage || '',
-        processor: data.processor || ''
-      }
-    };
+    setIsSubmitting(true);
 
     try {
+        // 1. Check for Unique Serial Number within this tenant
+        if (!editingAsset) {
+            const serialQuery = query(
+                collection(firestore, 'assets'), 
+                where('tenantId', '==', tenant.id), 
+                where('serialNumber', '==', data.serialNumber),
+                limit(1)
+            );
+            const querySnapshot = await getDocs(serialQuery);
+            if (!querySnapshot.empty) {
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Registration Blocked', 
+                    description: 'Asset already in inventory. Laptops must have unique serial numbers.' 
+                });
+                setIsSubmitting(false);
+                return;
+            }
+        }
+
+        const assetData = {
+            tenantId: tenant.id,
+            model: data.model || '',
+            serialNumber: data.serialNumber || '',
+            status: data.status,
+            quantity: Number(data.quantity) || 0,
+            purchaseDate: data.purchaseDate.toISOString(),
+            updatedAt: new Date().toISOString(),
+            purchasePrice: data.purchasePrice !== undefined ? Number(data.purchasePrice) : null,
+            leasePrice: data.leasePrice !== undefined ? Number(data.leasePrice) : null,
+            specifications: {
+                ram: data.ram || '',
+                storage: data.storage || '',
+                processor: data.processor || ''
+            }
+        };
+
         if (editingAsset) {
             await updateDoc(doc(firestore, 'assets', editingAsset.id), assetData);
             toast({ title: "Asset Updated" });
@@ -120,12 +137,14 @@ export function StockClient() {
                 createdAt: new Date().toISOString(),
                 createdBy: { uid: user.uid, name: user.displayName || 'User' }
             });
-            toast({ title: "Asset Added" });
+            toast({ title: "Asset Registered Successfully" });
         }
         setIsFormOpen(false);
         setEditingAsset(null);
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -150,9 +169,9 @@ export function StockClient() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Inventory" 
-        description="Workspace hardware portfolio."
-        actionLabel="Add New Asset"
+        title="Hardware Inventory" 
+        description="Manage high-value assets by unique serial number."
+        actionLabel="Register New Laptop"
         onAction={handleAddAsset}
         ActionIcon={PlusCircle}
       />
@@ -163,7 +182,7 @@ export function StockClient() {
 
       <div className="mb-4">
         <Input
-          placeholder="Search model or serial..."
+          placeholder="Search model or serial number..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm bg-card"
@@ -171,64 +190,74 @@ export function StockClient() {
       </div>
       
       {isLoading ? (
-        <div className="p-8 text-center text-muted-foreground animate-pulse">Syncing cloud inventory...</div>
+        <div className="p-8 text-center text-muted-foreground animate-pulse font-bold uppercase text-[10px] tracking-widest">Syncing cloud inventory...</div>
       ) : (
-        <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
-                <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id} className="min-w-[120px]">
-                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                        </TableHead>
-                    ))}
-                    </TableRow>
-                ))}
-                </TableHeader>
-                <TableBody>
-                {table.getRowModel().rows.length > 0 ? (
-                    table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                        {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                        ))}
-                    </TableRow>
-                    ))
-                ) : (
-                    <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">No assets found.</TableCell>
-                    </TableRow>
-                )}
-                </TableBody>
-            </Table>
-          </div>
-          <DataTablePagination table={table} />
-        </div>
+        <>
+            {rawAssets?.length === 0 ? (
+                <Alert className="bg-card">
+                    <PackageSearch className="h-4 w-4" />
+                    <AlertTitle>Inventory Empty</AlertTitle>
+                    <AlertDescription>Your hardware repository is currently empty. Start by registering your first laptop.</AlertDescription>
+                </Alert>
+            ) : (
+                <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                            {table.getHeaderGroups().map((headerGroup) => (
+                                <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => (
+                                    <TableHead key={header.id} className="font-black uppercase text-[10px] py-4">
+                                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                                    </TableHead>
+                                ))}
+                                </TableRow>
+                            ))}
+                            </TableHeader>
+                            <TableBody>
+                            {table.getRowModel().rows.length > 0 ? (
+                                table.getRowModel().rows.map((row) => (
+                                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                                    {row.getVisibleCells().map((cell) => (
+                                    <TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                                    ))}
+                                </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground italic">No matching units found.</TableCell>
+                                </TableRow>
+                            )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                    <DataTablePagination table={table} />
+                </div>
+            )}
+        </>
       )}
 
       <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingAsset(null); }}}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingAsset ? "Edit Asset" : "Add New Asset"}</DialogTitle>
-            <DialogDescription>Update your hardware records in the cloud.</DialogDescription>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Modify Asset Record" : "Register Unique Asset"}</DialogTitle>
+            <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">Hardware lifecycle management</DialogDescription>
           </DialogHeader>
-          <AssetForm asset={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} />
+          <AssetForm asset={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isSubmitting} />
         </DialogContent>
       </Dialog>
 
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete <strong>{assetToDelete?.model}</strong>? This action cannot be undone.
+            <DialogTitle className="text-xl font-black uppercase">Confirm Purge</DialogTitle>
+            <DialogDescription className="font-medium text-base pt-2">
+              Are you sure you want to delete <strong>{assetToDelete?.model}</strong> (S/N: {assetToDelete?.serialNumber})? This will erase all technical and financial history.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="w-full sm:w-auto">Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete} className="w-full sm:w-auto">Delete Asset</Button>
+          <DialogFooter className="gap-2 mt-4">
+            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold">Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} className="font-black uppercase">Delete Permanently</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
