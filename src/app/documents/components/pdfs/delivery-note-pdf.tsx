@@ -7,7 +7,7 @@ import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 
-export function DeliveryNotePdf({ document }: { document: AppDocument }) {
+export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
@@ -17,130 +17,114 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
   );
   const { data: cloudCompany } = useDoc(companyRef);
 
-  if (!document.data) {
+  if (!docSnapshot.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
 
-  const workspace = document.data.workspace || cloudCompany;
-  const { customer, laptop, items, details, deliveredBy, receivedBy, delivererSignature, recipientSignature } = document.data;
+  const workspace = docSnapshot.data.workspace || cloudCompany;
+  const { customer, items, details } = docSnapshot.data;
+  const companyName = workspace?.name || 'SIMONSTYLESTECHNOLOGIES LIMITED';
 
   return (
-    <div className="p-8 font-sans text-sm bg-white text-gray-900 w-full min-h-[1000px] flex flex-col">
-      <header className="flex justify-between items-start pb-4 border-b">
+    <div className="p-[15mm] font-sans text-[12px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border border border-gray-100">
+      {/* Header Section */}
+      <div className="flex justify-between items-start mb-8">
         <div className="flex items-center gap-4">
-          {workspace?.logoUrl ? (
-            <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain" />
+           {workspace?.logoUrl ? (
+            <img src={workspace.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
           ) : (
-            <div className="h-28 w-28 bg-muted flex items-center justify-center text-xs text-muted-foreground uppercase font-bold border">No Logo</div>
+            <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed">LOGO</div>
           )}
-          <div>
-              <p className="font-bold text-lg uppercase text-black">{workspace?.name || 'Your Company'}</p>
-              <p className="text-xs text-gray-500">{workspace?.address}</p>
-              <p className="text-xs text-gray-500">Tel: {workspace?.phone} | E-mail: {workspace?.email}</p>
+          <div className="space-y-0.5">
+             <h1 className="text-xl font-black text-primary uppercase leading-tight">{companyName}</h1>
+             <p className="text-[9px] italic opacity-60">Let's Tech-it!</p>
           </div>
         </div>
-        <div className="text-right">
-            <h2 className="text-xl font-semibold uppercase">Delivery Note</h2>
-        </div>
-      </header>
-
-      <section className="flex justify-between mt-6 mb-8">
         <div>
-          <h3 className="font-bold mb-1">Deliver To:</h3>
-          {customer ? (
-            <>
-              <p className="font-semibold">{customer.name}</p>
-              <p>{customer.address || 'Address not specified'}</p>
-              <p>{customer.email}</p>
-              <p>{customer.phone || 'Phone not specified'}</p>
-            </>
-          ) : <p>Customer details not available.</p>}
+            <div className="bg-black text-white px-8 py-2 text-xl font-black uppercase tracking-widest">
+                DELIVERY NOTE
+            </div>
         </div>
-        <div className="text-right">
-          <p><span className="font-bold">Document No:</span> {document.title}</p>
-          <p><span className="font-bold">Date:</span> {format(new Date(document.generatedDate), "PPP")}</p>
-        </div>
-      </section>
+      </div>
 
-      <section>
-        <table className="w-full text-left table-auto">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-2 font-bold">Item Description</th>
-              <th className="p-2 font-bold">Serial Number / Details</th>
-              <th className="p-2 font-bold text-center">Quantity</th>
-            </tr>
-          </thead>
-          <tbody>
-            {laptop ? (
-              <tr className="border-b">
-                <td className="p-2">{laptop.model}</td>
-                <td className="p-2">{laptop.serialNumber}</td>
-                <td className="p-2 text-center">1</td>
-              </tr>
-            ) : items && items.length > 0 ? (
-                items.map((item: any, idx: number) => (
-                    <tr key={idx} className="border-b">
-                        <td className="p-2">{item.description}</td>
-                        <td className="p-2">{item.serialNumber || 'N/A'}</td>
-                        <td className="p-2 text-center">{item.quantity}</td>
-                    </tr>
-                ))
-            ) : (
-                 <tr className="border-b">
-                    <td colSpan={3} className="p-2 text-center text-gray-500">No item details available.</td>
+      {/* Bill To & Meta Info */}
+      <div className="flex justify-between mb-8">
+        <div className="space-y-1">
+            <h3 className="font-black uppercase text-[13px] border-b border-black pb-0.5 mb-1 w-fit">DELIVER TO:</h3>
+            <p className="font-black text-[14px] uppercase">{customer?.name || 'VALUED CLIENT'}</p>
+            <p className="font-bold">{customer?.phone}</p>
+            <p className="font-bold">{customer?.address || 'Nairobi, Kenya'}</p>
+        </div>
+        <div className="text-right space-y-1">
+            <p className="font-bold"><span className="opacity-60">Delivery No:</span> {docSnapshot.title.split('#').pop() || docSnapshot.id.slice(0, 4).toUpperCase()}</p>
+            <p className="font-bold"><span className="opacity-60">Date:</span> {format(new Date(docSnapshot.generatedDate), "MM/dd/yyyy")}</p>
+        </div>
+      </div>
+
+      {/* Table Section */}
+      <div className="flex-grow">
+        <table className="w-full border-collapse">
+            <thead>
+                <tr className="border-b-2 border-black text-left">
+                    <th className="py-2 font-black uppercase">ITEM DESCRIPTION</th>
+                    <th className="py-2 px-2 text-center font-black uppercase w-32">SERIAL NUMBER</th>
+                    <th className="py-2 text-right font-black uppercase w-24">QTY</th>
                 </tr>
-            )}
-          </tbody>
+            </thead>
+            <tbody>
+                {items?.map((item: any, idx: number) => (
+                    <tr key={idx} className="font-bold">
+                        <td className="py-4 align-top pr-4">
+                            <p className="leading-tight">{item.description}</p>
+                        </td>
+                        <td className="py-4 align-top text-center font-mono text-[10px] uppercase">{item.serialNumber || 'N/A'}</td>
+                        <td className="py-4 align-top text-right">{item.quantity}</td>
+                    </tr>
+                ))}
+                <tr>
+                    <td className="border-b border-black border-dotted pt-4"></td>
+                    <td className="border-b border-black border-dotted pt-4"></td>
+                    <td className="border-b border-black border-dotted pt-4"></td>
+                </tr>
+            </tbody>
         </table>
-      </section>
-      
-      {details && (
-        <section className="mt-6">
-            <h3 className="font-bold mb-1 text-xs text-gray-500 uppercase">Special Instructions / Notes:</h3>
-            <p className="text-xs text-gray-600 italic bg-gray-50 p-2 rounded">{details}</p>
-        </section>
-      )}
 
-      <section className="mt-16 grid grid-cols-2 gap-12">
-        <div className="space-y-4">
-            <h4 className="font-bold border-b pb-1 text-xs uppercase text-gray-500">Delivered By:</h4>
-            <div className="h-24 flex flex-col justify-end">
-                {delivererSignature ? (
-                    <img src={delivererSignature} alt="Deliverer Signature" className="max-h-full w-auto object-contain mx-auto" />
-                ) : (
-                    <div className="border-b border-gray-300 w-full mb-2"></div>
-                )}
+        {details && (
+            <div className="mt-8 space-y-2">
+                <h4 className="font-black uppercase text-[11px] border-b pb-0.5 mb-2">NOTES / REMARKS</h4>
+                <p className="text-xs font-bold italic opacity-60">{details}</p>
             </div>
-            <div className="text-center">
-                <p className="font-bold text-sm">{deliveredBy || 'Authorized Agent'}</p>
-                <p className="text-[10px] text-gray-400 uppercase">Signature & Name</p>
+        )}
+
+        {/* Signatures */}
+        <div className="mt-20 grid grid-cols-2 gap-12">
+            <div className="space-y-4">
+                <div className="h-16 border-b border-black border-dotted"></div>
+                <p className="text-[10px] font-black uppercase text-center opacity-50">DISPATCHED BY</p>
+            </div>
+            <div className="space-y-4">
+                <div className="h-16 border-b border-black border-dotted"></div>
+                <p className="text-[10px] font-black uppercase text-center opacity-50">RECEIVED IN GOOD CONDITION BY</p>
             </div>
         </div>
+      </div>
 
-        <div className="space-y-4">
-            <h4 className="font-bold border-b pb-1 text-xs uppercase text-gray-500">Received In Good Condition By:</h4>
-            <div className="h-24 flex flex-col justify-end">
-                {recipientSignature ? (
-                    <img src={recipientSignature} alt="Recipient Signature" className="max-h-full w-auto object-contain mx-auto" />
-                ) : (
-                    <div className="border-b border-gray-300 w-full mb-2"></div>
-                )}
-            </div>
-            <div className="text-center">
-                <p className="font-bold text-sm">{receivedBy || customer?.name || 'Authorized Recipient'}</p>
-                <p className="text-[10px] text-gray-400 uppercase">Signature & Name</p>
-            </div>
-        </div>
-      </section>
+      {/* Professional Footer */}
+      <footer className="mt-auto pt-10 text-center space-y-3">
+         <div className="w-full h-px bg-gray-400 mb-2"></div>
+         <p className="italic font-bold text-[11px] tracking-wide">
+            Laptops Lease | Desktops | Laptops | Printers | Chargers | Memory etc | Sales & Services
+         </p>
+         <div className="text-[10px] space-y-1 opacity-80">
+            <p className="font-black tracking-widest overflow-hidden h-2 leading-none">****************************************************************************************************************************************************************</p>
+            <p className="font-bold">{workspace?.address || 'Nairobi, Kenya'}</p>
+            <p className="font-bold">Tel: {workspace?.phone} E-mail: {workspace?.email} Web: {workspace?.website || 'www.royaltech.co.ke'}</p>
+         </div>
 
-      <div className="flex-grow"></div>
-
-       <footer className="text-center text-[10px] text-gray-400 border-t pt-4 mt-16 flex flex-col items-center gap-2">
-        <div className="flex justify-between w-full">
-            <p>White: Office Copy | Blue: Customer Copy | Yellow: Delivery Copy</p>
-            <p>Thank you for choosing us!</p>
-        </div>
+         <div className="pt-6 text-[8px] font-bold opacity-40 uppercase flex justify-center gap-4">
+            <span>Printed On: {format(new Date(), "PPPP | p")}</span>
+            <span>&gt;&gt;Served By: {docSnapshot.createdBy?.name || 'System'}</span>
+         </div>
       </footer>
     </div>
   );

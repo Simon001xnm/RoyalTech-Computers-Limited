@@ -7,9 +7,7 @@ import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 
-const VAT_RATE = 0.16;
-
-export function ProformaInvoicePdf({ document }: { document: AppDocument }) {
+export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
@@ -19,153 +17,154 @@ export function ProformaInvoicePdf({ document }: { document: AppDocument }) {
   );
   const { data: cloudCompany } = useDoc(companyRef);
 
-  if (!document.data) {
+  if (!docSnapshot.data) {
     return <div className="p-4">Document data is missing.</div>;
   }
 
-  const workspace = document.data.workspace || cloudCompany;
-  const data = document.data;
+  const workspace = docSnapshot.data.workspace || cloudCompany;
+  const data = docSnapshot.data;
 
   const customer = data.customer || {
-    name: data.customerName,
-    phone: data.customerPhone,
+    name: data.customerName || 'VALUED CLIENT',
+    phone: data.customerPhone || '',
     email: data.customerEmail || '',
     address: data.customerAddress || ''
   };
 
-  const { items, details, subtotal, vat, total, applyVat, invoiceType, leaseDetails } = data;
+  const { items, subtotal, vat, total, applyVat } = data;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
-      style: "currency",
-      currency: "KES",
+      style: "decimal",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount);
   };
   
-  const isLease = invoiceType === 'lease' && leaseDetails;
-  const companyName = workspace?.name || 'The Company';
-  const hasCustomerDetails = !!(customer.name);
+  const companyName = workspace?.name || 'SIMONSTYLESTECHNOLOGIES LIMITED';
+  const proformaNo = docSnapshot.title.split('#').pop() || docSnapshot.id.slice(0, 4).toUpperCase();
 
   return (
-    <div className="p-[20mm] font-sans text-sm bg-white text-gray-900 w-[210mm] min-h-[297mm] flex flex-col box-border">
-      <header className="flex justify-between items-start pb-4 border-b">
+    <div className="p-[15mm] font-sans text-[12px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border border border-gray-100">
+      {/* Header Section */}
+      <div className="flex justify-between items-start mb-8">
         <div className="flex items-center gap-4">
-          {workspace?.logoUrl ? (
-            <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain" />
+           {workspace?.logoUrl ? (
+            <img src={workspace.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
           ) : (
-            <div className="h-28 w-28 bg-muted flex items-center justify-center text-xs text-muted-foreground uppercase font-bold border">No Logo</div>
+            <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed">LOGO</div>
           )}
-          <div>
-              <p className="font-bold text-lg uppercase text-black">{companyName}</p>
-              <p className="text-xs text-gray-500">{workspace?.address}</p>
-              <p className="text-xs text-gray-500">Tel: {workspace?.phone} | E-mail: {workspace?.email}</p>
+          <div className="space-y-0.5">
+             <h1 className="text-xl font-black text-primary uppercase leading-tight">{companyName}</h1>
+             <p className="text-[9px] italic opacity-60">Let's Tech-it!</p>
           </div>
         </div>
-        <div className="text-right">
-            <h2 className="text-xl font-semibold uppercase">Proforma Invoice</h2>
-        </div>
-      </header>
-
-      <section className="flex justify-between mt-6 mb-8">
         <div>
-          <h3 className="font-bold mb-1">Bill To:</h3>
-          {hasCustomerDetails ? (
-            <>
-              <p className="font-semibold">{customer.name}</p>
-              <p>{customer.address || 'Address not specified'}</p>
-              <p>{customer.email}</p>
-              {customer.phone && <p>Tel: {customer.phone}</p>}
-            </>
-          ) : <p>Customer details not available.</p>}
+            <div className="bg-black text-white px-8 py-2 text-xl font-black uppercase tracking-widest">
+                PROFORMA
+            </div>
         </div>
-        <div className="text-right">
-          <div className="grid grid-cols-[auto_1fr] gap-x-4 text-right">
-             <span className="font-bold">Proforma No:</span>
-             <span>{document.title}</span>
-             <span className="font-bold">Date:</span>
-             <span>{format(new Date(document.generatedDate), "PPP")}</span>
-          </div>
-        </div>
-      </section>
+      </div>
 
-      <section>
-        <table className="w-full text-left table-auto">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-2 font-bold">Description</th>
-              <th className="p-2 font-bold text-right w-24">Quantity</th>
-              <th className="p-2 font-bold text-right w-32">{isLease ? 'Lease Terms' : 'Unit Price'}</th>
-              <th className="p-2 font-bold text-right w-32">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLease ? (
-                 <tr className="border-b">
-                    <td className="p-2">{leaseDetails.description}</td>
-                    <td className="p-2 text-right">{leaseDetails.quantity}</td>
-                    <td className="p-2 text-right">{`${leaseDetails.duration} ${leaseDetails.durationUnit} @ ${formatCurrency(leaseDetails.rate)}`}</td>
-                    <td className="p-2 text-right">{formatCurrency(subtotal || 0)}</td>
+      {/* Bill To & Meta Info */}
+      <div className="flex justify-between mb-8">
+        <div className="space-y-1">
+            <h3 className="font-black uppercase text-[13px] border-b border-black pb-0.5 mb-1 w-fit">BILL TO:</h3>
+            <p className="font-black text-[14px] uppercase">{customer.name}</p>
+            <p className="font-bold">{customer.email}</p>
+            <p className="font-bold">{customer.phone}</p>
+        </div>
+        <div className="text-right space-y-1">
+            <p className="font-bold"><span className="opacity-60">Proforma No:</span> {proformaNo}</p>
+            <p className="font-bold"><span className="opacity-60">Date:</span> {format(new Date(docSnapshot.generatedDate), "MM/dd/yyyy")}</p>
+            <p className="font-black text-xs uppercase text-primary">Pre-Payment Invoice</p>
+        </div>
+      </div>
+
+      {/* Table Section */}
+      <div className="flex-grow">
+        <table className="w-full border-collapse">
+            <thead>
+                <tr className="border-b-2 border-black text-left">
+                    <th className="py-2 font-black uppercase">ITEM DESCRIPTION</th>
+                    <th className="py-2 px-2 text-center font-black uppercase w-16">QTY</th>
+                    <th className="py-2 text-right font-black uppercase w-32">UNIT PRICE</th>
+                    <th className="py-2 text-right font-black uppercase w-32">TOTAL</th>
                 </tr>
-            ) : items && items.length > 0 ? (
-                items.map((item: DocumentLineItem, index: number) => (
-                    <tr key={index} className="border-b">
-                        <td className="p-2">{item.description}</td>
-                        <td className="p-2 text-right">{item.quantity}</td>
-                        <td className="p-2 text-right">{formatCurrency(item.unitPrice)}</td>
-                        <td className="p-2 text-right">{formatCurrency(item.unitPrice * item.quantity)}</td>
+            </thead>
+            <tbody>
+                {items?.map((item: DocumentLineItem, idx: number) => (
+                    <tr key={idx} className="font-bold">
+                        <td className="py-4 align-top pr-4">
+                            <p className="leading-tight">{item.description}</p>
+                        </td>
+                        <td className="py-4 align-top text-center">{item.quantity}</td>
+                        <td className="py-4 align-top text-right">{formatCurrency(item.unitPrice)}</td>
+                        <td className="py-4 align-top text-right">{formatCurrency(item.unitPrice * item.quantity)}</td>
                     </tr>
-                ))
-            ) : (
-                 <tr className="border-b">
-                    <td colSpan={4} className="p-2 text-center text-gray-500">No items available.</td>
+                ))}
+                <tr>
+                    <td className="border-b border-black border-dotted pt-4"></td>
+                    <td className="border-b border-black border-dotted pt-4"></td>
+                    <td className="border-b border-black border-dotted pt-4"></td>
+                    <td className="border-b border-black border-dotted pt-4"></td>
                 </tr>
-            )}
-          </tbody>
+            </tbody>
         </table>
-      </section>
-      
-      <section className="flex justify-end mt-6">
-        <div className="w-full md:w-1/3">
-             <div className="flex justify-between py-1">
-                <span>Subtotal</span>
-                <span>{formatCurrency(subtotal || 0)}</span>
-            </div>
-             {applyVat && <div className="flex justify-between py-1">
-                <span>VAT ({(VAT_RATE * 100).toFixed(0)}%)</span>
-                <span>{formatCurrency(vat || 0)}</span>
-            </div>}
-            <div className="flex justify-between font-bold text-base py-2 border-t mt-2">
-                <span>Total Amount</span>
-                <span>{formatCurrency(total || 0)}</span>
-            </div>
-        </div>
-      </section>
-      
-      {details && (
-        <section className="mt-6 border-t pt-4">
-            <h3 className="font-bold mb-1 text-xs text-gray-500 uppercase">Notes:</h3>
-            <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded">{details}</p>
-        </section>
-      )}
 
-      <div className="flex-grow"></div>
-
-      <footer className="text-xs text-gray-700 border-t pt-4 mt-8 space-y-4">
-        <div className="text-center font-bold">
-            <p>This is not a tax invoice. A final invoice will be issued upon payment.</p>
-        </div>
-        <div>
-            <h4 className="font-bold uppercase mb-1">Bank Payment Details</h4>
-            <div className="grid grid-cols-2 gap-x-4 text-[11px]">
-                <div>
-                    <p><span className="font-semibold">BANK:</span> Please contact support</p>
-                    <p><span className="font-semibold">ACC NAME:</span> {companyName}</p>
+        {/* Totals Section */}
+        <div className="flex justify-end mt-4">
+            <div className="w-[300px] space-y-1">
+                <div className="flex justify-between items-center py-1">
+                    <span className="font-black uppercase">SUB TOTAL</span>
+                    <span className="font-black">KES. {formatCurrency(subtotal || 0)}</span>
                 </div>
-                 <div className="text-right">
-                    <p>Thank you for choosing us!</p>
+                {applyVat && (
+                    <div className="flex justify-between items-center py-1">
+                        <span className="font-black uppercase">VAT 16%</span>
+                        <span className="font-black">KSH. {formatCurrency(vat || 0)}</span>
+                    </div>
+                )}
+                <div className="flex justify-between items-center bg-gray-50 p-2 border-y-2 border-black">
+                    <span className="font-black text-sm uppercase">GRAND TOTAL</span>
+                    <span className="font-black text-sm uppercase">Ksh.{formatCurrency(total || 0)}</span>
                 </div>
             </div>
         </div>
+
+        {/* Comments & Payment Details */}
+        <div className="mt-12 grid grid-cols-1 gap-8">
+            <section className="space-y-1">
+                <h4 className="font-black uppercase text-[11px] border-b pb-0.5 mb-2">BANK SETTLEMENT DETAILS</h4>
+                <p className="font-bold uppercase text-[10px]">BANK: {workspace?.bankName || 'KCB BANK'}</p>
+                <p className="font-bold uppercase text-[10px]">ACC NAME: {workspace?.bankAccName || companyName}</p>
+                <p className="font-bold uppercase text-[10px]">ACC NO: {workspace?.bankAccNo || 'N/A'}</p>
+                <p className="font-bold uppercase text-[10px]">BRANCH: {workspace?.bankBranch || 'N/A'}</p>
+            </section>
+
+            <div className="text-center pt-8 border-t border-gray-100">
+                <h2 className="text-lg font-black uppercase text-primary">Important Notice</h2>
+                <p className="font-bold mt-1 text-[10px]">This is NOT a tax invoice. A final Tax Invoice will be issued once full payment is received.</p>
+            </div>
+        </div>
+      </div>
+
+      {/* Professional Footer */}
+      <footer className="mt-auto pt-10 text-center space-y-3">
+         <div className="w-full h-px bg-gray-400 mb-2"></div>
+         <p className="italic font-bold text-[11px] tracking-wide">
+            Laptops Lease | Desktops | Laptops | Printers | Chargers | Memory etc | Sales & Services
+         </p>
+         <div className="text-[10px] space-y-1 opacity-80">
+            <p className="font-black tracking-widest overflow-hidden h-2 leading-none">****************************************************************************************************************************************************************</p>
+            <p className="font-bold">{workspace?.address || 'Nairobi, Kenya'}</p>
+            <p className="font-bold">Tel: {workspace?.phone} E-mail: {workspace?.email} Web: {workspace?.website || 'www.royaltech.co.ke'}</p>
+         </div>
+
+         <div className="pt-6 text-[8px] font-bold opacity-40 uppercase flex justify-center gap-4">
+            <span>Proforma Printed On: {format(new Date(), "PPPP | p")}</span>
+            <span>&gt;&gt;Served By: {docSnapshot.createdBy?.name || 'System'}</span>
+         </div>
       </footer>
     </div>
   );

@@ -1,13 +1,13 @@
 
 'use client';
 
-import type { Document as AppDocument } from "@/types";
+import type { Document as AppDocument, DocumentLineItem } from "@/types";
 import { format } from "date-fns";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 
-export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
+export function LeaseAgreementPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
@@ -17,179 +17,187 @@ export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
   );
   const { data: cloudCompany } = useDoc(companyRef);
 
-  if (!document.data) {
-    return <div className="p-10 text-xl font-bold">Document data is missing. Please try again.</div>;
+  if (!docSnapshot.data) {
+    return <div className="p-4">Document data is missing.</div>;
   }
 
-  const workspace = document.data.workspace || cloudCompany;
-  const { 
-    customer, 
-    items, 
-    details, 
-    lease, 
-    subtotal, 
-    total, 
-    applyVat, 
-    vat, 
-    clientType,
-    verification,
-    signature
-  } = document.data;
+  const workspace = docSnapshot.data.workspace || cloudCompany;
+  const data = docSnapshot.data;
+  
+  const customer = data.customer || {
+    name: data.customerName || 'VALUED CLIENT',
+    phone: data.customerPhone || '',
+    email: data.customerEmail || '',
+    address: data.customerAddress || ''
+  };
+
+  const { items, details, lease, subtotal, total, applyVat, vat, clientType, verification, signature } = data;
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
-      style: "currency",
-      currency: "KES",
-      maximumFractionDigits: 0
+      style: "decimal",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount);
   };
 
-  const primaryColor = workspace?.primaryColor || '#000000';
+  const companyName = workspace?.name || 'SIMONSTYLESTECHNOLOGIES LIMITED';
+  const docNo = docSnapshot.title.split('#').pop() || docSnapshot.id.slice(0, 4).toUpperCase();
   const isIndividual = clientType === 'Individual' || !clientType;
   const isStudent = verification?.studentId;
-  const companyName = workspace?.name || 'SIMON STYLESTECHNOLOGIES LIMITED';
 
   return (
-    <div className="p-[20mm] font-sans text-lg bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border leading-relaxed">
-      {/* Header with Logo */}
-      <header className="flex justify-between items-center pb-6 border-b-2 mb-8" style={{ borderColor: primaryColor }}>
+    <div className="p-[15mm] font-sans text-[12px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border border border-gray-100">
+      {/* Header Section */}
+      <div className="flex justify-between items-start mb-8">
         <div className="flex items-center gap-4">
-          {workspace?.logoUrl ? (
-            <img 
-                src={workspace.logoUrl} 
-                alt="Company Logo" 
-                className="h-24 w-auto object-contain" 
-                crossOrigin="anonymous"
-            />
+           {workspace?.logoUrl ? (
+            <img src={workspace.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
           ) : (
-            <div className="h-20 w-20 bg-gray-100 flex items-center justify-center text-xs font-bold border-2 border-dashed">LOGO</div>
+            <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed">LOGO</div>
           )}
-          <div className="space-y-1">
-              <h1 className="text-2xl font-black uppercase" style={{ color: primaryColor }}>{companyName}</h1>
-              <p className="text-xs font-bold opacity-60">LEGAL HIRE AGREEMENT</p>
+          <div className="space-y-0.5">
+             <h1 className="text-xl font-black text-primary uppercase leading-tight">{companyName}</h1>
+             <p className="text-[9px] italic opacity-60">Let's Tech-it!</p>
           </div>
         </div>
-        <div className="text-right">
-            <h2 className="text-xl font-black uppercase text-gray-400">Document No:</h2>
-            <p className="text-sm font-mono tracking-tighter">{document.title}</p>
-        </div>
-      </header>
-
-      {/* Main Parties Section - Side by Side */}
-      <div className="grid grid-cols-2 gap-10 mb-10 text-base">
-        {/* Lessor Side */}
-        <div className="space-y-3">
-          <h3 className="font-black text-xs uppercase tracking-widest text-primary">From (The Owner):</h3>
-          <div className="p-5 border-2 rounded-2xl bg-gray-50/50">
-              <p className="font-black uppercase text-lg">{companyName}</p>
-              <p className="text-sm">{workspace?.address || 'Address not specified'}</p>
-              <p className="text-sm font-bold">Phone: {workspace?.phone}</p>
-              <p className="text-sm">Email: {workspace?.email}</p>
-          </div>
-        </div>
-
-        {/* Lessee Side */}
-        <div className="space-y-3">
-          <h3 className="font-black text-xs uppercase tracking-widest text-primary">To (The Client):</h3>
-          <div className="p-5 border-2 rounded-2xl bg-white shadow-sm">
-              <p className="font-black uppercase text-lg">{customer?.name || 'VALUED CLIENT'}</p>
-              <p className="text-sm">{customer?.address || 'Address not specified'}</p>
-              <p className="text-sm font-bold">Phone: {customer?.phone}</p>
-              
-              <div className="pt-3 border-t mt-3 space-y-1">
-                {isIndividual ? (
-                    <>
-                        <p className="text-xs"><strong>National ID:</strong> {verification?.nationalId || 'Verified'}</p>
-                        <p className="text-xs"><strong>Guarantor ID:</strong> {verification?.guarantorId || 'N/A'}</p>
-                        {isStudent && (
-                            <p className="text-xs text-primary font-bold">Student ID: {verification.studentId}</p>
-                        )}
-                    </>
-                ) : (
-                    <>
-                        <p className="text-xs"><strong>Permit No:</strong> {verification?.businessPermit || 'N/A'}</p>
-                        <p className="text-xs"><strong>Director ID:</strong> {verification?.directorId || 'N/A'}</p>
-                    </>
-                )}
-              </div>
-          </div>
+        <div>
+            <div className="bg-black text-white px-6 py-2 text-lg font-black uppercase tracking-widest text-center">
+                LEASE HIRE AGREEMENT
+            </div>
         </div>
       </div>
 
-      {/* Contract Period */}
-      <section className="mb-10 bg-black text-white p-6 rounded-2xl flex justify-between items-center">
-        <div>
-            <p className="text-xs font-bold uppercase opacity-60">Time for Hire</p>
-            <p className="text-4xl font-black">{lease?.duration} {lease?.unit || lease?.durationUnit}(s)</p>
+      {/* Bill To & Meta Info */}
+      <div className="grid grid-cols-2 gap-10 mb-8">
+        <div className="space-y-3">
+            <h3 className="font-black uppercase text-[11px] border-b border-black pb-0.5 w-fit">LESSEE (CLIENT):</h3>
+            <div className="space-y-1">
+                <p className="font-black text-[14px] uppercase">{customer.name}</p>
+                <p className="font-bold">{customer.email || 'Contact Person'}</p>
+                <p className="font-bold">{customer.phone}</p>
+                <div className="pt-2 border-t mt-2 space-y-0.5">
+                    {isIndividual ? (
+                        <>
+                            <p className="text-[10px]"><strong>National ID:</strong> {verification?.nationalId || 'Verified'}</p>
+                            {isStudent && <p className="text-[10px] text-primary font-bold">Student ID: {verification.studentId}</p>}
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-[10px]"><strong>Permit No:</strong> {verification?.businessPermit || 'N/A'}</p>
+                            <p className="text-[10px]"><strong>Director ID:</strong> {verification?.directorId || 'N/A'}</p>
+                        </>
+                    )}
+                </div>
+            </div>
         </div>
         <div className="text-right space-y-1">
-            <p className="text-sm"><span className="opacity-60">Starts:</span> <strong>{format(new Date(lease?.startDate || document.generatedDate), "MMM d, yyyy")}</strong></p>
-            <p className="text-sm text-yellow-400 font-bold"><span className="opacity-80">Return By:</span> <strong>{format(new Date(lease?.endDate || document.generatedDate), "MMM d, yyyy")}</strong></p>
+            <h3 className="font-black uppercase text-[11px] border-b border-black pb-0.5 w-fit ml-auto">CONTRACT INFO:</h3>
+            <p className="font-bold"><span className="opacity-60">Agreement No:</span> {docNo}</p>
+            <p className="font-bold"><span className="opacity-60">Start Date:</span> {format(new Date(lease?.startDate || docSnapshot.generatedDate), "MM/dd/yyyy")}</p>
+            <p className="font-bold text-destructive"><span className="opacity-60">Return Date:</span> {format(new Date(lease?.endDate || docSnapshot.generatedDate), "MM/dd/yyyy")}</p>
+            <p className="font-black uppercase text-lg"><span className="opacity-60">Duration:</span> {lease?.duration} {lease?.unit || lease?.durationUnit}(s)</p>
         </div>
-      </section>
+      </div>
 
-      {/* Items List */}
-      <section className="mb-10">
-        <h3 className="font-black text-xs uppercase tracking-widest text-gray-500 mb-4">Equipment for Hire:</h3>
-        <table className="w-full text-left table-auto border-collapse">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-4 text-sm uppercase font-black">Description of Device</th>
-              <th className="p-4 text-sm uppercase font-black text-center w-24">Qty</th>
-              <th className="p-4 text-sm uppercase font-black text-right w-40">Rate / Unit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items?.map((item: any, idx: number) => (
-              <tr key={idx} className="border-b">
-                <td className="p-4">
-                    <p className="font-bold text-lg">{item.description}</p>
-                    {item.serialNumber && <p className="text-xs font-mono opacity-50 uppercase">S/N: {item.serialNumber}</p>}
-                </td>
-                <td className="p-4 text-center font-bold">{item.quantity}</td>
-                <td className="p-4 text-right font-bold">{formatCurrency(item.unitPrice)}</td>
-              </tr>
-            ))}
-          </tbody>
+      {/* Table Section */}
+      <div className="flex-grow">
+        <table className="w-full border-collapse">
+            <thead>
+                <tr className="border-b-2 border-black text-left">
+                    <th className="py-2 font-black uppercase">DEVICE DESCRIPTION</th>
+                    <th className="py-2 px-2 text-center font-black uppercase w-16">QTY</th>
+                    <th className="py-2 text-right font-black uppercase w-32">RATE/UNIT</th>
+                    <th className="py-2 text-right font-black uppercase w-32">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {items?.map((item: any, idx: number) => {
+                    const rowAmount = item.quantity * item.unitPrice * (Number(lease?.duration) || 1);
+                    return (
+                        <tr key={idx} className="font-bold">
+                            <td className="py-4 align-top pr-4">
+                                <p className="leading-tight text-sm">{item.description}</p>
+                                {item.serialNumber && <p className="text-[9px] font-mono opacity-50 mt-1 uppercase">S/N: {item.serialNumber}</p>}
+                            </td>
+                            <td className="py-4 align-top text-center">{item.quantity}</td>
+                            <td className="py-4 align-top text-right">{formatCurrency(item.unitPrice)}</td>
+                            <td className="py-4 align-top text-right">{formatCurrency(rowAmount)}</td>
+                        </tr>
+                    );
+                })}
+                {/* Visual dotted spacer */}
+                <tr>
+                    <td className="border-b border-black border-dotted pt-4"></td>
+                    <td className="border-b border-black border-dotted pt-4"></td>
+                    <td className="border-b border-black border-dotted pt-4"></td>
+                    <td className="border-b border-black border-dotted pt-4"></td>
+                </tr>
+            </tbody>
         </table>
-      </section>
-      
-      {/* Terms and Conditions - Simple Words */}
-      <section className="space-y-6 mb-10">
-        <h3 className="font-black text-sm uppercase text-black border-b-2 pb-2">Agreement Rules:</h3>
-        <div className="space-y-4 text-base">
-          <p className="flex gap-4"><strong>1.</strong> <span>If you break or damage the equipment, you will pay for all the repairs at the current market price.</span></p>
-          <p className="flex gap-4"><strong>2.</strong> <span>If the equipment is lost, stolen, or damaged too much to fix, you must buy a new one for us at the current market price.</span></p>
-          <p className="flex gap-4"><strong>3.</strong> <span>If you return the equipment late without telling us first, you will pay a fine of <strong>KES 1,000 for every day</strong> you are late.</span></p>
-          <p className="flex gap-4"><strong>4.</strong> <span>The equipment belongs to <strong>{companyName}</strong>. You are only hiring it for the time stated above.</span></p>
-        </div>
-      </section>
 
-      {/* Financial Box */}
-      <section className="bg-gray-50 p-6 rounded-3xl border-2 border-dashed flex justify-between items-center mb-10">
-            <div className="text-sm font-bold opacity-60">Total Rental Cost:</div>
-            <div className="text-right">
-                <p className="text-3xl font-black" style={{ color: primaryColor }}>{formatCurrency(total || 0)}</p>
-                {applyVat && <p className="text-xs opacity-60">(Includes 16% VAT)</p>}
+        {/* Totals Section */}
+        <div className="flex justify-end mt-4">
+            <div className="w-[300px] space-y-1">
+                <div className="flex justify-between items-center py-1">
+                    <span className="font-black uppercase">RENTAL TOTAL</span>
+                    <span className="font-black">KES. {formatCurrency(subtotal || 0)}</span>
+                </div>
+                {applyVat && (
+                    <div className="flex justify-between items-center py-1">
+                        <span className="font-black uppercase">VAT 16%</span>
+                        <span className="font-black">KSH. {formatCurrency(vat || 0)}</span>
+                    </div>
+                )}
+                <div className="flex justify-between items-center bg-gray-50 p-2 border-y-2 border-black">
+                    <span className="font-black text-sm uppercase">GRAND TOTAL</span>
+                    <span className="font-black text-sm uppercase">Ksh.{formatCurrency(total || 0)}</span>
+                </div>
             </div>
-      </section>
-
-      {/* Signatures */}
-      <section className="mt-auto grid grid-cols-2 gap-20 pt-10">
-        <div className="space-y-4">
-            <div className="h-20 border-b-2 border-dashed border-gray-300"></div>
-            <p className="text-xs font-black uppercase text-center opacity-50">Authorized Signature (The Owner)</p>
         </div>
-        <div className="space-y-4">
-            <div className="h-20 border-b-2 border-dashed border-gray-300 flex items-end justify-center">
-                {signature && <img src={signature} alt="Client Sign" className="max-h-full w-auto" crossOrigin="anonymous" />}
+
+        {/* Terms and Conditions - Simplified but high-fi */}
+        <div className="mt-8 space-y-4">
+            <h4 className="font-black uppercase text-[11px] border-b pb-0.5 mb-2">AGREEMENT TERMS</h4>
+            <div className="grid grid-cols-1 gap-2 text-[11px] font-bold leading-relaxed">
+                <p>1. Mishandling: If you damage the equipment, you will pay for all repairs at the current market price.</p>
+                <p>2. Loss/Theft: If equipment is lost or stolen, you must buy a replacement unit at the current market price.</p>
+                <p>3. Penalties: Delayed return attracts a fine of KES 1,000 for every day you are late without communication.</p>
+                <p>4. Ownership: The equipment remains the sole property of {companyName}.</p>
             </div>
-            <p className="text-xs font-black uppercase text-center opacity-50">Client Signature (The Client)</p>
         </div>
-      </section>
 
-      <footer className="text-center pt-8 mt-10 border-t opacity-30">
-          <p className="text-[10px] font-black uppercase tracking-[0.4em]">Official Business Record</p>
+        {/* Signatures */}
+        <div className="mt-12 grid grid-cols-2 gap-12">
+            <div className="space-y-4">
+                <div className="h-16 border-b border-black border-dotted"></div>
+                <p className="text-[10px] font-black uppercase text-center opacity-50">LESSOR SIGNATURE (OWNER)</p>
+            </div>
+            <div className="space-y-4">
+                <div className="h-16 border-b border-black border-dotted flex items-end justify-center">
+                    {signature && <img src={signature} alt="Client Sign" className="max-h-full w-auto" crossOrigin="anonymous" />}
+                </div>
+                <p className="text-[10px] font-black uppercase text-center opacity-50">LESSEE SIGNATURE (CLIENT)</p>
+            </div>
+        </div>
+      </div>
+
+      {/* Professional Footer */}
+      <footer className="mt-auto pt-10 text-center space-y-3">
+         <div className="w-full h-px bg-gray-400 mb-2"></div>
+         <p className="italic font-bold text-[11px] tracking-wide">
+            Laptops Lease | Desktops | Laptops | Printers | Chargers | Memory etc | Sales & Services
+         </p>
+         <div className="text-[10px] space-y-1 opacity-80">
+            <p className="font-black tracking-widest overflow-hidden h-2 leading-none">****************************************************************************************************************************************************************</p>
+            <p className="font-bold">{workspace?.address || 'Nairobi, Kenya'}</p>
+            <p className="font-bold">Tel: {workspace?.phone} E-mail: {workspace?.email} Web: {workspace?.website || 'www.royaltech.co.ke'}</p>
+         </div>
+
+         <div className="pt-6 text-[8px] font-bold opacity-40 uppercase flex justify-center gap-4">
+            <span>Agreement Printed On: {format(new Date(), "PPPP | p")}</span>
+            <span>&gt;&gt;Served By: {docSnapshot.createdBy?.name || 'System'}</span>
+         </div>
       </footer>
     </div>
   );
