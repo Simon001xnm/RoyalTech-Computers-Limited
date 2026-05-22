@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -175,10 +174,13 @@ export function PosClient() {
         const prefix = (tenant.name || 'DOC').slice(0, 3).toUpperCase();
         
         const workspaceMetadata = workspaceProfile ? {
-            name: workspaceProfile.name, address: workspaceProfile.address,
-            phone: workspaceProfile.phone, email: workspaceProfile.email,
-            logoUrl: workspaceProfile.logoUrl, primaryColor: workspaceProfile.primaryColor,
-            secondaryColor: workspaceProfile.secondaryColor
+            name: workspaceProfile.name || '', 
+            address: workspaceProfile.address || '',
+            phone: workspaceProfile.phone || '', 
+            email: workspaceProfile.email || '',
+            logoUrl: workspaceProfile.logoUrl || null, 
+            primaryColor: workspaceProfile.primaryColor || null,
+            secondaryColor: workspaceProfile.secondaryColor || null
         } : null;
 
         const saleData: Sale = {
