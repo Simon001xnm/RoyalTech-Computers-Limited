@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -34,7 +35,7 @@ const accessoryFormSchema = z.object({
   purchaseDate: z.date({ required_error: "Purchase date is required." }),
   status: z.enum(["Available", "Sold", "With Reseller"]),
   quantity: z.coerce.number().min(0, "Quantity cannot be negative."),
-  purchasePrice: z.coerce.number().optional(),
+  purchasePrice: z.coerce.number().optional().nullable(),
   sellingPrice: z.coerce.number().positive("Selling price must be a positive number."),
 });
 
@@ -52,14 +53,15 @@ export function AccessoryForm({ accessory, onSubmit, onCancel, isLoading }: Acce
     ? {
         ...accessory,
         purchaseDate: new Date(accessory.purchaseDate),
+        purchasePrice: accessory.purchasePrice ?? null,
       }
     : {
         name: "",
         serialNumber: "",
         status: "Available",
         quantity: 1,
-        purchasePrice: undefined,
-        sellingPrice: undefined,
+        purchasePrice: null,
+        sellingPrice: 0,
       };
 
   const form = useForm<AccessoryFormValues>({
