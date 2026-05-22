@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -44,8 +45,8 @@ export function SidebarNav() {
   }, [plan, usage, isLegacyUser, tenant]);
 
   const permittedNavItems = useMemo(() => {
-    return getPermittedNavItems(currentUser?.role, user?.email);
-  }, [currentUser?.role, user?.email]);
+    return getPermittedNavItems(currentUser, user?.email);
+  }, [currentUser, user?.email]);
 
   if (isUserLoading || isProfileLoading) {
     return (

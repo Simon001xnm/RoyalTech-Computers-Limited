@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from 'lucide-react';
 import { LayoutDashboard, Package as PackageIcon, Users, Printer, MapPin, ClipboardList, BookOpen, Inbox, Phone, ListChecks, Presentation, UserPlus, BarChart3, User, ShieldCheck, History, ShoppingCart, Briefcase } from 'lucide-react';
 
@@ -15,6 +16,7 @@ export const MPESA_CONFIG = {
 };
 
 export interface NavItem {
+  id: string;
   href: string;
   label: string;
   icon: LucideIcon;
@@ -22,23 +24,23 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/pos', label: 'Point of Sale', icon: ShoppingCart },
-  { href: '/stock', label: 'Asset Inventory', icon: PackageIcon },
-  { href: '/accessories', label: 'Accessories', icon: ShoppingCart },
-  { href: '/customers', label: 'Customers', icon: Users },
-  { href: '/documents', label: 'Documents', icon: Printer },
-  { href: '/tracking', label: 'Asset Tracking', icon: MapPin },
-  { href: '/books', label: 'Accounting', icon: BookOpen },
-  { href: '/desk', label: 'Support Desk', icon: Inbox },
-  { href: '/salesiq', label: 'Team Chat', icon: Phone },
-  { href: '/projects', label: 'Project Board', icon: ListChecks },
-  { href: '/campaigns', label: 'Marketing', icon: Presentation },
-  { href: '/reports', label: 'Financials', icon: BarChart3 },
-  { href: '/audit', label: 'Audit Trail', icon: History },
-  { href: '/users', label: 'System Users', icon: UserPlus },
-  { href: '/resellers', label: 'Resellers', icon: Briefcase },
-  { href: '/profile', label: 'Settings', icon: User },
+  { id: 'dashboard', href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'pos', href: '/pos', label: 'Point of Sale', icon: ShoppingCart },
+  { id: 'stock', href: '/stock', label: 'Asset Inventory', icon: PackageIcon },
+  { id: 'accessories', href: '/accessories', label: 'Accessories', icon: ShoppingCart },
+  { id: 'customers', href: '/customers', label: 'Customers', icon: Users },
+  { id: 'documents', href: '/documents', label: 'Documents', icon: Printer },
+  { id: 'tracking', href: '/tracking', label: 'Asset Tracking', icon: MapPin },
+  { id: 'accounting', href: '/books', label: 'Accounting', icon: BookOpen },
+  { id: 'support', href: '/desk', label: 'Support Desk', icon: Inbox },
+  { id: 'chat', href: '/salesiq', label: 'Team Chat', icon: Phone },
+  { id: 'projects', href: '/projects', label: 'Project Board', icon: ListChecks },
+  { id: 'marketing', href: '/campaigns', label: 'Marketing', icon: Presentation },
+  { id: 'financials', href: '/reports', label: 'Financials', icon: BarChart3 },
+  { id: 'audit', href: '/audit', label: 'Audit Trail', icon: History },
+  { id: 'users', href: '/users', label: 'System Users', icon: UserPlus },
+  { id: 'resellers', href: '/resellers', label: 'Resellers', icon: Briefcase },
+  { id: 'settings', href: '/profile', label: 'Settings', icon: User },
 ];
 
 export const APP_NAME = "Professional ERP Suite";

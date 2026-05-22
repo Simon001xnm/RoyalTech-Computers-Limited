@@ -67,8 +67,9 @@ export interface User {
   role: 'admin' | 'user' | 'super_admin';
   tenantId?: string;
   tenantIds?: string[]; // Portfolio of workspaces
+  permissions?: string[]; // List of module IDs allowed
   avatarUrl?: string;
-  status?: 'active' | 'suspended';
+  status?: 'active' | 'suspended' | 'invited';
   createdAt: string;
 }
 
