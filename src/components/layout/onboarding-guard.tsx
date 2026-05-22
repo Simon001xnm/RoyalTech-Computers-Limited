@@ -30,6 +30,7 @@ const PUBLIC_PATHS = ['/login', '/signup'];
 /**
  * OnboardingGuard: Ensures users have an active workspace before accessing the app.
  * Reinforced with session persistence to prevent flicker on refresh.
+ * UPDATED: M-Pesa API connection is now optional during registration.
  */
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -127,7 +128,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Wait for auth AND profile to be absolutely certain before showing setup
   if (isUserLoading || isProfileLoading) {
     if (PUBLIC_PATHS.includes(pathname)) return <>{children}</>;
     return (
@@ -140,10 +140,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
   if (!user || PUBLIC_PATHS.includes(pathname)) return <>{children}</>;
   
-  // Super Admins bypass onboarding
   if (userProfile?.role === 'super_admin') return <>{children}</>;
 
-  // Only show onboarding if profile is confirmed present but has no tenantId
   if (userProfile && !userProfile.tenantId) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-[#f8f9fa] p-4 md:p-10 font-sans">
@@ -172,7 +170,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                     </div>
                     <div className="p-4 bg-black/20 rounded-xl border border-white/10">
                         <p className="text-[10px] font-black uppercase mb-1">Technician Note</p>
-                        <p className="text-[11px] italic opacity-80">"Fields marked with * are critical for payment API and legal compliance."</p>
+                        <p className="text-[11px] italic opacity-80">"M-Pesa API can be connected later in Settings > Billing. Only fields with * are mandatory now."</p>
                     </div>
                 </div>
               </div>
@@ -218,7 +216,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                     <Input value={formData.industry} onChange={e => handleInputChange('industry', e.target.value)} required placeholder="e.g. IT, Finance, Trade" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Website URL (Optional)</Label>
+                                    <Label className="text-[10px] font-black uppercase">Website URL</Label>
                                     <div className="flex">
                                         <div className="bg-muted border border-r-0 flex items-center px-3 rounded-l-md"><Globe className="h-3 w-3" /></div>
                                         <Input value={formData.website} onChange={e => handleInputChange('website', e.target.value)} className="rounded-l-none" placeholder="https://..." />
@@ -226,7 +224,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase">Business Description (Optional)</Label>
+                                <Label className="text-[10px] font-black uppercase">Business Description</Label>
                                 <Textarea value={formData.description} onChange={e => handleInputChange('description', e.target.value)} placeholder="Short profile about your node..." />
                             </div>
                         </section>
@@ -246,17 +244,13 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                     <Input value={formData.phone} onChange={e => handleInputChange('phone', e.target.value)} required placeholder="+254 7..." />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Alternative Phone</Label>
-                                    <Input value={formData.altPhone} onChange={e => handleInputChange('altPhone', e.target.value)} placeholder="Secondary contact" />
-                                </div>
-                                <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase">City/Town <span className="text-red-500">*</span></Label>
                                     <Input value={formData.city} onChange={e => handleInputChange('city', e.target.value)} required placeholder="e.g. Nairobi" />
                                 </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase">Physical Address <span className="text-red-500">*</span></Label>
-                                <Input value={formData.address} onChange={e => handleInputChange('address', e.target.value)} required placeholder="Street, Building, Floor" />
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase">Physical Address <span className="text-red-500">*</span></Label>
+                                    <Input value={formData.address} onChange={e => handleInputChange('address', e.target.value)} required placeholder="Street, Building, Floor" />
+                                </div>
                             </div>
                         </section>
 
@@ -271,41 +265,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                     <Input value={formData.adminPosition} onChange={e => handleInputChange('adminPosition', e.target.value)} required placeholder="e.g. CEO, Founder, Director" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">KRA PIN (Optional)</Label>
-                                    <Input value={formData.kraPin} onChange={e => handleInputChange('kraPin', e.target.value)} placeholder="For tax documentation" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Cert. of Registration (Optional)</Label>
-                                    <Input value={formData.certRegistration} onChange={e => handleInputChange('certRegistration', e.target.value)} placeholder="Company number" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">National ID / Passport (Optional)</Label>
+                                    <Label className="text-[10px] font-black uppercase">National ID / Passport</Label>
                                     <Input value={formData.nationalId} onChange={e => handleInputChange('nationalId', e.target.value)} placeholder="Personal verification" />
-                                </div>
-                            </div>
-                        </section>
-
-                        <section className="space-y-6 p-6 bg-muted/20 rounded-2xl border-2 border-dashed border-primary/20">
-                            <div className="flex items-center gap-3 border-b border-primary/10 pb-2">
-                                <Wallet className="h-5 w-5 text-primary" />
-                                <h3 className="font-black uppercase tracking-widest text-xs text-primary">Payment & Billing Configuration</h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Payment Method <span className="text-red-500">*</span></Label>
-                                    <Select onValueChange={v => handleInputChange('paymentMethod', v)} value={formData.paymentMethod}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="M-Pesa">M-Pesa STK Push</SelectItem>
-                                            <SelectItem value="Till">Buy Goods (Till)</SelectItem>
-                                            <SelectItem value="Paybill">Paybill</SelectItem>
-                                            <SelectItem value="Bank">Bank Transfer</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Till / Paybill Number</Label>
-                                    <Input value={formData.billingIdentifier} onChange={e => handleInputChange('billingIdentifier', e.target.value)} placeholder="For collection" />
                                 </div>
                             </div>
                         </section>

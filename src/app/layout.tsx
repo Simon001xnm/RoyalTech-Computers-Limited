@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-const VERSION = "2.1.0";
+const VERSION = "2.2.0";
 
 export const metadata: Metadata = {
   title: {
@@ -55,17 +55,30 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" />
         <Script id="resilience-recovery" strategy="beforeInteractive">
           {`
+            // GLOBAL NETWORK ERROR HANDLER
             window.addEventListener('error', (event) => {
               const msg = String(event.message || '').toLowerCase();
-              if (msg.includes('chunkloaderror') || msg.includes('loading chunk')) {
-                console.warn('Network timeout detected. Re-syncing node...');
-                window.location.reload();
+              if (
+                msg.includes('chunkloaderror') || 
+                msg.includes('loading chunk') || 
+                msg.includes('failed to fetch') ||
+                msg.includes('timeout')
+              ) {
+                console.warn('Network resilience trigger: Reloading node components...');
+                // Smooth immediate reload to clear broken chunks
+                if (window.location.hash !== '#reloading') {
+                  window.location.hash = 'reloading';
+                  window.location.reload();
+                }
               }
             }, true);
             
+            // HANDLES REJECTIONS (Promises failing due to network)
             window.addEventListener('unhandledrejection', (event) => {
                 const reason = String(event.reason || '').toLowerCase();
-                if (reason.includes('chunkloaderror')) window.location.reload();
+                if (reason.includes('chunkloaderror') || reason.includes('timeout')) {
+                  window.location.reload();
+                }
             });
           `}
         </Script>
