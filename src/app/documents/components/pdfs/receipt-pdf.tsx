@@ -23,11 +23,9 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
     return <div className="p-4">Document data is missing.</div>;
   }
 
-  // PREFER BAKED METADATA
   const workspace = document.data.workspace || cloudCompany;
   const data = document.data;
   
-  // Resilient customer mapping
   const customer = data.customer || {
     name: data.customerName,
     phone: data.customerPhone,
@@ -64,7 +62,6 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
 
   return (
     <div className="print-container p-[20mm] font-sans text-sm bg-white text-gray-900 w-[210mm] min-h-[297mm] flex flex-col box-border">
-      {/* Header */}
       <header className="flex justify-between items-start pb-6 border-b-2" style={{ borderColor: primaryColor }}>
         <div className="flex items-center gap-4">
           {workspace?.logoUrl ? (
@@ -84,7 +81,6 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
         </div>
       </header>
 
-      {/* Bill To & Receipt Info */}
       <section className="flex justify-between mt-10 mb-10 bg-gray-50 p-6 rounded-xl border border-gray-100">
         <div>
           <h3 className="font-bold text-gray-400 text-[10px] uppercase tracking-widest mb-2">Customer Details:</h3>
@@ -111,7 +107,6 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
         </div>
       </section>
 
-      {/* Items Table */}
       <section>
         <table className="w-full text-left table-auto border-collapse">
           <thead>
@@ -128,7 +123,7 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
                 <tr key={index} className="border-b border-gray-100 hover:bg-gray-50/50">
                     <td className="p-4">
                         <p className="font-bold text-sm">{item.name}</p>
-                        {item.serialNumber && <span className="text-[10px] text-primary bg-primary/5 px-1.5 py-0.5 rounded font-mono block w-fit mt-1">S/N: {item.serialNumber}</span>}
+                        {item.serialNumber !== 'N/A' && <span className="text-[10px] text-primary bg-primary/5 px-1.5 py-0.5 rounded font-mono block w-fit mt-1">S/N: {item.serialNumber}</span>}
                     </td>
                     <td className="p-4 text-right text-sm">{item.quantity}</td>
                     <td className="p-4 text-right text-sm">{formatCurrency(item.price)}</td>
@@ -147,7 +142,6 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
         </table>
       </section>
       
-      {/* Totals & Payment Info */}
       <section className="flex justify-between mt-10 items-start">
          <div className="w-[50%]">
             <h3 className="font-bold text-gray-500 text-[10px] uppercase mb-3">Transaction Details</h3>
@@ -197,15 +191,13 @@ export function ReceiptPdf({ document }: { document: AppDocument }) {
       
       <div className="flex-grow"></div>
 
-      {/* Footer */}
       <footer className="text-[10px] text-gray-400 border-t-2 pt-8 mt-16 text-center space-y-4" style={{ borderColor: primaryColor }}>
          <p className="font-black text-gray-700 uppercase tracking-widest text-lg">Thank you for choosing {workspace?.name || 'us'}!</p>
          <p className="max-w-[80%] mx-auto leading-relaxed">
-           Software licenses once activated are non-refundable. Hardware items may be subject to a manufacturer's warranty. Goods once sold cannot be returned or exchanged without a valid authorization.
+           Goods once sold cannot be returned or exchanged without a valid authorization.
          </p>
          <div className="text-[9px] text-gray-300 pt-6 border-t border-gray-100 flex justify-between items-center uppercase font-bold">
             <span>OFFICIAL RECEIPT COPY</span>
-            <span>powered by simonstyless technologies limited</span>
         </div>
       </footer>
     </div>

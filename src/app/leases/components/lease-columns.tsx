@@ -5,11 +5,12 @@ import type { Lease } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, Eye, CalendarCheck2, CalendarX2 } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, CalendarCheck2, CalendarX2, AlertCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format, differenceInDays, parseISO } from "date-fns";
+import { format, differenceInDays, parseISO, isAfter } from "date-fns";
 import { useState, useEffect } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 export interface LeaseColumnActions {
   onEdit: (lease: Lease) => void;
@@ -35,13 +36,24 @@ const DaysRemainingCell = ({ lease }: { lease: Lease }) => {
     return <Badge variant="outline">N/A</Badge>;
   }
 
-  if (days === null) {
-    return <span className="text-sm text-muted-foreground">Calculating...</span>;
-  }
+  if (days === null) return null;
 
-  if (days < 0) return <Badge variant="destructive">Overdue</Badge>;
-  if (days <= 7) return <Badge variant="destructive" className="bg-orange-500 hover:bg-orange-600 text-white">{days} days</Badge>;
-  return <Badge variant="secondary">{days} days</Badge>;
+  const isOverdue = days < 0;
+
+  return (
+    <div className="flex items-center gap-2">
+      <Badge 
+        variant={isOverdue ? "destructive" : "secondary"}
+        className={cn(
+          "font-bold",
+          !isOverdue && days <= 7 ? "bg-orange-500 text-white" : ""
+        )}
+      >
+        {isOverdue ? "Overdue" : `${days} days left`}
+      </Badge>
+      {isOverdue && <AlertCircle className="h-4 w-4 text-destructive animate-pulse" />}
+    </div>
+  );
 };
 
 export const getLeaseColumns = (actions: LeaseColumnActions) => [
@@ -76,41 +88,19 @@ export const getLeaseColumns = (actions: LeaseColumnActions) => [
     accessorKey: "laptopModel",
     header: "Laptop Model",
   },
-   {
-    accessorKey: "createdBy",
-    header: "Owner",
-    cell: ({ row }: any) => {
-      const createdBy = (row.original as Lease).createdBy;
-      return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-                <span className="text-sm text-muted-foreground cursor-help">{createdBy?.name || 'System'}</span>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>User ID: {createdBy?.uid || 'N/A'}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    }
-  },
   {
     accessorKey: "endDate",
-    header: "End Date",
+    header: "Due Date",
     cell: ({ row }: any) => format(parseISO(row.getValue("endDate")), "MMM d, yyyy"),
   },
   {
-    accessorKey: "daysRemaining",
-    header: "Days Remaining",
-    cell: ({ row }: any) => {
-        const lease = row.original as Lease;
-        return <DaysRemainingCell lease={lease} />;
-    }
+    id: "daysRemaining",
+    header: "Status Tracking",
+    cell: ({ row }: any) => <DaysRemainingCell lease={row.original} />
   },
   {
     accessorKey: "paymentStatus",
-    header: "Payment Status",
+    header: "Payment",
     cell: ({ row }: any) => {
       const status = row.getValue("paymentStatus") as Lease["paymentStatus"];
       let variant: "default" | "secondary" | "destructive" | "outline" = "secondary";
@@ -147,11 +137,6 @@ export const getLeaseColumns = (actions: LeaseColumnActions) => [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            {actions.onViewDetails && (
-              <DropdownMenuItem onClick={() => actions.onViewDetails?.(lease)}>
-                <Eye className="mr-2 h-4 w-4" /> View Details
-              </DropdownMenuItem>
-            )}
             <DropdownMenuItem onClick={() => actions.onEdit(lease)}>
               <Edit className="mr-2 h-4 w-4" /> Edit Lease
             </DropdownMenuItem>

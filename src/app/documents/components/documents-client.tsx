@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2 } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Calendar } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
 import {
   Table,
@@ -34,6 +35,7 @@ import { RepairNotePdf } from "./pdfs/repair-note-pdf";
 import { DeliveryNotePdf } from "./pdfs/delivery-note-pdf";
 import { QuotationPdf } from "./pdfs/quotation-pdf";
 import { LpoPdf } from "./pdfs/lpo-pdf";
+import { LeaseAgreementPdf } from "./pdfs/lease-agreement-pdf";
 import {
   useReactTable,
   getCoreRowModel,
@@ -68,7 +70,6 @@ export function DocumentsClient() {
   }, [firestore, tenant?.id]);
   const { data: customers } = useCollection(customersQuery);
 
-  // FETCH WORKSPACE PROFILE FOR DEEP BAKING
   const companyRef = useMemoFirebase(() => 
     tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
     [firestore, tenant?.id]
@@ -85,6 +86,10 @@ export function DocumentsClient() {
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [isExporting, setIsExporting] = useState(false);
+
+  // Lease Specific
+  const [leaseDuration, setLeaseDuration] = useState('1');
+  const [leaseUnit, setLeaseUnit] = useState<'Day' | 'Week' | 'Month' | 'Year'>('Day');
 
   const sortedDocuments = useMemo(() => {
       if (!rawDocuments) return [];
@@ -103,7 +108,6 @@ export function DocumentsClient() {
     let title = `${type.replace(/([A-Z])/g, ' $1').trim()} #${prefix}-${new Date().getFullYear()}-${String(docCount + 1).padStart(3,'0')}`;
     let relatedTo = "N/A";
     
-    // DEEP METADATA BAKE: Capture workspace branding at time of generation
     const documentData: any = { 
         details: details || '', 
         applyVat,
@@ -138,7 +142,7 @@ export function DocumentsClient() {
             return;
         }
         documentData.amount = parsedAmount;
-    } else if (['Quotation', 'Invoice', 'Proforma'].includes(type)) {
+    } else if (['Quotation', 'Invoice', 'Proforma', 'LeaseAgreement'].includes(type)) {
         const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
         documentData.items = validLineItems;
         const subtotal = validLineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
@@ -146,6 +150,14 @@ export function DocumentsClient() {
         documentData.subtotal = subtotal;
         documentData.vat = vat;
         documentData.total = subtotal + vat;
+
+        if (type === 'LeaseAgreement') {
+            documentData.lease = {
+                duration: leaseDuration,
+                unit: leaseUnit,
+                startDate: new Date().toISOString()
+            };
+        }
     }
 
     try {
@@ -187,7 +199,6 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // INCREASED DELAY FOR HYDRATION STABILITY
     await new Promise(r => setTimeout(r, 200)); 
 
     const element = document.getElementById('pdf-preview-target');
@@ -263,16 +274,17 @@ export function DocumentsClient() {
       case 'DeliveryNote': return <DeliveryNotePdf document={selectedDocument} />;
       case 'Quotation': return <QuotationPdf document={selectedDocument} />;
       case 'LPO': return <LpoPdf document={selectedDocument} />;
+      case 'LeaseAgreement': return <LeaseAgreementPdf document={selectedDocument} />;
       default: return null;
     }
   };
 
   const renderForm = (type: DocumentType) => {
-    const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'DeliveryNote', 'LPO'].includes(type);
+    const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'DeliveryNote', 'LPO', 'LeaseAgreement'].includes(type);
     return (
       <Card className="shadow-lg border-primary/10">
         <CardHeader className="bg-primary/5 border-b">
-            <CardTitle className="text-lg font-black uppercase">Generate Branded {type}</CardTitle>
+            <CardTitle className="text-lg font-black uppercase">Generate Branded {type.replace(/([A-Z])/g, ' $1').trim()}</CardTitle>
             <CardDescription>Configure document metadata for your workspace.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
@@ -289,6 +301,28 @@ export function DocumentsClient() {
                 <Label htmlFor="vat-switch" className="cursor-pointer font-bold text-xs">Include 16% VAT</Label>
               </div>
           </div>
+
+          {type === 'LeaseAgreement' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-primary/5 rounded-xl border border-primary/10">
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase opacity-60">Lease Duration</Label>
+                      <Input type="number" value={leaseDuration} onChange={e => setLeaseDuration(e.target.value)} className="h-11" />
+                  </div>
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase opacity-60">Unit</Label>
+                      <Select onValueChange={(v: any) => setLeaseUnit(v)} value={leaseUnit}>
+                          <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="Day">Days</SelectItem>
+                              <SelectItem value="Week">Weeks</SelectItem>
+                              <SelectItem value="Month">Months</SelectItem>
+                              <SelectItem value="Year">Years</SelectItem>
+                          </SelectContent>
+                      </Select>
+                  </div>
+              </div>
+          )}
+
           {type === 'Receipt' && (
             <div className="max-w-xs space-y-2">
                 <Label>Amount Paid (KES)</Label>
@@ -304,7 +338,7 @@ export function DocumentsClient() {
                             <TableRow>
                                 <TableHead className="text-[10px] font-black uppercase min-w-[200px]">Description</TableHead>
                                 <TableHead className="w-24 text-[10px] font-black uppercase">Qty</TableHead>
-                                <TableHead className="w-32 text-[10px] font-black uppercase">Price</TableHead>
+                                <TableHead className="w-32 text-[10px] font-black uppercase">{type === 'LeaseAgreement' ? 'Rate/Unit' : 'Unit Price'}</TableHead>
                                 <TableHead className="w-10"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -333,15 +367,17 @@ export function DocumentsClient() {
     <div className="space-y-6">
       <PageHeader title="Branded Documents (Cloud)" description="Professional invoices and quotations synchronized globally." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
-          <TabsTrigger value="Quotation" className="font-black uppercase text-[9px] md:text-[10px] py-3">Quotation</TabsTrigger>
-          <TabsTrigger value="Invoice" className="font-black uppercase text-[9px] md:text-[10px] py-3">Invoice</TabsTrigger>
-          <TabsTrigger value="Proforma" className="font-black uppercase text-[9px] md:text-[10px] py-3">Proforma</TabsTrigger>
-          <TabsTrigger value="Receipt" className="font-black uppercase text-[9px] md:text-[10px] py-3">Receipt</TabsTrigger>
-          <TabsTrigger value="DeliveryNote" className="font-black uppercase text-[9px] md:text-[10px] py-3">Delivery</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 md:grid-cols-6 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
+          <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
+          <TabsTrigger value="Invoice" className="font-black uppercase text-[8px] md:text-[9px] py-3">Invoice</TabsTrigger>
+          <TabsTrigger value="LeaseAgreement" className="font-black uppercase text-[8px] md:text-[9px] py-3">Lease Hire</TabsTrigger>
+          <TabsTrigger value="Proforma" className="font-black uppercase text-[8px] md:text-[9px] py-3">Proforma</TabsTrigger>
+          <TabsTrigger value="Receipt" className="font-black uppercase text-[8px] md:text-[9px] py-3">Receipt</TabsTrigger>
+          <TabsTrigger value="DeliveryNote" className="font-black uppercase text-[8px] md:text-[9px] py-3">Delivery</TabsTrigger>
         </TabsList>
         <TabsContent value="Quotation">{renderForm("Quotation")}</TabsContent>
         <TabsContent value="Invoice">{renderForm("Invoice")}</TabsContent>
+        <TabsContent value="LeaseAgreement">{renderForm("LeaseAgreement")}</TabsContent>
         <TabsContent value="Proforma">{renderForm("Proforma")}</TabsContent>
         <TabsContent value="Receipt">{renderForm("Receipt")}</TabsContent>
         <TabsContent value="DeliveryNote">{renderForm("DeliveryNote")}</TabsContent>
@@ -376,7 +412,6 @@ export function DocumentsClient() {
         <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
           <DialogHeader className="p-6 bg-white border-b no-print">
             <DialogTitle className="text-xl font-black uppercase tracking-tight">Document Fidelity Engine</DialogTitle>
-            <DialogDescription className="text-xs font-bold text-muted-foreground uppercase">Processing high-fidelity A4 structured output.</DialogDescription>
           </DialogHeader>
           <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-4 md:p-8">
             <div id="pdf-preview-target" className="shrink-0 shadow-2xl relative bg-white overflow-hidden origin-top scale-[0.4] sm:scale-[0.6] md:scale-100" style={{ width: '210mm', minHeight: '297mm' }}>

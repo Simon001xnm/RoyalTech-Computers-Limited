@@ -23,7 +23,6 @@ export function QuotationPdf({ document }: { document: AppDocument }) {
     return <div className="p-4">Document data is missing.</div>;
   }
 
-  // PREFER BAKED METADATA
   const workspace = document.data.workspace || cloudCompany;
   const data = document.data;
 
@@ -168,10 +167,6 @@ export function QuotationPdf({ document }: { document: AppDocument }) {
 
         <div className="text-center font-semibold text-gray-600 pt-4">
             <p>Thank you for choosing us!</p>
-        </div>
-
-        <div className="text-center text-[10px] text-muted-foreground pt-4 border-t">
-            powered by simonstyless technologies limited
         </div>
       </footer>
     </div>

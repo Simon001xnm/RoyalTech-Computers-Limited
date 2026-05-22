@@ -23,7 +23,6 @@ export function ProformaInvoicePdf({ document }: { document: AppDocument }) {
     return <div className="p-4">Document data is missing.</div>;
   }
 
-  // PREFER BAKED METADATA
   const workspace = document.data.workspace || cloudCompany;
   const data = document.data;
 
@@ -164,7 +163,6 @@ export function ProformaInvoicePdf({ document }: { document: AppDocument }) {
                 </div>
                  <div className="text-right">
                     <p>Thank you for choosing us!</p>
-                    <p className="text-[9px] text-muted-foreground pt-4 uppercase">powered by simonstyless technologies limited</p>
                 </div>
             </div>
         </div>

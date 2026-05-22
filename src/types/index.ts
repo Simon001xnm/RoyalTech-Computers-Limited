@@ -139,7 +139,7 @@ export interface SaleItem {
     price: number; 
     quantity: number;
     discount?: number;
-    type: 'asset' | 'accessory';
+    type: 'asset' | 'accessory' | 'custom';
     cogs?: number;
 }
 
@@ -261,7 +261,22 @@ export interface Notification extends Auditable {
   priority: 'info' | 'important' | 'alert';
 }
 
-export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | 'DeliveryNote' | 'Quotation' | 'LPO';
+export interface Lease extends Auditable {
+    id: string;
+    tenantId: string;
+    customerId: string;
+    customerName: string;
+    assetId: string;
+    laptopModel: string;
+    startDate: string;
+    endDate: string;
+    monthlyPayment?: number;
+    status: 'Active' | 'Expired' | 'Terminated' | 'Upcoming';
+    paymentStatus: 'Paid' | 'Pending' | 'Overdue';
+    signature?: string;
+}
+
+export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | 'DeliveryNote' | 'Quotation' | 'LPO' | 'LeaseAgreement';
 
 export interface DocumentLineItem {
   description: string;

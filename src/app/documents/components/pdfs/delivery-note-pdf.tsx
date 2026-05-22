@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument } from "@/types";
@@ -20,7 +21,6 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
     return <div className="p-4">Document data is missing.</div>;
   }
 
-  // PREFER BAKED METADATA
   const workspace = document.data.workspace || cloudCompany;
   const { customer, laptop, items, details, deliveredBy, receivedBy, delivererSignature, recipientSignature } = document.data;
 
@@ -140,9 +140,6 @@ export function DeliveryNotePdf({ document }: { document: AppDocument }) {
         <div className="flex justify-between w-full">
             <p>White: Office Copy | Blue: Customer Copy | Yellow: Delivery Copy</p>
             <p>Thank you for choosing us!</p>
-        </div>
-        <div className="text-[10px] text-muted-foreground pt-2 border-t w-full">
-            powered by simonstyless technologies limited
         </div>
       </footer>
     </div>

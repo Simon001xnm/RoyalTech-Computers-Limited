@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
@@ -20,7 +21,6 @@ export function LpoPdf({ document }: { document: AppDocument }) {
     return <div className="p-4">Document data is missing.</div>;
   }
 
-  // PREFER BAKED METADATA
   const workspace = document.data.workspace || cloudCompany;
   const { supplier, items, subtotal, total, notes } = document.data;
   
@@ -137,7 +137,6 @@ export function LpoPdf({ document }: { document: AppDocument }) {
             </div>
              <div className="text-right">
                 <p>Thank you for your business!</p>
-                <p className="text-[10px] text-muted-foreground mt-4 uppercase">powered by simonstyless technologies limited</p>
             </div>
         </div>
       </footer>
