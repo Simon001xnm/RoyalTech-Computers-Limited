@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Calendar } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Calendar as CalendarIcon, Info } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
 import {
   Table,
@@ -48,6 +48,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useSaaS } from "@/components/saas/saas-provider";
+import { addDays, addWeeks, addMonths, addYears } from "date-fns";
 
 const VAT_RATE = 0.16;
 
@@ -88,8 +89,11 @@ export function DocumentsClient() {
   const [isExporting, setIsExporting] = useState(false);
 
   // Lease Specific
+  const [clientType, setClientType] = useState<'Individual' | 'Corporate'>('Individual');
   const [leaseDuration, setLeaseDuration] = useState('1');
   const [leaseUnit, setLeaseUnit] = useState<'Day' | 'Week' | 'Month' | 'Year'>('Day');
+  const [isStudent, setIsStudent] = useState(false);
+  const [verification, setVerification] = useState<any>({});
 
   const sortedDocuments = useMemo(() => {
       if (!rawDocuments) return [];
@@ -132,7 +136,7 @@ export function DocumentsClient() {
             email: selectedCustomer.email || '',
             address: selectedCustomer.address || ''
         };
-        relatedTo = `Customer: ${selectedCustomer.name}`;
+        relatedTo = `${selectedCustomer.name}`;
     }
 
     if (type === 'Receipt') {
@@ -152,11 +156,22 @@ export function DocumentsClient() {
         documentData.total = subtotal + vat;
 
         if (type === 'LeaseAgreement') {
+            const startDate = new Date();
+            let endDate = new Date(startDate);
+            const dur = parseInt(leaseDuration) || 1;
+            if (leaseUnit === "Day") endDate = addDays(startDate, dur);
+            if (leaseUnit === "Week") endDate = addWeeks(startDate, dur);
+            if (leaseUnit === "Month") endDate = addMonths(startDate, dur);
+            if (leaseUnit === "Year") endDate = addYears(startDate, dur);
+
             documentData.lease = {
                 duration: leaseDuration,
                 unit: leaseUnit,
-                startDate: new Date().toISOString()
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString()
             };
+            documentData.clientType = clientType;
+            documentData.verification = verification;
         }
     }
 
@@ -303,22 +318,68 @@ export function DocumentsClient() {
           </div>
 
           {type === 'LeaseAgreement' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-primary/5 rounded-xl border border-primary/10">
-                  <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase opacity-60">Lease Duration</Label>
-                      <Input type="number" value={leaseDuration} onChange={e => setLeaseDuration(e.target.value)} className="h-11" />
+              <div className="space-y-6 animate-in fade-in duration-500">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-primary/5 rounded-2xl border border-primary/10">
+                      <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase">Agreement Protocol</Label>
+                          <Select onValueChange={(v: any) => setClientType(v)} value={clientType}>
+                              <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="Individual">Individual Agreement</SelectItem>
+                                  <SelectItem value="Corporate">Corporate Agreement</SelectItem>
+                              </SelectContent>
+                          </Select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                              <Label className="text-[10px] font-black uppercase opacity-60">Lease Duration</Label>
+                              <Input type="number" value={leaseDuration} onChange={e => setLeaseDuration(e.target.value)} className="h-11" />
+                          </div>
+                          <div className="space-y-2">
+                              <Label className="text-[10px] font-black uppercase opacity-60">Unit</Label>
+                              <Select onValueChange={(v: any) => setLeaseUnit(v)} value={leaseUnit}>
+                                  <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                      <SelectItem value="Day">Days</SelectItem>
+                                      <SelectItem value="Week">Weeks</SelectItem>
+                                      <SelectItem value="Month">Months</SelectItem>
+                                      <SelectItem value="Year">Years</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                          </div>
+                      </div>
                   </div>
-                  <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase opacity-60">Unit</Label>
-                      <Select onValueChange={(v: any) => setLeaseUnit(v)} value={leaseUnit}>
-                          <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="Day">Days</SelectItem>
-                              <SelectItem value="Week">Weeks</SelectItem>
-                              <SelectItem value="Month">Months</SelectItem>
-                              <SelectItem value="Year">Years</SelectItem>
-                          </SelectContent>
-                      </Select>
+
+                  <div className="space-y-4">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                          <Info className="h-4 w-4" /> Verification Check
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-xl bg-muted/20">
+                          {clientType === 'Individual' ? (
+                              <>
+                                  <Input placeholder="National ID Number" className="h-10" onChange={e => setVerification({...verification, nationalId: e.target.value})} />
+                                  <Input placeholder="Guarantor ID Number" className="h-10" onChange={e => setVerification({...verification, guarantorId: e.target.value})} />
+                                  <div className="md:col-span-2 flex items-center gap-4 p-3 bg-white rounded-lg border">
+                                      <Switch id="student-toggle" checked={isStudent} onCheckedChange={setIsStudent} />
+                                      <Label htmlFor="student-toggle" className="text-xs font-bold">Client is a Student</Label>
+                                  </div>
+                                  {isStudent && (
+                                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                          <Input placeholder="Student ID No." className="h-10" onChange={e => setVerification({...verification, studentId: e.target.value})} />
+                                          <Input placeholder="Guardian Name" className="h-10" onChange={e => setVerification({...verification, parentName: e.target.value})} />
+                                          <Input placeholder="Guardian Phone" className="h-10" onChange={e => setVerification({...verification, parentPhone: e.target.value})} />
+                                      </div>
+                                  )}
+                              </>
+                          ) : (
+                              <>
+                                  <Input placeholder="Business Permit No." className="h-10" onChange={e => setVerification({...verification, businessPermit: e.target.value})} />
+                                  <Input placeholder="CR12 Reference" className="h-10" onChange={e => setVerification({...verification, cr12Reference: e.target.value})} />
+                                  <Input placeholder="Director/Signatory ID" className="h-10" onChange={e => setVerification({...verification, directorId: e.target.value})} />
+                                  <Input placeholder="Contact Liaison Person" className="h-10" onChange={e => setVerification({...verification, contactPerson: e.target.value})} />
+                              </>
+                          )}
+                      </div>
                   </div>
               </div>
           )}

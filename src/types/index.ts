@@ -264,16 +264,32 @@ export interface Notification extends Auditable {
 export interface Lease extends Auditable {
     id: string;
     tenantId: string;
+    clientType: 'Individual' | 'Corporate';
     customerId: string;
     customerName: string;
     assetId: string;
     laptopModel: string;
     startDate: string;
     endDate: string;
+    duration: number;
+    durationUnit: 'Day' | 'Week' | 'Month' | 'Year';
     monthlyPayment?: number;
     status: 'Active' | 'Expired' | 'Terminated' | 'Upcoming';
     paymentStatus: 'Paid' | 'Pending' | 'Overdue';
     signature?: string;
+    
+    // Verification Metadata
+    verification?: {
+        nationalId?: string;
+        guarantorId?: string;
+        studentId?: string;
+        parentName?: string;
+        parentPhone?: string;
+        businessPermit?: string;
+        cr12Reference?: string;
+        directorId?: string;
+        contactPerson?: string;
+    };
 }
 
 export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | 'DeliveryNote' | 'Quotation' | 'LPO' | 'LeaseAgreement';

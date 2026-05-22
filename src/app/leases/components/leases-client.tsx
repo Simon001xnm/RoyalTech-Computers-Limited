@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -131,14 +132,33 @@ export function LeasesClient() {
     };
 
     const leaseData = {
-        ...data,
-        tenantId: tenant.id,
+        clientType: data.clientType,
+        customerId: data.customerId,
+        customerName: selectedCustomer.name,
+        assetId: data.assetId,
+        laptopModel: selectedAsset.model,
         startDate: data.startDate.toISOString(),
         endDate: data.endDate.toISOString(),
-        customerName: selectedCustomer.name,
-        laptopModel: selectedAsset.model,
+        duration: data.duration,
+        durationUnit: data.durationUnit,
+        monthlyPayment: data.monthlyPayment,
+        paymentStatus: data.paymentStatus,
+        status: data.status,
+        signature: data.signature,
+        tenantId: tenant.id,
         updatedAt: new Date().toISOString(),
         lastModifiedBy: auditInfo,
+        verification: {
+            nationalId: data.nationalId || null,
+            guarantorId: data.guarantorId || null,
+            studentId: data.studentId || null,
+            parentName: data.parentName || null,
+            parentPhone: data.parentPhone || null,
+            businessPermit: data.businessPermit || null,
+            cr12Reference: data.cr12Reference || null,
+            directorId: data.directorId || null,
+            contactPerson: data.contactPerson || null,
+        }
     };
 
     try {
@@ -293,9 +313,11 @@ export function LeasesClient() {
       )}
 
       <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingLease(null); }}}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingLease ? "Edit Agreement" : "Finalize New Lease"}</DialogTitle>
+            <DialogTitle className="text-2xl font-black uppercase tracking-tighter">
+                {editingLease ? "Modify Lease Contract" : "Initialize Hardware Hire Agreement"}
+            </DialogTitle>
           </DialogHeader>
           <LeaseForm
             lease={editingLease}
