@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -174,6 +173,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
         <>
             <SheetHeader className="p-6">
                 <SheetTitle>{reseller.name}'s Dashboard</SheetTitle>
+                <SheetDescription>View historical issuances and manage inventory assigned to this partner.</SheetDescription>
                 <div className="pt-2"><Button onClick={() => setIsIssueFormOpen(true)}><PlusCircle className="mr-2 h-4 w-4"/>Issue Accessories</Button></div>
             </SheetHeader>
             <div className="flex-grow overflow-y-auto p-6 space-y-6">

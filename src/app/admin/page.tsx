@@ -462,6 +462,10 @@ export default function PlatformCommandCenter() {
       {/* Identity Management Sheet */}
       <Sheet open={!!selectedUserId} onOpenChange={(open) => !open && setSelectedUserId(null)}>
         <SheetContent className="w-full sm:max-w-xl p-0 border-none shadow-2xl">
+            <SheetHeader className="sr-only">
+                <SheetTitle>User Identity Details</SheetTitle>
+                <SheetDescription>Platform identity metadata and technician controls.</SheetDescription>
+            </SheetHeader>
             {activeDetailUser && (
                 <div className="flex flex-col h-full bg-background overflow-hidden">
                     <div className="p-8 bg-primary text-primary-foreground relative">
