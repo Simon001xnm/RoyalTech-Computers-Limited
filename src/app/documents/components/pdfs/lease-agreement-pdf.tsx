@@ -47,185 +47,149 @@ export function LeaseAgreementPdf({ document }: { document: AppDocument }) {
   const primaryColor = workspace?.primaryColor || '#000000';
   const isIndividual = clientType === 'Individual' || !clientType;
   const isStudent = verification?.studentId;
-  const companyName = workspace?.name || 'SIMONSTYLESTECHNOLOGIESLIMITED';
+  const companyName = workspace?.name || 'SIMON STYLESTECHNOLOGIES LIMITED';
 
   return (
-    <div className="p-[25mm] font-sans text-lg bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border leading-relaxed">
+    <div className="p-[20mm] font-sans text-lg bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border leading-relaxed">
       {/* Header with Logo */}
-      <header className="flex justify-between items-center pb-8 border-b-4" style={{ borderColor: primaryColor }}>
-        <div className="flex items-center gap-6">
+      <header className="flex justify-between items-center pb-6 border-b-2 mb-8" style={{ borderColor: primaryColor }}>
+        <div className="flex items-center gap-4">
           {workspace?.logoUrl ? (
             <img 
                 src={workspace.logoUrl} 
                 alt="Company Logo" 
-                className="h-32 w-auto object-contain" 
+                className="h-24 w-auto object-contain" 
                 crossOrigin="anonymous"
             />
           ) : (
-            <div className="h-24 w-24 bg-gray-100 flex items-center justify-center text-sm font-bold border-2 border-dashed">LOGO</div>
+            <div className="h-20 w-20 bg-gray-100 flex items-center justify-center text-xs font-bold border-2 border-dashed">LOGO</div>
           )}
           <div className="space-y-1">
-              <h1 className="text-3xl font-black uppercase" style={{ color: primaryColor }}>{companyName}</h1>
-              <p className="text-sm text-gray-700">{workspace?.address}</p>
-              <p className="text-sm text-gray-700 font-bold">Phone: {workspace?.phone} | Email: {workspace?.email}</p>
+              <h1 className="text-2xl font-black uppercase" style={{ color: primaryColor }}>{companyName}</h1>
+              <p className="text-xs font-bold opacity-60">LEGAL HIRE AGREEMENT</p>
           </div>
         </div>
         <div className="text-right">
-            <h2 className="text-2xl font-black uppercase text-gray-400">Hire Agreement</h2>
-            <p className="text-xs font-mono tracking-tighter">{document.title}</p>
+            <h2 className="text-xl font-black uppercase text-gray-400">Document No:</h2>
+            <p className="text-sm font-mono tracking-tighter">{document.title}</p>
         </div>
       </header>
 
-      {/* Intro Statement */}
-      <section className="my-10 bg-gray-50 p-6 rounded-2xl border-l-8 border-black">
-        <p className="text-lg">
-          This Hardware Lease Agreement is made on <strong>{format(new Date(document.generatedDate), "PPP")}</strong> between <strong>{companyName}</strong> (the "Lessor") and the Client identified below (the "Lessee").
-        </p>
-      </section>
+      {/* Main Parties Section - Side by Side */}
+      <div className="grid grid-cols-2 gap-10 mb-10 text-base">
+        {/* Lessor Side */}
+        <div className="space-y-3">
+          <h3 className="font-black text-xs uppercase tracking-widest text-primary">From (The Owner):</h3>
+          <div className="p-5 border-2 rounded-2xl bg-gray-50/50">
+              <p className="font-black uppercase text-lg">{companyName}</p>
+              <p className="text-sm">{workspace?.address || 'Address not specified'}</p>
+              <p className="text-sm font-bold">Phone: {workspace?.phone}</p>
+              <p className="text-sm">Email: {workspace?.email}</p>
+          </div>
+        </div>
 
-      {/* Customer and Contract Duration */}
-      <div className="grid grid-cols-2 gap-10 mb-10">
-        <div className="space-y-4">
-          <h3 className="font-black text-xs uppercase tracking-widest text-gray-500">Client Identity:</h3>
-          <div className="p-6 border-2 rounded-3xl bg-white shadow-sm space-y-2">
-              <p className="font-black text-2xl uppercase">{customer?.name || 'VALUED CLIENT'}</p>
-              <p className="text-sm text-gray-600">{customer?.address || 'Address not specified'}</p>
-              <p className="text-sm font-bold">Contact: {customer?.phone}</p>
+        {/* Lessee Side */}
+        <div className="space-y-3">
+          <h3 className="font-black text-xs uppercase tracking-widest text-primary">To (The Client):</h3>
+          <div className="p-5 border-2 rounded-2xl bg-white shadow-sm">
+              <p className="font-black uppercase text-lg">{customer?.name || 'VALUED CLIENT'}</p>
+              <p className="text-sm">{customer?.address || 'Address not specified'}</p>
+              <p className="text-sm font-bold">Phone: {customer?.phone}</p>
               
-              <div className="pt-4 border-t mt-4 grid grid-cols-1 gap-2">
+              <div className="pt-3 border-t mt-3 space-y-1">
                 {isIndividual ? (
                     <>
-                        <p className="text-sm"><strong>ID Number:</strong> {verification?.nationalId || 'Verified'}</p>
-                        <p className="text-sm"><strong>Guarantor ID:</strong> {verification?.guarantorId || 'N/A'}</p>
+                        <p className="text-xs"><strong>National ID:</strong> {verification?.nationalId || 'Verified'}</p>
+                        <p className="text-xs"><strong>Guarantor ID:</strong> {verification?.guarantorId || 'N/A'}</p>
                         {isStudent && (
-                            <div className="bg-blue-50 p-3 rounded-xl border-2 border-blue-100">
-                                <p className="text-xs font-black text-blue-800 uppercase mb-1">Student Record</p>
-                                <p className="text-sm">ID: {verification.studentId}</p>
-                                <p className="text-sm">Guardian: {verification.parentName} ({verification.parentPhone})</p>
-                            </div>
+                            <p className="text-xs text-primary font-bold">Student ID: {verification.studentId}</p>
                         )}
                     </>
                 ) : (
                     <>
-                        <p className="text-sm"><strong>Business Permit:</strong> {verification?.businessPermit || 'N/A'}</p>
-                        <p className="text-sm"><strong>CR12 Reference:</strong> {verification?.cr12Reference || 'N/A'}</p>
-                        <p className="text-sm"><strong>Director ID:</strong> {verification?.directorId || 'N/A'}</p>
+                        <p className="text-xs"><strong>Permit No:</strong> {verification?.businessPermit || 'N/A'}</p>
+                        <p className="text-xs"><strong>Director ID:</strong> {verification?.directorId || 'N/A'}</p>
                     </>
                 )}
               </div>
           </div>
         </div>
-        <div className="text-right flex flex-col justify-center">
-           <h3 className="font-black text-xs uppercase tracking-widest text-gray-500 mb-4 text-right">Contract Period:</h3>
-           <div className="bg-black text-white p-8 rounded-[40px] inline-block text-right shadow-2xl">
-              <p className="text-sm font-bold uppercase opacity-70">Duration of Hire</p>
-              <p className="font-black text-5xl my-2">{lease?.duration} {lease?.unit || lease?.durationUnit}(s)</p>
-              <div className="mt-4 pt-4 border-t border-white/20 space-y-1">
-                <p className="text-xs font-bold uppercase">Starts: {format(new Date(lease?.startDate || document.generatedDate), "MMM d, yyyy")}</p>
-                <p className="text-sm font-black text-yellow-400 uppercase">Return By: {format(new Date(lease?.endDate || document.generatedDate), "MMM d, yyyy")}</p>
-              </div>
-           </div>
-        </div>
       </div>
 
-      {/* Items Table */}
+      {/* Contract Period */}
+      <section className="mb-10 bg-black text-white p-6 rounded-2xl flex justify-between items-center">
+        <div>
+            <p className="text-xs font-bold uppercase opacity-60">Time for Hire</p>
+            <p className="text-4xl font-black">{lease?.duration} {lease?.unit || lease?.durationUnit}(s)</p>
+        </div>
+        <div className="text-right space-y-1">
+            <p className="text-sm"><span className="opacity-60">Starts:</span> <strong>{format(new Date(lease?.startDate || document.generatedDate), "MMM d, yyyy")}</strong></p>
+            <p className="text-sm text-yellow-400 font-bold"><span className="opacity-80">Return By:</span> <strong>{format(new Date(lease?.endDate || document.generatedDate), "MMM d, yyyy")}</strong></p>
+        </div>
+      </section>
+
+      {/* Items List */}
       <section className="mb-10">
-        <table className="w-full text-left table-auto border-collapse overflow-hidden rounded-3xl shadow-sm">
+        <h3 className="font-black text-xs uppercase tracking-widest text-gray-500 mb-4">Equipment for Hire:</h3>
+        <table className="w-full text-left table-auto border-collapse">
           <thead>
-            <tr style={{ backgroundColor: primaryColor, color: '#fff' }}>
-              <th className="p-5 text-sm uppercase font-black tracking-widest">Hired Equipment</th>
-              <th className="p-5 text-sm uppercase font-black tracking-widest text-center w-24">Qty</th>
-              <th className="p-5 text-sm uppercase font-black tracking-widest text-right w-40">Rate / Unit</th>
-              <th className="p-5 text-sm uppercase font-black tracking-widest text-right w-40">Total</th>
+            <tr className="bg-gray-100">
+              <th className="p-4 text-sm uppercase font-black">Description of Device</th>
+              <th className="p-4 text-sm uppercase font-black text-center w-24">Qty</th>
+              <th className="p-4 text-sm uppercase font-black text-right w-40">Rate / Unit</th>
             </tr>
           </thead>
           <tbody>
             {items?.map((item: any, idx: number) => (
-              <tr key={idx} className="border-b-2 border-gray-100 bg-white">
-                <td className="p-6">
-                    <p className="font-black text-xl">{item.description}</p>
-                    {item.serialNumber && <p className="text-xs font-mono text-gray-500 uppercase mt-1">Serial No: {item.serialNumber}</p>}
+              <tr key={idx} className="border-b">
+                <td className="p-4">
+                    <p className="font-bold text-lg">{item.description}</p>
+                    {item.serialNumber && <p className="text-xs font-mono opacity-50 uppercase">S/N: {item.serialNumber}</p>}
                 </td>
-                <td className="p-6 text-center font-bold text-lg">{item.quantity}</td>
-                <td className="p-6 text-right font-bold text-lg">{formatCurrency(item.unitPrice)}</td>
-                <td className="p-6 text-right font-black text-xl">{formatCurrency(item.unitPrice * item.quantity * (Number(lease?.duration) || 1))}</td>
+                <td className="p-4 text-center font-bold">{item.quantity}</td>
+                <td className="p-4 text-right font-bold">{formatCurrency(item.unitPrice)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </section>
       
-      {/* Terms and Conditions - Simplified */}
-      <section className="grid grid-cols-[1fr_250px] gap-12">
-        <div className="space-y-6">
-          <h4 className="font-black text-sm uppercase text-black border-b-4 pb-2 w-fit">Terms of the Agreement:</h4>
-          <ol className="space-y-4 text-base font-medium">
-            <li className="flex gap-4">
-                <span className="font-black">1.</span>
-                <span>If you break or damage the equipment, you will pay for all the repairs at the current market price.</span>
-            </li>
-            <li className="flex gap-4">
-                <span className="font-black">2.</span>
-                <span>If the equipment is lost, stolen, or damaged too much to fix, you must buy a new one for us at the current market price.</span>
-            </li>
-            <li className="flex gap-4">
-                <span className="font-black">3.</span>
-                <span>If you return the equipment late without telling us first, you must pay a fine of <strong>KES 1,000 for every day</strong> you are late.</span>
-            </li>
-            <li className="flex gap-4">
-                <span className="font-black">4.</span>
-                <span>The equipment belongs to <strong>{companyName}</strong>. You are only hiring it for the time mentioned above.</span>
-            </li>
-          </ol>
+      {/* Terms and Conditions - Simple Words */}
+      <section className="space-y-6 mb-10">
+        <h3 className="font-black text-sm uppercase text-black border-b-2 pb-2">Agreement Rules:</h3>
+        <div className="space-y-4 text-base">
+          <p className="flex gap-4"><strong>1.</strong> <span>If you break or damage the equipment, you will pay for all the repairs at the current market price.</span></p>
+          <p className="flex gap-4"><strong>2.</strong> <span>If the equipment is lost, stolen, or damaged too much to fix, you must buy a new one for us at the current market price.</span></p>
+          <p className="flex gap-4"><strong>3.</strong> <span>If you return the equipment late without telling us first, you will pay a fine of <strong>KES 1,000 for every day</strong> you are late.</span></p>
+          <p className="flex gap-4"><strong>4.</strong> <span>The equipment belongs to <strong>{companyName}</strong>. You are only hiring it for the time stated above.</span></p>
         </div>
+      </section>
 
-        <div className="space-y-3 bg-gray-50 p-6 rounded-3xl border-2">
-             <div className="flex justify-between py-1 text-sm font-bold border-b border-gray-200">
-                <span>Subtotal:</span>
-                <span>{formatCurrency(subtotal || 0)}</span>
+      {/* Financial Box */}
+      <section className="bg-gray-50 p-6 rounded-3xl border-2 border-dashed flex justify-between items-center mb-10">
+            <div className="text-sm font-bold opacity-60">Total Rental Cost:</div>
+            <div className="text-right">
+                <p className="text-3xl font-black" style={{ color: primaryColor }}>{formatCurrency(total || 0)}</p>
+                {applyVat && <p className="text-xs opacity-60">(Includes 16% VAT)</p>}
             </div>
-            {applyVat && <div className="flex justify-between py-1 text-sm font-bold border-b border-gray-200 text-red-600">
-                <span>VAT (16%):</span>
-                <span>{formatCurrency(vat || 0)}</span>
-            </div>}
-            <div className="flex justify-between py-4 border-t-4 border-black mt-2">
-                <span className="font-black text-xl uppercase">Total Amount:</span>
-                <span className="font-black text-2xl" style={{ color: primaryColor }}>{formatCurrency(total || 0)}</span>
-            </div>
-        </div>
       </section>
 
       {/* Signatures */}
-      <section className="mt-16 grid grid-cols-2 gap-20">
-        <div className="space-y-6">
-            <div className="h-24 flex items-end justify-center border-b-4 border-dashed border-gray-300">
-                {/* Lessor Signature Area */}
-            </div>
-            <p className="text-xs font-black uppercase text-center opacity-50 tracking-[0.2em]">Authorized Signature (Lessor)</p>
+      <section className="mt-auto grid grid-cols-2 gap-20 pt-10">
+        <div className="space-y-4">
+            <div className="h-20 border-b-2 border-dashed border-gray-300"></div>
+            <p className="text-xs font-black uppercase text-center opacity-50">Authorized Signature (The Owner)</p>
         </div>
-        <div className="space-y-6">
-            <div className="h-24 flex items-end justify-center border-b-4 border-dashed border-gray-300 overflow-hidden bg-gray-50/50 rounded-t-2xl">
-                {signature ? (
-                    <img 
-                        src={signature} 
-                        alt="Client Signature" 
-                        className="max-h-full w-auto object-contain" 
-                        crossOrigin="anonymous"
-                    />
-                ) : null}
+        <div className="space-y-4">
+            <div className="h-20 border-b-2 border-dashed border-gray-300 flex items-end justify-center">
+                {signature && <img src={signature} alt="Client Sign" className="max-h-full w-auto" crossOrigin="anonymous" />}
             </div>
-            <p className="text-xs font-black uppercase text-center opacity-50 tracking-[0.2em]">Client Signature (Lessee)</p>
+            <p className="text-xs font-black uppercase text-center opacity-50">Client Signature (The Client)</p>
         </div>
       </section>
 
-      <div className="flex-grow"></div>
-
-      {/* Legal Footer */}
-      <footer className="text-center pt-8 mt-12 border-t-2 border-gray-100">
-          <p className="text-[10px] font-black uppercase tracking-[0.6em] text-gray-300">official legal binding hire contract</p>
-          <p className="text-[9px] text-gray-400 mt-3 font-medium">
-            This document serves as proof of agreement between the two parties. All information is verified and stored in our secure cloud node.
-          </p>
+      <footer className="text-center pt-8 mt-10 border-t opacity-30">
+          <p className="text-[10px] font-black uppercase tracking-[0.4em]">Official Business Record</p>
       </footer>
     </div>
   );

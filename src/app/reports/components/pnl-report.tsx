@@ -138,8 +138,8 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
         </div>
 
         <div className="mt-12 pt-4 border-t text-center">
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest">
-                powered by simonstyless technologies limited
+            <p className="text-[10px] text-gray-300 uppercase tracking-widest">
+                OFFICIAL AUDIT DOCUMENT
             </p>
         </div>
       </CardContent>
