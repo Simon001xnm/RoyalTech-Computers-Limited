@@ -55,7 +55,7 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
         email: "",
         phone: "",
         role: "user",
-        permissions: ["dashboard", "pos", "stock", "customers", "documents"], // Default set
+        permissions: ["dashboard", "pos", "stock", "customers", "documents"], 
       };
 
   const form = useForm<FormValues>({
@@ -66,7 +66,7 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
   const selectedRole = form.watch("role");
 
   // Filter out system items for permission selection
-  const permissionModules = NAV_ITEMS.filter(i => !['settings', 'users', 'audit'].includes(i.id));
+  const permissionModules = NAV_ITEMS.filter(i => !['settings', 'users', 'audit', 'dashboard'].includes(i.id));
 
   return (
     <Form {...form}>
@@ -105,14 +105,14 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email Address</FormLabel>
+                <FormLabel>Work Email</FormLabel>
                 <FormControl>
                   <Input type="email" placeholder="jane.smith@example.com" {...field} disabled={!!user} />
                 </FormControl>
                 {user ? (
-                    <FormDescription className="text-xs">Email cannot be changed after account link.</FormDescription>
+                    <FormDescription className="text-xs">Email is locked after registration.</FormDescription>
                 ) : (
-                    <FormDescription className="text-xs">User must sign up with this exact email to link to your workspace.</FormDescription>
+                    <FormDescription className="text-xs">User must register with this exact email to join your workspace.</FormDescription>
                 )}
                 <FormMessage />
               </FormItem>
@@ -124,7 +124,7 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
             name="role"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>System Role</FormLabel>
+                <FormLabel>Access Level</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -132,8 +132,8 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="admin">Admin (Workspace Owner)</SelectItem>
-                    <SelectItem value="user">Staff (Restricted Access)</SelectItem>
+                    <SelectItem value="admin">Administrator (Full Access)</SelectItem>
+                    <SelectItem value="user">Staff Member (Restricted Modules)</SelectItem>
                   </SelectContent>
                 </Select>
                  {selectedRole && <FormDescription className="text-[10px] font-bold uppercase text-primary mt-1">{roleDescriptions[selectedRole]}</FormDescription>}
@@ -146,9 +146,8 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
             <div className="space-y-4 pt-4 border-t">
                 <div className="flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-black uppercase tracking-widest">Module Access Selection</h3>
+                    <h3 className="text-sm font-black uppercase tracking-widest">Enable Modules for this User</h3>
                 </div>
-                <p className="text-xs text-muted-foreground">Select which modules this user can see and interact with.</p>
                 
                 <ScrollArea className="h-60 rounded-xl border p-4 bg-muted/5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -196,7 +195,7 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading} className="font-black uppercase tracking-widest">
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (user ? "Update Access" : "Provision User")}
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (user ? "Update Access" : "Create Invitation")}
           </Button>
         </div>
       </form>

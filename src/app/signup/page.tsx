@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useUser, useFirestore, useAuth } from '@/firebase/provider';
+import { useUser, useFirestore, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, getDocs, collection, query, where, deleteDoc } from 'firebase/firestore';
-import { Loader2, ChevronDown, ChevronRight, ShieldCheck, Zap } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronRight, ShieldCheck } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
 import { initiateGoogleSignIn } from '@/firebase/non-blocking-login';
 import { logger } from '@/lib/logger';
@@ -31,41 +31,38 @@ export default function SignUpPage() {
   const firestore = useFirestore();
   const auth = useAuth();
 
-  const isMasterEmail = MASTER_KEYS.includes(email.toLowerCase().trim());
-
   useEffect(() => {
     if (!isUserLoading && user) {
-      router.push(isMasterEmail ? '/admin' : '/');
+      router.push('/');
     }
-  }, [user, isUserLoading, router, isMasterEmail]);
+  }, [user, isUserLoading, router]);
 
   const handleSignUp = async () => {
     if (!email || !password || !name) {
-        toast({ variant: 'destructive', title: 'Information Required' });
+        toast({ variant: 'destructive', title: 'Information Required', description: 'Please fill all fields.' });
         return;
     }
 
     setIsLoading(true);
     const normalizedEmail = email.toLowerCase().trim();
-    const isMaster = MASTER_KEYS.includes(normalizedEmail);
     
     try {
-        // 1. Check for invitations (Pre-provisioned profile)
+        // 1. Check for existing Invitations (Pre-provisioned profile)
         const q = query(collection(firestore, 'users'), where('email', '==', normalizedEmail), where('status', '==', 'invited'));
         const snap = await getDocs(q);
         const invitedProfile = !snap.empty ? snap.docs[0].data() : null;
-        const invitationDocId = !snap.empty ? snap.docs[0].id : null;
 
-        // 2. Create Auth User
+        // 2. Create the Authentication Account
         const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
         const newUser = userCredential.user;
         await updateProfile(newUser, { displayName: name });
 
-        // 3. Sync to Firestore
-        // If invited, we adopt their pre-defined role, tenant, and permissions
+        // 3. Create the real Profile (linking to workspace if invited)
+        const isMaster = MASTER_KEYS.includes(normalizedEmail);
+        
         const finalRole = isMaster ? 'super_admin' : (invitedProfile?.role || 'user');
         const finalTenantId = invitedProfile?.tenantId || null;
-        const finalTenantIds = invitedProfile?.tenantIds || [];
+        const finalTenantIds = invitedProfile?.tenantIds || (finalTenantId ? [finalTenantId] : []);
         const finalPermissions = invitedProfile?.permissions || [];
 
         await setDoc(doc(firestore, 'users', newUser.uid), {
@@ -80,13 +77,13 @@ export default function SignUpPage() {
             createdAt: new Date().toISOString()
         });
 
-        // 4. Cleanup invitation doc if it was a separate random ID
-        if (invitationDocId && invitationDocId !== newUser.uid) {
-            await deleteDoc(doc(firestore, 'users', invitationDocId));
+        // 4. Cleanup the temporary invitation record
+        if (!snap.empty) {
+            await deleteDoc(doc(firestore, 'users', snap.docs[0].id));
         }
 
-        logger.business('Identity', 'New User Registered', { email: normalizedEmail, method: 'Email', role: finalRole });
-        toast({ title: 'Account Created Successfully' });
+        logger.business('Identity', 'Account Registration Complete', { email: normalizedEmail, role: finalRole });
+        toast({ title: 'Welcome aboard!', description: 'Your account has been activated.' });
         router.push(isMaster ? '/admin' : '/');
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Signup Failed', description: error.message });
@@ -98,13 +95,10 @@ export default function SignUpPage() {
   const handleGoogleSignUp = async () => {
       setIsLoading(true);
       try {
-          const result = await initiateGoogleSignIn(auth);
-          if (result.user.email) {
-            logger.business('Identity', 'Google Identity Registration', { email: result.user.email });
-          }
+          await initiateGoogleSignIn(auth);
       } catch (e: any) {
           setIsLoading(false);
-          // Standard Google error handling OMITTED for brevity (maintained from previous version)
+          toast({ variant: 'destructive', title: 'Google Registration Failed', description: e.message });
       }
   };
 
@@ -145,7 +139,7 @@ export default function SignUpPage() {
                 onClick={() => setShowEmailAuth(!showEmailAuth)}
                 className="w-full flex items-center justify-center gap-2 text-[#5e6670] hover:text-[#0e1217] font-semibold text-base transition-colors py-2"
             >
-                Continue another way
+                Continue with email
                 {showEmailAuth ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </button>
 
@@ -153,7 +147,7 @@ export default function SignUpPage() {
                 <div className="space-y-4 mt-6 animate-in slide-in-from-top-2 duration-300">
                     <div className="space-y-2">
                         <Label className="text-sm font-bold text-[#344054]">Full Name</Label>
-                        <Input value={name} onChange={(e) => setName(e.target.value)} className="h-12 border-[#d0d5dd] rounded-xl" />
+                        <Input value={name} onChange={(e) => setName(e.target.value)} className="h-12 border-[#d0d5dd] rounded-xl" placeholder="John Doe" />
                     </div>
                     <div className="space-y-2">
                         <Label className="text-sm font-bold text-[#344054]">Work Email</Label>
@@ -164,15 +158,9 @@ export default function SignUpPage() {
                           className="h-12 border-[#d0d5dd] rounded-xl" 
                           placeholder="name@company.com"
                         />
-                        {isMasterEmail && (
-                          <div className="flex items-center gap-2 p-2 mt-1 bg-primary/5 border border-primary/20 rounded-lg text-primary text-[10px] font-black uppercase tracking-widest animate-in fade-in duration-300">
-                            <ShieldCheck className="h-3 w-3" />
-                            Platform Technician Identity Recognized
-                          </div>
-                        )}
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-sm font-bold text-[#344054]">Set Password</Label>
+                        <Label className="text-sm font-bold text-[#344054]">Create Password</Label>
                         <Input 
                           type="password" 
                           value={password} 
@@ -182,7 +170,7 @@ export default function SignUpPage() {
                         />
                     </div>
                     <Button onClick={handleSignUp} className="w-full h-12 text-base font-bold rounded-xl mt-2" disabled={isLoading}>
-                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Create Account'}
+                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Register Account'}
                     </Button>
                 </div>
             )}
@@ -191,13 +179,12 @@ export default function SignUpPage() {
 
         <CardFooter className="flex-col gap-10 pt-8 text-center">
           <p className="text-sm text-[#5e6670] leading-relaxed max-w-[320px]">
-            By continuing, you agree to {APP_NAME}'s <a href="#" className="text-primary hover:underline font-semibold">Terms of Use</a>. 
-            Read our <a href="#" className="text-primary hover:underline font-semibold">Privacy Policy</a>.
+            By continuing, you agree to the <a href="#" className="text-primary hover:underline font-semibold">Terms of Use</a>. 
           </p>
           
           <div className="space-y-6 pt-4 border-t border-gray-200 w-full">
             <p className="text-[#5e6670] text-sm">
-                Already registered? <Link href="/login" className="text-primary hover:underline font-bold">Return to Access</Link>
+                Already have an account? <Link href="/login" className="text-primary hover:underline font-bold">Log In</Link>
             </p>
           </div>
         </CardFooter>

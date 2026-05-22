@@ -27,40 +27,35 @@ export const isMasterKey = (email?: string | null): boolean => {
     return MASTER_KEYS.includes(email.toLowerCase());
 };
 
+/**
+ * Filter navigation items based on user role and granular permissions.
+ */
 export const getPermittedNavItems = (user?: User | null, email?: string | null): NavItem[] => {
     const isMaster = isMasterKey(email);
     const role = user?.role || 'user';
     const permissions = user?.permissions || [];
     
-    // Super Admin (Master Keys): Everything
+    // 1. Super Admin / Master Keys: Access to everything
     if (role === 'super_admin' || isMaster) {
         return NAV_ITEMS;
     }
     
-    // Workspace Admin: Everything except Platform Command
+    // 2. Workspace Admin: Access to everything except Platform Command
     if (role === 'admin') {
         return NAV_ITEMS.filter(item => item.href !== '/admin');
     }
     
-    // Standard User: Respect granular permissions
-    if (permissions.length > 0) {
-        return NAV_ITEMS.filter(item => {
-            // Profile and Dashboard are always visible for base context
-            if (item.href === '/profile' || item.href === '/') return true;
-            // Filter based on the selected IDs in the User record
-            return permissions.includes(item.id);
-        });
-    }
-
-    // Default restricted set for 'user' with no specific permissions defined
-    const defaultUserHrefs = [
-        '/',
-        '/pos',
-        '/stock',
-        '/customers',
-        '/documents',
-        '/profile'
-    ];
+    // 3. Standard User: Respect granular permissions
+    // We always allow Profile/Settings and Dashboard (Home) for basic context
+    const alwaysAllowedHrefs = ['/', '/profile'];
     
-    return NAV_ITEMS.filter(item => defaultUserHrefs.includes(item.href));
+    return NAV_ITEMS.filter(item => {
+        if (alwaysAllowedHrefs.includes(item.href)) return true;
+        
+        // Block restricted modules
+        if (item.href === '/admin' || item.href === '/users' || item.href === '/audit') return false;
+        
+        // Allow if specifically ticked in permissions
+        return permissions.includes(item.id);
+    });
 };
