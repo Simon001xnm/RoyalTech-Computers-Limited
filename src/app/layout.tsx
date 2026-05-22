@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-const VERSION = "2.2.1";
+const VERSION = "2.2.5";
 
 export const metadata: Metadata = {
   title: {
@@ -55,15 +55,33 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Resilience Script: Handles chunk failures silently
-              window.addEventListener('error', (e) => {
-                if (e.message && (e.message.includes('ChunkLoadError') || e.message.includes('timeout'))) {
+              (function() {
+                // HIGH PRIORITY RESILIENCE ENGINE
+                // Catches ChunkLoadErrors and network timeouts immediately.
+                function recover() {
                   if (window.location.hash !== '#retry') {
+                    console.warn('Network timeout detected. Executing micro-sync recovery...');
                     window.location.hash = 'retry';
                     window.location.reload();
                   }
                 }
-              }, true);
+
+                window.addEventListener('error', function(e) {
+                  var msg = (e.message || "").toLowerCase();
+                  if (msg.indexOf('chunkloaderror') > -1 || msg.indexOf('timeout') > -1) {
+                    e.preventDefault();
+                    recover();
+                  }
+                }, true);
+
+                window.addEventListener('unhandledrejection', function(e) {
+                  var msg = (e.reason && e.reason.message || "").toLowerCase();
+                  if (msg.indexOf('chunkloaderror') > -1 || msg.indexOf('timeout') > -1) {
+                    e.preventDefault();
+                    recover();
+                  }
+                });
+              })();
             `,
           }}
         />

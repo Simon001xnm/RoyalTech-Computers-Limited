@@ -1,15 +1,11 @@
 'use client';
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
-import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, updateDoc, setDoc, addDoc, getDocs, limit } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier } from '@/types/saas';
-import { startOfMonth, parseISO, addDays, differenceInDays } from 'date-fns';
-import { Lock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { User as AppUser } from '@/types';
-import { MASTER_KEYS } from '@/lib/roles';
 
 const DEFAULT_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   free: { id: 'plan_free', name: 'Standard Workspace', tier: 'free', maxAssets: 50, maxSalesPerMonth: 100, enableBranding: false, enableTracking: false, priceMonthly: 0, currency: 'KES' },
@@ -37,7 +33,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userRef);
 
-  // CRITICAL: The tenant ID source of truth should prioritize the local cache during early reload
+  // Persistence Strategy: Prioritize User Profile (Source of Truth) but fallback to Cache (Speed)
   const effectiveTenantId = userProfile?.tenantId || cachedTenantId;
 
   const companyRef = useMemoFirebase(() => 
@@ -47,12 +43,12 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const { data: activeCompany, isLoading: isCompanyLoading } = useDoc(companyRef);
 
   useEffect(() => {
-    // Session lock update
     if (userProfile?.tenantId) {
         localStorage.setItem('rcl_last_tenant_id', userProfile.tenantId);
     }
   }, [userProfile?.tenantId]);
 
+  // Usage meters (Simplified for prototype)
   const usageStats = useMemo(() => ({ assets: 0, salesThisMonth: 0 }), []);
 
   const tenantData = useMemo<Tenant | null>(() => {
