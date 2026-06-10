@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, getDocs, limit } from "firebase/firestore";
 import type { Accessory } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, PackageSearch } from "lucide-react";
+import { PlusCircle, PackageSearch, Loader2 } from "lucide-react";
 import { AccessoryForm } from "./accessory-form";
 import { getAccessoryColumns, type AccessoryColumnActions } from "./accessory-columns";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,7 @@ export function AccessoriesClient() {
   const [editingAccessory, setEditingAccessory] = useState<Accessory | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [accessoryToDelete, setAccessoryToDelete] = useState<Accessory | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({
@@ -109,21 +110,41 @@ export function AccessoriesClient() {
   
   const handleFormSubmit = async (data: any) => {
     if (!user || !tenant) return;
-
-    // Explicitly structure to avoid 'undefined' values
-    const accessoryData = {
-      tenantId: tenant.id,
-      name: data.name || '',
-      serialNumber: data.serialNumber || '',
-      status: data.status,
-      quantity: Number(data.quantity) || 0,
-      purchasePrice: data.purchasePrice !== undefined ? Number(data.purchasePrice) : null,
-      sellingPrice: Number(data.sellingPrice) || 0,
-      purchaseDate: data.purchaseDate.toISOString(), 
-      updatedAt: new Date().toISOString()
-    };
+    setIsSubmitting(true);
 
     try {
+        // 1. Check for Unique Serial Number within this tenant (only on create or if serial changed)
+        if (!editingAccessory || editingAccessory.serialNumber !== data.serialNumber) {
+            const serialQuery = query(
+                collection(firestore, 'accessories'), 
+                where('tenantId', '==', tenant.id), 
+                where('serialNumber', '==', data.serialNumber),
+                limit(1)
+            );
+            const querySnapshot = await getDocs(serialQuery);
+            if (!querySnapshot.empty) {
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Accessory Already Exists', 
+                    description: 'This Serial Number is already registered in your inventory.' 
+                });
+                setIsSubmitting(false);
+                return;
+            }
+        }
+
+        const accessoryData = {
+          tenantId: tenant.id,
+          name: data.name || '',
+          serialNumber: data.serialNumber || '',
+          status: data.status,
+          quantity: Number(data.quantity) || 0,
+          purchasePrice: data.purchasePrice !== undefined ? Number(data.purchasePrice) : null,
+          sellingPrice: Number(data.sellingPrice) || 0,
+          purchaseDate: data.purchaseDate.toISOString(), 
+          updatedAt: new Date().toISOString()
+        };
+
         if (editingAccessory) {
             await updateDoc(doc(firestore, 'accessories', editingAccessory.id), accessoryData);
             toast({ title: "Accessory Updated" });
@@ -139,6 +160,8 @@ export function AccessoriesClient() {
         setEditingAccessory(null);
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -258,6 +281,7 @@ export function AccessoriesClient() {
             accessory={editingAccessory}
             onSubmit={handleFormSubmit}
             onCancel={() => { setIsFormOpen(false); setEditingAccessory(null); }}
+            isLoading={isSubmitting}
           />
         </DialogContent>
       </Dialog>

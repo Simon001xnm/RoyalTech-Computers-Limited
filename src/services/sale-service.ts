@@ -28,12 +28,21 @@ export const SaleService = {
       // 3. Update Inventory Statuses
       for (const item of saleData.items) {
         if (item.type === 'asset') {
+          // Marking a specific hardware unit as Sold
           const assetRef = doc(firestore, 'assets', item.id);
           batch.update(assetRef, { 
             status: 'Sold', 
             quantity: 0,
             updatedAt: new Date().toISOString()
           });
+        } else if (item.type === 'accessory') {
+            // Marking an accessory as Sold
+            const accRef = doc(firestore, 'accessories', item.id);
+            batch.update(accRef, {
+                status: 'Sold',
+                quantity: 0,
+                updatedAt: new Date().toISOString()
+            });
         }
       }
 

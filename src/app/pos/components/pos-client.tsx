@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -29,12 +28,12 @@ type Product = {
   id: string; 
   displayName: string; 
   price: number; 
-  serialNumber?: string; 
-  type: 'accessory' | 'custom';
+  serialNumber: string; 
+  type: 'asset' | 'accessory' | 'custom';
   model?: string;
 };
 
-type CartItem = SaleItem & { productType: 'accessory' | 'custom'; quantity: number; unitPrice: number; discount: number; };
+type CartItem = SaleItem & { productType: 'asset' | 'accessory' | 'custom'; quantity: number; unitPrice: number; discount: number; };
 
 const VAT_RATE = 0.16;
 
@@ -66,6 +65,12 @@ export function PosClient() {
   }, [firestore, tenant?.id]);
   const { data: accessories } = useCollection(accessoriesQuery);
 
+  const assetsQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id), where('status', '==', 'Available'));
+  }, [firestore, tenant?.id]);
+  const { data: assets } = useCollection(assetsQuery);
+
   const customersQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
@@ -86,10 +91,24 @@ export function PosClient() {
 
   const availableProducts = useMemo<Product[]>(() => {
     const list: Product[] = [];
+    
+    // Add Laptops (Assets)
+    if (assets) {
+        assets.forEach(asset => list.push({
+            id: asset.id,
+            displayName: `LAPTOP: ${asset.model} (S/N: ${asset.serialNumber})`,
+            price: asset.purchasePrice || 0, // Fallback to purchase price or set lease as placeholder
+            serialNumber: asset.serialNumber,
+            type: 'asset',
+            model: asset.model
+        }));
+    }
+
+    // Add Accessories
     if (accessories) {
       accessories.forEach(acc => list.push({
         id: acc.id,
-        displayName: `${acc.name} (${acc.quantity} in stock)`,
+        displayName: `ACC: ${acc.name} (S/N: ${acc.serialNumber})`,
         price: acc.sellingPrice || 0,
         serialNumber: acc.serialNumber,
         type: 'accessory',
@@ -97,7 +116,7 @@ export function PosClient() {
       }));
     }
     return list;
-  }, [accessories]);
+  }, [accessories, assets]);
 
   const { subtotal, grandTotal, vatAmount, changeDue } = useMemo(() => {
     const subtotal = cart.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
@@ -151,7 +170,7 @@ export function PosClient() {
       serialNumber: selectedProduct?.serialNumber || 'N/A',
       price: price, 
       unitPrice: price, 
-      quantity, 
+      quantity: selectedProduct?.type === 'asset' ? 1 : quantity, // Laptops are unique units
       discount: 0,
       type: selectedProduct?.type || 'custom', 
       productType: selectedProduct?.type || 'custom'
@@ -297,22 +316,22 @@ export function PosClient() {
                 <div className="bg-muted/30 p-4 rounded-xl space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
                     <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-black opacity-50">Select Accessory or Type Name</Label>
+                        <Label className="text-[10px] uppercase font-black opacity-50">Select Hardware (Laptops) or Accessory</Label>
                         <Popover open={searchOpen} onOpenChange={setSearchOpen}>
                           <PopoverTrigger asChild>
                             <Button variant="outline" className="w-full h-11 truncate text-left font-normal">
-                              {selectedProduct ? selectedProduct.displayName : customName || "Search accessory or type here..."}
+                              {selectedProduct ? selectedProduct.displayName : customName || "Search inventory or type manual item..."}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                             <Command>
                               <CommandInput 
-                                placeholder="Search inventory or type manual item..." 
+                                placeholder="Search by model or Serial Number..." 
                                 value={customName}
                                 onValueChange={(v) => setCustomName(v)}
                               />
                               <CommandList>
-                                <CommandGroup heading="Inventory Accessories">
+                                <CommandGroup heading="Available Inventory">
                                   {availableProducts.map(p => (
                                     <CommandItem key={p.id} onSelect={() => { setSelectedProduct(p); setUnitPrice(p.price.toString()); setSearchOpen(false); }}>
                                       {p.displayName}
@@ -320,9 +339,9 @@ export function PosClient() {
                                   ))}
                                 </CommandGroup>
                                 {customName && (
-                                  <CommandGroup heading="New Item">
+                                  <CommandGroup heading="Manual Entry">
                                     <CommandItem onSelect={() => { setSelectedProduct(null); setSearchOpen(false); }}>
-                                      Sell "{customName}" (Manual Entry)
+                                      Sell "{customName}" (Non-Inventory)
                                     </CommandItem>
                                   </CommandGroup>
                                 )}
@@ -334,7 +353,13 @@ export function PosClient() {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                              <Label className="text-[10px] uppercase font-black opacity-50">Qty</Label>
-                             <Input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)} className="h-11" />
+                             <Input 
+                                type="number" 
+                                value={quantity} 
+                                onChange={e => setQuantity(parseInt(e.target.value) || 1)} 
+                                className="h-11" 
+                                disabled={selectedProduct?.type === 'asset'}
+                             />
                         </div>
                         <div className="space-y-2">
                              <Label className="text-[10px] uppercase font-black opacity-50">Price</Label>
