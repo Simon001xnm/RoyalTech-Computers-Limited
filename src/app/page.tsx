@@ -20,7 +20,9 @@ import {
   ShieldCheck,
   ChevronRight,
   Clock,
-  Users
+  Users,
+  Briefcase,
+  Laptop
 } from 'lucide-react';
 import { format, startOfDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -55,7 +57,8 @@ export default function DashboardPage() {
     revenueChart: true,
     recentSales: true,
     leaseExpirations: true,
-    supportQueue: true
+    supportQueue: true,
+    resellerWatch: true
   });
   const [maximizedWidget, setMaximizedWidget] = useState<string | null>(null);
 
@@ -90,15 +93,38 @@ export default function DashboardPage() {
   }, [firestore, tenant?.id]);
   const { data: rawTickets, isLoading: ticketsLoading } = useCollection(ticketsQuery);
 
+  const issuancesQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'item_issuances'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: rawIssuances, isLoading: issuancesLoading } = useCollection(issuancesQuery);
+
   // MEMORY FILTERING (Eliminates composite index requirements)
   const activeLeases = useMemo(() => (rawLeases || []).filter(l => l.status === 'Active'), [rawLeases]);
   const openTickets = useMemo(() => (rawTickets || []).filter(t => t.status !== 'Closed').slice(0, 10), [rawTickets]);
+  
+  // Reseller Logic: Filter for Issued Laptops
+  const activeResellerStock = useMemo(() => 
+    (rawIssuances || []).filter(i => i.status === 'Issued' && i.itemType === 'asset'), 
+  [rawIssuances]);
+
+  const resellerBreakdown = useMemo(() => {
+    const map: Record<string, { name: string; count: number }> = {};
+    activeResellerStock.forEach(issuance => {
+      if (!map[issuance.resellerId]) {
+        map[issuance.resellerId] = { name: issuance.resellerName, count: 0 };
+      }
+      map[issuance.resellerId].count += 1;
+    });
+    return Object.values(map).sort((a, b) => b.count - a.count);
+  }, [activeResellerStock]);
 
   // LOGIC: Metrics Aggregation
   const stats = useMemo(() => ({
     accessoryItems: accessories?.reduce((acc, curr) => acc + (curr.quantity || 0), 0) || 0,
     totalClients: customers?.length || 0,
     activeHires: activeLeases?.length || 0,
+    withResellers: activeResellerStock.length,
     monthlySalesCount: sales?.filter(s => {
         try {
             const saleDate = new Date(s.date);
@@ -106,7 +132,7 @@ export default function DashboardPage() {
             return saleDate.getMonth() === today.getMonth();
         } catch { return false; }
     }).length || 0
-  }), [accessories, customers, activeLeases, sales]);
+  }), [accessories, customers, activeLeases, sales, activeResellerStock]);
 
   // LOGIC: Chart Processing
   const chartData = useMemo(() => {
@@ -164,13 +190,14 @@ export default function DashboardPage() {
         revenueChart: true,
         recentSales: true,
         leaseExpirations: true,
-        supportQueue: true
+        supportQueue: true,
+        resellerWatch: true
     });
     setMaximizedWidget(null);
   };
 
   const isAnythingHidden = Object.values(visibleWidgets).some(v => v === false);
-  const showMetricsLoading = isSaaSLoading || accessoriesLoading || customersLoading || salesLoading || leasesLoading || ticketsLoading;
+  const showMetricsLoading = isSaaSLoading || accessoriesLoading || customersLoading || salesLoading || leasesLoading || ticketsLoading || issuancesLoading;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">
@@ -206,7 +233,7 @@ export default function DashboardPage() {
             <>
                 <SummaryCard title="Monthly Sales" value={stats.monthlySalesCount} icon={TrendingUp} description="Processed transactions" />
                 <SummaryCard title="Active Hires" value={stats.activeHires} icon={CalendarClock} description="Laptops in the field" />
-                <SummaryCard title="Accessory Stock" value={stats.accessoryItems} icon={Package} description="Units available in node" />
+                <SummaryCard title="Reseller Stock" value={stats.withResellers} icon={Briefcase} description="Units with partners" />
                 <SummaryCard title="Client Base" value={stats.totalClients} icon={Users} description="Registered in CRM" />
             </>
         )}
@@ -307,6 +334,55 @@ export default function DashboardPage() {
                 <CardFooter className="bg-muted/5 border-t p-2">
                     <Button variant="ghost" asChild className="w-full text-[10px] font-black uppercase tracking-widest h-8">
                         <Link href="/books">Open Ledger <ChevronRight className="ml-1 h-3 w-3" /></Link>
+                    </Button>
+                </CardFooter>
+            </Card>
+        )}
+
+        {/* WIDGET: RESELLER WATCH */}
+        {visibleWidgets.resellerWatch && (maximizedWidget === null || maximizedWidget === 'resellerWatch') && (
+            <Card className="shadow-lg border-none overflow-hidden">
+                <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                            <Briefcase className="h-5 w-5 text-primary" />
+                            Reseller Watch
+                        </CardTitle>
+                        <CardDescription>Units held by partners.</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => toggleWidget('resellerWatch')}>
+                        <EyeOff className="h-4 w-4" />
+                    </Button>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <ScrollArea className="h-[300px]">
+                        {issuancesLoading ? (
+                             <div className="p-8 animate-pulse opacity-20"><Briefcase className="h-8 w-8 mx-auto" /></div>
+                        ) : resellerBreakdown.length > 0 ? (
+                            <div className="divide-y divide-muted/30">
+                                {resellerBreakdown.map(partner => (
+                                    <div key={partner.name} className="p-4 hover:bg-muted/10 transition-colors">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div className="space-y-0.5">
+                                                <p className="text-sm font-bold uppercase">{partner.name}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase font-black">Authorized Partner</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-lg font-black text-primary">{partner.count}</span>
+                                                <Laptop className="h-3 w-3 text-muted-foreground" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-20 text-center text-muted-foreground italic text-xs">No laptops currently with resellers.</div>
+                        )}
+                    </ScrollArea>
+                </CardContent>
+                <CardFooter className="bg-muted/5 border-t p-2">
+                    <Button variant="ghost" asChild className="w-full text-[10px] font-black uppercase tracking-widest h-8">
+                        <Link href="/resellers">Partner Hub <ChevronRight className="ml-1 h-3 w-3" /></Link>
                     </Button>
                 </CardFooter>
             </Card>
