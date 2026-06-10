@@ -14,6 +14,7 @@ export interface DocumentColumnActions {
   onDownload: (doc: AppDocument) => void;
   onPrint?: (doc: AppDocument) => void;
   onWhatsApp?: (doc: AppDocument) => void;
+  onGenerateDelivery?: (doc: AppDocument) => void;
 }
 
 const documentIcons: Record<DocumentType, React.ElementType> = {
@@ -24,6 +25,11 @@ const documentIcons: Record<DocumentType, React.ElementType> = {
     DeliveryNote: Truck,
     Quotation: FilePlus2,
     LPO: ShoppingCart,
+    LeaseAgreement: FileText,
+    PurchaseOrder: ShoppingCart,
+    CreditNote: FileText,
+    DebitNote: FileText,
+    CustomerStatement: FileText,
 };
 
 export const getDocumentColumns = (actions: DocumentColumnActions): ColumnDef<AppDocument>[] => [
@@ -70,9 +76,21 @@ export const getDocumentColumns = (actions: DocumentColumnActions): ColumnDef<Ap
         header: () => <div className="text-right">Actions</div>,
         cell: ({ row }) => {
             const doc = row.original;
+            const canGenerateDelivery = ['Invoice', 'Receipt', 'LeaseAgreement'].includes(doc.type);
+
             return (
                 <div className="text-right flex items-center justify-end gap-2">
                     <TooltipProvider>
+                        {canGenerateDelivery && actions.onGenerateDelivery && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="icon" className="h-8 w-8 text-orange-600 border-orange-200 hover:bg-orange-50" onClick={() => actions.onGenerateDelivery?.(doc)}>
+                                        <Truck className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Dispatch Delivery Note</TooltipContent>
+                            </Tooltip>
+                        )}
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button variant="outline" size="icon" className="h-8 w-8 text-green-600 border-green-200 hover:bg-green-50" onClick={() => actions.onWhatsApp?.(doc)}>

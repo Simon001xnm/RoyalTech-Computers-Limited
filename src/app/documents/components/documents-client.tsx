@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -150,10 +149,6 @@ export function DocumentsClient() {
         const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
         documentData.items = validLineItems;
         
-        // LEASE CALCULATION: Total = (UnitPrice * Quantity * Duration) + VAT
-        // But for generic docs, UnitPrice * Qty is usually standard. 
-        // If it's a LeaseAgreement, we factor in the duration explicitly.
-        
         const dur = parseInt(leaseDuration) || 1;
         const subtotal = validLineItems.reduce((acc, item) => {
             const base = item.quantity * item.unitPrice;
@@ -202,6 +197,40 @@ export function DocumentsClient() {
         setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Generation Failed', description: error.message });
+    }
+  };
+
+  const handleGenerateDeliveryFromExisting = async (sourceDoc: AppDocument) => {
+    if (!tenant || !user) return;
+
+    // Normalizing item structure for Delivery Note
+    const normalizedItems = (sourceDoc.data.items || []).map((i: any) => ({
+        description: i.description || i.name || "Unknown Item",
+        quantity: i.quantity || 1,
+        serialNumber: i.serialNumber || "N/A"
+    }));
+
+    const deliveryData = {
+        tenantId: tenant.id,
+        type: 'DeliveryNote' as const,
+        title: `Delivery Note #DEL-${sourceDoc.title.split('#').pop() || sourceDoc.id.slice(0, 5).toUpperCase()}`,
+        generatedDate: new Date().toISOString(),
+        relatedTo: sourceDoc.relatedTo,
+        data: {
+            customer: sourceDoc.data.customer,
+            items: normalizedItems,
+            details: `Automated Dispatch from ${sourceDoc.type}: ${sourceDoc.title}`,
+            workspace: sourceDoc.data.workspace
+        },
+        createdAt: new Date().toISOString(),
+        createdBy: { uid: user.uid, name: user.displayName || 'User' }
+    };
+
+    try {
+        await addDoc(collection(firestore, 'documents'), deliveryData);
+        toast({ title: "Delivery Note Dispatched Successfully" });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Dispatch Failed', description: error.message });
     }
   };
   
@@ -274,7 +303,8 @@ export function DocumentsClient() {
         const phone = d.data?.customer?.phone || "";
         const msg = `Hello! Your ${d.type} (${d.title}) is ready. Thank you!`;
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
-    }
+    },
+    onGenerateDelivery: handleGenerateDeliveryFromExisting
   };
   
   const customColumns = useMemo(() => getDocumentColumns(columnActions), [columnActions]);
@@ -304,7 +334,7 @@ export function DocumentsClient() {
   };
 
   const renderForm = (type: DocumentType) => {
-    const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'DeliveryNote', 'LPO', 'LeaseAgreement'].includes(type);
+    const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'LPO', 'LeaseAgreement'].includes(type);
     return (
       <Card className="shadow-lg border-primary/10">
         <CardHeader className="bg-primary/5 border-b">
@@ -437,20 +467,18 @@ export function DocumentsClient() {
     <div className="space-y-6">
       <PageHeader title="Branded Documents" description="Professional invoices and quotations synchronized globally." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 md:grid-cols-6 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
+        <TabsList className="grid w-full grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
           <TabsTrigger value="Invoice" className="font-black uppercase text-[8px] md:text-[9px] py-3">Invoice</TabsTrigger>
           <TabsTrigger value="LeaseAgreement" className="font-black uppercase text-[8px] md:text-[9px] py-3">Lease Hire</TabsTrigger>
           <TabsTrigger value="Proforma" className="font-black uppercase text-[8px] md:text-[9px] py-3">Proforma</TabsTrigger>
           <TabsTrigger value="Receipt" className="font-black uppercase text-[8px] md:text-[9px] py-3">Receipt</TabsTrigger>
-          <TabsTrigger value="DeliveryNote" className="font-black uppercase text-[8px] md:text-[9px] py-3">Delivery</TabsTrigger>
         </TabsList>
         <TabsContent value="Quotation">{renderForm("Quotation")}</TabsContent>
         <TabsContent value="Invoice">{renderForm("Invoice")}</TabsContent>
         <TabsContent value="LeaseAgreement">{renderForm("LeaseAgreement")}</TabsContent>
         <TabsContent value="Proforma">{renderForm("Proforma")}</TabsContent>
         <TabsContent value="Receipt">{renderForm("Receipt")}</TabsContent>
-        <TabsContent value="DeliveryNote">{renderForm("DeliveryNote")}</TabsContent>
       </Tabs>
       
       <Card className="mt-8 shadow-2xl border-none overflow-hidden">
