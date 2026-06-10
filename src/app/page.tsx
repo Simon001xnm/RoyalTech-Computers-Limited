@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
@@ -12,7 +12,19 @@ import {
   Users, 
   TrendingUp,
   History,
-  Zap
+  Zap,
+  LayoutTemplate,
+  EyeOff,
+  Maximize2,
+  Minimize2,
+  CalendarClock,
+  Inbox,
+  Package,
+  ShieldCheck,
+  ChevronRight,
+  Clock,
+  DollarSign,
+  AlertCircle
 } from 'lucide-react';
 import { format, startOfDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -27,11 +39,30 @@ import {
 } from 'recharts';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import Link from 'next/link';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
+/**
+ * @fileOverview Modular Executive Dashboard
+ * Customizable workspace control center with multi-module intelligence.
+ */
 export default function DashboardPage() {
   const { tenant, isLoading: isSaaSLoading } = useSaaS();
+  const { user } = useUser();
   const firestore = useFirestore();
 
+  // Layout Management State
+  const [visibleWidgets, setVisibleWidgets] = useState({
+    revenueChart: true,
+    recentSales: true,
+    leaseExpirations: true,
+    supportQueue: true
+  });
+  const [maximizedWidget, setMaximizedWidget] = useState<string | null>(null);
+
+  // CLOUD QUERIES (Siloed by tenantId)
   const accessoriesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id));
@@ -46,22 +77,37 @@ export default function DashboardPage() {
 
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
+    return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id), limit(100));
   }, [firestore, tenant?.id]);
   const { data: sales, isLoading: salesLoading } = useCollection(salesQuery);
 
+  const leasesQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'leases'), where('tenantId', '==', tenant.id), where('status', '==', 'Active'));
+  }, [firestore, tenant?.id]);
+  const { data: activeLeases, isLoading: leasesLoading } = useCollection(leasesQuery);
+
+  const ticketsQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'tickets'), where('tenantId', '==', tenant.id), where('status', '!=', 'Closed'), limit(10));
+  }, [firestore, tenant?.id]);
+  const { data: openTickets, isLoading: ticketsLoading } = useCollection(ticketsQuery);
+
+  // LOGIC: Metrics Aggregation
   const stats = useMemo(() => ({
     accessoryItems: accessories?.reduce((acc, curr) => acc + (curr.quantity || 0), 0) || 0,
     totalClients: customers?.length || 0,
-    recentSalesCount: sales?.filter(s => {
+    activeHires: activeLeases?.length || 0,
+    monthlySalesCount: sales?.filter(s => {
         try {
             const saleDate = new Date(s.date);
             const today = new Date();
             return saleDate.getMonth() === today.getMonth();
         } catch { return false; }
     }).length || 0
-  }), [accessories, customers, sales]);
+  }), [accessories, customers, activeLeases, sales]);
 
+  // LOGIC: Chart Processing
   const chartData = useMemo(() => {
     if (!sales) return [];
     const last7Days = Array.from({ length: 7 }).map((_, i) => {
@@ -89,13 +135,16 @@ export default function DashboardPage() {
   const recentSales = useMemo(() => {
     if (!sales) return [];
     return [...sales]
-        .sort((a,b) => {
-            const dateA = a.date ? new Date(a.date).getTime() : 0;
-            const dateB = b.date ? new Date(b.date).getTime() : 0;
-            return dateB - dateA;
-        })
+        .sort((a,b) => (new Date(b.date).getTime() - new Date(a.date).getTime()))
         .slice(0, 10);
   }, [sales]);
+
+  const urgentLeases = useMemo(() => {
+    if (!activeLeases) return [];
+    return [...activeLeases]
+        .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())
+        .slice(0, 5);
+  }, [activeLeases]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
@@ -105,18 +154,46 @@ export default function DashboardPage() {
     }).format(amount);
   };
 
+  const toggleWidget = (key: keyof typeof visibleWidgets) => {
+    setVisibleWidgets(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const resetLayout = () => {
+    setVisibleWidgets({
+        revenueChart: true,
+        recentSales: true,
+        leaseExpirations: true,
+        supportQueue: true
+    });
+    setMaximizedWidget(null);
+  };
+
+  const isAnythingHidden = Object.values(visibleWidgets).some(v => v === false);
   const showMetricsLoading = isSaaSLoading || accessoriesLoading || customersLoading || salesLoading;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <PageHeader 
-        title="Executive Command" 
-        description={tenant ? `Real-time performance for ${tenant.name}.` : "Synchronizing cloud data..."} 
-      />
+    <div className="space-y-8 animate-in fade-in duration-700 pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <PageHeader 
+            title="Executive Command" 
+            description={tenant ? `Cloud Node: ${tenant.name}` : "Synchronizing business metadata..."} 
+        />
+        <div className="flex gap-2 mb-6 sm:mb-0">
+            {isAnythingHidden && (
+                <Button variant="outline" size="sm" onClick={resetLayout} className="h-9 font-bold border-dashed">
+                    <LayoutTemplate className="h-4 w-4 mr-2" /> Reset Dashboard
+                </Button>
+            )}
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-9 px-4 font-bold flex items-center">
+                <Zap className="h-3 w-3 mr-2 fill-green-700" /> Active Cloud Link
+            </Badge>
+        </div>
+      </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* TOP KPI CARDS */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {showMetricsLoading ? (
-            Array.from({ length: 3 }).map((_, i) => (
+            Array.from({ length: 4 }).map((_, i) => (
                 <Card key={i} className="h-32 shadow-sm border-muted/40">
                   <CardContent className="pt-6 space-y-4">
                     <Skeleton className="h-3 w-20" />
@@ -126,65 +203,227 @@ export default function DashboardPage() {
             ))
         ) : (
             <>
-                <SummaryCard title="Accessory Stock" value={stats.accessoryItems} icon={ComponentIcon} description="Total units in node" />
-                <SummaryCard title="Total Clients" value={stats.totalClients} icon={Users} description="Registered in CRM" />
-                <SummaryCard title="Monthly Sales" value={stats.recentSalesCount} icon={TrendingUp} description="Transactions this month" />
+                <SummaryCard title="Monthly Sales" value={stats.monthlySalesCount} icon={TrendingUp} description="Processed transactions" />
+                <SummaryCard title="Active Hires" value={stats.activeHires} icon={CalendarClock} description="Laptops in the field" />
+                <SummaryCard title="Accessory Stock" value={stats.accessoryItems} icon={Package} description="Units available in node" />
+                <SummaryCard title="Client Base" value={stats.totalClients} icon={Users} description="Registered in CRM" />
             </>
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2 shadow-sm border-muted/40">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-lg font-bold flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> Revenue Stream</CardTitle>
-              <CardDescription>Aggregate performance across the last 7 business days.</CardDescription>
-            </div>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Cloud Node Active</Badge>
-          </CardHeader>
-          <CardContent className="h-[300px] w-full pt-4">
-              {salesLoading ? (
-                  <div className="h-full w-full flex items-center justify-center opacity-30 animate-pulse"><Zap className="h-8 w-8" /></div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                    <defs><linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/><stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/></linearGradient></defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} dy={10} />
-                    <YAxis hide />
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} formatter={(value: number) => [formatCurrency(value), 'Revenue']} />
-                    <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
-                    </AreaChart>
-                </ResponsiveContainer>
-              )}
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm border-muted/40">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2"><History className="h-5 w-5 text-primary" /><CardTitle className="text-lg">Recent Sales</CardTitle></div>
-          </CardHeader>
-          <CardContent className="max-h-[320px] overflow-auto">
-            {salesLoading ? (
-                <div className="space-y-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
-            ) : recentSales.length > 0 ? (
-              <div className="space-y-4">
-                {recentSales.map(sale => (
-                  <div key={sale.id} className="flex items-center justify-between border-b border-muted/30 pb-3 last:border-0 last:pb-0">
-                    <div className="space-y-1 overflow-hidden">
-                      <p className="text-sm font-semibold truncate">{sale.customerName || 'Walk-in Client'}</p>
-                      <p className="text-[10px] text-muted-foreground">{sale.date ? format(parseISO(sale.date), 'MMM d, h:mm a') : 'Recently'}</p>
+      {/* MODULAR WIDGET GRID */}
+      <div className={cn(
+        "grid gap-6 transition-all duration-500",
+        maximizedWidget ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-3"
+      )}>
+        
+        {/* WIDGET: REVENUE CHART */}
+        {visibleWidgets.revenueChart && (maximizedWidget === null || maximizedWidget === 'revenueChart') && (
+            <Card className={cn(
+                "shadow-lg border-none overflow-hidden transition-all duration-500",
+                (visibleWidgets.recentSales && !maximizedWidget) ? "lg:col-span-2" : "col-span-1"
+            )}>
+                <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-primary" />
+                            Revenue Stream
+                        </CardTitle>
+                        <CardDescription>7-day platform performance trace.</CardDescription>
                     </div>
-                    <p className="text-sm font-black text-primary">{formatCurrency(sale.amount)}</p>
-                  </div>
-                ))}
+                    <div className="flex items-center gap-1 no-print">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMaximizedWidget(maximizedWidget === 'revenueChart' ? null : 'revenueChart')}>
+                            {maximizedWidget === 'revenueChart' ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => toggleWidget('revenueChart')}>
+                            <EyeOff className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="h-[350px] w-full pt-6">
+                    {salesLoading ? (
+                        <div className="h-full w-full flex items-center justify-center opacity-30 animate-pulse"><Zap className="h-8 w-8" /></div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData}>
+                                <defs><linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/><stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/></linearGradient></defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
+                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} dy={10} />
+                                <YAxis hide />
+                                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} formatter={(value: number) => [formatCurrency(value), 'Revenue']} />
+                                <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    )}
+                </CardContent>
+            </Card>
+        )}
+
+        {/* WIDGET: RECENT SALES */}
+        {visibleWidgets.recentSales && (maximizedWidget === null || maximizedWidget === 'recentSales') && (
+            <Card className="shadow-lg border-none overflow-hidden">
+                <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                            <History className="h-5 w-5 text-primary" />
+                            Recent Sales
+                        </CardTitle>
+                        <CardDescription>Latest cloud transactions.</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-1 no-print">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => toggleWidget('recentSales')}>
+                            <EyeOff className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <ScrollArea className="h-[350px]">
+                        {salesLoading ? (
+                            <div className="space-y-4 p-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+                        ) : recentSales.length > 0 ? (
+                            <div className="divide-y divide-muted/30">
+                                {recentSales.map(sale => (
+                                    <div key={sale.id} className="flex items-center justify-between p-4 hover:bg-muted/10 transition-colors">
+                                        <div className="space-y-1 overflow-hidden">
+                                            <p className="text-sm font-bold truncate">{sale.customerName || 'Walk-in Client'}</p>
+                                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium">
+                                                <Clock className="h-3 w-3" /> 
+                                                {sale.date ? format(parseISO(sale.date), 'MMM d, h:mm a') : 'Recently'}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-black text-primary">{formatCurrency(sale.amount)}</p>
+                                            <Badge variant="outline" className="text-[8px] h-4 uppercase font-bold">{sale.paymentMethod}</Badge>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-20 text-center text-muted-foreground italic text-xs">No records found.</div>
+                        )}
+                    </ScrollArea>
+                </CardContent>
+                <CardFooter className="bg-muted/5 border-t p-2">
+                    <Button variant="ghost" asChild className="w-full text-[10px] font-black uppercase tracking-widest h-8">
+                        <Link href="/books">Open Ledger <ChevronRight className="ml-1 h-3 w-3" /></Link>
+                    </Button>
+                </CardFooter>
+            </Card>
+        )}
+
+        {/* WIDGET: LEASE EXPIRATIONS */}
+        {visibleWidgets.leaseExpirations && (maximizedWidget === null || maximizedWidget === 'leaseExpirations') && (
+            <Card className="shadow-lg border-none overflow-hidden">
+                <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                            <CalendarClock className="h-5 w-5 text-primary" />
+                            Expiry Watch
+                        </CardTitle>
+                        <CardDescription>Impending laptop returns.</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => toggleWidget('leaseExpirations')}>
+                        <EyeOff className="h-4 w-4" />
+                    </Button>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <ScrollArea className="h-[300px]">
+                        {leasesLoading ? (
+                             <div className="p-8 animate-pulse opacity-20"><CalendarClock className="h-8 w-8 mx-auto" /></div>
+                        ) : urgentLeases.length > 0 ? (
+                            <div className="divide-y divide-muted/30">
+                                {urgentLeases.map(lease => (
+                                    <div key={lease.id} className="p-4 hover:bg-muted/10 transition-colors">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-bold uppercase">{lease.laptopModel}</p>
+                                                <p className="text-[10px] text-muted-foreground font-medium">{lease.customerName}</p>
+                                            </div>
+                                            <Badge variant="destructive" className="text-[9px] font-black uppercase px-2 py-0.5">
+                                                DUE: {format(parseISO(lease.endDate), 'MMM d')}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-20 text-center text-muted-foreground italic text-xs">No active leases expiring soon.</div>
+                        )}
+                    </ScrollArea>
+                </CardContent>
+                <CardFooter className="bg-muted/5 border-t p-2">
+                    <Button variant="ghost" asChild className="w-full text-[10px] font-black uppercase tracking-widest h-8">
+                        <Link href="/leases">Manage Hires <ChevronRight className="ml-1 h-3 w-3" /></Link>
+                    </Button>
+                </CardFooter>
+            </Card>
+        )}
+
+        {/* WIDGET: SUPPORT QUEUE */}
+        {visibleWidgets.supportQueue && (maximizedWidget === null || maximizedWidget === 'supportQueue') && (
+            <Card className="shadow-lg border-none overflow-hidden">
+                <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                            <Inbox className="h-5 w-5 text-primary" />
+                            Active Desk
+                        </CardTitle>
+                        <CardDescription>Open support cases.</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => toggleWidget('supportQueue')}>
+                        <EyeOff className="h-4 w-4" />
+                    </Button>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <ScrollArea className="h-[300px]">
+                        {ticketsLoading ? (
+                             <div className="p-8 animate-pulse opacity-20"><Inbox className="h-8 w-8 mx-auto" /></div>
+                        ) : (openTickets?.length || 0) > 0 ? (
+                            <div className="divide-y divide-muted/30">
+                                {openTickets?.map(ticket => (
+                                    <div key={ticket.id} className="p-4 hover:bg-muted/10 transition-colors">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div className="space-y-0.5 overflow-hidden">
+                                                <p className="text-sm font-bold truncate">{ticket.subject}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase font-black">{ticket.status}</p>
+                                            </div>
+                                            <Badge variant={ticket.priority === 'High' ? 'destructive' : 'outline'} className="text-[8px] font-black uppercase">
+                                                {ticket.priority}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-20 text-center text-muted-foreground italic text-xs">No pending tickets.</div>
+                        )}
+                    </ScrollArea>
+                </CardContent>
+                <CardFooter className="bg-muted/5 border-t p-2">
+                    <Button variant="ghost" asChild className="w-full text-[10px] font-black uppercase tracking-widest h-8">
+                        <Link href="/desk">Open Desk <ChevronRight className="ml-1 h-3 w-3" /></Link>
+                    </Button>
+                </CardFooter>
+            </Card>
+        )}
+      </div>
+
+      {/* SYSTEM STATUS FOOTER */}
+      <div className="mt-12 flex flex-col md:flex-row items-center justify-between gap-4 p-6 bg-primary/5 rounded-2xl border border-primary/10">
+          <div className="flex items-center gap-4">
+              <div className="bg-primary p-2 rounded-lg shadow-md">
+                <ShieldCheck className="h-5 w-5 text-white" />
               </div>
-            ) : (
-              <div className="py-20 text-center text-muted-foreground italic text-xs">No cloud transactions detected in this workspace.</div>
-            )}
-          </CardContent>
-        </Card>
+              <div className="space-y-0.5">
+                  <p className="text-xs font-black uppercase tracking-widest text-primary">Cryptographic Node Online</p>
+                  <p className="text-[10px] text-muted-foreground">Authorized Identity: {user?.email}</p>
+              </div>
+          </div>
+          <div className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter text-center md:text-right">
+              Powered by simonstyless technologies limited &bull; Secure Protocol Active
+          </div>
       </div>
     </div>
   );
 }
+
