@@ -1,4 +1,3 @@
-
 'use client';
 
 import { format } from 'date-fns';
@@ -9,6 +8,10 @@ import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 
+/**
+ * @fileOverview High-Fidelity P&L Report
+ * Complies with BusinessHub SaaS High-Contrast PDF Standards.
+ */
 interface PnlReportProps {
   data: PnlData;
   dateRange?: DateRange;
@@ -41,13 +44,13 @@ const ReportRow = ({
   isGrossProfit?: boolean;
 }) => (
   <div
-    className={`flex justify-between py-2 border-b ${
-      isTotal ? 'font-bold' : ''
-    } ${isHeader ? 'text-lg font-semibold mt-4' : 'text-sm'} ${
-      isSubItem ? 'pl-4' : ''
-    } ${isGrossProfit ? 'border-t border-black pt-2' : 'border-gray-200'}`}
+    className={`flex justify-between py-2 border-b-2 border-black ${
+      isTotal ? 'font-black' : 'font-bold'
+    } ${isHeader ? 'text-lg font-black mt-6 border-b-4' : 'text-sm'} ${
+      isSubItem ? 'pl-6' : ''
+    } ${isGrossProfit ? 'bg-black text-white px-2 py-4' : 'text-black'}`}
   >
-    <div className="flex-1">{label}</div>
+    <div className="flex-1 uppercase">{label}</div>
     <div className="w-24 text-center">{code}</div>
     <div className="w-48 text-right">
       {amount !== undefined ? formatCurrency(amount) : ''}
@@ -70,36 +73,35 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
   const companyName = company?.name || 'YOUR BUSINESS';
 
   return (
-    <Card id="pnl-report" className="print-container shadow-lg bg-white text-gray-900 border-none">
-      <CardHeader className="text-center p-8">
+    <div id="pnl-report" className="p-[20mm] font-sans text-black bg-white w-[210mm] min-h-[297mm] flex flex-col box-border border-4 border-black">
+      <header className="text-center mb-12">
         {company?.logoUrl ? (
-          <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain mx-auto mb-4" />
+          <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain mx-auto mb-6" crossOrigin="anonymous" />
         ) : (
-          <div className="h-20 flex items-center justify-center text-muted-foreground italic mb-4">Company Logo</div>
+          <div className="h-20 w-40 border-4 border-black flex items-center justify-center font-black mx-auto mb-6">LOGO</div>
         )}
-        <h1 className="text-2xl font-bold uppercase">{companyName}</h1>
-        <p className="text-xl">Profit and Loss Statement</p>
-        <p className="text-sm text-muted-foreground">Basis: Accrual</p>
+        <h1 className="text-3xl font-black uppercase text-black tracking-tighter">{companyName}</h1>
+        <p className="text-2xl font-bold text-black mt-2">PROFIT AND LOSS STATEMENT</p>
+        <div className="h-1 w-20 bg-black mx-auto mt-4"></div>
         {dateRange?.from && dateRange.to && (
-          <p className="text-sm text-muted-foreground">
-            From {format(dateRange.from, 'dd/MM/yyyy')} To{' '}
-            {format(dateRange.to, 'dd/MM/yyyy')}
+          <p className="text-sm font-black text-black mt-4 uppercase tracking-widest">
+            PERIOD: {format(dateRange.from, 'dd MMM yyyy')} — {format(dateRange.to, 'dd MMM yyyy')}
           </p>
         )}
-      </CardHeader>
-      <CardContent className="p-8">
-        <div className="flex justify-between font-bold text-sm text-muted-foreground pb-2 border-b-2 border-black">
-          <div className="flex-1">Account</div>
-          <div className="w-24 text-center">Account Code</div>
-          <div className="w-48 text-right">Total</div>
+      </header>
+
+      <div className="flex-grow">
+        <div className="flex justify-between font-black text-xs text-black pb-2 border-b-4 border-black uppercase tracking-widest">
+          <div className="flex-1">Account Category</div>
+          <div className="w-24 text-center">Code</div>
+          <div className="w-48 text-right">Balance (KES)</div>
         </div>
 
         {/* Operating Income */}
         <ReportRow label="Operating Income" isHeader />
-        <ReportRow label="Sales" code={200} amount={operatingIncome.totalSales} isSubItem />
+        <ReportRow label="Gross Sales" code={200} amount={operatingIncome.totalSales} isSubItem />
         <ReportRow
-          label="Total for Operating Income"
-          code={200}
+          label="Total Operating Income"
           amount={operatingIncome.totalSales}
           isTotal
         />
@@ -110,39 +112,42 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
             <ReportRow key={category} label={category} amount={amount} isSubItem />
         ))}
         <ReportRow
-          label="Total for Cost of Goods Sold"
-          code={300}
+          label="Total Cost of Goods Sold"
           amount={costOfGoodsSold.totalCogs}
           isTotal
         />
 
         {/* Gross Profit */}
-        <ReportRow label="Gross Profit" amount={grossProfit} isTotal isGrossProfit />
+        <div className="mt-8">
+            <ReportRow label="Gross Profit (Margin)" amount={grossProfit} isTotal isGrossProfit />
+        </div>
         
         {/* Operating Expense */}
-        <ReportRow label="Operating Expense" isHeader />
+        <ReportRow label="Operating Expenses" isHeader />
         {Object.entries(operatingExpenses.expenseByCategory).map(([category, amount]) => (
             <ReportRow key={category} label={category} amount={amount} isSubItem />
         ))}
          <ReportRow
-          label="Total Operating Expense"
+          label="Total Operating Expenses"
           amount={operatingExpenses.totalExpenses}
           isTotal
         />
 
-
         {/* Net Income */}
-        <div className="flex justify-between font-bold text-base py-2 border-t-2 border-black mt-4">
-          <span>Net Income</span>
-          <span className="text-right">{formatCurrency(netIncome)}</span>
+        <div className="mt-12 flex justify-between bg-black text-white p-6 items-center">
+          <span className="text-xl font-black uppercase tracking-tighter">Net Income (Final Profit)</span>
+          <span className="text-2xl font-black">{formatCurrency(netIncome)}</span>
         </div>
+      </div>
 
-        <div className="mt-12 pt-4 border-t text-center">
-            <p className="text-[10px] text-gray-300 uppercase tracking-widest">
-                OFFICIAL AUDIT DOCUMENT
-            </p>
-        </div>
-      </CardContent>
-    </Card>
+      <footer className="mt-20 pt-8 border-t-4 border-black text-center">
+          <p className="text-[10px] font-black text-black uppercase tracking-[0.5em]">
+              OFFICIAL AUDIT DOCUMENT • BUSINESS INTELLIGENCE NODE
+          </p>
+          <p className="text-[8px] font-bold text-black mt-2">
+            Generated on: {format(new Date(), "PPPP p")}
+          </p>
+      </footer>
+    </div>
   );
 }

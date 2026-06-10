@@ -252,7 +252,7 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    await new Promise(r => setTimeout(r, 200)); 
+    await new Promise(r => setTimeout(r, 300)); 
 
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
@@ -263,7 +263,7 @@ export function DocumentsClient() {
 
     try {
         const canvas = await html2canvas(element, { 
-            scale: 2, 
+            scale: 3, // High DPI scaling
             useCORS: true,
             logging: false,
             backgroundColor: "#ffffff",
@@ -509,7 +509,7 @@ export function DocumentsClient() {
        <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
         <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
           <DialogHeader className="p-6 bg-white border-b no-print">
-            <DialogTitle className="text-xl font-black uppercase tracking-tight">Document Fidelity Engine</DialogTitle>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">High-Fidelity Document Engine</DialogTitle>
           </DialogHeader>
           <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-4 md:p-8">
             <div id="pdf-preview-target" className="shrink-0 shadow-2xl relative bg-white overflow-hidden origin-top scale-[0.4] sm:scale-[0.6] md:scale-100" style={{ width: '210mm', minHeight: '297mm' }}>
