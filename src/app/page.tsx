@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit, orderBy } from 'firebase/firestore';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
   Component as ComponentIcon, 
@@ -426,4 +425,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
