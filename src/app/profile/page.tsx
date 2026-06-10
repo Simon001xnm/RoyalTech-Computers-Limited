@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Camera, Image as ImageIcon, Check, Loader2, Building2, Upload, Repeat, PlusCircle, ShieldCheck, Crown, Zap, Globe, Phone, MapPin, Briefcase, Wallet } from "lucide-react";
+import { Camera, Image as ImageIcon, Check, Loader2, Building2, Upload, Repeat, PlusCircle, ShieldCheck, Crown, Zap, Globe, Phone, MapPin, Briefcase, Wallet, FileText, Settings2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase";
 import { useEffect, useState, useRef } from "react";
@@ -37,7 +37,7 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
-  // Company fields state (Overhauled)
+  // Company fields state
   const [compData, setCompData] = useState({
     name: '',
     businessType: '',
@@ -52,33 +52,32 @@ export default function ProfilePage() {
     city: '',
     country: '',
     adminPosition: '',
-    kraPin: '',
+    taxPin: '',
     certRegistration: '',
     businessPermit: '',
     nationalId: '',
     paymentMethod: '',
     billingIdentifier: '',
-    mpesaShortcode: '',
-    mpesaConsumerKey: '',
-    mpesaConsumerSecret: '',
-    mpesaPasskey: '',
     bankName: '',
     bankBranch: '',
     bankAccNo: '',
     bankAccName: '',
     bankCode: '',
-    plan: '',
-    currency: '',
-    timezone: '',
-    primaryColor: '',
-    secondaryColor: '',
+    vatRate: 16,
+    documentTheme: 'Corporate',
+    invoicePrefix: 'INV',
+    receiptPrefix: 'RCT',
+    quotePrefix: 'QTN',
+    deliveryPrefix: 'DLV',
+    currency: 'KES',
+    timezone: 'Africa/Nairobi',
+    primaryColor: '#1e293b',
+    secondaryColor: '#f1f5f9',
   });
 
-  // UI States
   const [isSaving, setIsSaving] = useState(false);
   const [isNewWorkspaceOpen, setIsNewWorkspaceOpen] = useState(false);
 
-  // CLOUD DATA
   const userRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
   const { data: userProfile } = useDoc(userRef);
 
@@ -107,7 +106,7 @@ export default function ProfilePage() {
     }
   }, [userProfile, authUser, company]);
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: any) => {
     setCompData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -139,28 +138,19 @@ export default function ProfilePage() {
         ...compData,
         updatedAt: new Date().toISOString()
       });
-      toast({ title: 'Workspace Updated' });
+      toast({ title: 'Workspace Settings Synced' });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error' });
+      toast({ variant: 'destructive', title: 'Error syncing cloud settings' });
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleCreateWorkspace = async () => {
-      if (!authUser || !userRef) return;
-      try {
-          await updateDoc(userRef, { tenantId: null });
-          toast({ title: "Initializing Setup" });
-          window.location.reload(); 
-      } catch (e) { toast({ variant: 'destructive', title: 'Failed to reset workspace link' }); }
   };
 
   if (isUserLoading || !userProfile) {
     return (
       <div className="flex flex-col items-center justify-center p-12 space-y-4 text-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
-        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Cloud Profile...</p>
+        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing SaaS Context...</p>
       </div>
     );
   }
@@ -169,10 +159,9 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20">
-      <PageHeader title={isSuperAdmin ? "Platform technician identity" : "Profile & Workspace"} description="Manage your cloud credentials and business metadata." />
+      <PageHeader title="SaaS Control Node" description="Configure high-fidelity document generation and business identity." />
 
       <div className="grid gap-8 lg:grid-cols-[350px_1fr]">
-        {/* LEFT COLUMN: Identity & Portfolio */}
         <div className="space-y-6">
           <Card className="shadow-md overflow-hidden border-none ring-1 ring-black/5">
             <CardHeader className="items-center text-center bg-muted/20 pb-8">
@@ -182,20 +171,12 @@ export default function ProfilePage() {
                   <AvatarFallback className="text-2xl">{(displayName || "U").substring(0, 2)}</AvatarFallback>
                 </Avatar>
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><Camera className="h-6 w-6 text-white" /></div>
-                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => handleAvatarSelect(reader.result as string);
-                    reader.readAsDataURL(file);
-                  }
-                }} />
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
               </div>
               <div className="mt-6 space-y-1">
                 <CardTitle className="text-2xl font-black uppercase tracking-tight">{displayName || 'User'}</CardTitle>
                 <CardDescription className="font-medium">{email}</CardDescription>
                 <Badge className={cn("mt-4 capitalize px-4 h-7 text-[10px] font-black tracking-widest uppercase", isSuperAdmin ? "bg-primary text-primary-foreground" : "")}>
-                    {isSuperAdmin && <ShieldCheck className="h-3 w-3 mr-1" />}
                     {userProfile.role}
                 </Badge>
               </div>
@@ -210,69 +191,20 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
-
-          {!isSuperAdmin && (
-            <Card className="shadow-md border-primary/20 bg-muted/10">
-                <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Repeat className="h-4 w-4 text-primary" />
-                            <CardTitle className="text-xs font-bold uppercase tracking-widest">Portfolio</CardTitle>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsNewWorkspaceOpen(true)}><PlusCircle className="h-4 w-4" /></Button>
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    {isPortfolioLoading ? (
-                      <div className="p-4 text-center text-xs animate-pulse opacity-50 uppercase font-bold">Checking workspaces...</div>
-                    ) : availableWorkspaces.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-muted-foreground italic">No workspaces linked.</div>
-                    ) : (
-                      availableWorkspaces.map(ws => (
-                          <div key={ws.id} className={cn("flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer", tenant?.id === ws.id ? "bg-primary text-primary-foreground border-primary shadow-lg scale-[1.02]" : "bg-background hover:bg-muted border-black/5")} onClick={() => tenant?.id !== ws.id && switchTenant(ws.id)}>
-                              <div className="flex items-center gap-3 overflow-hidden">
-                                  {ws.logoUrl ? <img src={ws.logoUrl} className="h-8 w-8 object-contain bg-white rounded p-1 shrink-0" alt="logo" /> : <Building2 className="h-5 w-5 shrink-0 opacity-40" />}
-                                  <div className="overflow-hidden">
-                                    <p className="text-xs font-black truncate uppercase leading-none">{ws.name}</p>
-                                    <p className="text-[9px] opacity-60 truncate mt-1">{ws.city}, {ws.country}</p>
-                                  </div>
-                              </div>
-                              {tenant?.id === ws.id && <Check className="h-4 w-4 shrink-0" />}
-                          </div>
-                      ))
-                    )}
-                </CardContent>
-            </Card>
-          )}
-
-          {!isSuperAdmin && (
-            <div className="space-y-6">
-                <Card className="shadow-md border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-                    <CardHeader className="pb-3">
-                        <div className="flex items-center gap-2"><Crown className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-bold uppercase tracking-widest">Plan</CardTitle></div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <p className="text-lg font-black text-primary uppercase tracking-tight">{plan?.name || 'Loading Plan...'}</p>
-                        {isLegacyUser && <div className="flex items-start gap-2 p-3 bg-primary text-primary-foreground rounded-xl shadow-lg"><Zap className="h-4 w-4 shrink-0 fill-white" /><div className="space-y-0.5"><p className="text-[10px] font-black uppercase leading-none">Enterprise Unlocked</p><p className="text-[9px] opacity-90">All SaaS features are active.</p></div></div>}
-                    </CardContent>
-                </Card>
-                <SaaSUsageMeters />
-            </div>
-          )}
+          <SaaSUsageMeters />
         </div>
 
-        {/* RIGHT COLUMN: Settings Overhaul */}
         <div className="space-y-8">
           {!isSuperAdmin && company && (
             <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden">
                 <CardHeader className="bg-muted/10 border-b p-8">
                     <div className="flex items-center gap-4">
-                        <div className="bg-primary p-3 rounded-2xl shadow-lg">
-                            <Building2 className="h-6 w-6 text-white" />
+                        <div className="bg-black p-3 rounded-2xl shadow-lg">
+                            <Settings2 className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                            <CardTitle className="text-2xl font-black uppercase tracking-tighter">Workspace Management</CardTitle>
-                            <CardDescription>Professional metadata and API configurations for your node.</CardDescription>
+                            <CardTitle className="text-2xl font-black uppercase tracking-tighter">Business Logic & Branding</CardTitle>
+                            <CardDescription>SaaS infrastructure and document generation standards.</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
@@ -281,79 +213,71 @@ export default function ProfilePage() {
                         <TabsList className="grid w-full grid-cols-4 h-14 bg-muted/30 rounded-none border-b p-0">
                             <TabsTrigger value="profile" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full font-black uppercase text-[10px] tracking-widest">Identity</TabsTrigger>
                             <TabsTrigger value="contact" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full font-black uppercase text-[10px] tracking-widest">Contact</TabsTrigger>
-                            <TabsTrigger value="legal" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full font-black uppercase text-[10px] tracking-widest">Legal & Verif</TabsTrigger>
-                            <TabsTrigger value="billing" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full font-black uppercase text-[10px] tracking-widest">Payments & API</TabsTrigger>
+                            <TabsTrigger value="documents" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full font-black uppercase text-[10px] tracking-widest">Doc Prefixes</TabsTrigger>
+                            <TabsTrigger value="billing" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full font-black uppercase text-[10px] tracking-widest">Financials</TabsTrigger>
                         </TabsList>
                         
                         <div className="p-8">
                             <TabsContent value="profile" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-12">
                                     <div className="space-y-4">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Brand Identity</Label>
-                                        <div className="w-full aspect-square border-2 border-dashed rounded-2xl flex items-center justify-center cursor-pointer overflow-hidden relative group shadow-inner" onClick={() => logoInputRef.current?.click()}>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">High-Res Logo</Label>
+                                        <div className="w-full aspect-square border-2 border-black border-dashed rounded-2xl flex items-center justify-center cursor-pointer overflow-hidden relative group shadow-inner bg-white" onClick={() => logoInputRef.current?.click()}>
                                             {compData.logoUrl ? <img src={compData.logoUrl} className="w-full h-full object-contain p-2" alt="logo" /> : <ImageIcon className="h-8 w-8 text-muted-foreground" />}
                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><Upload className="text-white h-6 w-6" /></div>
                                         </div>
                                         <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
-                                        <p className="text-[9px] text-center text-muted-foreground italic">Preferred: Square PNG with transparent background</p>
                                     </div>
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Business Name *</Label><Input value={compData.name} onChange={e => handleInputChange('name', e.target.value)} className="h-11 font-bold" /></div>
-                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Industry *</Label><Input value={compData.industry} onChange={e => handleInputChange('industry', e.target.value)} className="h-11" /></div>
-                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Position *</Label><Input value={compData.adminPosition} onChange={e => handleInputChange('adminPosition', e.target.value)} className="h-11" /></div>
-                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Website</Label><Input value={compData.website} onChange={e => handleInputChange('website', e.target.value)} className="h-11" /></div>
+                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Business Name</Label><Input value={compData.name} onChange={e => handleInputChange('name', e.target.value)} className="h-11 font-bold" /></div>
+                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Document Theme</Label>
+                                                <Select onValueChange={v => handleInputChange('documentTheme', v)} value={compData.documentTheme}>
+                                                    <SelectTrigger className="h-11 font-bold"><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Corporate">Theme 1: Corporate</SelectItem>
+                                                        <SelectItem value="Retail">Theme 2: Retail</SelectItem>
+                                                        <SelectItem value="Wholesale">Theme 3: Wholesale</SelectItem>
+                                                        <SelectItem value="RentalLeasing">Theme 4: Rental Leasing</SelectItem>
+                                                        <SelectItem value="Construction">Theme 5: Construction</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Primary Brand Color</Label><div className="flex gap-2"><Input type="color" value={compData.primaryColor} onChange={e => handleInputChange('primaryColor', e.target.value)} className="w-12 h-11 p-1" /><Input value={compData.primaryColor} onChange={e => handleInputChange('primaryColor', e.target.value)} className="h-11 font-mono" /></div></div>
+                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">VAT Rate (%)</Label><Input type="number" value={compData.vatRate} onChange={e => handleInputChange('vatRate', Number(e.target.value))} className="h-11 font-bold" /></div>
                                         </div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Business Profile</Label><Textarea value={compData.description} onChange={e => handleInputChange('description', e.target.value)} rows={4} /></div>
                                     </div>
                                 </div>
                             </TabsContent>
 
                             <TabsContent value="contact" className="mt-0 space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Email *</Label><Input value={compData.email} onChange={e => handleInputChange('email', e.target.value)} className="h-11" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Primary Phone *</Label><Input value={compData.phone} onChange={e => handleInputChange('phone', e.target.value)} className="h-11" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Alternative Phone</Label><Input value={compData.altPhone} onChange={e => handleInputChange('altPhone', e.target.value)} className="h-11" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Country *</Label><Input value={compData.country} onChange={e => handleInputChange('country', e.target.value)} className="h-11" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">City/Town *</Label><Input value={compData.city} onChange={e => handleInputChange('city', e.target.value)} className="h-11" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Address *</Label><Input value={compData.address} onChange={e => handleInputChange('address', e.target.value)} className="h-11" /></div>
+                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Email</Label><Input value={compData.email} onChange={e => handleInputChange('email', e.target.value)} className="h-11" /></div>
+                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Primary Phone</Label><Input value={compData.phone} onChange={e => handleInputChange('phone', e.target.value)} className="h-11" /></div>
+                                    <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase">Physical Head Office Address</Label><Input value={compData.address} onChange={e => handleInputChange('address', e.target.value)} className="h-11" /></div>
+                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Website URL</Label><Input value={compData.website} onChange={e => handleInputChange('website', e.target.value)} className="h-11" /></div>
+                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">KRA PIN / Tax ID</Label><Input value={compData.taxPin} onChange={e => handleInputChange('taxPin', e.target.value)} className="h-11 font-mono uppercase" /></div>
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="legal" className="mt-0 space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
-                                <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10">
-                                    <div className="flex items-center gap-3 mb-6"><ShieldCheck className="h-5 w-5 text-primary" /><h4 className="font-black uppercase tracking-widest text-xs">Identity Verification</h4></div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest">KRA PIN</Label><Input value={compData.kraPin} onChange={e => handleInputChange('kraPin', e.target.value)} className="h-11 font-mono" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest">Reg. Certificate</Label><Input value={compData.certRegistration} onChange={e => handleInputChange('certRegistration', e.target.value)} className="h-11" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest">Business Permit</Label><Input value={compData.businessPermit} onChange={e => handleInputChange('businessPermit', e.target.value)} className="h-11" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest">National ID / Passport</Label><Input value={compData.nationalId} onChange={e => handleInputChange('nationalId', e.target.value)} className="h-11" /></div>
-                                    </div>
+                            <TabsContent value="documents" className="mt-0 space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-black/5 rounded-2xl border border-black/10">
+                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Invoice Prefix</Label><Input value={compData.invoicePrefix} onChange={e => handleInputChange('invoicePrefix', e.target.value)} className="h-11 font-black" /></div>
+                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Receipt Prefix</Label><Input value={compData.receiptPrefix} onChange={e => handleInputChange('receiptPrefix', e.target.value)} className="h-11 font-black" /></div>
+                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Quotation Prefix</Label><Input value={compData.quotePrefix} onChange={e => handleInputChange('quotePrefix', e.target.value)} className="h-11 font-black" /></div>
+                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Delivery Prefix</Label><Input value={compData.deliveryPrefix} onChange={e => handleInputChange('deliveryPrefix', e.target.value)} className="h-11 font-black" /></div>
                                 </div>
                             </TabsContent>
 
                             <TabsContent value="billing" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Payment Method *</Label><Input value={compData.paymentMethod} onChange={e => handleInputChange('paymentMethod', e.target.value)} className="h-11" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Paybill/Till Number</Label><Input value={compData.billingIdentifier} onChange={e => handleInputChange('billingIdentifier', e.target.value)} className="h-11 font-bold" /></div>
-                                </div>
-                                <div className="p-8 bg-black/5 rounded-3xl space-y-6">
-                                    <div className="flex items-center gap-3"><Briefcase className="h-5 w-5 text-primary" /><h4 className="font-black uppercase tracking-widest text-xs">Official Bank Settlement</h4></div>
+                                <div className="p-8 bg-white rounded-3xl border-2 border-black space-y-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                                    <div className="flex items-center gap-3"><Briefcase className="h-5 w-5 text-black" /><h4 className="font-black uppercase tracking-widest text-xs">Official Settlement Channel</h4></div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">Bank Name</Label><Input value={compData.bankName} onChange={e => handleInputChange('bankName', e.target.value)} className="h-11" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">Branch</Label><Input value={compData.bankBranch} onChange={e => handleInputChange('bankBranch', e.target.value)} className="h-11" /></div>
-                                        <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase opacity-60">Account Holder Name</Label><Input value={compData.bankAccName} onChange={e => handleInputChange('bankAccName', e.target.value)} className="h-11" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">Account Number</Label><Input value={compData.bankAccNo} onChange={e => handleInputChange('bankAccNo', e.target.value)} className="h-11" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">Bank/Swift Code</Label><Input value={compData.bankCode} onChange={e => handleInputChange('bankCode', e.target.value)} className="h-11" /></div>
-                                    </div>
-                                </div>
-                                <div className="p-8 bg-black/5 rounded-3xl space-y-6">
-                                    <div className="flex items-center gap-3"><Zap className="h-5 w-5 text-primary" /><h4 className="font-black uppercase tracking-widest text-xs">Daraja API Credentials</h4></div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">M-Pesa Shortcode</Label><Input value={compData.mpesaShortcode} onChange={e => handleInputChange('mpesaShortcode', e.target.value)} className="h-11 font-mono" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">M-Pesa Passkey</Label><Input value={compData.mpesaPasskey} onChange={e => handleInputChange('mpesaPasskey', e.target.value)} className="h-11 font-mono" /></div>
-                                        <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase opacity-60">Consumer Key</Label><Input value={compData.mpesaConsumerKey} onChange={e => handleInputChange('mpesaConsumerKey', e.target.value)} className="h-11 font-mono" /></div>
-                                        <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase opacity-60">Consumer Secret</Label><Input type="password" value={compData.mpesaConsumerSecret} onChange={e => handleInputChange('mpesaConsumerSecret', e.target.value)} className="h-11 font-mono" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Bank Institution</Label><Input value={compData.bankName} onChange={e => handleInputChange('bankName', e.target.value)} className="h-11 border-black" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Branch Location</Label><Input value={compData.bankBranch} onChange={e => handleInputChange('bankBranch', e.target.value)} className="h-11 border-black" /></div>
+                                        <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase">Account Name</Label><Input value={compData.bankAccName} onChange={e => handleInputChange('bankAccName', e.target.value)} className="h-11 border-black font-bold" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Account Number</Label><Input value={compData.bankAccNo} onChange={e => handleInputChange('bankAccNo', e.target.value)} className="h-11 border-black font-mono" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Paybill/M-Pesa ID</Label><Input value={compData.billingIdentifier} onChange={e => handleInputChange('billingIdentifier', e.target.value)} className="h-11 border-black font-black" /></div>
                                     </div>
                                 </div>
                             </TabsContent>
@@ -361,36 +285,29 @@ export default function ProfilePage() {
                     </Tabs>
                 </CardContent>
                 <CardFooter className="justify-end bg-muted/10 border-t p-8">
-                    <Button onClick={handleSaveCompany} disabled={isSaving} className="h-14 px-10 font-black uppercase tracking-widest shadow-xl">{isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} Execute Cloud Sync</Button>
+                    <Button onClick={handleSaveCompany} disabled={isSaving} className="h-14 px-10 font-black uppercase tracking-widest shadow-xl border-2 border-black hover:bg-black hover:text-white transition-all">
+                        {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} 
+                        Sync Workspace Metadata
+                    </Button>
                 </CardFooter>
             </Card>
           )}
 
           <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden">
-            <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight">Security Protocol</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight">Security & Infrastructure</CardTitle></CardHeader>
             <CardContent className="p-8 space-y-4">
-              <p className="text-sm text-muted-foreground leading-relaxed">System identity protection is active. Multi-tenant isolation ensures your business verification data and API secrets are inaccessible to other business nodes.</p>
-              <div className="flex items-center gap-4 p-6 bg-primary/5 rounded-2xl border border-primary/20">
-                  <ShieldCheck className="h-10 w-10 text-primary opacity-50" />
+              <p className="text-sm text-muted-foreground leading-relaxed">System identity protection is active. Multi-tenant isolation ensures your business verification data and API secrets are inaccessible to other nodes.</p>
+              <div className="flex items-center gap-4 p-6 bg-black/5 rounded-2xl border border-black/20">
+                  <ShieldCheck className="h-10 w-10 text-black opacity-50" />
                   <div className="space-y-0.5">
-                    <p className="text-xs font-black uppercase tracking-widest text-primary">Cryptographic Isolation</p>
-                    <p className="text-[10px] text-muted-foreground">Authorized Node ID: {tenant?.id}</p>
+                    <p className="text-xs font-black uppercase tracking-widest">Cryptographic Isolation</p>
+                    <p className="text-[10px] text-muted-foreground font-mono">NODE-ID: {tenant?.id}</p>
                   </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
-
-       <Dialog open={isNewWorkspaceOpen} onOpenChange={setIsNewWorkspaceOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tighter">Add Workspace Entity</DialogTitle>
-            <DialogDescription className="font-medium">Reset your current session to initialize a new business node.</DialogDescription>
-          </DialogHeader>
-          <CardFooter className="px-0 pt-6"><Button className="w-full font-black uppercase h-14 shadow-lg" onClick={handleCreateWorkspace}>Reset Session & Setup</Button></CardFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

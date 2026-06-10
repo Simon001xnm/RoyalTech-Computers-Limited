@@ -14,9 +14,11 @@ interface Auditable {
     updatedAt?: string; // ISO string date
 }
 
+export type DocumentTheme = 'Corporate' | 'Retail' | 'Wholesale' | 'RentalLeasing' | 'Construction';
+
 export interface Company extends Auditable {
   id: string;
-  tenantId?: string; // Link to SaaS tenant
+  tenantId?: string; 
   name: string;
   businessType: string;
   industry: string;
@@ -30,11 +32,16 @@ export interface Company extends Auditable {
   email: string;
   website?: string;
   
-  // Verification
-  kraPin?: string;
-  certRegistration?: string;
-  businessPermit?: string;
-  nationalId?: string;
+  // SaaS Document Standards
+  taxPin?: string;
+  vatRate?: number; // e.g. 16
+  documentTheme: DocumentTheme;
+  
+  // Settings / Prefixes
+  invoicePrefix: string;
+  receiptPrefix: string;
+  quotePrefix: string;
+  deliveryPrefix: string;
 
   // Admin Context
   adminPosition: string;
@@ -45,7 +52,7 @@ export interface Company extends Auditable {
   currency: string;
   timezone: string;
   paymentMethod: string;
-  billingIdentifier?: string; // Till/Paybill number
+  billingIdentifier?: string; 
   
   // Bank Details
   bankName?: string;
@@ -53,13 +60,6 @@ export interface Company extends Auditable {
   bankAccNo?: string;
   bankAccName?: string;
   bankCode?: string;
-
-  // Daraja API Integration (Encrypted on real backend, stored here for prototype)
-  mpesaShortcode?: string;
-  mpesaConsumerKey?: string;
-  mpesaConsumerSecret?: string;
-  mpesaPasskey?: string;
-  mpesaCallbackUrl?: string;
 
   // Theming
   primaryColor?: string; // Hex color
@@ -73,8 +73,8 @@ export interface User {
   phone?: string;
   role: 'admin' | 'user' | 'super_admin';
   tenantId?: string;
-  tenantIds?: string[]; // Portfolio of workspaces
-  permissions?: string[]; // List of module IDs allowed
+  tenantIds?: string[]; 
+  permissions?: string[]; 
   avatarUrl?: string;
   status?: 'active' | 'suspended' | 'invited';
   createdAt: string;
@@ -85,7 +85,7 @@ export interface Asset extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   tenantId?: string;
   model: string;
   serialNumber: string;
-  purchaseDate: string; // ISO string date
+  purchaseDate: string; 
   status: 'Available' | 'Leased' | 'Repair' | 'Sold' | 'With Reseller';
   quantity: number; 
   location?: { lat: number; lng: number }; 
@@ -106,7 +106,7 @@ export interface Accessory extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   tenantId?: string;
   name: string;
   serialNumber: string;
-  purchaseDate: string; // ISO string date
+  purchaseDate: string; 
   status: 'Available' | 'Sold' | 'With Reseller';
   quantity: number;
   purchasePrice?: number;
@@ -123,7 +123,7 @@ export interface Customer extends Omit<Auditable, 'createdAt' | 'updatedAt'>{
   phone?: string;
   address?: string;
   avatarUrl?: string;
-  registrationDate: string; // ISO string date
+  registrationDate: string; 
   createdAt?: string; 
   updatedAt?: string; 
 }
@@ -133,7 +133,7 @@ export interface Document extends Auditable {
   tenantId?: string;
   type: DocumentType;
   title: string;
-  generatedDate: string; // ISO string date
+  generatedDate: string; 
   relatedTo?: string; 
   saleId?: string; 
   data: any; 
@@ -153,7 +153,7 @@ export interface SaleItem {
 export interface Sale extends Auditable {
   id: string;
   tenantId?: string;
-  date: string; // ISO string date
+  date: string; 
   amount: number; 
   paymentMethod: 'Till' | 'M-Pesa' | 'Bank' | 'Paybill' | 'Cash';
   cogs?: number;
@@ -260,7 +260,7 @@ export interface ItemIssuance extends Auditable {
 export interface Notification extends Auditable {
   id: string;
   tenantId: string;
-  userId?: string; // Optional: targets specific user, otherwise targets tenant admins
+  userId?: string; 
   from: string;
   subject: string;
   message: string;
@@ -276,6 +276,7 @@ export interface Lease extends Auditable {
     customerName: string;
     assetId: string;
     laptopModel: string;
+    serialNumber: string;
     startDate: string;
     endDate: string;
     duration: number;
@@ -285,7 +286,6 @@ export interface Lease extends Auditable {
     paymentStatus: 'Paid' | 'Pending' | 'Overdue';
     signature?: string;
     
-    // Verification Metadata
     verification?: {
         nationalId?: string;
         guarantorId?: string;
@@ -299,10 +299,13 @@ export interface Lease extends Auditable {
     };
 }
 
-export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | 'DeliveryNote' | 'Quotation' | 'LPO' | 'LeaseAgreement';
+export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | 'DeliveryNote' | 'Quotation' | 'LPO' | 'LeaseAgreement' | 'PurchaseOrder' | 'CreditNote' | 'DebitNote' | 'CustomerStatement';
 
 export interface DocumentLineItem {
   description: string;
   quantity: number;
   unitPrice: number;
+  serialNumber?: string;
+  discount?: number;
+  vat?: number;
 }
