@@ -3,12 +3,10 @@
 import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, limit } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
-  Component as ComponentIcon, 
-  Users, 
   TrendingUp,
   History,
   Zap,
@@ -22,8 +20,7 @@ import {
   ShieldCheck,
   ChevronRight,
   Clock,
-  DollarSign,
-  AlertCircle
+  Users
 } from 'lucide-react';
 import { format, startOfDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +43,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 /**
  * @fileOverview Modular Executive Dashboard
  * Customizable workspace control center with multi-module intelligence.
+ * Optimized with index-free queries for instant cloud synchronization.
  */
 export default function DashboardPage() {
   const { tenant, isLoading: isSaaSLoading } = useSaaS();
@@ -61,7 +59,7 @@ export default function DashboardPage() {
   });
   const [maximizedWidget, setMaximizedWidget] = useState<string | null>(null);
 
-  // CLOUD QUERIES (Siloed by tenantId)
+  // CLOUD QUERIES (Index-free: Filter by tenantId only, filter status in memory)
   const accessoriesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id));
@@ -82,15 +80,19 @@ export default function DashboardPage() {
 
   const leasesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'leases'), where('tenantId', '==', tenant.id), where('status', '==', 'Active'));
+    return query(collection(firestore, 'leases'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
-  const { data: activeLeases, isLoading: leasesLoading } = useCollection(leasesQuery);
+  const { data: rawLeases, isLoading: leasesLoading } = useCollection(leasesQuery);
 
   const ticketsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'tickets'), where('tenantId', '==', tenant.id), where('status', '!=', 'Closed'), limit(10));
+    return query(collection(firestore, 'tickets'), where('tenantId', '==', tenant.id), limit(100));
   }, [firestore, tenant?.id]);
-  const { data: openTickets, isLoading: ticketsLoading } = useCollection(ticketsQuery);
+  const { data: rawTickets, isLoading: ticketsLoading } = useCollection(ticketsQuery);
+
+  // MEMORY FILTERING (Eliminates composite index requirements)
+  const activeLeases = useMemo(() => (rawLeases || []).filter(l => l.status === 'Active'), [rawLeases]);
+  const openTickets = useMemo(() => (rawTickets || []).filter(t => t.status !== 'Closed').slice(0, 10), [rawTickets]);
 
   // LOGIC: Metrics Aggregation
   const stats = useMemo(() => ({
@@ -168,7 +170,7 @@ export default function DashboardPage() {
   };
 
   const isAnythingHidden = Object.values(visibleWidgets).some(v => v === false);
-  const showMetricsLoading = isSaaSLoading || accessoriesLoading || customersLoading || salesLoading;
+  const showMetricsLoading = isSaaSLoading || accessoriesLoading || customersLoading || salesLoading || leasesLoading || ticketsLoading;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">

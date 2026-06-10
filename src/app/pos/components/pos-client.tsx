@@ -6,7 +6,7 @@ import type { SaleItem, Sale, Customer, Document as AppDocument } from '@/types'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone, Clock } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { RecentSales } from './recent-sales';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
@@ -59,17 +59,18 @@ export function PosClient() {
   const [lastGeneratedDoc, setLastGeneratedDoc] = useState<AppDocument | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  // CLOUD QUERIES (Index-free: tenantId only, filter status locally)
   const accessoriesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id), where('status', '==', 'Available'));
+    return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
-  const { data: accessories } = useCollection(accessoriesQuery);
+  const { data: rawAccessories } = useCollection(accessoriesQuery);
 
   const assetsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id), where('status', '==', 'Available'));
+    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
-  const { data: assets } = useCollection(assetsQuery);
+  const { data: rawAssets } = useCollection(assetsQuery);
 
   const customersQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -92,21 +93,21 @@ export function PosClient() {
   const availableProducts = useMemo<Product[]>(() => {
     const list: Product[] = [];
     
-    // Add Laptops (Assets)
-    if (assets) {
-        assets.forEach(asset => list.push({
+    // Filter Available Laptops
+    if (rawAssets) {
+        rawAssets.filter(a => a.status === 'Available').forEach(asset => list.push({
             id: asset.id,
             displayName: `LAPTOP: ${asset.model} (S/N: ${asset.serialNumber})`,
-            price: asset.purchasePrice || 0, // Fallback to purchase price or set lease as placeholder
+            price: asset.purchasePrice || 0,
             serialNumber: asset.serialNumber,
             type: 'asset',
             model: asset.model
         }));
     }
 
-    // Add Accessories
-    if (accessories) {
-      accessories.forEach(acc => list.push({
+    // Filter Available Accessories
+    if (rawAccessories) {
+      rawAccessories.filter(a => a.status === 'Available').forEach(acc => list.push({
         id: acc.id,
         displayName: `ACC: ${acc.name} (S/N: ${acc.serialNumber})`,
         price: acc.sellingPrice || 0,
@@ -116,7 +117,7 @@ export function PosClient() {
       }));
     }
     return list;
-  }, [accessories, assets]);
+  }, [rawAccessories, rawAssets]);
 
   const { subtotal, grandTotal, vatAmount, changeDue } = useMemo(() => {
     const subtotal = cart.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
@@ -170,7 +171,7 @@ export function PosClient() {
       serialNumber: selectedProduct?.serialNumber || 'N/A',
       price: price, 
       unitPrice: price, 
-      quantity: selectedProduct?.type === 'asset' ? 1 : quantity, // Laptops are unique units
+      quantity: selectedProduct?.type === 'asset' ? 1 : quantity, 
       discount: 0,
       type: selectedProduct?.type || 'custom', 
       productType: selectedProduct?.type || 'custom'
