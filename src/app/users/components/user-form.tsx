@@ -66,7 +66,7 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
   const selectedRole = form.watch("role");
 
   // Filter out system items for permission selection
-  const permissionModules = NAV_ITEMS.filter(i => !['settings', 'users', 'audit', 'dashboard'].includes(i.id));
+  const permissionModules = NAV_ITEMS.filter(i => !['settings', 'users', 'dashboard'].includes(i.id));
 
   return (
     <Form {...form}>

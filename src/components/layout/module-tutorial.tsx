@@ -100,18 +100,6 @@ const TUTORIAL_DATA: Record<string, TutorialContent> = {
       "The 'powered by simonstyless' footer is mandatory for professional verification.",
       "Use the 'Proforma' option to provide billing details before final payment is received."
     ]
-  },
-  "/tracking": {
-    title: "Asset Tracking",
-    description: "Map-based visualization of your hardware assets in the field.",
-    features: [
-      "Real-time Map: See the last known GPS coordinates of your assets.",
-      "Asset Selection: Filter the map to focus on a specific unit.",
-      "Status Verification: See if a device is currently with a reseller or in the repair shop."
-    ],
-    tips: [
-      "This feature requires a valid Google Maps API key in your system settings."
-    ]
   }
 };
 

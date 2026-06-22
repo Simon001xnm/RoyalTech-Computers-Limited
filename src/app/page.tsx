@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -57,7 +58,6 @@ export default function DashboardPage() {
     revenueChart: true,
     recentSales: true,
     leaseExpirations: true,
-    supportQueue: true,
     resellerWatch: true
   });
   const [maximizedWidget, setMaximizedWidget] = useState<string | null>(null);
@@ -87,12 +87,6 @@ export default function DashboardPage() {
   }, [firestore, tenant?.id]);
   const { data: rawLeases, isLoading: leasesLoading } = useCollection(leasesQuery);
 
-  const ticketsQuery = useMemoFirebase(() => {
-    if (!tenant) return null;
-    return query(collection(firestore, 'tickets'), where('tenantId', '==', tenant.id), limit(100));
-  }, [firestore, tenant?.id]);
-  const { data: rawTickets, isLoading: ticketsLoading } = useCollection(ticketsQuery);
-
   const issuancesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'item_issuances'), where('tenantId', '==', tenant.id));
@@ -101,7 +95,6 @@ export default function DashboardPage() {
 
   // MEMORY FILTERING (Eliminates composite index requirements)
   const activeLeases = useMemo(() => (rawLeases || []).filter(l => l.status === 'Active'), [rawLeases]);
-  const openTickets = useMemo(() => (rawTickets || []).filter(t => t.status !== 'Closed').slice(0, 10), [rawTickets]);
   
   // Reseller Logic: Filter for Issued Laptops
   const activeResellerStock = useMemo(() => 
@@ -190,14 +183,13 @@ export default function DashboardPage() {
         revenueChart: true,
         recentSales: true,
         leaseExpirations: true,
-        supportQueue: true,
         resellerWatch: true
     });
     setMaximizedWidget(null);
   };
 
   const isAnythingHidden = Object.values(visibleWidgets).some(v => v === false);
-  const showMetricsLoading = isSaaSLoading || accessoriesLoading || customersLoading || salesLoading || leasesLoading || ticketsLoading || issuancesLoading;
+  const showMetricsLoading = isSaaSLoading || accessoriesLoading || customersLoading || salesLoading || leasesLoading || issuancesLoading;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">
@@ -431,54 +423,6 @@ export default function DashboardPage() {
                 <CardFooter className="bg-muted/5 border-t p-2">
                     <Button variant="ghost" asChild className="w-full text-[10px] font-black uppercase tracking-widest h-8">
                         <Link href="/leases">Manage Hires <ChevronRight className="ml-1 h-3 w-3" /></Link>
-                    </Button>
-                </CardFooter>
-            </Card>
-        )}
-
-        {/* WIDGET: SUPPORT QUEUE */}
-        {visibleWidgets.supportQueue && (maximizedWidget === null || maximizedWidget === 'supportQueue') && (
-            <Card className="shadow-lg border-none overflow-hidden">
-                <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                            <Inbox className="h-5 w-5 text-primary" />
-                            Active Desk
-                        </CardTitle>
-                        <CardDescription>Open support cases.</CardDescription>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => toggleWidget('supportQueue')}>
-                        <EyeOff className="h-4 w-4" />
-                    </Button>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <ScrollArea className="h-[300px]">
-                        {ticketsLoading ? (
-                             <div className="p-8 animate-pulse opacity-20"><Inbox className="h-8 w-8 mx-auto" /></div>
-                        ) : (openTickets?.length || 0) > 0 ? (
-                            <div className="divide-y divide-muted/30">
-                                {openTickets?.map(ticket => (
-                                    <div key={ticket.id} className="p-4 hover:bg-muted/10 transition-colors">
-                                        <div className="flex items-center justify-between gap-4">
-                                            <div className="space-y-0.5 overflow-hidden">
-                                                <p className="text-sm font-bold truncate">{ticket.subject}</p>
-                                                <p className="text-[10px] text-muted-foreground uppercase font-black">{ticket.status}</p>
-                                            </div>
-                                            <Badge variant={ticket.priority === 'High' ? 'destructive' : 'outline'} className="text-[8px] font-black uppercase">
-                                                {ticket.priority}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="py-20 text-center text-muted-foreground italic text-xs">No pending tickets.</div>
-                        )}
-                    </ScrollArea>
-                </CardContent>
-                <CardFooter className="bg-muted/5 border-t p-2">
-                    <Button variant="ghost" asChild className="w-full text-[10px] font-black uppercase tracking-widest h-8">
-                        <Link href="/desk">Open Desk <ChevronRight className="ml-1 h-3 w-3" /></Link>
                     </Button>
                 </CardFooter>
             </Card>

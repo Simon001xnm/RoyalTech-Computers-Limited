@@ -29,14 +29,9 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'customers', href: '/customers', label: 'Customers', icon: Users },
   { id: 'documents', href: '/documents', label: 'Documents', icon: Printer },
   { id: 'accounting', href: '/books', label: 'Accounting', icon: BookOpen },
-  { id: 'support', href: '/desk', label: 'Support Desk', icon: Inbox },
-  { id: 'chat', href: '/salesiq', label: 'Team Chat', icon: Phone },
-  { id: 'projects', href: '/projects', label: 'Project Board', icon: ListChecks },
-  { id: 'marketing', href: '/campaigns', label: 'Marketing', icon: Presentation },
   { id: 'financials', href: '/reports', label: 'Financials', icon: BarChart3 },
-  { id: 'audit', href: '/audit', label: 'Audit Trail', icon: History },
-  { id: 'users', href: '/users', label: 'System Users', icon: UserPlus },
   { id: 'resellers', href: '/resellers', label: 'Resellers', icon: Briefcase },
+  { id: 'users', href: '/users', label: 'System Users', icon: UserPlus },
   { id: 'settings', href: '/profile', label: 'Settings', icon: User },
 ];
 

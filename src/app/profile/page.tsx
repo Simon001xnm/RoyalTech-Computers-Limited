@@ -139,7 +139,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handleDataExport = async (type: 'inventory' | 'customers' | 'sales' | 'leases' | 'audit') => {
+  const handleDataExport = async (type: 'inventory' | 'customers' | 'sales' | 'leases') => {
     if (!tenant) return;
     setIsExporting(type);
     
@@ -168,11 +168,6 @@ export default function ProfilePage() {
                 collectionName = 'leases';
                 fileName = `Lease_History_${tenant.name.replace(/\s+/g, '_')}.csv`;
                 mapping = { customerName: 'Lessee', laptopModel: 'Hardware', serialNumber: 'S/N', startDate: 'Commencement', endDate: 'Expiry', duration: 'Duration', status: 'Agreement Status', paymentStatus: 'Billing Status' };
-                break;
-            case 'audit':
-                collectionName = 'platform_logs';
-                fileName = `Audit_Trail_${tenant.name.replace(/\s+/g, '_')}.csv`;
-                mapping = { timestamp: 'Event Time', level: 'Severity', module: 'Module', event: 'Event Description' };
                 break;
         }
 
@@ -379,13 +374,13 @@ export default function ProfilePage() {
                                     <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
                                         <CardHeader className="bg-primary/5 py-4">
                                             <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                                                <History className="h-4 w-4" /> Audit History
+                                                <Database className="h-4 w-4" /> Hire Agreements
                                             </CardTitle>
                                         </CardHeader>
                                         <CardContent className="pt-6 space-y-4">
-                                            <p className="text-[11px] text-muted-foreground leading-relaxed">Download your workspace activity feed. Contains timestamps for login, sales, and system updates.</p>
-                                            <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('audit')} disabled={!!isExporting}>
-                                                {isExporting === 'audit' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export Audit CSV
+                                            <p className="text-[11px] text-muted-foreground leading-relaxed">Download a record of all current and historical hardware lease agreements for this node.</p>
+                                            <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('leases')} disabled={!!isExporting}>
+                                                {isExporting === 'leases' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export Leases CSV
                                             </Button>
                                         </CardContent>
                                     </Card>
