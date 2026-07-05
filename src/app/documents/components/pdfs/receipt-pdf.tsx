@@ -171,7 +171,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             Goods once sold cannot be returned
          </p>
          <p className="text-[10px] font-medium text-black mb-6">
-            For any enquiry, reach out via email at <span className="font-bold">{workspace?.email}</span>, call on <span className="font-bold">{workspace?.phone}</span>
+            For any enquiry, reach out via <span className="font-bold">{workspace?.phone || workspace?.email}</span>
          </p>
          
          <p className="text-[8px] font-medium text-gray-400">

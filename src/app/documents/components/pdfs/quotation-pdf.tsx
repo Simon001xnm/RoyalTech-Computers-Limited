@@ -74,13 +74,13 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
         <table className="w-full border-collapse">
             <thead>
                 <tr className="text-left text-white" style={{ backgroundColor: primaryIndigo }}>
-                    <th className="py-2 px-3 font-bold text-[9px] rounded-l-sm">Item</th>
-                    <th className="py-2 text-right font-bold text-[9px] w-16">TAX Rate</th>
-                    <th className="py-2 text-right font-bold text-[9px] w-16">Quantity</th>
-                    <th className="py-2 text-right font-bold text-[9px] w-24">Rate</th>
-                    <th className="py-2 text-right font-bold text-[9px] w-24">Amount</th>
-                    <th className="py-2 text-right font-bold text-[9px] w-16">TAX</th>
-                    <th className="py-2 px-3 text-right font-bold text-[9px] rounded-r-sm w-32">Total</th>
+                    <th className="py-2 px-3 font-bold text-[10px] rounded-l-sm">Item</th>
+                    <th className="py-2 text-right font-bold text-[10px] w-16">TAX Rate</th>
+                    <th className="py-2 text-right font-bold text-[10px] w-16">Quantity</th>
+                    <th className="py-2 text-right font-bold text-[10px] w-24">Rate</th>
+                    <th className="py-2 text-right font-bold text-[10px] w-24">Amount</th>
+                    <th className="py-2 text-right font-bold text-[10px] w-16">TAX</th>
+                    <th className="py-2 px-3 text-right font-bold text-[10px] rounded-r-sm w-32">Total</th>
                 </tr>
             </thead>
             <tbody>
@@ -131,7 +131,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
 
       <footer className="mt-auto pt-6 text-center border-t border-gray-100">
          <p className="text-[9px] font-medium text-black">
-            Reach out via email at <span className="font-bold">{workspace?.email}</span> or call on <span className="font-bold">{workspace?.phone}</span>
+            Reach out via <span className="font-bold">{workspace?.phone || workspace?.email}</span>
          </p>
          <p className="text-[8px] font-medium text-gray-400 mt-2">
             Validity: 30 Days from date of issue.

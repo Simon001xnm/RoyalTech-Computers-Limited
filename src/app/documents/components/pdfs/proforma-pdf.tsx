@@ -130,7 +130,7 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
 
       <footer className="mt-auto pt-6 text-center border-t border-gray-100">
          <p className="text-[9px] font-medium text-black">
-            Reach out via email at <span className="font-bold">{workspace?.email}</span> or call on <span className="font-bold">{workspace?.phone}</span>
+            Reach out via <span className="font-bold">{workspace?.phone || workspace?.email}</span>
          </p>
          <p className="text-[8px] font-medium text-gray-400 mt-2">
             This is a pre-payment invoice. Final Tax Invoice will be issued upon receipt of funds.
