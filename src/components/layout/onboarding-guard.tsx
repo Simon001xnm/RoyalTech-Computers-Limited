@@ -145,6 +145,11 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                         </div>
                     </div>
                 </div>
+                <div className="relative z-10 text-center">
+                    <p className="text-[10px] text-primary-foreground/50 tracking-widest lowercase">
+                        &copy; 2026 shopmanager suite &bull; powered by simonstyless technologies limited
+                    </p>
+                </div>
               </div>
 
               <div className="flex flex-col h-auto lg:max-h-[800px]">

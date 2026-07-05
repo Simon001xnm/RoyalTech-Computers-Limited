@@ -1,4 +1,3 @@
-
 "use client";
 
 import { usePathname } from "next/navigation";
@@ -162,8 +161,8 @@ export function ModuleTutorial() {
         </ScrollArea>
         
         <div className="p-6 border-t bg-muted/20 text-center">
-            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">
-                System Support &bull; Powered by simonstyless technologies limited
+            <p className="text-[10px] text-muted-foreground tracking-widest lowercase">
+                &copy; 2026 shopmanager suite &bull; powered by simonstyless technologies limited
             </p>
         </div>
       </DialogContent>

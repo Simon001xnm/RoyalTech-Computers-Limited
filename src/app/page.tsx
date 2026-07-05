@@ -18,7 +18,8 @@ import {
   Briefcase,
   Users,
   Clock,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 import { format, startOfDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -429,8 +430,8 @@ export default function DashboardPage() {
                   <p className="text-[10px] text-muted-foreground">Logged in as: {user?.email}</p>
               </div>
           </div>
-          <div className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter text-center md:text-right">
-              Powered by simonstyless technologies limited
+          <div className="text-[10px] text-muted-foreground tracking-widest text-center lowercase">
+              &copy; 2026 shopmanager suite &bull; powered by simonstyless technologies limited
           </div>
       </div>
     </div>

@@ -61,9 +61,9 @@ export function MarketingFooter() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto mt-24 pt-8 border-t border-black/5 flex flex-col md:flex-row justify-between items-center gap-8">
-        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-          &copy; {new Date().getFullYear()} ShopManager Suite &bull; Powered by simonstyless technologies limited
+      <div className="max-w-7xl mx-auto mt-24 pt-8 border-t border-black/5 flex flex-col items-center gap-8">
+        <p className="text-[10px] text-muted-foreground tracking-widest text-center lowercase">
+          &copy; 2026 shopmanager suite &bull; powered by simonstyless technologies limited
         </p>
       </div>
     </footer>
