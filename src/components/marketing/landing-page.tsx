@@ -14,7 +14,6 @@ import {
     Users
 } from 'lucide-react';
 import Link from 'next/link';
-import { APP_NAME } from '@/lib/constants';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -115,7 +114,7 @@ export function LandingPage() {
                         <div className="bg-primary p-2 rounded-xl shadow-lg">
                             <Zap className="h-6 w-6 text-white" />
                         </div>
-                        <h1 className="text-2xl font-black uppercase tracking-tighter">{APP_NAME}</h1>
+                        {/* APP_NAME Text Removed per user request */}
                     </div>
                     <div className="flex items-center gap-4">
                         <Button variant="ghost" asChild className="font-bold hidden sm:flex">
@@ -213,7 +212,7 @@ export function LandingPage() {
                              <div className="bg-primary p-2 rounded-xl">
                                 <Zap className="h-6 w-6 text-white" />
                             </div>
-                            <h2 className="text-2xl font-black uppercase tracking-tighter">{APP_NAME}</h2>
+                            {/* APP_NAME Text Removed per user request */}
                         </div>
                         <p className="text-gray-400 font-medium max-w-sm leading-relaxed">
                             Professional business suite designed for clarity, reliability, and growth. Empowering entrepreneurs with enterprise tools.
