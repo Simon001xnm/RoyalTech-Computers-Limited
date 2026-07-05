@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import type { User } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { UserX, UserPlus, Mail, ShieldAlert } from "lucide-react";
+import { UserX, UserPlus, ShieldAlert, Lock, Unlock, Loader2 } from "lucide-react";
 import { UserForm } from "./user-form";
 import { getUserColumns, type UserColumnActions } from "./user-columns";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   useReactTable,
   getCoreRowModel,
@@ -40,7 +39,12 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@
 import { doc, collection, query, where, deleteDoc, setDoc, updateDoc } from "firebase/firestore";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
+import { Badge } from "@/components/ui/badge";
 
+/**
+ * @fileOverview Staff Management Node
+ * Allows Admins to provision accounts and terminate access.
+ */
 export function UsersClient() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -61,9 +65,9 @@ export function UsersClient() {
   const { data: currentUserProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
 
   const usersQuery = useMemoFirebase(() => {
-    if (!currentUserProfile || !tenant) return null;
+    if (!tenant) return null;
     return query(collection(firestore, 'users'), where('tenantId', '==', tenant.id));
-  }, [firestore, currentUserProfile, tenant?.id]);
+  }, [firestore, tenant?.id]);
 
   const { data: users, isLoading: usersDataLoading } = useCollection(usersQuery);
 
@@ -85,6 +89,24 @@ export function UsersClient() {
     setIsFormOpen(true);
   };
 
+  const toggleUserStatus = async (user: User) => {
+    if (user.id === authUser?.uid) {
+        toast({ variant: 'destructive', title: 'Operation Denied', description: 'You cannot suspend your own account.' });
+        return;
+    }
+    
+    const newStatus = user.status === 'suspended' ? 'active' : 'suspended';
+    try {
+        await updateDoc(doc(firestore, 'users', user.id), { status: newStatus, updatedAt: new Date().toISOString() });
+        toast({ 
+            title: newStatus === 'suspended' ? 'Access Terminated' : 'Access Restored', 
+            description: `${user.name}'s account is now ${newStatus}.` 
+        });
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Sync Error' });
+    }
+  };
+
   const handleDeleteUser = (user: User) => {
     if (user.id === authUser?.uid) {
       toast({ variant: 'destructive', title: 'Action Denied', description: 'You cannot delete your own account.' });
@@ -98,7 +120,7 @@ export function UsersClient() {
     if (userToDelete) {
       try {
           await deleteDoc(doc(firestore, 'users', userToDelete.id));
-          toast({ title: "Access Revoked", description: "The team member profile has been removed." });
+          toast({ title: "Profile Purged" });
       } catch (e: any) {
           toast({ variant: 'destructive', title: 'Action Failed' });
       }
@@ -113,7 +135,6 @@ export function UsersClient() {
     
     try {
         if (editingUser) {
-            // Update existing user profile
             await updateDoc(doc(firestore, 'users', editingUser.id), {
                 name: data.name,
                 phone: data.phone || "",
@@ -121,10 +142,8 @@ export function UsersClient() {
                 permissions: data.permissions || [],
                 updatedAt: new Date().toISOString()
             });
-            toast({ title: "Access Updated" });
+            toast({ title: "Privileges Updated" });
         } else {
-            // Provision new profile (Invited)
-            // We use a generated ID because the user doesn't have a UID yet.
             const inviteId = `invited_${crypto.randomUUID()}`;
             await setDoc(doc(firestore, 'users', inviteId), {
                 id: inviteId,
@@ -140,7 +159,7 @@ export function UsersClient() {
             });
             toast({ 
                 title: "User Provisioned", 
-                description: `Invited ${data.name}. Ask them to sign up with ${data.email}.` 
+                description: `Successfully provisioned ${data.name}. They can now sign up using ${data.email}.` 
             });
         }
         setIsFormOpen(false);
@@ -160,7 +179,38 @@ export function UsersClient() {
     onDelete: handleDeleteUser,
   };
   
-  const columns = useMemo<ColumnDef<User, any>>(() => getUserColumns(columnActions), [columnActions]);
+  const columns = useMemo<ColumnDef<User, any>>(() => {
+      const base = getUserColumns(columnActions);
+      // Inject Status Toggle into actions
+      return base.map(col => {
+          if (col.id === 'actions') {
+              return {
+                  ...col,
+                  cell: (props: any) => {
+                      const user = props.row.original;
+                      const isMe = user.id === authUser?.uid;
+                      return (
+                        <div className="flex items-center justify-end gap-2">
+                            {!isMe && (
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8" 
+                                    onClick={() => toggleUserStatus(user)}
+                                    title={user.status === 'suspended' ? 'Restore Access' : 'Terminate Access'}
+                                >
+                                    {user.status === 'suspended' ? <Unlock className="h-4 w-4 text-green-600" /> : <Lock className="h-4 w-4 text-orange-600" />}
+                                </Button>
+                            )}
+                            {flexRender(col.cell, props.getContext())}
+                        </div>
+                      )
+                  }
+              }
+          }
+          return col;
+      });
+  }, [columnActions, authUser?.uid]);
 
   const table = useReactTable({
     data: filteredUsers,
@@ -176,9 +226,9 @@ export function UsersClient() {
   return (
     <>
       <PageHeader
-        title="Team Management"
-        description="Provision accounts and configure granular module access levels."
-        actionLabel={isAdmin ? "Provision New User" : undefined}
+        title="Team Directory"
+        description="Provision staff accounts and configure module-level access."
+        actionLabel={isAdmin ? "Provision New Staff" : undefined}
         onAction={isAdmin ? handleAddUser : undefined}
         ActionIcon={UserPlus}
       />
@@ -189,9 +239,9 @@ export function UsersClient() {
                 <ShieldAlert className="h-12 w-12 text-destructive" />
             </div>
             <div className="max-w-md space-y-2">
-                <h2 className="text-2xl font-black uppercase tracking-tight">Access Restricted</h2>
+                <h2 className="text-2xl font-black uppercase tracking-tight">Privilege Restriction</h2>
                 <p className="text-muted-foreground">
-                    Only workspace administrators are permitted to provision staff accounts and configure module permissions.
+                    Only workspace administrators can provision new accounts or modify system privileges.
                 </p>
             </div>
         </div>
@@ -201,15 +251,18 @@ export function UsersClient() {
         <>
             <div className="mb-4">
                 <Input
-                placeholder="Search team by name or email..."
+                placeholder="Search staff by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm bg-card"
+                className="max-w-sm bg-card h-11 font-bold"
                 />
             </div>
             
             {isLoading ? (
-                <p className="text-muted-foreground animate-pulse font-bold uppercase text-[10px] tracking-widest">Synchronizing cloud directory...</p>
+                <p className="text-muted-foreground animate-pulse font-bold uppercase text-[10px] tracking-widest flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Synchronizing Identity Node...
+                </p>
             ) : (
                 <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
                     <Table>
@@ -227,7 +280,7 @@ export function UsersClient() {
                         <TableBody>
                         {table.getRowModel().rows.length ? (
                             table.getRowModel().rows.map(row => (
-                            <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                            <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className={row.original.status === 'suspended' ? 'bg-destructive/5 opacity-70' : ''}>
                                 {row.getVisibleCells().map(cell => (
                                 <TableCell key={cell.id} className="py-4">
                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -237,7 +290,7 @@ export function UsersClient() {
                             ))
                         ) : (
                             <TableRow>
-                            <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No team members found.</TableCell>
+                            <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No team members registered.</TableCell>
                             </TableRow>
                         )}
                         </TableBody>
@@ -250,10 +303,10 @@ export function UsersClient() {
                 <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-black uppercase tracking-tighter">
-                            {editingUser ? 'Configure Access' : 'Provision Team Account'}
+                            {editingUser ? 'Update Privileges' : 'Provision Staff Account'}
                         </DialogTitle>
                         <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">
-                            Secure cloud identity management
+                            {editingUser ? 'Modify active permissions' : 'Create a pre-defined identity for your team member'}
                         </DialogDescription>
                     </DialogHeader>
                     <UserForm user={editingUser} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isProcessing} />
@@ -265,15 +318,15 @@ export function UsersClient() {
                     <DialogHeader>
                         <DialogTitle className="text-xl font-black uppercase flex items-center gap-2">
                             <UserX className="h-5 w-5 text-destructive" />
-                            Revoke Access
+                            Purge Profile
                         </DialogTitle>
                         <DialogDescription className="font-medium text-base pt-2">
-                            Are you sure you want to remove <strong>{userToDelete?.name}</strong> from this workspace?
+                            Are you sure you want to permanently remove <strong>{userToDelete?.name}</strong>? All historical logs will be preserved but access will be impossible.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2 mt-6">
                         <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold">Cancel</Button>
-                        <Button variant="destructive" onClick={confirmDelete} className="font-black uppercase">Confirm Revocation</Button>
+                        <Button variant="destructive" onClick={confirmDelete} className="font-black uppercase">Confirm Purge</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

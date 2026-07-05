@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
@@ -9,7 +10,7 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, ShieldCheck, Loader2 } from 'lucide-react';
+import { LogOut, User as UserIcon, ShieldCheck, Loader2, Lock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -34,7 +35,6 @@ function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { chil
 
     const handleLogout = () => {
         if (auth) {
-            // LOG SESSION END
             logger.business('Identity', 'Account Session Ended', { 
                 email: user?.email, 
                 company: company?.name || 'ROOT',
@@ -138,6 +138,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const firestore = useFirestore();
+  const auth = useAuth();
 
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
   const isFastTrackAdmin = useMemo(() => isMasterKey(user?.email), [user?.email]);
@@ -150,14 +151,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       if (!user && !isPublicPath) {
         router.push('/login');
       } else if (user && isPublicPath) {
-        // Redirection on login
-        if (isFastTrackAdmin) {
-            router.push('/admin');
-        } else {
-            router.push('/');
-        }
+        if (isFastTrackAdmin) router.push('/admin');
+        else router.push('/');
       } else if (user && isFastTrackAdmin && pathname === '/') {
-        // If master key is on root, push to hidden admin
         router.push('/admin');
       }
     }
@@ -183,6 +179,25 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             </div>
         );
     }
+
+    // TERMINATION CHECK
+    if (userProfile?.status === 'suspended') {
+        return (
+            <div className="flex h-screen w-full flex-col items-center justify-center p-8 text-center space-y-6 bg-background">
+                <div className="bg-destructive/10 p-6 rounded-full">
+                    <Lock className="h-16 w-16 text-destructive" />
+                </div>
+                <div className="max-w-md space-y-2">
+                    <h1 className="text-3xl font-black uppercase tracking-tighter">Access Terminated</h1>
+                    <p className="text-muted-foreground">
+                        Your account has been suspended by your workspace administrator. Please contact your IT department for resolution.
+                    </p>
+                </div>
+                <Button onClick={() => auth.signOut()} variant="outline" className="font-bold">Return to Login</Button>
+            </div>
+        );
+    }
+
     return <AuthenticatedLayout userProfile={userProfile || null} isFastTrackAdmin={isFastTrackAdmin}>{children}</AuthenticatedLayout>;
   }
 

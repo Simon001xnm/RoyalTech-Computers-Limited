@@ -9,15 +9,19 @@ import { Label } from '@/components/ui/label';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { APP_NAME } from '@/lib/constants';
-import Link from 'next/link';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, getDocs, collection, query, where, deleteDoc } from 'firebase/firestore';
 import { Loader2, ChevronDown, ChevronRight, ShieldCheck } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
 import { initiateGoogleSignIn } from '@/firebase/non-blocking-login';
 import { logger } from '@/lib/logger';
+import Link from 'next/link';
 
+/**
+ * @fileOverview Signup Page
+ * Handles new account registration with automatic role assignment.
+ * First user of a node becomes Admin automatically.
+ */
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,7 +51,7 @@ export default function SignUpPage() {
     const normalizedEmail = email.toLowerCase().trim();
     
     try {
-        // 1. Check for existing Invitations (Pre-provisioned profile)
+        // 1. Check for existing Provisioned profile (Invited by an Admin)
         const q = query(collection(firestore, 'users'), where('email', '==', normalizedEmail), where('status', '==', 'invited'));
         const snap = await getDocs(q);
         const invitedProfile = !snap.empty ? snap.docs[0].data() : null;
@@ -57,13 +61,14 @@ export default function SignUpPage() {
         const newUser = userCredential.user;
         await updateProfile(newUser, { displayName: name });
 
-        // 3. Create the real Profile (linking to workspace if invited)
+        // 3. Determine Role
+        // If they were invited, use that role. 
+        // If not, they are the first user (Admin) of a new workspace.
         const isMaster = MASTER_KEYS.includes(normalizedEmail);
-        
-        const finalRole = isMaster ? 'super_admin' : (invitedProfile?.role || 'user');
+        const finalRole = isMaster ? 'super_admin' : (invitedProfile?.role || 'admin');
         const finalTenantId = invitedProfile?.tenantId || null;
         const finalTenantIds = invitedProfile?.tenantIds || (finalTenantId ? [finalTenantId] : []);
-        const finalPermissions = invitedProfile?.permissions || [];
+        const finalPermissions = invitedProfile?.permissions || (finalRole === 'admin' ? ['all'] : []);
 
         await setDoc(doc(firestore, 'users', newUser.uid), {
             id: newUser.uid,
@@ -77,14 +82,16 @@ export default function SignUpPage() {
             createdAt: new Date().toISOString()
         });
 
-        // 4. Cleanup the temporary invitation record
+        // 4. Cleanup the temporary invitation record if it existed
         if (!snap.empty) {
             await deleteDoc(doc(firestore, 'users', snap.docs[0].id));
         }
 
         logger.business('Identity', 'Account Registration Complete', { email: normalizedEmail, role: finalRole });
-        toast({ title: 'Welcome aboard!', description: 'Your account has been activated.' });
-        router.push(isMaster ? '/admin' : '/');
+        toast({ title: 'Account Activated', description: `Welcome ${name}! You have been granted ${finalRole} access.` });
+        
+        // Push to root - OnboardingGuard will catch them if they need to create a workspace
+        router.push('/');
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Signup Failed', description: error.message });
     } finally {
@@ -117,8 +124,8 @@ export default function SignUpPage() {
           <div className="mx-auto w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center p-3 mb-2">
             <img src="/favicon.ico" alt="Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-[32px] font-bold text-[#0e1217] tracking-tight leading-tight">Create your account</h1>
-          <p className="text-[#5e6670] text-lg">Join the platform to manage your workspace.</p>
+          <h1 className="text-[32px] font-bold text-[#0e1217] tracking-tight leading-tight">Join BusinessHub</h1>
+          <p className="text-[#5e6670] text-lg">Start your free usage period today.</p>
         </CardHeader>
         
         <CardContent className="space-y-6">
@@ -131,7 +138,7 @@ export default function SignUpPage() {
             <div className="w-5 h-5 flex items-center justify-center shrink-0">
                 <img src="/2a5758d6-4edb-4047-87bb-e6b94dbbbab0-cover.png" alt="Google" className="w-full h-full object-contain" />
             </div>
-            <span>Continue with Google</span>
+            <span>Sign up with Google</span>
           </Button>
 
           <div className="pt-2">
@@ -147,7 +154,7 @@ export default function SignUpPage() {
                 <div className="space-y-4 mt-6 animate-in slide-in-from-top-2 duration-300">
                     <div className="space-y-2">
                         <Label className="text-sm font-bold text-[#344054]">Full Name</Label>
-                        <Input value={name} onChange={(e) => setName(e.target.value)} className="h-12 border-[#d0d5dd] rounded-xl" placeholder="John Doe" />
+                        <Input value={name} onChange={(e) => setName(e.target.value)} className="h-12 border-[#d0d5dd] rounded-xl" placeholder="e.g. John Doe" />
                     </div>
                     <div className="space-y-2">
                         <Label className="text-sm font-bold text-[#344054]">Work Email</Label>
@@ -166,11 +173,11 @@ export default function SignUpPage() {
                           value={password} 
                           onChange={(e) => setPassword(e.target.value)} 
                           className="h-12 border-[#d0d5dd] rounded-xl" 
-                          placeholder="Choose a strong password"
+                          placeholder="Min 6 characters"
                         />
                     </div>
                     <Button onClick={handleSignUp} className="w-full h-12 text-base font-bold rounded-xl mt-2" disabled={isLoading}>
-                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Register Account'}
+                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Create Account'}
                     </Button>
                 </div>
             )}
@@ -179,12 +186,12 @@ export default function SignUpPage() {
 
         <CardFooter className="flex-col gap-10 pt-8 text-center">
           <p className="text-sm text-[#5e6670] leading-relaxed max-w-[320px]">
-            By continuing, you agree to the <a href="#" className="text-primary hover:underline font-semibold">Terms of Use</a>. 
+            By continuing, you agree to our <a href="#" className="text-primary hover:underline font-semibold">Terms of Service</a>. 
           </p>
           
           <div className="space-y-6 pt-4 border-t border-gray-200 w-full">
             <p className="text-[#5e6670] text-sm">
-                Already have an account? <Link href="/login" className="text-primary hover:underline font-bold">Log In</Link>
+                Already have an account? <Link href="/login" className="text-primary hover:underline font-bold">Sign In</Link>
             </p>
           </div>
         </CardFooter>
