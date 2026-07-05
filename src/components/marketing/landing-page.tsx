@@ -93,12 +93,12 @@ export function LandingPage() {
                         </div>
                         <div className="space-y-3 relative z-10">
                             <Badge className="bg-primary text-white border-none font-black uppercase tracking-widest text-[8px] px-3">AI Ready</Badge>
-                            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter">Introducing Zia AI</h2>
+                            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter">Introducing Saymoh AI</h2>
                             <p className="text-gray-400 font-medium text-sm max-w-lg">
                                 Build autonomous agents that can qualify leads, resolve tickets, draft emails, and handle sales queries using Genkit.
                             </p>
                             <Button variant="outline" className="bg-white text-black hover:bg-gray-100 border-none font-black uppercase tracking-widest h-10 text-[10px]">
-                                Explore Zia Agents
+                                Explore Saymoh Agents
                             </Button>
                         </div>
                     </div>
