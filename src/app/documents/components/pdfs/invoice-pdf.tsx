@@ -30,7 +30,7 @@ function numberToWords(num: number): string {
 
 /**
  * @fileOverview Professional Invoice Design
- * Matches the requested indigo layout provided in the reference image.
+ * Optimized font sizes for perfect fit on A4.
  */
 export function InvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -70,40 +70,40 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
   const secondaryIndigo = "#f5f3ff";
 
   return (
-    <div className="p-[15mm] font-sans text-[12px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border">
+    <div className="p-[12mm] font-sans text-[11px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border">
       
       {/* HEADER SECTION: Title Left, Logo Right */}
-      <header className="flex justify-between items-start mb-8">
-        <div className="space-y-4">
-            <h1 className="text-4xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Invoice</h1>
-            <div className="space-y-1 text-[13px] font-medium text-black">
-                <p><span className="w-28 inline-block opacity-60">Invoice No</span> <span className="font-bold">{workspace?.invoicePrefix || 'INV'}{invoiceNo}</span></p>
-                <p><span className="w-28 inline-block opacity-60">Invoice Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
-                <p><span className="w-28 inline-block opacity-60">Due Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
+      <header className="flex justify-between items-start mb-6">
+        <div className="space-y-3">
+            <h1 className="text-3xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Invoice</h1>
+            <div className="space-y-0.5 text-[11px] font-medium text-black">
+                <p><span className="w-24 inline-block opacity-60">Invoice No</span> <span className="font-bold">{workspace?.invoicePrefix || 'INV'}{invoiceNo}</span></p>
+                <p><span className="w-24 inline-block opacity-60">Invoice Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
+                <p><span className="w-24 inline-block opacity-60">Due Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
             </div>
         </div>
         
         <div className="flex flex-col items-end">
            {workspace?.logoUrl ? (
-            <img src={workspace.logoUrl} alt="Logo" className="h-24 w-auto object-contain" crossOrigin="anonymous" />
+            <img src={workspace.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
           ) : (
-            <div className="h-20 w-20 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
+            <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
           )}
         </div>
       </header>
 
       {/* BILLING BLOCKS: Side by Side with Indigo Background */}
-      <section className="grid grid-cols-2 gap-4 mb-10">
-        <div className="p-6 rounded-lg space-y-1" style={{ backgroundColor: secondaryIndigo }}>
-            <h3 className="font-medium text-[16px] mb-2" style={{ color: primaryIndigo }}>Billed By</h3>
-            <p className="font-bold text-sm uppercase">{companyName}</p>
-            <p className="text-xs font-medium text-black/70">{workspace?.address || 'Kenya'}</p>
+      <section className="grid grid-cols-2 gap-3 mb-8">
+        <div className="p-4 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
+            <h3 className="font-medium text-[14px] mb-1" style={{ color: primaryIndigo }}>Billed By</h3>
+            <p className="font-bold text-xs uppercase">{companyName}</p>
+            <p className="text-[10px] font-medium text-black/70">{workspace?.address || 'Kenya'}</p>
         </div>
-        <div className="p-6 rounded-lg space-y-1" style={{ backgroundColor: secondaryIndigo }}>
-            <h3 className="font-medium text-[16px] mb-2" style={{ color: primaryIndigo }}>Billed To</h3>
-            <p className="font-bold text-sm">{customer.name}</p>
-            <p className="text-xs font-medium text-black/70">{customer.address || 'Nairobi, Kenya'}</p>
-            <p className="text-xs font-medium text-black/70">{customer.phone}</p>
+        <div className="p-4 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
+            <h3 className="font-medium text-[14px] mb-1" style={{ color: primaryIndigo }}>Billed To</h3>
+            <p className="font-bold text-xs">{customer.name}</p>
+            <p className="text-[10px] font-medium text-black/70">{customer.address || 'Nairobi, Kenya'}</p>
+            <p className="text-[10px] font-medium text-black/70">{customer.phone}</p>
         </div>
       </section>
 
@@ -112,13 +112,13 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
         <table className="w-full border-collapse">
             <thead>
                 <tr className="text-left text-white" style={{ backgroundColor: primaryIndigo }}>
-                    <th className="py-2 px-4 font-bold text-xs rounded-l-sm">Item</th>
-                    <th className="py-2 text-right font-bold text-xs w-20">TAX Rate</th>
-                    <th className="py-2 text-right font-bold text-xs w-20">Quantity</th>
-                    <th className="py-2 text-right font-bold text-xs w-24">Rate</th>
-                    <th className="py-2 text-right font-bold text-xs w-24">Amount</th>
-                    <th className="py-2 text-right font-bold text-xs w-20">TAX</th>
-                    <th className="py-2 px-4 text-right font-bold text-xs rounded-r-sm w-32">Total</th>
+                    <th className="py-2 px-3 font-bold text-[10px] rounded-l-sm">Item</th>
+                    <th className="py-2 text-right font-bold text-[10px] w-16">TAX Rate</th>
+                    <th className="py-2 text-right font-bold text-[10px] w-16">Quantity</th>
+                    <th className="py-2 text-right font-bold text-[10px] w-24">Rate</th>
+                    <th className="py-2 text-right font-bold text-[10px] w-24">Amount</th>
+                    <th className="py-2 text-right font-bold text-[10px] w-16">TAX</th>
+                    <th className="py-2 px-3 text-right font-bold text-[10px] rounded-r-sm w-32">Total</th>
                 </tr>
             </thead>
             <tbody>
@@ -127,21 +127,21 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     const rowTax = applyVat ? rowSubtotal * 0.16 : 0;
                     return (
                         <tr key={idx} className="border-b border-gray-100">
-                            <td className="py-4 px-4 align-top">
+                            <td className="py-3 px-3 align-top">
                                 <div className="flex gap-2">
-                                    <span className="opacity-50 text-[11px]">{idx + 1}.</span>
+                                    <span className="opacity-50 text-[10px]">{idx + 1}.</span>
                                     <div>
-                                        <p className="font-bold text-sm">{item.description}</p>
-                                        {item.serialNumber && <p className="text-[10px] text-gray-500 mt-0.5">S/N: {item.serialNumber}</p>}
+                                        <p className="font-bold text-[11px]">{item.description}</p>
+                                        {item.serialNumber && <p className="text-[9px] text-gray-500 mt-0.5">S/N: {item.serialNumber}</p>}
                                     </div>
                                 </div>
                             </td>
-                            <td className="py-4 text-right text-[11px] font-medium">{applyVat ? '16%' : '0%'}</td>
-                            <td className="py-4 text-right text-[11px] font-medium">{item.quantity}</td>
-                            <td className="py-4 text-right text-[11px] font-medium">KES {formatCurrency(item.unitPrice)}</td>
-                            <td className="py-4 text-right text-[11px] font-medium">KES {formatCurrency(rowSubtotal)}</td>
-                            <td className="py-4 text-right text-[11px] font-medium">KES {formatCurrency(rowTax)}</td>
-                            <td className="py-4 px-4 text-right text-[11px] font-bold">KES {formatCurrency(rowSubtotal + rowTax)}</td>
+                            <td className="py-3 text-right text-[10px] font-medium">{applyVat ? '16%' : '0%'}</td>
+                            <td className="py-3 text-right text-[10px] font-medium">{item.quantity}</td>
+                            <td className="py-3 text-right text-[10px] font-medium">KES {formatCurrency(item.unitPrice)}</td>
+                            <td className="py-3 text-right text-[10px] font-medium">KES {formatCurrency(rowSubtotal)}</td>
+                            <td className="py-3 text-right text-[10px] font-medium">KES {formatCurrency(rowTax)}</td>
+                            <td className="py-3 px-3 text-right text-[10px] font-bold">KES {formatCurrency(rowSubtotal + rowTax)}</td>
                         </tr>
                     );
                 })}
@@ -149,26 +149,26 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
         </table>
 
         {/* TOTALS FOOTER BLOCK */}
-        <div className="flex justify-between items-start mt-8">
-            <div className="max-w-[400px]">
-                <p className="text-[11px] font-bold text-black uppercase">
+        <div className="flex justify-between items-start mt-6">
+            <div className="max-w-[350px]">
+                <p className="text-[10px] font-bold text-black uppercase">
                     Total (in words) : {numberToWords(total)}
                 </p>
             </div>
             
-            <div className="w-[320px] space-y-4">
-                <div className="flex justify-between items-center text-[11px]">
+            <div className="w-[280px] space-y-3">
+                <div className="flex justify-between items-center text-[10px]">
                     <span className="font-bold opacity-60">Amount</span>
                     <span className="font-bold">KES {formatCurrency(subtotal || total)}</span>
                 </div>
-                <div className="flex justify-between items-center text-[11px]">
+                <div className="flex justify-between items-center text-[10px]">
                     <span className="font-bold opacity-60">TAX</span>
                     <span className="font-bold">KES {formatCurrency(vat || 0)}</span>
                 </div>
                 
-                <div className="pt-4 border-t-2 border-black flex justify-between items-center">
-                    <span className="text-[16px] font-bold">Total (KES)</span>
-                    <span className="text-[18px] font-bold">KES {formatCurrency(total)}</span>
+                <div className="pt-3 border-t-2 border-black flex justify-between items-center">
+                    <span className="text-[14px] font-bold">Total (KES)</span>
+                    <span className="text-[16px] font-bold">KES {formatCurrency(total)}</span>
                 </div>
                 <div className="h-0.5 bg-black w-full mt-[-2px]"></div>
             </div>
@@ -176,12 +176,12 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
       </section>
 
       {/* FINAL COMPLIANCE FOOTER */}
-      <footer className="mt-auto pt-10 text-center">
-         <p className="text-[11px] font-medium text-black mb-8">
+      <footer className="mt-auto pt-8 text-center">
+         <p className="text-[10px] font-medium text-black mb-6">
             For any enquiry, reach out via email at <span className="font-bold">{workspace?.email}</span>, call on <span className="font-bold">{workspace?.phone}</span>
          </p>
          
-         <p className="text-[9px] font-medium text-gray-400">
+         <p className="text-[8px] font-medium text-gray-400">
             This is an electronically generated document, no signature is required.
          </p>
       </footer>
