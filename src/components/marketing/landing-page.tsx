@@ -114,7 +114,6 @@ export function LandingPage() {
                         <div className="bg-primary p-2 rounded-xl shadow-lg">
                             <Zap className="h-6 w-6 text-white" />
                         </div>
-                        {/* APP_NAME Text Removed per user request */}
                     </div>
                     <div className="flex items-center gap-4">
                         <Button variant="ghost" asChild className="font-bold hidden sm:flex">
@@ -206,13 +205,12 @@ export function LandingPage() {
 
             {/* Footer */}
             <footer className="py-20 px-6 bg-black text-white border-t border-white/10">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12">
                     <div className="space-y-6">
                         <div className="flex items-center gap-2">
                              <div className="bg-primary p-2 rounded-xl">
                                 <Zap className="h-6 w-6 text-white" />
                             </div>
-                            {/* APP_NAME Text Removed per user request */}
                         </div>
                         <p className="text-gray-400 font-medium max-w-sm leading-relaxed">
                             Professional business suite designed for clarity, reliability, and growth. Empowering entrepreneurs with enterprise tools.
@@ -220,13 +218,6 @@ export function LandingPage() {
                         <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 pt-10">
                             Powered by simonstyless technologies limited
                         </p>
-                    </div>
-                    <div className="flex flex-col md:items-end space-y-4">
-                        <p className="font-black uppercase text-xs tracking-widest text-gray-500">Global Node Status</p>
-                        <div className="bg-green-500/10 border border-green-500/20 px-4 py-2 rounded-xl flex items-center gap-3">
-                            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                            <span className="text-green-500 text-xs font-black uppercase tracking-widest">All systems nominal</span>
-                        </div>
                     </div>
                 </div>
             </footer>
