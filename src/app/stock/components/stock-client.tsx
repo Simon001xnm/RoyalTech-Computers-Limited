@@ -136,7 +136,7 @@ export function StockClient() {
                 createdAt: new Date().toISOString(),
                 createdBy: { uid: user.uid, name: user.displayName || 'User' }
             });
-            toast({ title: "Saved to stock list." });
+            toast({ title: "Saved to inventory." });
         }
         setIsFormOpen(false);
         setEditingAsset(null);
@@ -168,9 +168,9 @@ export function StockClient() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Laptop Stock" 
-        description="See all your laptops and items here."
-        actionLabel="Add New Laptop"
+        title="Inventory" 
+        description="Manage your stock items and track availability."
+        actionLabel="Add New Item"
         onAction={handleAddAsset}
         ActionIcon={PlusCircle}
       />
@@ -184,7 +184,7 @@ export function StockClient() {
           placeholder="Search by name or serial..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm bg-card"
+          className="max-w-sm bg-card h-11 font-bold"
         />
       </div>
       
@@ -195,8 +195,8 @@ export function StockClient() {
             {rawAssets?.length === 0 ? (
                 <Alert className="bg-card">
                     <PackageSearch className="h-4 w-4" />
-                    <AlertTitle>List is Empty</AlertTitle>
-                    <AlertDescription>You haven't added any laptops yet. Click the button above to add one.</AlertDescription>
+                    <AlertTitle>Inventory Empty</AlertTitle>
+                    <AlertDescription>You haven't added any items yet. Click the button above to add one.</AlertDescription>
                 </Alert>
             ) : (
                 <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
@@ -237,10 +237,10 @@ export function StockClient() {
       )}
 
       <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingAsset(null); }}}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Change info" : "Add to Stock"}</DialogTitle>
-            <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">Enter the laptop details below.</DialogDescription>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Update Item" : "Register New Item"}</DialogTitle>
+            <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">Enter the item details below.</DialogDescription>
           </DialogHeader>
           <AssetForm asset={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isSubmitting} />
         </DialogContent>
@@ -251,7 +251,7 @@ export function StockClient() {
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase">Are you sure?</DialogTitle>
             <DialogDescription className="font-medium text-base pt-2">
-              This will delete <strong>{assetToDelete?.model}</strong> from your list forever.
+              This will delete <strong>{assetToDelete?.model}</strong> from your inventory forever.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 mt-4">

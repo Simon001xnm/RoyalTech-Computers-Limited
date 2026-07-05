@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -6,7 +7,7 @@ import type { SaleItem, Sale, Customer, Document as AppDocument } from '@/types'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone, Package } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,7 +60,7 @@ export function PosClient() {
   const [lastGeneratedDoc, setLastGeneratedDoc] = useState<AppDocument | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // CLOUD QUERIES (Index-free: tenantId only, filter status locally)
+  // CLOUD QUERIES
   const accessoriesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id));
@@ -93,11 +94,11 @@ export function PosClient() {
   const availableProducts = useMemo<Product[]>(() => {
     const list: Product[] = [];
     
-    // Filter Available Laptops
+    // Filter Available Items (Inventory)
     if (rawAssets) {
         rawAssets.filter(a => a.status === 'Available').forEach(asset => list.push({
             id: asset.id,
-            displayName: `LAPTOP: ${asset.model} (S/N: ${asset.serialNumber})`,
+            displayName: `ITEM: ${asset.model} (ID: ${asset.serialNumber})`,
             price: asset.purchasePrice || 0,
             serialNumber: asset.serialNumber,
             type: 'asset',
@@ -109,7 +110,7 @@ export function PosClient() {
     if (rawAccessories) {
       rawAccessories.filter(a => a.status === 'Available').forEach(acc => list.push({
         id: acc.id,
-        displayName: `ACC: ${acc.name} (S/N: ${acc.serialNumber})`,
+        displayName: `ACC: ${acc.name} (ID: ${acc.serialNumber})`,
         price: acc.sellingPrice || 0,
         serialNumber: acc.serialNumber,
         type: 'accessory',
@@ -317,7 +318,7 @@ export function PosClient() {
                 <div className="bg-muted/30 p-4 rounded-xl space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
                     <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-black opacity-50">Select Hardware (Laptops) or Accessory</Label>
+                        <Label className="text-[10px] uppercase font-black opacity-50">Select Inventory Item or Accessory</Label>
                         <Popover open={searchOpen} onOpenChange={setSearchOpen}>
                           <PopoverTrigger asChild>
                             <Button variant="outline" className="w-full h-11 truncate text-left font-normal">
@@ -327,7 +328,7 @@ export function PosClient() {
                           <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                             <Command>
                               <CommandInput 
-                                placeholder="Search by model or Serial Number..." 
+                                placeholder="Search by name or Serial Number..." 
                                 value={customName}
                                 onValueChange={(v) => setCustomName(v)}
                               />
@@ -388,7 +389,7 @@ export function PosClient() {
                                     <TableRow key={item.id} className="hover:bg-muted/20">
                                         <TableCell>
                                             <p className="font-semibold text-sm">{item.name}</p>
-                                            <p className="text-[10px] opacity-60">S/N: {item.serialNumber}</p>
+                                            <p className="text-[10px] opacity-60">ID: {item.serialNumber}</p>
                                             <Badge variant="outline" className="text-[8px] uppercase mt-1">{item.productType}</Badge>
                                         </TableCell>
                                         <TableCell className="text-center text-sm">{item.quantity}</TableCell>

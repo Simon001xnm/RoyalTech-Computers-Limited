@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 const assetFormSchema = z.object({
-  model: z.string().min(2, "Model name required."),
+  model: z.string().min(2, "Name or model required."),
   serialNumber: z.string().min(3, "Serial number is mandatory and must be unique."),
   purchaseDate: z.date({ required_error: "Acquisition date is required." }),
   status: z.enum(["Available", "Leased", "Repair", "Sold", "With Reseller"]),
@@ -91,9 +91,9 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
             name="model"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Asset Model / Name *</FormLabel>
+                <FormLabel>Item Name / Model *</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., HP EliteBook 840 G5" {...field} />
+                  <Input placeholder="e.g., MacBook Pro or Samsung S24" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -104,11 +104,11 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
             name="serialNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Serial Number / IMEI *</FormLabel>
+                <FormLabel>Serial Number / ID *</FormLabel>
                 <FormControl>
                   <Input placeholder="Must be unique" {...field} disabled={!!asset} />
                 </FormControl>
-                <FormDescription className="text-[10px]">Unique hardware identifier.</FormDescription>
+                <FormDescription className="text-[10px]">Unique identifier for this specific unit.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -162,7 +162,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
             name="status"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Current Status *</FormLabel>
+                <FormLabel>Inventory Status *</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger className="h-11">
@@ -170,11 +170,11 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="Available">Available for Lease/Sale</SelectItem>
+                    <SelectItem value="Available">Available for Sale/Lease</SelectItem>
                     <SelectItem value="Leased">Currently Leased</SelectItem>
-                    <SelectItem value="Repair">In Repair Shop</SelectItem>
-                    <SelectItem value="With Reseller">With Reseller Partner</SelectItem>
-                    <SelectItem value="Sold">Permanently Sold</SelectItem>
+                    <SelectItem value="Repair">Maintenance/Repair</SelectItem>
+                    <SelectItem value="With Reseller">With Partner</SelectItem>
+                    <SelectItem value="Sold">Sold</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -188,7 +188,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
           name="quantity"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Quantity in Stock</FormLabel>
+              <FormLabel>Quantity</FormLabel>
               <FormControl>
                 <Input type="number" placeholder="e.g., 1" {...field} />
               </FormControl>
@@ -198,16 +198,16 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
         />
 
         <div className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Technical Specifications</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Product Specifications</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 border rounded-2xl bg-muted/20">
             <FormField
                 control={form.control}
                 name="ram"
                 render={({ field }) => (
                 <FormItem>
-                    <FormLabel>RAM (Memory)</FormLabel>
+                    <FormLabel>Spec 1 (e.g. RAM)</FormLabel>
                     <FormControl>
-                    <Input placeholder="e.g., 16GB DDR4" {...field} />
+                    <Input placeholder="e.g., 16GB" {...field} />
                     </FormControl>
                 </FormItem>
                 )}
@@ -217,9 +217,9 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 name="storage"
                 render={({ field }) => (
                 <FormItem>
-                    <FormLabel>Storage</FormLabel>
+                    <FormLabel>Spec 2 (e.g. Storage)</FormLabel>
                     <FormControl>
-                    <Input placeholder="e.g., 512GB NVMe SSD" {...field} />
+                    <Input placeholder="e.g., 512GB" {...field} />
                     </FormControl>
                 </FormItem>
                 )}
@@ -229,9 +229,9 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 name="processor"
                 render={({ field }) => (
                 <FormItem>
-                    <FormLabel>Processor</FormLabel>
+                    <FormLabel>Spec 3 (e.g. Chipset)</FormLabel>
                     <FormControl>
-                    <Input placeholder="e.g., Intel Core i7 8th Gen" {...field} />
+                    <Input placeholder="e.g., Apple M2" {...field} />
                     </FormControl>
                 </FormItem>
                 )}
@@ -240,14 +240,14 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
         </div>
         
         <div className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Financial Valuation</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Financial Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border rounded-2xl bg-muted/20">
             <FormField
                 control={form.control}
                 name="purchasePrice"
                 render={({ field }) => (
                 <FormItem>
-                    <FormLabel>Acquisition Cost (KES)</FormLabel>
+                    <FormLabel>Purchase Price (KES)</FormLabel>
                     <FormControl>
                     <Input type="number" step="0.01" placeholder="Cost price" {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -259,9 +259,9 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 name="leasePrice"
                 render={({ field }) => (
                 <FormItem>
-                    <FormLabel>Standard Daily Lease Rate (KES)</FormLabel>
+                    <FormLabel>Daily/Unit Rate (KES)</FormLabel>
                     <FormControl>
-                    <Input type="number" step="0.01" placeholder="Rental income per day" {...field} value={field.value ?? ''} />
+                    <Input type="number" step="0.01" placeholder="Selling/Rental rate" {...field} value={field.value ?? ''} />
                     </FormControl>
                 </FormItem>
                 )}
@@ -274,7 +274,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading} className="h-11 px-10 font-black uppercase tracking-widest shadow-lg">
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (asset ? "Save Changes" : "Confirm Registration")}
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (asset ? "Update Item" : "Register Item")}
           </Button>
         </div>
       </form>

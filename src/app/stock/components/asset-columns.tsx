@@ -5,7 +5,7 @@ import type { Asset } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, Eye, Laptop } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Package } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export interface AssetColumnActions {
@@ -39,13 +39,13 @@ export const getAssetColumns = (actions: AssetColumnActions) => [
   },
   {
     accessorKey: "model",
-    header: "Asset Identity",
+    header: "Item Identity",
     cell: ({ row }: any) => {
       const asset = row.original as Asset;
       return (
         <div className="flex items-center gap-3">
             <div className="bg-primary/5 p-2 rounded-lg">
-                <Laptop className="h-4 w-4 text-primary" />
+                <Package className="h-4 w-4 text-primary" />
             </div>
             <div>
                 <span className="font-bold text-sm block">{asset.model}</span>
@@ -57,7 +57,7 @@ export const getAssetColumns = (actions: AssetColumnActions) => [
   },
   {
     accessorKey: "status",
-    header: "Global Status",
+    header: "Status",
     cell: ({ row }: any) => {
       const status = row.getValue("status") as Asset["status"];
       let variant: "default" | "secondary" | "destructive" | "outline" = "secondary";
@@ -109,7 +109,7 @@ export const getAssetColumns = (actions: AssetColumnActions) => [
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>Unit Controls</DropdownMenuLabel>
+                <DropdownMenuLabel>Item Controls</DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => actions.onEdit(asset)}>
                 <Edit className="mr-2 h-4 w-4" /> Edit Record
                 </DropdownMenuItem>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePathname } from "next/navigation";
@@ -26,7 +27,7 @@ const TUTORIAL_DATA: Record<string, TutorialContent> = {
     description: "Your business at a glance. This command center provides real-time analytics and activity logs for your workspace.",
     features: [
       "Revenue Analytics: Track your sales trends over the last 7 days.",
-      "KPI Cards: Monitor asset availability, client growth, and monthly volume.",
+      "KPI Cards: Monitor inventory availability, client growth, and monthly volume.",
       "Recent Activity: A live feed of every transaction recorded in the system."
     ],
     tips: [
@@ -36,9 +37,9 @@ const TUTORIAL_DATA: Record<string, TutorialContent> = {
   },
   "/pos": {
     title: "Point of Sale (POS)",
-    description: "The heartbeat of your retail operations. Process sales for hardware and accessories instantly.",
+    description: "The heartbeat of your retail operations. Process sales for inventory items and accessories instantly.",
     features: [
-      "Smart Basket: Add assets (Phones, Laptops, etc.) and accessories to a unified cart.",
+      "Smart Basket: Add inventory items and accessories to a unified cart.",
       "M-Pesa Integration: Initiate STK Pushes directly to customer phones.",
       "Automatic Inventory Update: Items are marked as 'Sold' the moment you finalize.",
       "Custom VAT: Toggle 16% VAT on or off depending on the transaction type."
@@ -49,16 +50,16 @@ const TUTORIAL_DATA: Record<string, TutorialContent> = {
     ]
   },
   "/stock": {
-    title: "Asset Inventory",
-    description: "Manage your high-value hardware assets with serial-number precision.",
+    title: "Inventory Management",
+    description: "Manage your high-value stock items with serial-number precision.",
     features: [
-      "Bulk Import: Paste CSV data to add hundreds of devices at once.",
-      "Status Tracking: Monitor if an asset is Available, Sold, Under Repair, or with a Reseller.",
-      "Tech Specs: Store RAM, Storage, and Processor details for every unit.",
-      "Pricing Control: Set standard purchase prices and acquisition dates."
+      "Item Tracking: Monitor if an item is Available, Sold, Under Repair, or with a Partner.",
+      "Specifications: Store technical details and descriptions for every unit.",
+      "Financial Valuation: Set standard purchase prices and acquisition dates.",
+      "Search: Find items by Serial Number or Name instantly."
     ],
     tips: [
-      "Use the search bar to find an asset by its Serial Number instantly.",
+      "Keep your status updated to ensure accurate availability in the POS module.",
       "Ensure acquisition dates are accurate for better financial reporting."
     ]
   },
