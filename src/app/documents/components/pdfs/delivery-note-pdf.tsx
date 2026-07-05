@@ -92,11 +92,11 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
       </section>
 
       <footer className="mt-auto pt-6 text-center border-t border-gray-100">
-         <p className="text-[9px] font-medium text-black">
-            Laptops Lease | Desktops | Printers | Chargers | Sales & Services
+         <p className="text-[10px] font-bold text-black uppercase tracking-tight">
+            Goods once sold cannot be returned
          </p>
-         <p className="text-[8px] font-medium text-gray-400 mt-2">
-            Items received in good condition. No returns allowed after acceptance.
+         <p className="text-[8px] font-medium text-gray-400 mt-2 italic">
+            Items received in good condition. Official Document.
          </p>
       </footer>
     </div>

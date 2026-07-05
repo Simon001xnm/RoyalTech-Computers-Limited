@@ -96,8 +96,8 @@ export function RepairNotePdf({ document: docSnapshot }: { document: AppDocument
       </section>
 
       <footer className="mt-auto pt-6 text-center border-t border-gray-100">
-         <p className="text-[9px] font-medium text-black">
-            Electronic Repairs | Laptop Leasing | Hardware Maintenance
+         <p className="text-[10px] font-bold text-black uppercase">
+            Goods once sold cannot be returned
          </p>
       </footer>
     </div>

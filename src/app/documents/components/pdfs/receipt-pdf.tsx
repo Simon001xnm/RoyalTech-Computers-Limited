@@ -28,10 +28,6 @@ function numberToWords(num: number): string {
   return convert(Math.floor(num)) + ' SHILLINGS ONLY';
 }
 
-/**
- * @fileOverview Professional Receipt Design
- * Optimized font sizes for perfect fit on A4.
- */
 export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
@@ -72,7 +68,6 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
   return (
     <div className="p-[12mm] font-sans text-[11px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border selection:bg-indigo-100">
       
-      {/* HEADER SECTION: Title Left, Logo Right */}
       <header className="flex justify-between items-start mb-6">
         <div className="space-y-3">
             <h1 className="text-3xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Receipt</h1>
@@ -91,7 +86,6 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
         </div>
       </header>
 
-      {/* BILLING BLOCKS: Side by Side with Indigo Background */}
       <section className="grid grid-cols-2 gap-3 mb-8">
         <div className="p-4 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
             <h3 className="font-medium text-[14px] mb-1" style={{ color: primaryIndigo }}>Billed By</h3>
@@ -106,7 +100,6 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
         </div>
       </section>
 
-      {/* ITEM TABLE SECTION with Indigo Headers */}
       <section className="flex-grow">
         <table className="w-full border-collapse">
             <thead>
@@ -147,7 +140,6 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             </tbody>
         </table>
 
-        {/* TOTALS FOOTER BLOCK */}
         <div className="flex justify-between items-start mt-6">
             <div className="max-w-[350px]">
                 <p className="text-[10px] font-bold text-black uppercase">
@@ -174,8 +166,10 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
         </div>
       </section>
 
-      {/* FINAL COMPLIANCE FOOTER */}
       <footer className="mt-auto pt-8 text-center">
+         <p className="text-[11px] font-black uppercase text-black mb-4">
+            Goods once sold cannot be returned
+         </p>
          <p className="text-[10px] font-medium text-black mb-6">
             For any enquiry, reach out via email at <span className="font-bold">{workspace?.email}</span>, call on <span className="font-bold">{workspace?.phone}</span>
          </p>
