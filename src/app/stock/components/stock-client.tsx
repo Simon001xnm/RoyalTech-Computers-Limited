@@ -91,7 +91,8 @@ export function StockClient() {
     setIsSubmitting(true);
 
     try {
-        if (!editingAsset) {
+        // 1. Check for Unique Serial Number within this tenant (only on create or if serial changed)
+        if (!editingAsset || editingAsset.serialNumber !== data.serialNumber) {
             const serialQuery = query(
                 collection(firestore, 'assets'), 
                 where('tenantId', '==', tenant.id), 
@@ -102,8 +103,8 @@ export function StockClient() {
             if (!querySnapshot.empty) {
                 toast({ 
                     variant: 'destructive', 
-                    title: 'Stop!', 
-                    description: 'This Serial Number is already in your list.' 
+                    title: 'Item Already Exists', 
+                    description: 'This Serial Number is already registered in your inventory.' 
                 });
                 setIsSubmitting(false);
                 return;
