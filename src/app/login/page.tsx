@@ -4,17 +4,13 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignIn, initiateGoogleSignIn, initiatePasswordReset } from '@/firebase/non-blocking-login';
-import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ChevronDown, ChevronRight, ShieldCheck, Zap } from 'lucide-react';
+import { Loader2, ShieldCheck, Zap, Eye, EyeOff } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
-import { logger } from '@/lib/logger';
-import { doc } from 'firebase/firestore';
-import type { User as AppUser, Company } from '@/types';
 
 /**
  * @fileOverview Floating Login Form
@@ -24,12 +20,11 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showEmailAuth, setShowEmailAuth] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -157,12 +152,21 @@ export default function LoginPage() {
                     Forgot?
                   </button>
                 </div>
-                <Input 
-                    type="password" 
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)} 
-                    className="h-11 rounded-xl bg-muted/20 border-none shadow-inner" 
-                />
+                <div className="relative">
+                    <Input 
+                        type={showPassword ? "text" : "password"} 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)} 
+                        className="h-11 rounded-xl bg-muted/20 border-none shadow-inner pr-10" 
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                    >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                </div>
             </div>
 
             {isMasterInput && (
@@ -171,7 +175,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <Button onClick={handleSignIn} className="w-full h-12 text-xs font-black uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95" disabled={isProcessing}>
+            <Button onClick={handleSignIn} className="w-full h-12 text-xs font-black uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 bg-primary text-primary-foreground" disabled={isProcessing}>
                 {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log in'}
             </Button>
           </div>

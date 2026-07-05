@@ -9,10 +9,9 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, getDocs, collection, query, where, deleteDoc } from 'firebase/firestore';
-import { Loader2, Zap, ShieldCheck } from 'lucide-react';
+import { Loader2, Zap, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
 import { initiateGoogleSignIn } from '@/firebase/non-blocking-login';
-import { logger } from '@/lib/logger';
 import Link from 'next/link';
 
 /**
@@ -22,8 +21,12 @@ import Link from 'next/link';
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -38,8 +41,18 @@ export default function SignUpPage() {
   }, [user, isUserLoading, router]);
 
   const handleSignUp = async () => {
-    if (!email || !password || !name) {
-        toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill all details.' });
+    if (!email || !password || !name || !confirmPassword) {
+        toast({ variant: 'destructive', title: 'Missing Info', description: 'Please fill all details.' });
+        return;
+    }
+
+    if (password !== confirmPassword) {
+        toast({ variant: 'destructive', title: 'Check Password', description: 'The two passwords do not match.' });
+        return;
+    }
+
+    if (password.length < 6) {
+        toast({ variant: 'destructive', title: 'Too Short', description: 'Password must be at least 6 characters.' });
         return;
     }
 
@@ -154,7 +167,41 @@ export default function SignUpPage() {
             </div>
             <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">New Password</Label>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 rounded-xl bg-muted/20 border-none shadow-inner" placeholder="Min 6 characters" />
+                <div className="relative">
+                    <Input 
+                        type={showPassword ? "text" : "password"} 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)} 
+                        className="h-11 rounded-xl bg-muted/20 border-none shadow-inner pr-10" 
+                        placeholder="Min 6 characters" 
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                    >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                </div>
+            </div>
+            <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Repeat Password</Label>
+                <div className="relative">
+                    <Input 
+                        type={showConfirmPassword ? "text" : "password"} 
+                        value={confirmPassword} 
+                        onChange={(e) => setConfirmPassword(e.target.value)} 
+                        className="h-11 rounded-xl bg-muted/20 border-none shadow-inner pr-10" 
+                        placeholder="Match your password" 
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                    >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                </div>
             </div>
 
             <Button onClick={handleSignUp} className="w-full h-12 text-xs font-black uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={isLoading}>
