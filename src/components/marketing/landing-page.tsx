@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -12,12 +11,12 @@ import {
     ChevronRight, 
     Zap, 
     ShieldCheck, 
-    Users,
-    Laptop,
-    Wallet
+    Users
 } from 'lucide-react';
 import Link from 'next/link';
 import { APP_NAME } from '@/lib/constants';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const FeatureCard = ({ icon: Icon, title, description }: { icon: any, title: string, description: string }) => (
     <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300 group">
@@ -31,7 +30,7 @@ const FeatureCard = ({ icon: Icon, title, description }: { icon: any, title: str
     </Card>
 );
 
-const PricingPlan = ({ title, price, description, features, highlighted = false, tier = "" }: any) => (
+const PricingPlan = ({ title, price, description, features, highlighted = false }: any) => (
     <Card className={cn(
         "relative overflow-hidden flex flex-col border-2 transition-all duration-500",
         highlighted ? "border-primary shadow-2xl scale-105 z-10" : "border-border shadow-md"
@@ -60,14 +59,12 @@ const PricingPlan = ({ title, price, description, features, highlighted = false,
             ))}
         </CardContent>
         <CardFooter className="p-8 pt-0">
-            <Button asChild className={cn("w-full h-12 font-black uppercase tracking-widest", highlighted ? "" : "variant-outline")} variant={highlighted ? "default" : "outline"}>
+            <Button asChild className={cn("w-full h-12 font-black uppercase tracking-widest")} variant={highlighted ? "default" : "outline"}>
                 <Link href="/signup">Get Started</Link>
             </Button>
         </CardFooter>
     </Card>
 );
-
-import { cn } from '@/lib/utils';
 
 export function LandingPage() {
     const plans = [
@@ -167,7 +164,7 @@ export function LandingPage() {
                         <FeatureCard 
                             icon={Package} 
                             title="Stock List" 
-                            description="Manage high-value laptops and accessories with serial number precision. Never lose a unit again."
+                            description="Manage high-value items with serial number precision. Never lose a unit again."
                         />
                         <FeatureCard 
                             icon={Printer} 
@@ -180,7 +177,7 @@ export function LandingPage() {
                             description="Invite your team and control exactly what they can see or modify in your shop."
                         />
                         <FeatureCard 
-                            icon={Wallet} 
+                            icon={ShoppingCart} 
                             title="Money Reports" 
                             description="See your profit and loss at a glance. Know exactly how much your business is making."
                         />
@@ -229,7 +226,7 @@ export function LandingPage() {
                         <p className="font-black uppercase text-xs tracking-widest text-gray-500">Global Node Status</p>
                         <div className="bg-green-500/10 border border-green-500/20 px-4 py-2 rounded-xl flex items-center gap-3">
                             <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                            <span className="text-green-500 text-xs font-black uppercase tracking-widest tracking-tighter">All systems nominal</span>
+                            <span className="text-green-500 text-xs font-black uppercase tracking-widest">All systems nominal</span>
                         </div>
                     </div>
                 </div>
