@@ -77,7 +77,7 @@ export function StockClient() {
     if (assetToDelete) {
       try {
         await deleteDoc(doc(firestore, 'assets', assetToDelete.id));
-        toast({ title: "Asset Deleted" });
+        toast({ title: "Removed from list." });
       } catch (e: any) {
         toast({ variant: 'destructive', title: 'Error', description: e.message });
       }
@@ -91,7 +91,6 @@ export function StockClient() {
     setIsSubmitting(true);
 
     try {
-        // 1. Check for Unique Serial Number within this tenant
         if (!editingAsset) {
             const serialQuery = query(
                 collection(firestore, 'assets'), 
@@ -103,8 +102,8 @@ export function StockClient() {
             if (!querySnapshot.empty) {
                 toast({ 
                     variant: 'destructive', 
-                    title: 'Registration Blocked', 
-                    description: 'Asset already in inventory. Laptops must have unique serial numbers.' 
+                    title: 'Stop!', 
+                    description: 'This Serial Number is already in your list.' 
                 });
                 setIsSubmitting(false);
                 return;
@@ -130,19 +129,19 @@ export function StockClient() {
 
         if (editingAsset) {
             await updateDoc(doc(firestore, 'assets', editingAsset.id), assetData);
-            toast({ title: "Asset Updated" });
+            toast({ title: "Updated!" });
         } else {
             await addDoc(collection(firestore, 'assets'), {
                 ...assetData,
                 createdAt: new Date().toISOString(),
                 createdBy: { uid: user.uid, name: user.displayName || 'User' }
             });
-            toast({ title: "Asset Registered Successfully" });
+            toast({ title: "Saved to stock list." });
         }
         setIsFormOpen(false);
         setEditingAsset(null);
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Error', description: error.message });
+        toast({ variant: 'destructive', title: 'Failed to save', description: error.message });
     } finally {
         setIsSubmitting(false);
     }
@@ -169,9 +168,9 @@ export function StockClient() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Hardware Inventory" 
-        description="Manage high-value assets by unique serial number."
-        actionLabel="Register New Laptop"
+        title="Laptop Stock" 
+        description="See all your laptops and items here."
+        actionLabel="Add New Laptop"
         onAction={handleAddAsset}
         ActionIcon={PlusCircle}
       />
@@ -182,7 +181,7 @@ export function StockClient() {
 
       <div className="mb-4">
         <Input
-          placeholder="Search model or serial number..."
+          placeholder="Search by name or serial..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm bg-card"
@@ -190,14 +189,14 @@ export function StockClient() {
       </div>
       
       {isLoading ? (
-        <div className="p-8 text-center text-muted-foreground animate-pulse font-bold uppercase text-[10px] tracking-widest">Syncing cloud inventory...</div>
+        <div className="p-8 text-center text-muted-foreground animate-pulse font-bold uppercase text-[10px] tracking-widest">Loading items...</div>
       ) : (
         <>
             {rawAssets?.length === 0 ? (
                 <Alert className="bg-card">
                     <PackageSearch className="h-4 w-4" />
-                    <AlertTitle>Inventory Empty</AlertTitle>
-                    <AlertDescription>Your hardware repository is currently empty. Start by registering your first laptop.</AlertDescription>
+                    <AlertTitle>List is Empty</AlertTitle>
+                    <AlertDescription>You haven't added any laptops yet. Click the button above to add one.</AlertDescription>
                 </Alert>
             ) : (
                 <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
@@ -225,7 +224,7 @@ export function StockClient() {
                                 ))
                             ) : (
                                 <TableRow>
-                                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground italic">No matching units found.</TableCell>
+                                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground italic">No matching items found.</TableCell>
                                 </TableRow>
                             )}
                             </TableBody>
@@ -240,8 +239,8 @@ export function StockClient() {
       <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingAsset(null); }}}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Modify Asset Record" : "Register Unique Asset"}</DialogTitle>
-            <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">Hardware lifecycle management</DialogDescription>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Change info" : "Add to Stock"}</DialogTitle>
+            <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">Enter the laptop details below.</DialogDescription>
           </DialogHeader>
           <AssetForm asset={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isSubmitting} />
         </DialogContent>
@@ -250,14 +249,14 @@ export function StockClient() {
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase">Confirm Purge</DialogTitle>
+            <DialogTitle className="text-xl font-black uppercase">Are you sure?</DialogTitle>
             <DialogDescription className="font-medium text-base pt-2">
-              Are you sure you want to delete <strong>{assetToDelete?.model}</strong> (S/N: {assetToDelete?.serialNumber})? This will erase all technical and financial history.
+              This will delete <strong>{assetToDelete?.model}</strong> from your list forever.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 mt-4">
-            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold">Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete} className="font-black uppercase">Delete Permanently</Button>
+            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold">No, Go Back</Button>
+            <Button variant="destructive" onClick={confirmDelete} className="font-black uppercase">Yes, Delete it</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

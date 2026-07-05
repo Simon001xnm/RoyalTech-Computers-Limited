@@ -19,10 +19,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
-/**
- * OnboardingGuard: Ensures users have an active workspace.
- * Features a Self-Healing mechanism that restores missing tenant IDs from the user's portfolio.
- */
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -46,15 +42,11 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     adminPosition: 'Owner',
   });
 
-  // SELF-HEALING IDENTITY LOGIC
   useEffect(() => {
     if (!isProfileLoading && userProfile && !userProfile.tenantId) {
-        // If the active tenantId is missing but they have tenantIds in their portfolio,
-        // automatically restore the most recent one to prevent the "Setup Required" loop.
         const portfolio = userProfile.tenantIds || [];
         if (portfolio.length > 0 && userProfileRef) {
             const restoreId = portfolio[portfolio.length - 1];
-            console.log("Self-healing: Restoring workspace connection for", restoreId);
             setIsSelfHealing(true);
             updateDoc(userProfileRef, { tenantId: restoreId })
                 .then(() => {
@@ -89,7 +81,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         createdBy: { uid: user.uid, name: user.displayName || 'Owner' }
       };
 
-      // Atomic Cloud Sync
       await setDoc(companyRef, setupData);
       
       const currentIds = userProfile?.tenantIds || [];
@@ -100,8 +91,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
       });
 
       localStorage.setItem('rcl_last_tenant_id', companyId);
-      logger.business('Identity', 'Business Node Setup Complete', { companyName: formData.name, companyId });
-      toast({ title: 'Workspace Activated Successfully' });
+      logger.business('Identity', 'Shop Setup Complete', { companyName: formData.name, companyId });
+      toast({ title: 'Shop Ready!' });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Setup Failed', description: err.message });
     } finally {
@@ -115,7 +106,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         <div className="h-screen w-full flex flex-col items-center justify-center bg-background space-y-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary opacity-20" />
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground animate-pulse">
-                {isSelfHealing ? "Restoring Workspace Connection..." : "Syncing Identity Node..."}
+                {isSelfHealing ? "Connecting to your shop..." : "Loading account..."}
             </p>
         </div>
     );
@@ -125,7 +116,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   
   if (userProfile?.role === 'super_admin') return <>{children}</>;
 
-  // Show setup ONLY if user profile exists and has NO tenant history
   if (userProfile && !userProfile.tenantId && (!userProfile.tenantIds || userProfile.tenantIds.length === 0)) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-[#f8f9fa] p-4 md:p-10 font-sans">
@@ -139,17 +129,17 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                     <div className="bg-white/10 p-3 rounded-2xl w-fit mb-6">
                         <Building2 className="h-8 w-8" />
                     </div>
-                    <h2 className="text-3xl font-black tracking-tighter uppercase leading-none mb-4">Workspace Activation</h2>
+                    <h2 className="text-3xl font-black tracking-tighter uppercase leading-none mb-4">Setup your shop</h2>
                     <p className="text-primary-foreground/70 text-sm font-medium leading-relaxed">
-                        Finalize your business registration to initialize your dedicated cloud node.
+                        Fill in your shop info to start using the system.
                     </p>
                 </div>
                 <div className="relative z-10 space-y-6">
                     <div className="flex items-start gap-4">
                         <div className="bg-white/10 p-2 rounded-lg mt-1"><ShieldCheck className="h-4 w-4" /></div>
                         <div>
-                            <p className="font-bold text-xs uppercase tracking-widest">Permanent Identity</p>
-                            <p className="text-[10px] opacity-60">This workspace will be locked to your account.</p>
+                            <p className="font-bold text-xs uppercase tracking-widest">Saved Forever</p>
+                            <p className="text-[10px] opacity-60">This shop will be linked to your account.</p>
                         </div>
                     </div>
                 </div>
@@ -159,52 +149,52 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                 <CardHeader className="border-b bg-white/50 backdrop-blur px-8 py-6">
                   <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-2xl font-black uppercase tracking-tighter">Business Node Setup</CardTitle>
-                        <CardDescription>PLATFORM INFRASTRUCTURE REGISTRATION</CardDescription>
+                        <CardTitle className="text-2xl font-black uppercase tracking-tighter">Enter Shop Details</CardTitle>
+                        <CardDescription>REGISTER YOUR BUSINESS</CardDescription>
                     </div>
-                    <Badge variant="secondary" className="font-black uppercase text-[10px] tracking-widest px-3 h-6">Action Required</Badge>
+                    <Badge variant="secondary" className="font-black uppercase text-[10px] tracking-widest px-3 h-6">Action Needed</Badge>
                   </div>
                 </CardHeader>
                 
                 <ScrollArea className="flex-grow">
                     <form onSubmit={handleSetup} className="p-8 space-y-8">
                         <section className="space-y-6">
-                            <h3 className="font-black uppercase tracking-widest text-[10px] text-muted-foreground border-b pb-2">Business Metadata</h3>
+                            <h3 className="font-black uppercase tracking-widest text-[10px] text-muted-foreground border-b pb-2">Business Info</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Company Name <span className="text-red-500">*</span></Label>
+                                    <Label className="text-[10px] font-black uppercase">Shop Name <span className="text-red-500">*</span></Label>
                                     <Input value={formData.name} onChange={e => handleInputChange('name', e.target.value)} required placeholder="e.g. RoyalTech Limited" className="h-11" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Official Email <span className="text-red-500">*</span></Label>
+                                    <Label className="text-[10px] font-black uppercase">Business Email <span className="text-red-500">*</span></Label>
                                     <Input type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} required placeholder="office@company.com" className="h-11" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Phone <span className="text-red-500">*</span></Label>
+                                    <Label className="text-[10px] font-black uppercase">Phone Number <span className="text-red-500">*</span></Label>
                                     <Input value={formData.phone} onChange={e => handleInputChange('phone', e.target.value)} required placeholder="+254..." className="h-11" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Position <span className="text-red-500">*</span></Label>
+                                    <Label className="text-[10px] font-black uppercase">Your Position <span className="text-red-500">*</span></Label>
                                     <Input value={formData.adminPosition} onChange={e => handleInputChange('adminPosition', e.target.value)} required placeholder="CEO, Owner, etc." className="h-11" />
                                 </div>
                             </div>
                         </section>
 
                         <section className="space-y-6">
-                             <h3 className="font-black uppercase tracking-widest text-[10px] text-muted-foreground border-b pb-2">Localization</h3>
+                             <h3 className="font-black uppercase tracking-widest text-[10px] text-muted-foreground border-b pb-2">Location</h3>
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase">Physical Address <span className="text-red-500">*</span></Label>
                                     <Input value={formData.address} onChange={e => handleInputChange('address', e.target.value)} required placeholder="Building, Street..." className="h-11" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Business Type</Label>
+                                    <Label className="text-[10px] font-black uppercase">Shop Type</Label>
                                     <Select onValueChange={v => handleInputChange('businessType', v)} value={formData.businessType}>
-                                        <SelectTrigger className="h-11"><SelectValue placeholder="Select type..." /></SelectTrigger>
+                                        <SelectTrigger className="h-11"><SelectValue placeholder="What do you sell?" /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="retail">Retail/POS</SelectItem>
-                                            <SelectItem value="tech">Technology</SelectItem>
-                                            <SelectItem value="service">Service Industry</SelectItem>
+                                            <SelectItem value="retail">Selling Items (Retail)</SelectItem>
+                                            <SelectItem value="tech">Computers & Tech</SelectItem>
+                                            <SelectItem value="service">Services</SelectItem>
                                             <SelectItem value="other">Other</SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -217,9 +207,9 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                 {isSaving ? (
                                     <div className="flex items-center gap-3">
                                         <Loader2 className="h-6 w-6 animate-spin" />
-                                        Activating Node...
+                                        Setting up...
                                     </div>
-                                ) : 'Complete Workspace Activation'}
+                                ) : 'Finish Setup'}
                             </Button>
                         </div>
                     </form>

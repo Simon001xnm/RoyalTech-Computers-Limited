@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import type { User } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { UserX, UserPlus, ShieldAlert, Lock, Unlock, Loader2 } from "lucide-react";
+import { UserX, UserPlus, Lock, Unlock, Loader2 } from "lucide-react";
 import { UserForm } from "./user-form";
 import { getUserColumns, type UserColumnActions } from "./user-columns";
 import { Input } from "@/components/ui/input";
@@ -39,12 +39,7 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@
 import { doc, collection, query, where, deleteDoc, setDoc, updateDoc } from "firebase/firestore";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
-import { Badge } from "@/components/ui/badge";
 
-/**
- * @fileOverview Staff Management Node
- * Allows Admins to provision accounts and terminate access.
- */
 export function UsersClient() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -91,7 +86,7 @@ export function UsersClient() {
 
   const toggleUserStatus = async (user: User) => {
     if (user.id === authUser?.uid) {
-        toast({ variant: 'destructive', title: 'Operation Denied', description: 'You cannot suspend your own account.' });
+        toast({ variant: 'destructive', title: 'Stop!', description: 'You cannot lock your own account.' });
         return;
     }
     
@@ -99,17 +94,17 @@ export function UsersClient() {
     try {
         await updateDoc(doc(firestore, 'users', user.id), { status: newStatus, updatedAt: new Date().toISOString() });
         toast({ 
-            title: newStatus === 'suspended' ? 'Access Terminated' : 'Access Restored', 
-            description: `${user.name}'s account is now ${newStatus}.` 
+            title: newStatus === 'suspended' ? 'Staff Locked' : 'Staff Unlocked', 
+            description: `${user.name} is now ${newStatus === 'suspended' ? 'blocked' : 'allowed'} to use the shop.` 
         });
     } catch (e) {
-        toast({ variant: 'destructive', title: 'Sync Error' });
+        toast({ variant: 'destructive', title: 'Error saving status' });
     }
   };
 
   const handleDeleteUser = (user: User) => {
     if (user.id === authUser?.uid) {
-      toast({ variant: 'destructive', title: 'Action Denied', description: 'You cannot delete your own account.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'You cannot delete yourself.' });
       return;
     }
     setUserToDelete(user);
@@ -120,7 +115,7 @@ export function UsersClient() {
     if (userToDelete) {
       try {
           await deleteDoc(doc(firestore, 'users', userToDelete.id));
-          toast({ title: "Profile Purged" });
+          toast({ title: "Staff member removed." });
       } catch (e: any) {
           toast({ variant: 'destructive', title: 'Action Failed' });
       }
@@ -142,7 +137,7 @@ export function UsersClient() {
                 permissions: data.permissions || [],
                 updatedAt: new Date().toISOString()
             });
-            toast({ title: "Privileges Updated" });
+            toast({ title: "Updated staff permissions." });
         } else {
             const inviteId = `invited_${crypto.randomUUID()}`;
             await setDoc(doc(firestore, 'users', inviteId), {
@@ -158,8 +153,8 @@ export function UsersClient() {
                 createdAt: new Date().toISOString()
             });
             toast({ 
-                title: "User Provisioned", 
-                description: `Successfully provisioned ${data.name}. They can now sign up using ${data.email}.` 
+                title: "Staff member added!", 
+                description: `Tell ${data.name} to sign up using ${data.email}.` 
             });
         }
         setIsFormOpen(false);
@@ -181,7 +176,6 @@ export function UsersClient() {
   
   const columns = useMemo<ColumnDef<User, any>>(() => {
       const base = getUserColumns(columnActions);
-      // Inject Status Toggle into actions
       return base.map(col => {
           if (col.id === 'actions') {
               return {
@@ -197,7 +191,7 @@ export function UsersClient() {
                                     size="icon" 
                                     className="h-8 w-8" 
                                     onClick={() => toggleUserStatus(user)}
-                                    title={user.status === 'suspended' ? 'Restore Access' : 'Terminate Access'}
+                                    title={user.status === 'suspended' ? 'Unlock Access' : 'Lock Access'}
                                 >
                                     {user.status === 'suspended' ? <Unlock className="h-4 w-4 text-green-600" /> : <Lock className="h-4 w-4 text-orange-600" />}
                                 </Button>
@@ -226,9 +220,9 @@ export function UsersClient() {
   return (
     <>
       <PageHeader
-        title="Team Directory"
-        description="Provision staff accounts and configure module-level access."
-        actionLabel={isAdmin ? "Provision New Staff" : undefined}
+        title="Staff Members"
+        description="Add and manage the people who work in your shop."
+        actionLabel={isAdmin ? "Add New Staff" : undefined}
         onAction={isAdmin ? handleAddUser : undefined}
         ActionIcon={UserPlus}
       />
@@ -236,12 +230,12 @@ export function UsersClient() {
        {!isAdmin && !isLoading && (
         <div className="flex h-[60vh] flex-col items-center justify-center p-8 text-center space-y-6">
             <div className="bg-destructive/10 p-6 rounded-full">
-                <ShieldAlert className="h-12 w-12 text-destructive" />
+                <Lock className="h-12 w-12 text-destructive" />
             </div>
             <div className="max-w-md space-y-2">
-                <h2 className="text-2xl font-black uppercase tracking-tight">Privilege Restriction</h2>
+                <h2 className="text-2xl font-black uppercase tracking-tight">Access Restricted</h2>
                 <p className="text-muted-foreground">
-                    Only workspace administrators can provision new accounts or modify system privileges.
+                    Only the shop owner can add or change staff permissions.
                 </p>
             </div>
         </div>
@@ -251,7 +245,7 @@ export function UsersClient() {
         <>
             <div className="mb-4">
                 <Input
-                placeholder="Search staff by name or email..."
+                placeholder="Search staff by name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="max-w-sm bg-card h-11 font-bold"
@@ -261,7 +255,7 @@ export function UsersClient() {
             {isLoading ? (
                 <p className="text-muted-foreground animate-pulse font-bold uppercase text-[10px] tracking-widest flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Synchronizing Identity Node...
+                    Loading staff list...
                 </p>
             ) : (
                 <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
@@ -290,7 +284,7 @@ export function UsersClient() {
                             ))
                         ) : (
                             <TableRow>
-                            <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No team members registered.</TableCell>
+                            <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No staff members added yet.</TableCell>
                             </TableRow>
                         )}
                         </TableBody>
@@ -303,10 +297,10 @@ export function UsersClient() {
                 <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-black uppercase tracking-tighter">
-                            {editingUser ? 'Update Privileges' : 'Provision Staff Account'}
+                            {editingUser ? 'Change Access' : 'Add New Staff'}
                         </DialogTitle>
                         <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">
-                            {editingUser ? 'Modify active permissions' : 'Create a pre-defined identity for your team member'}
+                            {editingUser ? 'Change what this person can do.' : 'Create an account for someone to help you in the shop.'}
                         </DialogDescription>
                     </DialogHeader>
                     <UserForm user={editingUser} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isProcessing} />
@@ -318,15 +312,15 @@ export function UsersClient() {
                     <DialogHeader>
                         <DialogTitle className="text-xl font-black uppercase flex items-center gap-2">
                             <UserX className="h-5 w-5 text-destructive" />
-                            Purge Profile
+                            Remove Staff
                         </DialogTitle>
                         <DialogDescription className="font-medium text-base pt-2">
-                            Are you sure you want to permanently remove <strong>{userToDelete?.name}</strong>? All historical logs will be preserved but access will be impossible.
+                            Are you sure you want to remove <strong>{userToDelete?.name}</strong>? They will no longer be able to log in.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2 mt-6">
                         <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold">Cancel</Button>
-                        <Button variant="destructive" onClick={confirmDelete} className="font-black uppercase">Confirm Purge</Button>
+                        <Button variant="destructive" onClick={confirmDelete} className="font-black uppercase">Yes, Remove Them</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

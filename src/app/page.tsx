@@ -16,14 +16,10 @@ import {
   Maximize2,
   Minimize2,
   CalendarClock,
-  Inbox,
-  Package,
-  ShieldCheck,
-  ChevronRight,
-  Clock,
-  Users,
   Briefcase,
-  Laptop
+  Users,
+  Clock,
+  ChevronRight
 } from 'lucide-react';
 import { format, startOfDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -43,17 +39,11 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-/**
- * @fileOverview Modular Executive Dashboard
- * Customizable workspace control center with multi-module intelligence.
- * Optimized with index-free queries for instant cloud synchronization.
- */
 export default function DashboardPage() {
   const { tenant, isLoading: isSaaSLoading } = useSaaS();
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Layout Management State
   const [visibleWidgets, setVisibleWidgets] = useState({
     revenueChart: true,
     recentSales: true,
@@ -62,7 +52,6 @@ export default function DashboardPage() {
   });
   const [maximizedWidget, setMaximizedWidget] = useState<string | null>(null);
 
-  // CLOUD QUERIES (Index-free: Filter by tenantId only, filter status in memory)
   const accessoriesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id));
@@ -93,10 +82,8 @@ export default function DashboardPage() {
   }, [firestore, tenant?.id]);
   const { data: rawIssuances, isLoading: issuancesLoading } = useCollection(issuancesQuery);
 
-  // MEMORY FILTERING (Eliminates composite index requirements)
   const activeLeases = useMemo(() => (rawLeases || []).filter(l => l.status === 'Active'), [rawLeases]);
   
-  // Reseller Logic: Filter for Issued Laptops
   const activeResellerStock = useMemo(() => 
     (rawIssuances || []).filter(i => i.status === 'Issued' && i.itemType === 'asset'), 
   [rawIssuances]);
@@ -112,7 +99,6 @@ export default function DashboardPage() {
     return Object.values(map).sort((a, b) => b.count - a.count);
   }, [activeResellerStock]);
 
-  // LOGIC: Metrics Aggregation
   const stats = useMemo(() => ({
     accessoryItems: accessories?.reduce((acc, curr) => acc + (curr.quantity || 0), 0) || 0,
     totalClients: customers?.length || 0,
@@ -127,7 +113,6 @@ export default function DashboardPage() {
     }).length || 0
   }), [accessories, customers, activeLeases, sales, activeResellerStock]);
 
-  // LOGIC: Chart Processing
   const chartData = useMemo(() => {
     if (!sales) return [];
     const last7Days = Array.from({ length: 7 }).map((_, i) => {
@@ -195,22 +180,21 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <PageHeader 
-            title="Executive Command" 
-            description={tenant ? `Cloud Node: ${tenant.name}` : "Synchronizing business metadata..."} 
+            title="Shop View" 
+            description={tenant ? `Currently in: ${tenant.name}` : "Getting shop info..."} 
         />
         <div className="flex gap-2 mb-6 sm:mb-0">
             {isAnythingHidden && (
                 <Button variant="outline" size="sm" onClick={resetLayout} className="h-9 font-bold border-dashed">
-                    <LayoutTemplate className="h-4 w-4 mr-2" /> Reset Dashboard
+                    <LayoutTemplate className="h-4 w-4 mr-2" /> Show all boxes
                 </Button>
             )}
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-9 px-4 font-bold flex items-center">
-                <Zap className="h-3 w-3 mr-2 fill-green-700" /> Active Cloud Link
+                <Zap className="h-3 w-3 mr-2 fill-green-700" /> Online
             </Badge>
         </div>
       </div>
 
-      {/* TOP KPI CARDS */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {showMetricsLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
@@ -223,21 +207,19 @@ export default function DashboardPage() {
             ))
         ) : (
             <>
-                <SummaryCard title="Monthly Sales" value={stats.monthlySalesCount} icon={TrendingUp} description="Processed transactions" />
-                <SummaryCard title="Active Hires" value={stats.activeHires} icon={CalendarClock} description="Laptops in the field" />
-                <SummaryCard title="Reseller Stock" value={stats.withResellers} icon={Briefcase} description="Units with partners" />
-                <SummaryCard title="Client Base" value={stats.totalClients} icon={Users} description="Registered in CRM" />
+                <SummaryCard title="Sales this Month" value={stats.monthlySalesCount} icon={TrendingUp} description="Items sold" />
+                <SummaryCard title="Active Hires" value={stats.activeHires} icon={CalendarClock} description="Items with customers" />
+                <SummaryCard title="Partner Stock" value={stats.withResellers} icon={Briefcase} description="Items with partners" />
+                <SummaryCard title="Clients" value={stats.totalClients} icon={Users} description="Registered people" />
             </>
         )}
       </div>
 
-      {/* MODULAR WIDGET GRID */}
       <div className={cn(
         "grid gap-6 transition-all duration-500",
         maximizedWidget ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-3"
       )}>
         
-        {/* WIDGET: REVENUE CHART */}
         {visibleWidgets.revenueChart && (maximizedWidget === null || maximizedWidget === 'revenueChart') && (
             <Card className={cn(
                 "shadow-lg border-none overflow-hidden transition-all duration-500",
@@ -247,9 +229,9 @@ export default function DashboardPage() {
                     <div>
                         <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
                             <TrendingUp className="h-5 w-5 text-primary" />
-                            Revenue Stream
+                            Money Chart
                         </CardTitle>
-                        <CardDescription>7-day platform performance trace.</CardDescription>
+                        <CardDescription>Sales for the last 7 days.</CardDescription>
                     </div>
                     <div className="flex items-center gap-1 no-print">
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMaximizedWidget(maximizedWidget === 'revenueChart' ? null : 'revenueChart')}>
@@ -279,16 +261,15 @@ export default function DashboardPage() {
             </Card>
         )}
 
-        {/* WIDGET: RECENT SALES */}
         {visibleWidgets.recentSales && (maximizedWidget === null || maximizedWidget === 'recentSales') && (
             <Card className="shadow-lg border-none overflow-hidden">
                 <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between">
                     <div>
                         <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
                             <History className="h-5 w-5 text-primary" />
-                            Recent Sales
+                            Latest Sales
                         </CardTitle>
-                        <CardDescription>Latest cloud transactions.</CardDescription>
+                        <CardDescription>Most recent things sold.</CardDescription>
                     </div>
                     <div className="flex items-center gap-1 no-print">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => toggleWidget('recentSales')}>
@@ -308,7 +289,7 @@ export default function DashboardPage() {
                                             <p className="text-sm font-bold truncate">{sale.customerName || 'Walk-in Client'}</p>
                                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium">
                                                 <Clock className="h-3 w-3" /> 
-                                                {sale.date ? format(parseISO(sale.date), 'MMM d, h:mm a') : 'Recently'}
+                                                {sale.date ? format(parseISO(sale.date), 'MMM d, h:mm a') : 'Just now'}
                                             </div>
                                         </div>
                                         <div className="text-right">
@@ -319,28 +300,27 @@ export default function DashboardPage() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="py-20 text-center text-muted-foreground italic text-xs">No records found.</div>
+                            <div className="py-20 text-center text-muted-foreground italic text-xs">No sales recorded yet.</div>
                         )}
                     </ScrollArea>
                 </CardContent>
                 <CardFooter className="bg-muted/5 border-t p-2">
                     <Button variant="ghost" asChild className="w-full text-[10px] font-black uppercase tracking-widest h-8">
-                        <Link href="/books">Open Ledger <ChevronRight className="ml-1 h-3 w-3" /></Link>
+                        <Link href="/books">See all sales <ChevronRight className="ml-1 h-3 w-3" /></Link>
                     </Button>
                 </CardFooter>
             </Card>
         )}
 
-        {/* WIDGET: RESELLER WATCH */}
         {visibleWidgets.resellerWatch && (maximizedWidget === null || maximizedWidget === 'resellerWatch') && (
             <Card className="shadow-lg border-none overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between">
                     <div>
                         <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
                             <Briefcase className="h-5 w-5 text-primary" />
-                            Reseller Watch
+                            Partner Check
                         </CardTitle>
-                        <CardDescription>Units held by partners.</CardDescription>
+                        <CardDescription>Items with our partners.</CardDescription>
                     </div>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => toggleWidget('resellerWatch')}>
                         <EyeOff className="h-4 w-4" />
@@ -361,14 +341,13 @@ export default function DashboardPage() {
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg font-black text-primary">{partner.count}</span>
-                                                <Laptop className="h-3 w-3 text-muted-foreground" />
                                             </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="py-20 text-center text-muted-foreground italic text-xs">No laptops currently with resellers.</div>
+                            <div className="py-20 text-center text-muted-foreground italic text-xs">No items with partners.</div>
                         )}
                     </ScrollArea>
                 </CardContent>
@@ -380,16 +359,15 @@ export default function DashboardPage() {
             </Card>
         )}
 
-        {/* WIDGET: LEASE EXPIRATIONS */}
         {visibleWidgets.leaseExpirations && (maximizedWidget === null || maximizedWidget === 'leaseExpirations') && (
             <Card className="shadow-lg border-none overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between">
                     <div>
                         <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
                             <CalendarClock className="h-5 w-5 text-primary" />
-                            Expiry Watch
+                            Return Soon
                         </CardTitle>
-                        <CardDescription>Impending laptop returns.</CardDescription>
+                        <CardDescription>Items to be returned soon.</CardDescription>
                     </div>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => toggleWidget('leaseExpirations')}>
                         <EyeOff className="h-4 w-4" />
@@ -416,7 +394,7 @@ export default function DashboardPage() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="py-20 text-center text-muted-foreground italic text-xs">No active leases expiring soon.</div>
+                            <div className="py-20 text-center text-muted-foreground italic text-xs">No returns due soon.</div>
                         )}
                     </ScrollArea>
                 </CardContent>
@@ -429,19 +407,18 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* SYSTEM STATUS FOOTER */}
       <div className="mt-12 flex flex-col md:flex-row items-center justify-between gap-4 p-6 bg-primary/5 rounded-2xl border border-primary/10">
           <div className="flex items-center gap-4">
               <div className="bg-primary p-2 rounded-lg shadow-md">
-                <ShieldCheck className="h-5 w-5 text-white" />
+                <Zap className="h-5 w-5 text-white" />
               </div>
               <div className="space-y-0.5">
-                  <p className="text-xs font-black uppercase tracking-widest text-primary">Cryptographic Node Online</p>
-                  <p className="text-[10px] text-muted-foreground">Authorized Identity: {user?.email}</p>
+                  <p className="text-xs font-black uppercase tracking-widest text-primary">Shop Online</p>
+                  <p className="text-[10px] text-muted-foreground">Logged in as: {user?.email}</p>
               </div>
           </div>
           <div className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter text-center md:text-right">
-              Powered by simonstyless technologies limited &bull; Secure Protocol Active
+              Powered by simonstyless technologies limited
           </div>
       </div>
     </div>

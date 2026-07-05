@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Calendar as CalendarIcon, Info } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Info } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
 import {
   Table,
@@ -25,7 +26,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { InvoicePdf } from "./pdfs/invoice-pdf";
 import { ReceiptPdf } from "./pdfs/receipt-pdf";
@@ -141,7 +141,7 @@ export function DocumentsClient() {
     if (type === 'Receipt') {
         const parsedAmount = parseFloat(amount);
         if (isNaN(parsedAmount) || parsedAmount <= 0) {
-            toast({ variant: 'destructive', title: 'Invalid Amount' });
+            toast({ variant: 'destructive', title: 'Check the price' });
             return;
         }
         documentData.amount = parsedAmount;
@@ -190,22 +190,21 @@ export function DocumentsClient() {
             createdAt: new Date().toISOString(),
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         });
-        toast({ title: `${type} Generated Successfully` });
+        toast({ title: "Done! Paper is ready." });
         setSelectedCustomerId('');
         setDetails('');
         setAmount('');
         setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Generation Failed', description: error.message });
+        toast({ variant: 'destructive', title: 'Something went wrong', description: error.message });
     }
   };
 
   const handleGenerateDeliveryFromExisting = async (sourceDoc: AppDocument) => {
     if (!tenant || !user) return;
 
-    // Normalizing item structure for Delivery Note
     const normalizedItems = (sourceDoc.data.items || []).map((i: any) => ({
-        description: i.description || i.name || "Unknown Item",
+        description: i.description || i.name || "Item",
         quantity: i.quantity || 1,
         serialNumber: i.serialNumber || "N/A"
     }));
@@ -219,7 +218,7 @@ export function DocumentsClient() {
         data: {
             customer: sourceDoc.data.customer,
             items: normalizedItems,
-            details: `Automated Dispatch from ${sourceDoc.type}: ${sourceDoc.title}`,
+            details: `From ${sourceDoc.type}: ${sourceDoc.title}`,
             workspace: sourceDoc.data.workspace
         },
         createdAt: new Date().toISOString(),
@@ -228,9 +227,9 @@ export function DocumentsClient() {
 
     try {
         await addDoc(collection(firestore, 'documents'), deliveryData);
-        toast({ title: "Delivery Note Dispatched Successfully" });
+        toast({ title: "Delivery note created!" });
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Dispatch Failed', description: error.message });
+        toast({ variant: 'destructive', title: 'Failed to create note', description: error.message });
     }
   };
   
@@ -263,7 +262,7 @@ export function DocumentsClient() {
 
     try {
         const canvas = await html2canvas(element, { 
-            scale: 3, // High DPI scaling
+            scale: 3, 
             useCORS: true,
             logging: false,
             backgroundColor: "#ffffff",
@@ -283,7 +282,7 @@ export function DocumentsClient() {
         pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
         pdf.save(`${docToDownload.title.replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
-        toast({ variant: 'destructive', title: 'Export Failed' });
+        toast({ variant: 'destructive', title: 'Failed to save PDF' });
     } finally {
         setIsPdfPreviewOpen(false);
         setIsExporting(false);
@@ -338,21 +337,21 @@ export function DocumentsClient() {
     return (
       <Card className="shadow-lg border-primary/10">
         <CardHeader className="bg-primary/5 border-b">
-            <CardTitle className="text-lg font-black uppercase">Generate Branded {type.replace(/([A-Z])/g, ' $1').trim()}</CardTitle>
-            <CardDescription>Configure document metadata for your workspace.</CardDescription>
+            <CardTitle className="text-lg font-black uppercase">Create a {type.replace(/([A-Z])/g, ' $1').trim()}</CardTitle>
+            <CardDescription>Fill in the info below to make your document.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase opacity-60">Customer</Label>
+                <Label className="text-[10px] font-black uppercase opacity-60">Select Client</Label>
                 <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId}>
-                <SelectTrigger className="h-11"><SelectValue placeholder="Select customer..." /></SelectTrigger>
+                <SelectTrigger className="h-11"><SelectValue placeholder="Pick a client..." /></SelectTrigger>
                 <SelectContent>{customers?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-xl border h-11 self-end">
                 <Switch id="vat-switch" checked={applyVat} onCheckedChange={setApplyVat} />
-                <Label htmlFor="vat-switch" className="cursor-pointer font-bold text-xs">Include 16% VAT</Label>
+                <Label htmlFor="vat-switch" className="cursor-pointer font-bold text-xs">Add 16% Tax (VAT)</Label>
               </div>
           </div>
 
@@ -360,22 +359,22 @@ export function DocumentsClient() {
               <div className="space-y-6 animate-in fade-in duration-500">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-primary/5 rounded-2xl border border-primary/10">
                       <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase">Agreement Protocol</Label>
+                          <Label className="text-[10px] font-black uppercase">Who is hiring?</Label>
                           <Select onValueChange={(v: any) => setClientType(v)} value={clientType}>
                               <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                  <SelectItem value="Individual">Individual Agreement</SelectItem>
-                                  <SelectItem value="Corporate">Corporate Agreement</SelectItem>
+                                  <SelectItem value="Individual">Person</SelectItem>
+                                  <SelectItem value="Corporate">Company</SelectItem>
                               </SelectContent>
                           </Select>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                              <Label className="text-[10px] font-black uppercase opacity-60">Lease Duration</Label>
+                              <Label className="text-[10px] font-black uppercase opacity-60">How long?</Label>
                               <Input type="number" value={leaseDuration} onChange={e => setLeaseDuration(e.target.value)} className="h-11" />
                           </div>
                           <div className="space-y-2">
-                              <Label className="text-[10px] font-black uppercase opacity-60">Unit</Label>
+                              <Label className="text-[10px] font-black uppercase opacity-60">Time Unit</Label>
                               <Select onValueChange={(v: any) => setLeaseUnit(v)} value={leaseUnit}>
                                   <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                                   <SelectContent>
@@ -391,31 +390,31 @@ export function DocumentsClient() {
 
                   <div className="space-y-4">
                       <h4 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                          <Info className="h-4 w-4" /> Verification Check
+                          <Info className="h-4 w-4" /> Client ID Info
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-xl bg-muted/20">
                           {clientType === 'Individual' ? (
                               <>
-                                  <Input placeholder="National ID Number" className="h-10" onChange={e => setVerification({...verification, nationalId: e.target.value})} />
-                                  <Input placeholder="Guarantor ID Number" className="h-10" onChange={e => setVerification({...verification, guarantorId: e.target.value})} />
+                                  <Input placeholder="National ID Card Number" className="h-10" onChange={e => setVerification({...verification, nationalId: e.target.value})} />
+                                  <Input placeholder="Guarantor/Friend ID Number" className="h-10" onChange={e => setVerification({...verification, guarantorId: e.target.value})} />
                                   <div className="md:col-span-2 flex items-center gap-4 p-3 bg-white rounded-lg border">
                                       <Switch id="student-toggle" checked={isStudent} onCheckedChange={setIsStudent} />
-                                      <Label htmlFor="student-toggle" className="text-xs font-bold">Client is a Student</Label>
+                                      <Label htmlFor="student-toggle" className="text-xs font-bold">This is a student</Label>
                                   </div>
                                   {isStudent && (
                                       <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                          <Input placeholder="Student ID No." className="h-10" onChange={e => setVerification({...verification, studentId: e.target.value})} />
-                                          <Input placeholder="Guardian Name" className="h-10" onChange={e => setVerification({...verification, parentName: e.target.value})} />
-                                          <Input placeholder="Guardian Phone" className="h-10" onChange={e => setVerification({...verification, parentPhone: e.target.value})} />
+                                          <Input placeholder="Student ID Number" className="h-10" onChange={e => setVerification({...verification, studentId: e.target.value})} />
+                                          <Input placeholder="Parent/Guardian Name" className="h-10" onChange={e => setVerification({...verification, parentName: e.target.value})} />
+                                          <Input placeholder="Parent/Guardian Phone" className="h-10" onChange={e => setVerification({...verification, parentPhone: e.target.value})} />
                                       </div>
                                   )}
                               </>
                           ) : (
                               <>
-                                  <Input placeholder="Business Permit No." className="h-10" onChange={e => setVerification({...verification, businessPermit: e.target.value})} />
-                                  <Input placeholder="CR12 Reference" className="h-10" onChange={e => setVerification({...verification, cr12Reference: e.target.value})} />
-                                  <Input placeholder="Director/Signatory ID" className="h-10" onChange={e => setVerification({...verification, directorId: e.target.value})} />
-                                  <Input placeholder="Contact Liaison Person" className="h-10" onChange={e => setVerification({...verification, contactPerson: e.target.value})} />
+                                  <Input placeholder="Business Permit Number" className="h-10" onChange={e => setVerification({...verification, businessPermit: e.target.value})} />
+                                  <Input placeholder="Company Registration Number" className="h-10" onChange={e => setVerification({...verification, cr12Reference: e.target.value})} />
+                                  <Input placeholder="Boss/Signatory ID Number" className="h-10" onChange={e => setVerification({...verification, directorId: e.target.value})} />
+                                  <Input placeholder="Contact Person Name" className="h-10" onChange={e => setVerification({...verification, contactPerson: e.target.value})} />
                               </>
                           )}
                       </div>
@@ -425,27 +424,27 @@ export function DocumentsClient() {
 
           {type === 'Receipt' && (
             <div className="max-w-xs space-y-2">
-                <Label>Amount Paid (KES)</Label>
+                <Label>Total Paid (KES)</Label>
                 <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11" placeholder="0.00" />
             </div>
           )}
           {showsItemEntry && (
             <div className="space-y-4">
-                <Label className="text-[10px] font-black uppercase opacity-60">Line Items</Label>
+                <Label className="text-[10px] font-black uppercase opacity-60">List Items Below</Label>
                 <div className="border rounded-xl overflow-hidden overflow-x-auto">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="text-[10px] font-black uppercase min-w-[200px]">Description</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase min-w-[200px]">Item Description</TableHead>
                                 <TableHead className="w-24 text-[10px] font-black uppercase">Qty</TableHead>
-                                <TableHead className="w-32 text-[10px] font-black uppercase">{type === 'LeaseAgreement' ? 'Rate/Unit' : 'Unit Price'}</TableHead>
+                                <TableHead className="w-32 text-[10px] font-black uppercase">{type === 'LeaseAgreement' ? 'Rate' : 'Price'}</TableHead>
                                 <TableHead className="w-10"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {lineItems.map((item, index) => (
                                 <TableRow key={index}>
-                                    <TableCell><Input className="h-9 border-none bg-transparent" value={item.description} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
+                                    <TableCell><Input className="h-9 border-none bg-transparent" placeholder="e.g. Laptop" value={item.description} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
                                     <TableCell><Input type="number" className="h-9 border-none bg-transparent" value={item.quantity} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
                                     <TableCell><Input type="number" className="h-9 border-none bg-transparent" value={item.unitPrice} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
                                     <TableCell><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter((_, i) => i !== index))} disabled={lineItems.length === 1}><Trash2 className="h-4 w-4 text-destructive/50" /></Button></TableCell>
@@ -454,18 +453,18 @@ export function DocumentsClient() {
                         </TableBody>
                     </Table>
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }])} className="h-8 font-bold"><PlusCircle className="mr-2 h-3 w-3"/>Add Line</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }])} className="h-8 font-bold"><PlusCircle className="mr-2 h-3 w-3"/>Add Another Row</Button>
             </div>
           )}
         </CardContent>
-        <CardFooter className="bg-muted/10 border-t py-4"><Button onClick={() => handleGenerateDocument(type)} className="w-full sm:w-auto ml-auto font-black uppercase" disabled={docsLoading}>Generate Document</Button></CardFooter>
+        <CardFooter className="bg-muted/10 border-t py-4"><Button onClick={() => handleGenerateDocument(type)} className="w-full sm:w-auto ml-auto font-black uppercase" disabled={docsLoading}>Save and Create Document</Button></CardFooter>
       </Card>
     );
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Branded Documents" description="Professional invoices and quotations synchronized globally." />
+      <PageHeader title="Make Papers" description="Create professional invoices and receipts for your shop." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
@@ -482,7 +481,7 @@ export function DocumentsClient() {
       </Tabs>
       
       <Card className="mt-8 shadow-2xl border-none overflow-hidden">
-          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase">Recent Cloud Documents</CardTitle></CardHeader>
+          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase">Papers already made</CardTitle></CardHeader>
           <CardContent className="p-0 overflow-auto">
             <Table>
                 <TableHeader className="bg-muted/20">
@@ -498,7 +497,7 @@ export function DocumentsClient() {
                             <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
                         ))
                     ) : (
-                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No documents found in cloud node.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No papers found yet.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>
@@ -509,7 +508,7 @@ export function DocumentsClient() {
        <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
         <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
           <DialogHeader className="p-6 bg-white border-b no-print">
-            <DialogTitle className="text-xl font-black uppercase tracking-tight">High-Fidelity Document Engine</DialogTitle>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">Paper Preview</DialogTitle>
           </DialogHeader>
           <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-4 md:p-8">
             <div id="pdf-preview-target" className="shrink-0 shadow-2xl relative bg-white overflow-hidden origin-top scale-[0.4] sm:scale-[0.6] md:scale-100" style={{ width: '210mm', minHeight: '297mm' }}>
@@ -519,7 +518,7 @@ export function DocumentsClient() {
           <div className="p-4 border-t flex flex-col sm:flex-row justify-end gap-3 bg-white no-print">
             {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
             <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold w-full sm:w-auto">Close Preview</Button>
-            <Button onClick={() => window.print()} className="font-black uppercase w-full sm:w-auto">Execute Print (A4)</Button>
+            <Button onClick={() => window.print()} className="font-black uppercase w-full sm:w-auto">Print Now</Button>
           </div>
         </DialogContent>
       </Dialog>

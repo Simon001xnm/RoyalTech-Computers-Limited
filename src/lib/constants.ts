@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Users, Printer, MapPin, ClipboardList, BookOpen, Inbox, Phone, ListChecks, Presentation, UserPlus, BarChart3, User, ShieldCheck, History, ShoppingCart, Briefcase, Package } from 'lucide-react';
+import { LayoutDashboard, Users, Printer, BookOpen, UserPlus, BarChart3, User, ShoppingCart, Briefcase, Package } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
 
@@ -22,17 +22,17 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { id: 'dashboard', href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'pos', href: '/pos', label: 'Point of Sale', icon: ShoppingCart },
-  { id: 'stock', href: '/stock', label: 'Inventory', icon: Package },
-  { id: 'accessories', href: '/accessories', label: 'Accessories', icon: ShoppingCart },
-  { id: 'customers', href: '/customers', label: 'Customers', icon: Users },
-  { id: 'documents', href: '/documents', label: 'Documents', icon: Printer },
-  { id: 'accounting', href: '/books', label: 'Accounting', icon: BookOpen },
-  { id: 'financials', href: '/reports', label: 'Financials', icon: BarChart3 },
-  { id: 'resellers', href: '/resellers', label: 'Resellers', icon: Briefcase },
-  { id: 'users', href: '/users', label: 'System Users', icon: UserPlus },
-  { id: 'settings', href: '/profile', label: 'Settings', icon: User },
+  { id: 'dashboard', href: '/', label: 'Home', icon: LayoutDashboard },
+  { id: 'pos', href: '/pos', label: 'Sell Items', icon: ShoppingCart },
+  { id: 'stock', href: '/stock', label: 'Laptop Stock', icon: Package },
+  { id: 'accessories', href: '/accessories', label: 'Chargers & More', icon: ShoppingCart },
+  { id: 'customers', href: '/customers', label: 'Clients', icon: Users },
+  { id: 'documents', href: '/documents', label: 'Papers', icon: Printer },
+  { id: 'accounting', href: '/books', label: 'Money In/Out', icon: BookOpen },
+  { id: 'financials', href: '/reports', label: 'Profit Reports', icon: BarChart3 },
+  { id: 'resellers', href: '/resellers', label: 'Partners', icon: Briefcase },
+  { id: 'users', href: '/users', label: 'Staff Members', icon: UserPlus },
+  { id: 'settings', href: '/profile', label: 'My Shop Settings', icon: User },
 ];
 
-export const APP_NAME = "Professional ERP Suite";
+export const APP_NAME = "Shop Manager";
