@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { User as AppUser } from '@/types';
 import { logger } from '@/lib/logger';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
+import Link from 'next/link';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/legal'];
@@ -27,6 +29,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   
   const [isSelfHealing, setIsSelfHealing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
@@ -67,6 +70,10 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !userProfileRef) return;
+    if (!agreedToTerms) {
+        toast({ variant: 'destructive', title: 'Action Required', description: 'You must agree to the terms to continue.' });
+        return;
+    }
     setIsSaving(true);
 
     try {
@@ -211,8 +218,22 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                             </div>
                         </section>
 
+                        <section className="space-y-4 pt-4 border-t">
+                            <div className="flex items-start space-x-3 p-4 bg-muted/30 rounded-xl border">
+                                <Checkbox 
+                                    id="terms-agreement" 
+                                    checked={agreedToTerms} 
+                                    onCheckedChange={(checked) => setAgreedToTerms(!!checked)} 
+                                    className="mt-1"
+                                />
+                                <Label htmlFor="terms-agreement" className="text-[10px] font-bold cursor-pointer leading-relaxed text-muted-foreground">
+                                    I have read and agree to the <Link href="/legal/terms" className="text-primary underline hover:opacity-80">Terms of Service</Link> and <Link href="/legal/privacy" className="text-primary underline hover:opacity-80">Privacy Policy</Link>. I understand that these terms govern my use of the platform.
+                                </Label>
+                            </div>
+                        </section>
+
                         <div className="pt-6">
-                            <Button type="submit" className="w-full h-16 text-xl font-black uppercase tracking-widest shadow-2xl transition-all" disabled={isSaving}>
+                            <Button type="submit" className="w-full h-16 text-xl font-black uppercase tracking-widest shadow-2xl transition-all" disabled={isSaving || !agreedToTerms}>
                                 {isSaving ? (
                                     <div className="flex items-center gap-3">
                                         <Loader2 className="h-6 w-6 animate-spin" />
