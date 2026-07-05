@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -177,7 +176,7 @@ export default function DashboardPage() {
   if (isUserLoading) {
     return (
         <div className="h-screen w-full flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin opacity-20" />
+            <Loader2 className="h-6 w-6 animate-spin opacity-20 text-primary" />
         </div>
     );
   }
@@ -202,8 +201,8 @@ export default function DashboardPage() {
                     <LayoutTemplate className="h-4 w-4 mr-2" /> Show all boxes
                 </Button>
             )}
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-9 px-4 font-bold flex items-center">
-                <Zap className="h-3 w-3 mr-2 fill-green-700" /> Online
+            <Badge variant="outline" className="bg-secondary/10 text-secondary border-secondary/20 h-9 px-4 font-bold flex items-center">
+                <Zap className="h-3 w-3 mr-2 fill-secondary" /> Active
             </Badge>
         </div>
       </div>
@@ -307,7 +306,7 @@ export default function DashboardPage() {
                                         </div>
                                         <div className="text-right">
                                             <p className="text-sm font-black text-primary">{formatCurrency(sale.amount)}</p>
-                                            <Badge variant="outline" className="text-[8px] h-4 uppercase font-bold">{sale.paymentMethod}</Badge>
+                                            <Badge variant="outline" className="text-[8px] h-4 uppercase font-bold border-secondary text-secondary">{sale.paymentMethod}</Badge>
                                         </div>
                                     </div>
                                 ))}
@@ -318,7 +317,7 @@ export default function DashboardPage() {
                     </ScrollArea>
                 </CardContent>
                 <CardFooter className="bg-muted/5 border-t p-2">
-                    <Button variant="ghost" asChild className="w-full text-[10px] font-black uppercase tracking-widest h-8">
+                    <Button variant="ghost" asChild className="w-full text-[10px] font-black uppercase tracking-widest h-8 text-primary hover:text-primary hover:bg-primary/5">
                         <Link href="/books">See all sales <ChevronRight className="ml-1 h-3 w-3" /></Link>
                     </Button>
                 </CardFooter>
@@ -353,7 +352,7 @@ export default function DashboardPage() {
                                                 <p className="text-[10px] text-muted-foreground uppercase font-black">Authorized Partner</p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-lg font-black text-primary">{partner.count}</span>
+                                                <span className="text-lg font-black text-secondary">{partner.count}</span>
                                             </div>
                                         </div>
                                     </div>

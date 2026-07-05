@@ -8,74 +8,71 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 210 29% 12%;
-    --muted: 210 20% 92%;
-    --muted-foreground: 210 20% 45%;
+    /* Blue - Trust & Professionalism */
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Green - Growth & Success */
+    --secondary: 142.1 76.2% 36.3%;
+    --secondary-foreground: 355.7 100% 97.3%;
+
+    /* Orange - High Impact Calls to Action */
+    --accent: 24.6 95% 53.1%;
+    --accent-foreground: 210 40% 98%;
+
+    /* White - Modern Background */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 210 29% 12%;
+    --popover-foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
-    --card-foreground: 210 29% 12%;
-    --border: 210 20% 90%;
-    --input: 210 20% 90%;
-    --primary: 220 40% 30%; 
-    --primary-foreground: 0 0% 100%; 
-    --secondary: 210 40% 96%; 
-    --secondary-foreground: 210 29% 24%; 
-    --accent: 220 40% 30%; 
-    --accent-foreground: 0 0% 100%; 
+    --card-foreground: 222.2 84% 4.9%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --ring: 220 40% 30%; 
+    --destructive-foreground: 210 40% 98%;
+    --ring: 221.2 83.2% 53.3%;
     --radius: 0.75rem;
-    --chart-1: 220 40% 30%; 
-    --chart-2: 210 29% 44%; 
-    --chart-3: 220 50% 60%; 
-    --chart-4: 210 20% 60%; 
-    --chart-5: 0 0% 60%; 
-    --sidebar-background: 210 29% 14%;
-    --sidebar-foreground: 210 20% 95%; 
-    --sidebar-primary: 220 40% 45%; 
-    --sidebar-primary-foreground: 0 0% 100%; 
-    --sidebar-accent: 210 29% 20%; 
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 29% 18%;
-    --sidebar-ring: 220 40% 45%;
+
+    --chart-1: 221.2 83.2% 53.3%;
+    --chart-2: 142.1 76.2% 36.3%;
+    --chart-3: 24.6 95% 53.1%;
+    --chart-4: 215 20.2% 65.1%;
+    --chart-5: 215 13.8% 34.1%;
+
+    --sidebar-background: 222.2 84% 4.9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 221.2 83.2% 53.3%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 221.2 83.2% 53.3%;
   }
 
   .dark {
-    --background: 210 29% 6%; 
-    --foreground: 210 20% 95%; 
-    --muted: 210 20% 12%;
-    --muted-foreground: 210 20% 65%;
-    --popover: 210 29% 4%;
-    --popover-foreground: 210 20% 95%;
-    --card: 210 29% 4%;
-    --card-foreground: 210 20% 95%;
-    --border: 210 29% 12%;
-    --input: 210 29% 12%;
-    --primary: 220 40% 55%; 
-    --primary-foreground: 0 0% 10%; 
-    --secondary: 210 29% 10%; 
-    --secondary-foreground: 210 20% 95%;
-    --accent: 220 40% 55%;
-    --accent-foreground: 0 0% 10%;
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --ring: 220 40% 55%;
-    --chart-1: 220 40% 55%;
-    --chart-2: 210 29% 65%;
-    --chart-3: 220 50% 75%;
-    --chart-4: 210 20% 80%;
-    --chart-5: 0 0% 75%;
-    --sidebar-background: 0 0% 2%; 
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 220 40% 55%; 
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 0 0% 8%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 10%;
-    --sidebar-ring: 220 40% 55%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 142.1 70.6% 45.3%;
+    --secondary-foreground: 144.9 80.4% 10%;
+    --accent: 24.6 95% 53.1%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --ring: 224.3 76.3% 48%;
   }
 }
 
@@ -91,7 +88,6 @@ body {
   }
 }
 
-/* PDF Print Styles for High-Fidelity A4 */
 @media print {
   @page {
     size: A4;
@@ -113,7 +109,6 @@ body {
   }
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -125,7 +120,6 @@ body {
   @apply bg-muted rounded-full hover:bg-muted-foreground/30 transition-colors;
 }
 
-/* Force A4 Preview sizing for full snapshots */
 .a4-document {
     width: 210mm;
     min-height: 297mm;

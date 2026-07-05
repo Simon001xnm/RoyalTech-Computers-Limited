@@ -54,25 +54,30 @@ export function DynamicThemeProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const root = document.documentElement;
     
+    // Default Professional Blue: 221.2 83.2% 53.3%
+    // Default Success Green: 142.1 76.2% 36.3%
+    // Default CTA Orange: 24.6 95% 53.1%
+
     if (company?.primaryColor) {
       const primaryHsl = hexToHsl(company.primaryColor);
       root.style.setProperty('--primary', primaryHsl);
-      root.style.setProperty('--accent', primaryHsl);
       root.style.setProperty('--ring', primaryHsl);
       root.style.setProperty('--sidebar-primary', primaryHsl);
     } else {
-      root.style.setProperty('--primary', '220 40% 30%');
-      root.style.setProperty('--accent', '220 40% 30%');
-      root.style.setProperty('--ring', '220 40% 30%');
-      root.style.setProperty('--sidebar-primary', '220 40% 45%');
+      root.style.setProperty('--primary', '221.2 83.2% 53.3%');
+      root.style.setProperty('--ring', '221.2 83.2% 53.3%');
+      root.style.setProperty('--sidebar-primary', '221.2 83.2% 53.3%');
     }
     
     if (company?.secondaryColor) {
       const secondaryHsl = hexToHsl(company.secondaryColor);
       root.style.setProperty('--secondary', secondaryHsl);
     } else {
-      root.style.setProperty('--secondary', '210 40% 96%');
+      root.style.setProperty('--secondary', '142.1 76.2% 36.3%');
     }
+
+    // Accent is reserved for CTAs (Orange)
+    root.style.setProperty('--accent', '24.6 95% 53.1%');
 
   }, [company]);
 

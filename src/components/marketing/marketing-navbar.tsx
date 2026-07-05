@@ -22,10 +22,10 @@ export function MarketingNavbar() {
             <Link href="/support/contact" className="hover:text-primary transition-colors">Contact</Link>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" asChild className="font-bold hidden sm:flex">
+            <Button variant="ghost" asChild className="font-bold hidden sm:flex text-primary">
               <Link href="/login">Sign In</Link>
             </Button>
-            <Button asChild className="font-black uppercase tracking-widest shadow-xl px-8 h-11">
+            <Button asChild className="font-black uppercase tracking-widest shadow-xl px-8 h-11 bg-accent text-accent-foreground hover:bg-accent/90 border-none">
               <Link href="/signup">Get Started For Free</Link>
             </Button>
           </div>

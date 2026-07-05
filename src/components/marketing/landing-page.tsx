@@ -69,12 +69,12 @@ export function LandingPage() {
                             Your life's work,<br />
                             <span className="text-primary">powered by our life's work</span>
                         </h1>
-                        <p className="text-base md:text-lg text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed">
+                        <p className="text-sm md:text-base text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed">
                             A unique and powerful software suite to transform the way you work. Designed for businesses of all sizes, built by a company that values your privacy.
                         </p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                        <Button asChild className="h-14 px-10 text-lg font-black uppercase tracking-widest shadow-xl rounded-xl w-full sm:w-auto active:scale-95 transition-all">
+                        <Button asChild className="h-14 px-10 text-lg font-black uppercase tracking-widest shadow-xl rounded-xl w-full sm:w-auto active:scale-95 transition-all bg-accent text-accent-foreground hover:bg-accent/90">
                             <Link href="/signup">Get Started For Free</Link>
                         </Button>
                         <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
@@ -93,12 +93,12 @@ export function LandingPage() {
                         </div>
                         <div className="space-y-3 relative z-10">
                             <Badge className="bg-primary text-white border-none font-black uppercase tracking-widest text-[8px] px-3">AI Ready</Badge>
-                            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter">Introducing ShopAgent AI</h2>
-                            <p className="text-gray-400 font-medium text-base max-w-lg">
+                            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter">Introducing Zia AI</h2>
+                            <p className="text-gray-400 font-medium text-sm max-w-lg">
                                 Build autonomous agents that can qualify leads, resolve tickets, draft emails, and handle sales queries using Genkit.
                             </p>
-                            <Button variant="outline" className="bg-white text-black hover:bg-gray-100 border-none font-black uppercase tracking-widest h-10 text-xs">
-                                Explore AI Agents
+                            <Button variant="outline" className="bg-white text-black hover:bg-gray-100 border-none font-black uppercase tracking-widest h-10 text-[10px]">
+                                Explore Zia Agents
                             </Button>
                         </div>
                     </div>
@@ -111,11 +111,11 @@ export function LandingPage() {
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
                         <div className="space-y-2 text-center md:text-left">
                             <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter">Featured apps</h2>
-                            <p className="text-muted-foreground font-medium text-base max-w-xl">
+                            <p className="text-muted-foreground font-medium text-sm max-w-xl">
                                 Each module is designed to stand alone or work together seamlessly in our cloud ecosystem.
                             </p>
                         </div>
-                        <Button variant="link" asChild className="font-black uppercase tracking-widest text-primary p-0 h-auto text-xs">
+                        <Button variant="link" asChild className="font-black uppercase tracking-widest text-primary p-0 h-auto text-[10px]">
                             <Link href="/solutions/crm">Explore all products <ChevronRight className="ml-1 h-3 w-3" /></Link>
                         </Button>
                     </div>
@@ -171,13 +171,13 @@ export function LandingPage() {
             <section className="py-24 px-6 bg-muted/30">
                 <div className="max-w-7xl mx-auto text-center space-y-8">
                     <div className="space-y-3">
-                        <Badge variant="outline" className="border-primary text-primary font-black uppercase tracking-[0.2em] px-3 py-0.5 text-[8px]">Unified Platform</Badge>
+                        <Badge variant="outline" className="border-secondary text-secondary font-black uppercase tracking-[0.2em] px-3 py-0.5 text-[8px]">Unified Platform</Badge>
                         <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none">The operating system <br/> for business</h2>
-                        <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto font-medium leading-relaxed">
+                        <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto font-medium leading-relaxed">
                             Run your entire business on ShopManager—our unified platform with modular applications for all your operational needs.
                         </p>
                     </div>
-                    <Button className="h-14 px-10 text-lg font-black uppercase tracking-widest shadow-2xl rounded-xl active:scale-95 transition-all">
+                    <Button className="h-14 px-10 text-lg font-black uppercase tracking-widest shadow-2xl rounded-xl active:scale-95 transition-all bg-accent text-accent-foreground hover:bg-accent/90">
                         TRY SHOPMANAGER ONE
                     </Button>
                 </div>
@@ -188,7 +188,7 @@ export function LandingPage() {
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16 space-y-2">
                         <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter">The principles that drive us</h2>
-                        <p className="text-muted-foreground font-medium text-base">We build for the long-term, prioritize your privacy, and obsess over software craft.</p>
+                        <p className="text-muted-foreground font-medium text-sm">We build for the long-term, prioritize your privacy, and obsess over software craft.</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                         <ValueProp 
@@ -235,9 +235,9 @@ export function LandingPage() {
             <section className="py-32 px-6 bg-black text-white text-center">
                 <div className="max-w-2xl mx-auto space-y-8">
                     <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-none">Ready to do your best work?</h2>
-                    <p className="text-lg text-gray-400 font-medium">Join thousands of entrepreneurs building their dreams on our platform.</p>
+                    <p className="text-base text-gray-400 font-medium">Join thousands of entrepreneurs building their dreams on our platform.</p>
                     <div className="pt-6">
-                         <Button asChild className="h-16 px-12 text-xl font-black uppercase tracking-widest shadow-2xl rounded-2xl bg-primary text-white hover:bg-primary/90 transition-all active:scale-95">
+                         <Button asChild className="h-16 px-12 text-xl font-black uppercase tracking-widest shadow-2xl rounded-2xl bg-accent text-accent-foreground hover:bg-accent/90 transition-all active:scale-95">
                             <Link href="/signup">Sign Up Now</Link>
                         </Button>
                     </div>
