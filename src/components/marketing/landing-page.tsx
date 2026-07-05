@@ -2,32 +2,26 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
     ShoppingCart, 
-    Package, 
-    Printer, 
-    Check, 
     ChevronRight, 
     Zap, 
     ShieldCheck, 
     Users,
     BookOpen,
     MessageSquare,
-    Globe,
     Briefcase,
-    ShieldAlert,
-    TrendingUp,
+    Printer,
     Clock,
-    Laptop,
-    Fingerprint,
     Rocket
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { MarketingNavbar } from './marketing-navbar';
+import { MarketingFooter } from './marketing-footer';
 
-const FeatureCard = ({ icon: Icon, title, description, badge }: { icon: any, title: string, description: string, badge?: string }) => (
+const FeatureCard = ({ icon: Icon, title, description, badge, href }: { icon: any, title: string, description: string, badge?: string, href: string }) => (
     <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300 group bg-white">
         <CardContent className="pt-8">
             <div className="flex justify-between items-start mb-6">
@@ -38,9 +32,9 @@ const FeatureCard = ({ icon: Icon, title, description, badge }: { icon: any, tit
             </div>
             <h3 className="text-xl font-black uppercase tracking-tighter mb-2">{title}</h3>
             <p className="text-muted-foreground leading-relaxed text-sm">{description}</p>
-            <div className="mt-4 flex items-center text-primary font-bold text-xs cursor-pointer group-hover:underline">
+            <Link href={href} className="mt-4 flex items-center text-primary font-bold text-xs cursor-pointer group-hover:underline">
                 Learn more <ChevronRight className="ml-1 h-3 w-3" />
-            </div>
+            </Link>
         </CardContent>
     </Card>
 );
@@ -64,33 +58,8 @@ const StatItem = ({ label, value }: any) => (
 
 export function LandingPage() {
     return (
-        <div className="min-h-screen bg-white font-sans text-black overflow-x-hidden">
-            {/* Nav */}
-            <nav className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md border-b border-black/5">
-                <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-primary p-2 rounded-xl shadow-lg">
-                            <Zap className="h-6 w-6 text-white" />
-                        </div>
-                        <span className="font-black text-xl tracking-tighter uppercase hidden sm:block">ShopManager</span>
-                    </div>
-                    <div className="flex items-center gap-6">
-                        <div className="hidden lg:flex items-center gap-8 text-sm font-bold text-muted-foreground">
-                            <Link href="#products" className="hover:text-primary transition-colors">Products</Link>
-                            <Link href="#solutions" className="hover:text-primary transition-colors">Solutions</Link>
-                            <Link href="#customers" className="hover:text-primary transition-colors">Customers</Link>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <Button variant="ghost" asChild className="font-bold hidden sm:flex">
-                                <Link href="/login">Sign In</Link>
-                            </Button>
-                            <Button asChild className="font-black uppercase tracking-widest shadow-xl px-8 h-11">
-                                <Link href="/signup">Get Started For Free</Link>
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </nav>
+        <div className="min-h-screen bg-white font-sans text-black overflow-x-hidden selection:bg-primary selection:text-white">
+            <MarketingNavbar />
 
             {/* Hero Section */}
             <section className="pt-48 pb-32 px-6 bg-gradient-to-b from-primary/5 to-white">
@@ -106,7 +75,7 @@ export function LandingPage() {
                     </div>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
                         <Button asChild size="lg" className="h-16 px-12 text-xl font-black uppercase tracking-widest shadow-2xl rounded-2xl w-full sm:w-auto active:scale-95 transition-all">
-                            <Link href="/signup">Get Started Now</Link>
+                            <Link href="/signup">Get Started For Free</Link>
                         </Button>
                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-4 sm:mt-0">
                             No credit card required &bull; Instant activation
@@ -115,7 +84,7 @@ export function LandingPage() {
                 </div>
             </section>
 
-            {/* Zia / Intelligence Teaser */}
+            {/* AI Agent Teaser */}
             <section className="py-12 px-6">
                 <div className="max-w-7xl mx-auto">
                     <div className="bg-black text-white rounded-[32px] p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden relative">
@@ -123,10 +92,10 @@ export function LandingPage() {
                             <Rocket className="h-64 w-64 -mr-20 -mt-20 rotate-12" />
                         </div>
                         <div className="space-y-4 relative z-10">
-                            <Badge className="bg-primary text-white border-none font-black uppercase tracking-widest text-[10px] px-4">New Release</Badge>
+                            <Badge className="bg-primary text-white border-none font-black uppercase tracking-widest text-[10px] px-4">AI Ready</Badge>
                             <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter">Introducing ShopAgent AI</h2>
                             <p className="text-gray-400 font-medium text-lg max-w-xl">
-                                Build autonomous agents that can qualify leads, resolve tickets, draft emails, and handle sales queries.
+                                Build autonomous agents that can qualify leads, resolve tickets, draft emails, and handle sales queries using Genkit.
                             </p>
                             <Button variant="outline" className="bg-white text-black hover:bg-gray-100 border-none font-black uppercase tracking-widest">
                                 Explore AI Agents
@@ -146,8 +115,8 @@ export function LandingPage() {
                                 Each module is designed to stand alone or work together seamlessly in our cloud ecosystem.
                             </p>
                         </div>
-                        <Button variant="link" className="font-black uppercase tracking-widest text-primary p-0 h-auto">
-                            Explore all products <ChevronRight className="ml-1 h-4 w-4" />
+                        <Button variant="link" asChild className="font-black uppercase tracking-widest text-primary p-0 h-auto">
+                            <Link href="/solutions/crm">Explore all products <ChevronRight className="ml-1 h-4 w-4" /></Link>
                         </Button>
                     </div>
 
@@ -157,36 +126,42 @@ export function LandingPage() {
                             title="CRM" 
                             description="Comprehensive CRM platform for customer-facing teams to track every interaction."
                             badge="Core"
+                            href="/solutions/crm"
                         />
                         <FeatureCard 
                             icon={MessageSquare} 
                             title="Mail" 
                             description="Secure, encrypted email service for professional teams of all sizes."
                             badge="Secure"
+                            href="/solutions/mail"
                         />
                         <FeatureCard 
                             icon={BookOpen} 
                             title="Books" 
                             description="Powerful accounting platform for growing businesses to manage profit and loss."
                             badge="Accounting"
+                            href="/solutions/accounting"
                         />
                         <FeatureCard 
                             icon={ShoppingCart} 
                             title="Sell" 
                             description="Modern Point of Sale for retail and service nodes with M-Pesa integration."
                             badge="New"
+                            href="/pos"
                         />
                         <FeatureCard 
                             icon={Briefcase} 
                             title="Desk" 
                             description="Helpdesk software to deliver great customer support and resolve tickets fast."
                             badge="Service"
+                            href="/desk"
                         />
                         <FeatureCard 
                             icon={Printer} 
                             title="Papers" 
                             description="High-fidelity document engine for bank-grade invoices and professional reports."
                             badge="Pro"
+                            href="/documents"
                         />
                     </div>
                 </div>
@@ -199,7 +174,7 @@ export function LandingPage() {
                         <Badge variant="outline" className="border-primary text-primary font-black uppercase tracking-[0.2em] px-4 py-1 text-[10px]">Unified Platform</Badge>
                         <h2 className="text-4xl md:text-7xl font-black uppercase tracking-tighter leading-none">The operating system <br/> for business</h2>
                         <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto font-medium leading-relaxed">
-                            Run your entire business on ShopManager—our unified platform with 50+ applications for all your operational needs.
+                            Run your entire business on ShopManager—our unified platform with modular applications for all your operational needs.
                         </p>
                     </div>
                     <Button className="h-16 px-12 text-xl font-black uppercase tracking-widest shadow-2xl rounded-2xl active:scale-95 transition-all">
@@ -219,7 +194,7 @@ export function LandingPage() {
                         <ValueProp 
                             icon={Clock}
                             title="Long-term commitment" 
-                            description="30+ years of running a profitable organization gives us a good sense of challenges that a growing business faces."
+                            description="We take pride in running a sustainable business that’s powered by you, our customer."
                         />
                         <ValueProp 
                             icon={Users}
@@ -229,12 +204,12 @@ export function LandingPage() {
                         <ValueProp 
                             icon={ShieldCheck}
                             title="Privacy as a priority" 
-                            description="We do not own or sell your data. We make money from software fees, not from advertising models."
+                            description="We do not own or sell your data. The only way we make money is from software license fees."
                         />
                         <ValueProp 
                             icon={Rocket}
                             title="Focus on R&D" 
-                            description="Software is our craft. We prefer to own the entire tech stack, including running our own data centers."
+                            description="Software is our craft. We prefer to own the entire tech stack, ensuring reliability and security."
                         />
                     </div>
                 </div>
@@ -250,8 +225,8 @@ export function LandingPage() {
                         <StatItem value="150M+" label="Users Globally" />
                         <StatItem value="150+" label="Countries Served" />
                         <StatItem value="60+" label="Products" />
-                        <StatItem value="30+" label="Years in Business" />
-                        <StatItem value="19K+" label="Employees Worldwide" />
+                        <StatItem value="10+" label="Years in Business" />
+                        <StatItem value="5K+" label="Professional Clients" />
                     </div>
                 </div>
             </section>
@@ -260,7 +235,7 @@ export function LandingPage() {
             <section className="py-40 px-6 bg-black text-white text-center">
                 <div className="max-w-4xl mx-auto space-y-12">
                     <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none">Ready to do your best work?</h2>
-                    <p className="text-xl text-gray-400 font-medium">Join millions of entrepreneurs building their dreams on our platform.</p>
+                    <p className="text-xl text-gray-400 font-medium">Join thousands of entrepreneurs building their dreams on our platform.</p>
                     <div className="pt-8">
                          <Button asChild size="lg" className="h-20 px-16 text-2xl font-black uppercase tracking-widest shadow-2xl rounded-3xl bg-primary text-white hover:bg-primary/90 transition-all active:scale-95">
                             <Link href="/signup">Sign Up Now</Link>
@@ -269,74 +244,7 @@ export function LandingPage() {
                 </div>
             </section>
 
-            {/* Rich Footer */}
-            <footer className="py-24 px-6 bg-white border-t border-black/5">
-                <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-12 md:gap-8">
-                    <div className="col-span-2 lg:col-span-1 space-y-6">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-primary p-2 rounded-xl">
-                                <Zap className="h-5 w-5 text-white" />
-                            </div>
-                            <span className="font-black uppercase tracking-tighter">ShopManager</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed max-w-[200px]">
-                            The professional choice for businesses seeking scale, stability, and privacy in the cloud.
-                        </p>
-                    </div>
-
-                    <div className="space-y-4">
-                        <h5 className="font-black uppercase tracking-widest text-[10px]">Apps & Solutions</h5>
-                        <ul className="space-y-3 text-sm text-muted-foreground font-bold">
-                            <li className="hover:text-primary cursor-pointer transition-colors">CRM Platform</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">Accounting Tools</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">Mail & Workspace</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">Mobile Integration</li>
-                        </ul>
-                    </div>
-
-                    <div className="space-y-4">
-                        <h5 className="font-black uppercase tracking-widest text-[10px]">Learn</h5>
-                        <ul className="space-y-3 text-sm text-muted-foreground font-bold">
-                            <li className="hover:text-primary cursor-pointer transition-colors">Documentation</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">Academy</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">Blog & News</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">Community</li>
-                        </ul>
-                    </div>
-
-                    <div className="space-y-4">
-                        <h5 className="font-black uppercase tracking-widest text-[10px]">Support</h5>
-                        <ul className="space-y-3 text-sm text-muted-foreground font-bold">
-                            <li className="hover:text-primary cursor-pointer transition-colors">Contact Us</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">Service Status</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">Knowledge Base</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">Security Compliance</li>
-                        </ul>
-                    </div>
-
-                    <div className="space-y-4">
-                        <h5 className="font-black uppercase tracking-widest text-[10px]">Company</h5>
-                        <ul className="space-y-3 text-sm text-muted-foreground font-bold">
-                            <li className="hover:text-primary cursor-pointer transition-colors">About Us</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">Our Story</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">Privacy Policy</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">Terms of Service</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div className="max-w-7xl mx-auto mt-24 pt-8 border-t border-black/5 flex flex-col md:flex-row justify-between items-center gap-8">
-                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                        &copy; {new Date().getFullYear()} ShopManager Suite &bull; Powered by simonstyless technologies limited
-                    </p>
-                    <div className="flex items-center gap-6">
-                        <div className="h-4 w-4 bg-gray-200 rounded-full cursor-pointer hover:bg-primary transition-colors" />
-                        <div className="h-4 w-4 bg-gray-200 rounded-full cursor-pointer hover:bg-primary transition-colors" />
-                        <div className="h-4 w-4 bg-gray-200 rounded-full cursor-pointer hover:bg-primary transition-colors" />
-                        <div className="h-4 w-4 bg-gray-200 rounded-full cursor-pointer hover:bg-primary transition-colors" />
-                    </div>
-                </div>
-            </footer>
+            <MarketingFooter />
         </div>
     );
 }

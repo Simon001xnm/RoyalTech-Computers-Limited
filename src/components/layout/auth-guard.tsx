@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
@@ -21,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { NotificationCenter } from '@/components/layout/notification-center';
 
 const PUBLIC_PATHS = ['/', '/login', '/signup'];
+const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/legal'];
 
 function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { children: React.ReactNode, userProfile: AppUser | null, isFastTrackAdmin: boolean }) {
     const { user } = useUser();
@@ -140,7 +140,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   const auth = useAuth();
 
-  const isPublicPath = PUBLIC_PATHS.includes(pathname);
+  const isPublicPath = PUBLIC_PATHS.includes(pathname) || PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix));
   const isFastTrackAdmin = useMemo(() => isMasterKey(user?.email), [user?.email]);
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -153,8 +153,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       } else if (user && (pathname === '/login' || pathname === '/signup')) {
         if (isFastTrackAdmin) router.push('/admin');
         else router.push('/');
-      } else if (user && isFastTrackAdmin && pathname === '/') {
-        // We stay at / but we will render AuthenticatedLayout in the return
       }
     }
   }, [user, isUserLoading, isFastTrackAdmin, userProfile, router, pathname, isPublicPath]);

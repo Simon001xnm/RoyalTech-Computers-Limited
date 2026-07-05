@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -18,6 +17,7 @@ import { logger } from '@/lib/logger';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
+const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/legal'];
 
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -41,6 +41,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     country: 'Kenya',
     adminPosition: 'Owner',
   });
+
+  const isPublic = PUBLIC_PATHS.includes(pathname) || PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix));
 
   useEffect(() => {
     if (!isProfileLoading && userProfile && !userProfile.tenantId) {
@@ -101,7 +103,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   };
 
   if (isUserLoading || isProfileLoading || isSelfHealing) {
-    if (PUBLIC_PATHS.includes(pathname)) return <>{children}</>;
+    if (isPublic) return <>{children}</>;
     return (
         <div className="h-screen w-full flex flex-col items-center justify-center bg-background space-y-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary opacity-20" />
@@ -112,7 +114,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user || PUBLIC_PATHS.includes(pathname)) return <>{children}</>;
+  if (!user || isPublic) return <>{children}</>;
   
   if (userProfile?.role === 'super_admin') return <>{children}</>;
 
