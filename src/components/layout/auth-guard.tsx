@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { NotificationCenter } from '@/components/layout/notification-center';
 
-const PUBLIC_PATHS = ['/login', '/signup'];
+const PUBLIC_PATHS = ['/', '/login', '/signup'];
 
 function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { children: React.ReactNode, userProfile: AppUser | null, isFastTrackAdmin: boolean }) {
     const { user } = useUser();
@@ -150,11 +150,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!isUserLoading) {
       if (!user && !isPublicPath) {
         router.push('/login');
-      } else if (user && isPublicPath) {
+      } else if (user && (pathname === '/login' || pathname === '/signup')) {
         if (isFastTrackAdmin) router.push('/admin');
         else router.push('/');
       } else if (user && isFastTrackAdmin && pathname === '/') {
-        router.push('/admin');
+        // We stay at / but we will render AuthenticatedLayout in the return
       }
     }
   }, [user, isUserLoading, isFastTrackAdmin, userProfile, router, pathname, isPublicPath]);
@@ -167,7 +167,19 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isPublicPath) {
+  // Handle Logged In user at Root path
+  if (user && pathname === '/') {
+     if (isProfileLoading && !isFastTrackAdmin) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <Loader2 className="w-6 h-6 text-primary animate-spin opacity-20" />
+            </div>
+        );
+    }
+    return <AuthenticatedLayout userProfile={userProfile || null} isFastTrackAdmin={isFastTrackAdmin}>{children}</AuthenticatedLayout>;
+  }
+
+  if (isPublicPath && !user) {
     return <>{children}</>;
   }
 

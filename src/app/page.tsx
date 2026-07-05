@@ -38,10 +38,11 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { LandingPage } from '@/components/marketing/landing-page';
 
 export default function DashboardPage() {
   const { tenant, isLoading: isSaaSLoading } = useSaaS();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
   const [visibleWidgets, setVisibleWidgets] = useState({
@@ -173,6 +174,18 @@ export default function DashboardPage() {
     setMaximizedWidget(null);
   };
 
+  if (isUserLoading) {
+    return (
+        <div className="h-screen w-full flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin opacity-20" />
+        </div>
+    );
+  }
+
+  if (!user) {
+    return <LandingPage />;
+  }
+
   const isAnythingHidden = Object.values(visibleWidgets).some(v => v === false);
   const showMetricsLoading = isSaaSLoading || accessoriesLoading || customersLoading || salesLoading || leasesLoading || issuancesLoading;
 
@@ -180,7 +193,7 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <PageHeader 
-            title="Shop View" 
+            title="Shop Home" 
             description={tenant ? `Currently in: ${tenant.name}` : "Getting shop info..."} 
         />
         <div className="flex gap-2 mb-6 sm:mb-0">
