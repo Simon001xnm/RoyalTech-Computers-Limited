@@ -174,7 +174,7 @@ export function UsersClient() {
     onDelete: handleDeleteUser,
   };
   
-  const columns = useMemo<ColumnDef<User, any>>(() => {
+  const columns = useMemo<ColumnDef<User, any>[]>(() => {
       const base = getUserColumns(columnActions);
       return base.map(col => {
           if (col.id === 'actions') {
@@ -196,7 +196,7 @@ export function UsersClient() {
                                     {user.status === 'suspended' ? <Unlock className="h-4 w-4 text-green-600" /> : <Lock className="h-4 w-4 text-orange-600" />}
                                 </Button>
                             )}
-                            {flexRender(col.cell, props.getContext())}
+                            {flexRender(col.cell, props)}
                         </div>
                       )
                   }
