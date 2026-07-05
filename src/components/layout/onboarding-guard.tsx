@@ -192,7 +192,9 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase">Shop Type</Label>
                                     <Select onValueChange={v => handleInputChange('businessType', v)} value={formData.businessType}>
-                                        <SelectTrigger className="h-11"><SelectValue placeholder="What do you sell?" /></SelectTrigger>
+                                        <SelectTrigger className="h-11">
+                                            <SelectValue placeholder="What do you sell?" />
+                                        </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="retail">Selling Items (Retail)</SelectItem>
                                             <SelectItem value="tech">Computers & Tech</SelectItem>

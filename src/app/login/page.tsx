@@ -40,7 +40,7 @@ export default function LoginPage() {
 
   const handleSignIn = async () => {
     if (!email || !password) {
-        toast({ variant: 'destructive', title: 'Missing Info', description: 'Enter email and password.' });
+        toast({ variant: 'destructive', title: 'Enter info', description: 'Enter email and password.' });
         return;
     }
     
@@ -52,7 +52,7 @@ export default function LoginPage() {
         const message = e.code === 'auth/invalid-credential' 
           ? "Account not found or wrong password." 
           : e.message;
-        toast({ variant: 'destructive', title: 'Sign In Failed', description: message });
+        toast({ variant: 'destructive', title: 'Failed to sign in', description: message });
     }
   };
 
@@ -62,21 +62,21 @@ export default function LoginPage() {
         await initiateGoogleSignIn(auth);
     } catch (e: any) {
         setIsProcessing(false);
-        toast({ variant: 'destructive', title: 'Google Error', description: e.message });
+        toast({ variant: 'destructive', title: 'Google error', description: e.message });
     }
   };
 
   const handleForgotPassword = async () => {
     if (!email) {
-      toast({ variant: 'destructive', title: 'Email Needed', description: 'Enter your email for reset link.' });
+      toast({ variant: 'destructive', title: 'Need email', description: 'Enter your email for reset link.' });
       return;
     }
     setIsResetting(true);
     try {
       await initiatePasswordReset(auth, email.toLowerCase().trim());
-      toast({ title: 'Email Sent', description: 'Check your inbox for reset steps.' });
+      toast({ title: 'Email sent', description: 'Check your inbox for reset steps.' });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Reset Error', description: e.message });
+      toast({ variant: 'destructive', title: 'Reset error', description: e.message });
     } finally {
       setIsResetting(false);
     }
@@ -113,7 +113,7 @@ export default function LoginPage() {
             variant="outline" 
             onClick={handleGoogleSignIn} 
             disabled={isProcessing}
-            className="w-full h-12 bg-white border-black/10 text-xs font-bold uppercase tracking-widest hover:bg-muted/50 rounded-xl flex items-center justify-center gap-3 shadow-sm"
+            className="w-full h-12 bg-white border-black/10 text-[10px] font-black uppercase tracking-widest hover:bg-muted/50 rounded-xl flex items-center justify-center gap-3 shadow-sm"
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -175,7 +175,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <Button onClick={handleSignIn} className="w-full h-12 text-xs font-black uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 bg-primary text-primary-foreground" disabled={isProcessing}>
+            <Button onClick={handleSignIn} className="w-full h-12 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 bg-primary text-primary-foreground" disabled={isProcessing}>
                 {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log in'}
             </Button>
           </div>

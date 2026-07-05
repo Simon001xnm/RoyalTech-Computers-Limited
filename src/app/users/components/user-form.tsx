@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -110,9 +109,9 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
                   <Input type="email" placeholder="jane.smith@example.com" {...field} disabled={!!user} />
                 </FormControl>
                 {user ? (
-                    <FormDescription className="text-xs">Email is locked after registration.</FormDescription>
+                    <FormDescription className="text-[10px]">Email is locked after registration.</FormDescription>
                 ) : (
-                    <FormDescription className="text-xs">User must register with this exact email to join your workspace.</FormDescription>
+                    <FormDescription className="text-[10px]">User must register with this exact email to join your workspace.</FormDescription>
                 )}
                 <FormMessage />
               </FormItem>
@@ -127,7 +126,7 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
                 <FormLabel>Access Level</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                   </FormControl>
@@ -178,7 +177,7 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
                                 </FormControl>
                                 <div className="flex items-center gap-2">
                                     <item.icon className="h-4 w-4 text-muted-foreground opacity-50" />
-                                    <FormLabel className="text-xs font-bold cursor-pointer">{item.label}</FormLabel>
+                                    <FormLabel className="text-[10px] font-black uppercase cursor-pointer">{item.label}</FormLabel>
                                 </div>
                                 </FormItem>
                             )
@@ -194,7 +193,7 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
           <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading} className="font-black uppercase tracking-widest">
+          <Button type="submit" disabled={isLoading} className="font-black uppercase tracking-widest h-11 px-8 shadow-md">
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (user ? "Update Access" : "Create Invitation")}
           </Button>
         </div>

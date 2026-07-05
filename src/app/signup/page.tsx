@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, getDocs, collection, query, where, deleteDoc } from 'firebase/firestore';
-import { Loader2, Zap, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Zap, Eye, EyeOff } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
 import { initiateGoogleSignIn } from '@/firebase/non-blocking-login';
 import Link from 'next/link';
@@ -42,17 +42,17 @@ export default function SignUpPage() {
 
   const handleSignUp = async () => {
     if (!email || !password || !name || !confirmPassword) {
-        toast({ variant: 'destructive', title: 'Missing Info', description: 'Please fill all details.' });
+        toast({ variant: 'destructive', title: 'Need info', description: 'Please fill in all details.' });
         return;
     }
 
     if (password !== confirmPassword) {
-        toast({ variant: 'destructive', title: 'Check Password', description: 'The two passwords do not match.' });
+        toast({ variant: 'destructive', title: 'Check password', description: 'The two passwords do not match.' });
         return;
     }
 
     if (password.length < 6) {
-        toast({ variant: 'destructive', title: 'Too Short', description: 'Password must be at least 6 characters.' });
+        toast({ variant: 'destructive', title: 'Too short', description: 'Password must be at least 6 characters.' });
         return;
     }
 
@@ -93,7 +93,7 @@ export default function SignUpPage() {
         toast({ title: 'Welcome!', description: 'Your account is ready.' });
         router.push('/');
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Signup Error', description: error.message });
+        toast({ variant: 'destructive', title: 'Signup error', description: error.message });
     } finally {
         setIsLoading(false);
     }
@@ -105,7 +105,7 @@ export default function SignUpPage() {
           await initiateGoogleSignIn(auth);
       } catch (e: any) {
           setIsLoading(false);
-          toast({ variant: 'destructive', title: 'Google Error', description: e.message });
+          toast({ variant: 'destructive', title: 'Google error', description: e.message });
       }
   };
 
@@ -130,7 +130,7 @@ export default function SignUpPage() {
                 <Zap className="w-full h-full text-primary fill-primary" />
             </Link>
             <h1 className="text-2xl font-black uppercase tracking-tighter text-foreground leading-none">Get Started</h1>
-            <p className="text-xs text-muted-foreground font-bold mt-2 uppercase tracking-widest">Create your shop account</p>
+            <p className="text-xs text-muted-foreground font-bold mt-2 uppercase tracking-widest">Create your account</p>
         </div>
 
         {/* Floating Card */}
@@ -140,7 +140,7 @@ export default function SignUpPage() {
             variant="outline" 
             onClick={handleGoogleSignUp} 
             disabled={isLoading}
-            className="w-full h-12 bg-white border-black/10 text-xs font-bold uppercase tracking-widest hover:bg-muted/50 rounded-xl flex items-center justify-center gap-3 shadow-sm"
+            className="w-full h-12 bg-white border-black/10 text-[10px] font-black uppercase tracking-widest hover:bg-muted/50 rounded-xl flex items-center justify-center gap-3 shadow-sm"
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -204,7 +204,7 @@ export default function SignUpPage() {
                 </div>
             </div>
 
-            <Button onClick={handleSignUp} className="w-full h-12 text-xs font-black uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={isLoading}>
+            <Button onClick={handleSignUp} className="w-full h-12 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={isLoading}>
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create Account'}
             </Button>
           </div>
