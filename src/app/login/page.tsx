@@ -134,9 +134,9 @@ export default function LoginPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-[#f8f9fa] p-4 font-sans">
       <Card className="w-full max-w-[440px] border-none shadow-none bg-transparent">
         <CardHeader className="text-center space-y-4 pb-8">
-          <div className="mx-auto w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center p-3 mb-2">
+          <Link href="/" className="mx-auto w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center p-3 mb-2 hover:shadow-md transition-all active:scale-95">
             <img src="/favicon.ico" alt="Logo" className="w-full h-full object-contain" />
-          </div>
+          </Link>
           <h1 className="text-[32px] font-bold text-[#0e1217] tracking-tight leading-tight">Welcome back!</h1>
           <p className="text-[#5e6670] text-lg">Sign in to manage your workspace.</p>
         </CardHeader>
