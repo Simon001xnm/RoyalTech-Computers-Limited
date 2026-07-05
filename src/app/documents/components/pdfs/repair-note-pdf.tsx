@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Document as AppDocument } from "@/types";
@@ -10,119 +9,96 @@ import { useSaaS } from '@/components/saas/saas-provider';
 export function RepairNotePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
-  
-  const companyRef = useMemoFirebase(() => 
-    tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
-    [firestore, tenant?.id]
-  );
+  const companyRef = useMemoFirebase(() => tenant?.id ? doc(firestore, 'companies', tenant.id) : null, [firestore, tenant?.id]);
   const { data: cloudCompany } = useDoc(companyRef);
-
-  if (!docSnapshot.data) {
-    return <div className="p-4">Document data is missing.</div>;
-  }
-
+  if (!docSnapshot.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
   const workspace = docSnapshot.data.workspace || cloudCompany;
   const { customer, laptop, details } = docSnapshot.data;
-  const companyName = workspace?.name || 'SIMONSTYLESTECHNOLOGIES LIMITED';
+  const primaryIndigo = "#7c3aed";
+  const secondaryIndigo = "#f5f3ff";
 
   return (
-    <div className="p-[15mm] font-sans text-[12px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border border border-gray-100">
-      {/* Header Section */}
-      <div className="flex justify-between items-start mb-8">
-        <div className="flex items-center gap-4">
-           {workspace?.logoUrl ? (
-            <img src={workspace.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
-          ) : (
-            <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed">LOGO</div>
-          )}
-          <div className="space-y-0.5">
-             <h1 className="text-xl font-black text-primary uppercase leading-tight">{companyName}</h1>
-             <p className="text-[9px] italic opacity-60">Let's Tech-it!</p>
-          </div>
-        </div>
-        <div>
-            <div className="bg-black text-white px-8 py-2 text-xl font-black uppercase tracking-widest">
-                REPAIR NOTE
+    <div className="p-[10mm] font-sans text-[10px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border">
+      <header className="flex justify-between items-start mb-4">
+        <div className="space-y-2">
+            <h1 className="text-2xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Repair Note</h1>
+            <div className="space-y-0.5 text-[10px] font-medium text-black">
+                <p><span className="w-20 inline-block opacity-60">Job No</span> <span className="font-bold">{docSnapshot.title.split('#').pop()}</span></p>
+                <p><span className="w-20 inline-block opacity-60">In-Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
             </div>
         </div>
-      </div>
-
-      {/* Client & Meta Info */}
-      <div className="flex justify-between mb-8">
-        <div className="space-y-1">
-            <h3 className="font-black uppercase text-[13px] border-b border-black pb-0.5 mb-1 w-fit">CLIENT DETAILS:</h3>
-            <p className="font-black text-[14px] uppercase">{customer?.name || 'VALUED CLIENT'}</p>
-            <p className="font-bold">{customer?.phone}</p>
+        <div className="flex flex-col items-end">
+           {workspace?.logoUrl ? (
+            <img src={workspace.logoUrl} alt="Logo" className="h-16 w-auto object-contain" crossOrigin="anonymous" />
+          ) : (
+            <div className="h-14 w-14 bg-gray-50 flex items-center justify-center text-[8px] font-black border border-dashed border-gray-200 text-gray-300">LOGO</div>
+          )}
         </div>
-        <div className="text-right space-y-1">
-            <p className="font-bold"><span className="opacity-60">Job No:</span> {docSnapshot.title.split('#').pop() || docSnapshot.id.slice(0, 4).toUpperCase()}</p>
-            <p className="font-bold"><span className="opacity-60">In-Date:</span> {format(new Date(docSnapshot.generatedDate), "MM/dd/yyyy")}</p>
-        </div>
-      </div>
+      </header>
 
-      <div className="space-y-6 flex-grow">
-        <section className="p-6 bg-muted/20 border rounded-2xl">
-            <h4 className="font-black uppercase text-[11px] mb-3 text-primary">Device for Service</h4>
+      <section className="grid grid-cols-2 gap-3 mb-6">
+        <div className="p-3 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
+            <h3 className="font-medium text-[12px] mb-1" style={{ color: primaryIndigo }}>Service Center</h3>
+            <p className="font-bold uppercase">{workspace?.name || 'The Business'}</p>
+            <p className="text-[9px] font-medium text-black/70">{workspace?.address || 'Kenya'}</p>
+        </div>
+        <div className="p-3 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
+            <h3 className="font-medium text-[12px] mb-1" style={{ color: primaryIndigo }}>Customer</h3>
+            <p className="font-bold">{customer?.name || 'VALUED CLIENT'}</p>
+            <p className="text-[9px] font-medium text-black/70">{customer?.phone}</p>
+        </div>
+      </section>
+
+      <section className="flex-grow space-y-6">
+        <div className="p-4 rounded-xl border bg-muted/20">
+            <h4 className="text-[9px] font-black uppercase tracking-widest text-primary mb-3">Device Identity</h4>
             {laptop ? (
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <p className="text-[10px] uppercase opacity-60">Model</p>
-                        <p className="font-black text-sm">{laptop.model}</p>
+                        <p className="text-[8px] uppercase opacity-50">Model</p>
+                        <p className="font-bold text-[10px]">{laptop.model}</p>
                     </div>
                     <div>
-                        <p className="text-[10px] uppercase opacity-60">Serial Number</p>
-                        <p className="font-black text-sm uppercase">{laptop.serialNumber}</p>
+                        <p className="text-[8px] uppercase opacity-50">Serial Number</p>
+                        <p className="font-bold text-[10px] uppercase">{laptop.serialNumber}</p>
                     </div>
                 </div>
-            ) : <p className="font-bold text-xs italic">No specific device linked.</p>}
-        </section>
+            ) : <p className="italic opacity-50">No device linked.</p>}
+        </div>
 
-        <section className="space-y-2">
-            <h4 className="font-black uppercase text-[11px] border-b pb-0.5 mb-2">REPORTED ISSUE / WORK REQUESTED</h4>
-            <div className="min-h-[200px] p-6 border-2 border-dashed rounded-3xl bg-gray-50/50">
-                <p className="text-sm font-bold leading-relaxed">{details || 'No specific details provided.'}</p>
-            </div>
-        </section>
-
-        <section className="space-y-4">
-            <h4 className="font-black uppercase text-[11px] border-b pb-0.5 mb-2">TERMS & CONDITIONS</h4>
-            <div className="grid grid-cols-1 gap-2 text-[10px] font-bold leading-relaxed opacity-70">
-                <p>1. Data Loss: We are NOT responsible for any data loss. Clients must back up their storage before service.</p>
-                <p>2. Diagnostics: A non-refundable diagnostic fee may apply if repairs are declined after inspection.</p>
-                <p>3. Warranty: Service warranty is 90 days for parts replaced by us.</p>
-                <p>4. Uncollected Items: Items left for more than 90 days after service completion will be disposed of to recover costs.</p>
-            </div>
-        </section>
-
-        {/* Signatures */}
-        <div className="mt-12 grid grid-cols-2 gap-12">
-            <div className="space-y-4">
-                <div className="h-16 border-b border-black border-dotted"></div>
-                <p className="text-[10px] font-black uppercase text-center opacity-50">CUSTOMER SIGNATURE</p>
-            </div>
-            <div className="space-y-4">
-                <div className="h-16 border-b border-black border-dotted"></div>
-                <p className="text-[10px] font-black uppercase text-center opacity-50">AUTHORIZED AGENT</p>
+        <div className="space-y-2">
+            <h4 className="text-[9px] font-black uppercase tracking-widest opacity-60">Reported Problem / Job Description</h4>
+            <div className="min-h-[150px] p-4 border-2 border-dashed rounded-xl bg-gray-50">
+                <p className="text-[10px] font-medium leading-relaxed">{details || 'No details provided.'}</p>
             </div>
         </div>
-      </div>
 
-      {/* Professional Footer */}
-      <footer className="mt-auto pt-10 text-center space-y-3">
-         <div className="w-full h-px bg-gray-400 mb-2"></div>
-         <p className="italic font-bold text-[11px] tracking-wide">
-            Laptops Lease | Desktops | Laptops | Printers | Chargers | Memory etc | Sales & Services
+        <div className="p-4 border rounded-xl space-y-2">
+            <h4 className="text-[9px] font-black uppercase tracking-widest text-destructive">Disclaimer & Terms</h4>
+            <div className="grid grid-cols-1 gap-1 text-[8px] font-medium opacity-70 leading-tight">
+                <p>1. BACKUP: Client must backup all data. We are not liable for data loss.</p>
+                <p>2. DIAGNOSTICS: Non-refundable fee may apply even if repairs are declined.</p>
+                <p>3. WARRANTY: 30 days warranty on parts replaced by us.</p>
+                <p>4. UNCLAIMED: Items not picked after 90 days will be disposed to recover costs.</p>
+            </div>
+        </div>
+
+        <div className="mt-12 grid grid-cols-2 gap-10">
+            <div className="space-y-4">
+                <div className="h-10 border-b border-black border-dotted"></div>
+                <p className="text-[9px] font-black uppercase text-center opacity-40">Client Sign</p>
+            </div>
+            <div className="space-y-4">
+                <div className="h-10 border-b border-black border-dotted"></div>
+                <p className="text-[9px] font-black uppercase text-center opacity-40">Service Agent</p>
+            </div>
+        </div>
+      </section>
+
+      <footer className="mt-auto pt-6 text-center border-t border-gray-100">
+         <p className="text-[9px] font-medium text-black">
+            Electronic Repairs | Laptop Leasing | Hardware Maintenance
          </p>
-         <div className="text-[10px] space-y-1 opacity-80">
-            <p className="font-black tracking-widest overflow-hidden h-2 leading-none">****************************************************************************************************************************************************************</p>
-            <p className="font-bold">{workspace?.address || 'Nairobi, Kenya'}</p>
-            <p className="font-bold">Tel: {workspace?.phone} E-mail: {workspace?.email} Web: {workspace?.website || 'www.royaltech.co.ke'}</p>
-         </div>
-
-         <div className="pt-6 text-[8px] font-bold opacity-40 uppercase flex justify-center gap-4">
-            <span>Note Printed On: {format(new Date(), "PPPP | p")}</span>
-            <span>&gt;&gt;Served By: {docSnapshot.createdBy?.name || 'System'}</span>
-         </div>
       </footer>
     </div>
   );

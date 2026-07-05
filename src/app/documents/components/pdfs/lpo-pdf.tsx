@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
@@ -7,138 +6,121 @@ import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 
-export function LpoPdf({ document }: { document: AppDocument }) {
+function numberToWords(num: number): string {
+  const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
+  const tens = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
+  const teens = ['TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
+  if (num === 0) return 'ZERO';
+  const convert = (n: number): string => {
+    if (n < 10) return ones[n];
+    if (n < 20) return teens[n - 10];
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
+    if (n < 1000) return ones[Math.floor(n / 100)] + ' HUNDRED' + (n % 100 !== 0 ? ' AND ' + convert(n % 100) : '');
+    if (n < 1000000) return convert(Math.floor(n / 1000)) + ' THOUSAND' + (n % 1000 !== 0 ? ' ' + convert(n % 100) : '');
+    return n.toString();
+  };
+  return convert(Math.floor(num)) + ' SHILLINGS ONLY';
+}
+
+export function LpoPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
-  
-  const companyRef = useMemoFirebase(() => 
-    tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
-    [firestore, tenant?.id]
-  );
+  const companyRef = useMemoFirebase(() => tenant?.id ? doc(firestore, 'companies', tenant.id) : null, [firestore, tenant?.id]);
   const { data: cloudCompany } = useDoc(companyRef);
-
-  if (!document.data) {
-    return <div className="p-4">Document data is missing.</div>;
-  }
-
-  const workspace = document.data.workspace || cloudCompany;
-  const { supplier, items, subtotal, total, notes } = document.data;
-  
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-KE", {
-      style: "currency",
-      currency: "KES",
-    }).format(amount);
-  };
-
-  const companyName = workspace?.name || 'The Company';
+  if (!docSnapshot.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
+  const workspace = docSnapshot.data.workspace || cloudCompany;
+  const data = docSnapshot.data;
+  const supplier = data.supplier || { name: 'VENDOR / SUPPLIER', address: 'Kenya', email: '' };
+  const { items, subtotal, total } = data;
+  const formatCurrency = (v: number | undefined) => new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
+  const primaryIndigo = "#7c3aed";
+  const secondaryIndigo = "#f5f3ff";
 
   return (
-    <div className="p-[20mm] font-sans text-sm bg-white text-gray-800 w-[210mm] min-h-[297mm] flex flex-col box-border">
-      <header className="flex justify-between items-start pb-4">
-        <div className="flex items-center gap-4">
-          {workspace?.logoUrl ? (
-            <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain" />
-          ) : (
-            <div className="h-28 w-28 bg-muted flex items-center justify-center text-xs text-muted-foreground uppercase font-bold border">No Logo</div>
-          )}
-          <div>
-              <h1 className="text-2xl font-bold text-black uppercase">{companyName}</h1>
-              <p className="text-xs text-gray-600 mt-1">{workspace?.address}</p>
-              <p className="text-xs text-gray-500">Tel: {workspace?.phone} | E-mail: {workspace?.email}</p>
-          </div>
+    <div className="p-[10mm] font-sans text-[10px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border">
+      <header className="flex justify-between items-start mb-4">
+        <div className="space-y-2">
+            <h1 className="text-2xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Purchase Order</h1>
+            <div className="space-y-0.5 text-[10px] font-medium text-black">
+                <p><span className="w-20 inline-block opacity-60">LPO No</span> <span className="font-bold">{docSnapshot.title.split('#').pop()}</span></p>
+                <p><span className="w-20 inline-block opacity-60">Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
+            </div>
         </div>
-        <div className="text-right">
-            <h2 className="text-4xl font-light uppercase text-gray-700">Purchase Order</h2>
+        <div className="flex flex-col items-end">
+           {workspace?.logoUrl ? (
+            <img src={workspace.logoUrl} alt="Logo" className="h-16 w-auto object-contain" crossOrigin="anonymous" />
+          ) : (
+            <div className="h-14 w-14 bg-gray-50 flex items-center justify-center text-[8px] font-black border border-dashed border-gray-200 text-gray-300">LOGO</div>
+          )}
         </div>
       </header>
 
-      <div className="border-t border-gray-300 mb-8"></div>
-
-      <section className="flex justify-between mt-8 mb-10">
-        <div>
-          <h3 className="font-semibold text-gray-500 mb-2">Vendor/Supplier:</h3>
-          {supplier ? (
-            <>
-              <p className="font-medium">{supplier.name}</p>
-              <p>{supplier.address || 'Address not available'}</p>
-              <p>{supplier.email}</p>
-            </>
-          ) : <p>Supplier details not available.</p>}
+      <section className="grid grid-cols-2 gap-3 mb-6">
+        <div className="p-3 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
+            <h3 className="font-medium text-[12px] mb-1" style={{ color: primaryIndigo }}>Deliver To</h3>
+            <p className="font-bold uppercase">{workspace?.name || 'The Business'}</p>
+            <p className="text-[9px] font-medium text-black/70">{workspace?.address || 'Kenya'}</p>
         </div>
-        <div className="text-right">
-           <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-             <span className="font-semibold text-gray-600">LPO No:</span>
-             <span className="text-gray-800">{document.title}</span>
-             <span className="font-semibold text-gray-600">Date:</span>
-             <span className="text-gray-800">{format(new Date(document.generatedDate), "PPP")}</span>
-          </div>
+        <div className="p-3 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
+            <h3 className="font-medium text-[12px] mb-1" style={{ color: primaryIndigo }}>Supplier</h3>
+            <p className="font-bold">{supplier.name}</p>
+            <p className="text-[9px] font-medium text-black/70">{supplier.address}</p>
+            <p className="text-[9px] font-medium text-black/70">{supplier.email}</p>
         </div>
       </section>
 
-      <section>
-        <table className="w-full text-left table-auto">
-          <thead>
-            <tr className="bg-[#2c3e50] text-white">
-              <th className="p-2 font-semibold text-sm">Item Description</th>
-              <th className="p-2 font-semibold text-sm text-right w-24">Quantity</th>
-              <th className="p-2 font-semibold text-sm text-right w-32">Unit Price</th>
-              <th className="p-2 font-semibold text-sm text-right w-32">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items && items.length > 0 ? (
-              items.map((item: DocumentLineItem, index: number) => (
-              <tr key={index} className="border-b bg-gray-50">
-                <td className="p-3 text-sm">{item.description}</td>
-                <td className="p-3 text-right text-sm">{item.quantity}</td>
-                <td className="p-3 text-right text-sm">{formatCurrency(item.unitPrice)}</td>
-                <td className="p-3 text-right font-medium text-sm">{formatCurrency(item.unitPrice * item.quantity)}</td>
-              </tr>
-              ))
-            ) : (
-                <tr className="border-b">
-                    <td colSpan={4} className="p-3 text-center text-gray-500">No items available.</td>
+      <section className="flex-grow">
+        <table className="w-full border-collapse">
+            <thead>
+                <tr className="text-left text-white" style={{ backgroundColor: primaryIndigo }}>
+                    <th className="py-2 px-3 font-bold text-[9px] rounded-l-sm">Description</th>
+                    <th className="py-2 text-right font-bold text-[9px] w-24">Quantity</th>
+                    <th className="py-2 text-right font-bold text-[9px] w-32">Unit Price</th>
+                    <th className="py-2 px-3 text-right font-bold text-[9px] rounded-r-sm w-40">Total</th>
                 </tr>
-            )}
-          </tbody>
+            </thead>
+            <tbody>
+                {items?.map((item: DocumentLineItem, idx: number) => (
+                    <tr key={idx} className="border-b border-gray-100">
+                        <td className="py-2 px-3 align-top">
+                            <p className="font-bold text-[10px]">{item.description}</p>
+                        </td>
+                        <td className="py-2 text-right text-[9px]">{item.quantity}</td>
+                        <td className="py-2 text-right text-[9px]">KES {formatCurrency(item.unitPrice)}</td>
+                        <td className="py-2 px-3 text-right text-[9px] font-bold">KES {formatCurrency(item.unitPrice * item.quantity)}</td>
+                    </tr>
+                ))}
+            </tbody>
         </table>
-      </section>
-      
-      <section className="flex justify-end mt-6 items-start">
-        <div className="w-full max-w-xs mt-4">
-             <div className="flex justify-between py-1 text-sm">
-                <span className="font-semibold text-gray-600">Subtotal:</span>
-                <span className="text-right font-medium">{formatCurrency(subtotal)}</span>
+
+        <div className="flex justify-between items-start mt-4">
+            <div className="max-w-[300px]">
+                <p className="text-[9px] font-bold text-black uppercase">
+                    Amount (in words) : {numberToWords(total)}
+                </p>
             </div>
-            <div className="flex justify-between font-bold text-base py-2 mt-2 border-t border-gray-300">
-                <span>Total:</span>
-                <span className="text-right">{formatCurrency(total)}</span>
+            <div className="w-[240px] space-y-2">
+                <div className="flex justify-between items-center text-[9px]">
+                    <span className="font-bold opacity-60">Subtotal</span>
+                    <span className="font-bold">KES {formatCurrency(subtotal || total)}</span>
+                </div>
+                <div className="pt-2 border-t border-black flex justify-between items-center">
+                    <span className="text-[12px] font-bold">Total (KES)</span>
+                    <span className="text-[14px] font-bold">KES {formatCurrency(total)}</span>
+                </div>
+                <div className="h-0.5 bg-black w-full mt-[-1px]"></div>
             </div>
         </div>
       </section>
 
-       {notes && (
-        <section className="mt-6 border-t pt-4">
-            <h3 className="font-bold mb-1">Notes:</h3>
-            <p className="text-xs text-gray-600">{notes}</p>
-        </section>
-      )}
-
-      <div className="flex-grow min-h-[100px]"></div>
-
-      <footer className="text-xs text-gray-700 border-t-2 border-gray-300 pt-6 mt-10">
-        <p className="mb-8">This Purchase Order is subject to the terms and conditions agreed upon between {companyName} and the supplier.</p>
-        <div className="flex justify-between items-center">
-            <div className="w-2/5">
-                <div className="border-b border-gray-400 mt-12"></div>
-                <p className="text-xs text-center mt-1">Authorized Signature</p>
-                <p className="text-xs text-center mt-1 font-semibold uppercase">{companyName}</p>
+      <footer className="mt-auto pt-10 grid grid-cols-2 gap-20">
+            <div className="space-y-4">
+                <div className="h-10 border-b border-black"></div>
+                <p className="text-[9px] font-black uppercase text-center opacity-40">Approved By (Stamp & Sign)</p>
             </div>
-             <div className="text-right">
-                <p>Thank you for your business!</p>
+            <div className="text-right space-y-2">
+                <p className="text-[9px] font-medium text-black">Authorized Signature for <span className="font-bold">{workspace?.name}</span></p>
             </div>
-        </div>
       </footer>
     </div>
   );
