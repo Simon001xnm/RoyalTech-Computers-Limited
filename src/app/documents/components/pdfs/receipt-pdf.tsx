@@ -7,7 +7,7 @@ import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 
 /**
- * Converts numbers to words (Simplified for KES)
+ * Converts numbers to professional English words (KES Specific)
  */
 function numberToWords(num: number): string {
   const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
@@ -29,8 +29,8 @@ function numberToWords(num: number): string {
 }
 
 /**
- * @fileOverview Professional Receipt Redesign
- * Matches the requested Indigo/Purple layout with logo on the right.
+ * @fileOverview Professional Receipt Design
+ * strictly follows the indigo layout: Logo Right, Title Left, words for totals.
  */
 export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -54,7 +54,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
     address: data.customerAddress || 'Nairobi, Kenya'
   };
 
-  const { items, paymentMethod, amount, amountPaid, subtotal, vat, applyVat } = data;
+  const { items, amount, subtotal, vat, applyVat } = data;
 
   const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat("en-KE", {
@@ -66,41 +66,49 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
   
   const receiptNo = docSnapshot.title.split('#').pop() || docSnapshot.id.slice(0, 5).toUpperCase();
   const companyName = workspace?.name || 'BUSINESS NAME';
-  const primaryColor = "#7c3aed"; // Requested Indigo/Purple
+  const primaryColor = "#7c3aed"; // Indigo Theme
 
   return (
     <div className="p-[15mm] font-sans text-[12px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border selection:bg-indigo-100">
       
-      {/* HEADER SECTION */}
-      <header className="flex justify-between items-start mb-10">
+      {/* HEADER SECTION: Title Left, Logo Right */}
+      <header className="flex justify-between items-start mb-12">
         <div className="space-y-4">
-            <h1 className="text-4xl font-medium tracking-tight" style={{ color: primaryColor }}>Receipt</h1>
-            <div className="space-y-1 text-[13px] font-medium text-gray-700">
-                <p><span className="w-24 inline-block">Receipt No</span> <span className="font-bold text-black">{workspace?.receiptPrefix || 'RCT'}{receiptNo}</span></p>
-                <p><span className="w-24 inline-block">Receipt Date</span> <span className="font-bold text-black">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
+            <h1 className="text-5xl font-semibold tracking-tighter" style={{ color: primaryColor }}>Receipt</h1>
+            <div className="space-y-1 text-[13px] font-medium text-black">
+                <p><span className="w-28 inline-block opacity-60 uppercase font-black text-[10px]">Receipt No</span> <span className="font-bold text-lg">{workspace?.receiptPrefix || 'RCT'}{receiptNo}</span></p>
+                <p><span className="w-28 inline-block opacity-60 uppercase font-black text-[10px]">Receipt Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
             </div>
         </div>
         
         <div className="flex flex-col items-end">
            {workspace?.logoUrl ? (
-            <img src={workspace.logoUrl} alt="Logo" className="h-24 w-auto object-contain" crossOrigin="anonymous" />
+            <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain" crossOrigin="anonymous" />
           ) : (
-            <div className="h-20 w-20 bg-gray-100 flex items-center justify-center text-[10px] font-black border border-gray-200 text-gray-400">LOGO</div>
+            <div className="h-24 w-24 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
           )}
         </div>
       </header>
 
-      {/* BILLING BLOCKS SECTION */}
-      <section className="grid grid-cols-2 gap-4 mb-10">
-        <div className="p-6 rounded-lg space-y-2" style={{ backgroundColor: '#f5f3ff' }}>
-            <h3 className="font-bold text-[14px] mb-2" style={{ color: primaryColor }}>Billed By</h3>
-            <p className="font-black text-sm uppercase leading-tight">{companyName}</p>
-            <p className="text-gray-600 font-medium">{workspace?.address || 'Kenya'}</p>
+      {/* BILLING BLOCKS: Side by Side */}
+      <section className="grid grid-cols-2 gap-6 mb-12">
+        <div className="p-6 rounded-2xl space-y-2 border border-indigo-50" style={{ backgroundColor: '#f5f3ff' }}>
+            <h3 className="font-black uppercase text-[10px] tracking-widest mb-2" style={{ color: primaryColor }}>Billed By</h3>
+            <p className="font-black text-base uppercase leading-tight">{companyName}</p>
+            <div className="text-black font-bold space-y-0.5 mt-2">
+                <p className="opacity-80">{workspace?.address || 'Kenya'}</p>
+                <p className="opacity-80">{workspace?.phone}</p>
+                <p className="opacity-80">{workspace?.email}</p>
+            </div>
         </div>
-        <div className="p-6 rounded-lg space-y-2" style={{ backgroundColor: '#f5f3ff' }}>
-            <h3 className="font-bold text-[14px] mb-2" style={{ color: primaryColor }}>Billed To</h3>
-            <p className="font-black text-sm uppercase leading-tight">{customer.name}</p>
-            <p className="text-gray-600 font-medium">{customer.address || 'Nairobi, Kenya'}</p>
+        <div className="p-6 rounded-2xl space-y-2 border border-indigo-50" style={{ backgroundColor: '#f5f3ff' }}>
+            <h3 className="font-black uppercase text-[10px] tracking-widest mb-2" style={{ color: primaryColor }}>Billed To</h3>
+            <p className="font-black text-base uppercase leading-tight">{customer.name}</p>
+            <div className="text-black font-bold space-y-0.5 mt-2">
+                <p className="opacity-80">{customer.address || 'Nairobi, Kenya'}</p>
+                <p className="opacity-80">{customer.phone}</p>
+                <p className="opacity-80">{customer.email || 'N/A'}</p>
+            </div>
         </div>
       </section>
 
@@ -109,13 +117,13 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
         <table className="w-full border-collapse">
             <thead>
                 <tr className="text-left text-white" style={{ backgroundColor: primaryColor }}>
-                    <th className="py-3 px-4 font-bold rounded-l-md">Item</th>
-                    <th className="py-3 px-2 text-center font-bold w-20">TAX Rate</th>
-                    <th className="py-3 px-2 text-center font-bold w-20">Quantity</th>
-                    <th className="py-3 px-2 text-right font-bold w-24">Rate</th>
-                    <th className="py-3 px-2 text-right font-bold w-24">Amount</th>
-                    <th className="py-3 px-2 text-right font-bold w-24">TAX</th>
-                    <th className="py-3 px-4 text-right font-bold w-32 rounded-r-md">Total</th>
+                    <th className="py-4 px-4 font-black uppercase text-[10px] tracking-widest rounded-l-xl">Item</th>
+                    <th className="py-4 px-2 text-center font-black uppercase text-[10px] tracking-widest w-20">TAX Rate</th>
+                    <th className="py-4 px-2 text-center font-black uppercase text-[10px] tracking-widest w-20">Qty</th>
+                    <th className="py-4 px-2 text-right font-black uppercase text-[10px] tracking-widest w-24">Rate</th>
+                    <th className="py-4 px-2 text-right font-black uppercase text-[10px] tracking-widest w-24">Amount</th>
+                    <th className="py-4 px-2 text-right font-black uppercase text-[10px] tracking-widest w-24">TAX</th>
+                    <th className="py-4 px-4 text-right font-black uppercase text-[10px] tracking-widest w-32 rounded-r-xl">Total</th>
                 </tr>
             </thead>
             <tbody>
@@ -123,63 +131,73 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                     const rowSubtotal = item.price * item.quantity;
                     const rowTax = applyVat ? rowSubtotal * 0.16 : 0;
                     return (
-                        <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50/50">
-                            <td className="py-5 px-4 align-top">
-                                <p className="font-bold text-gray-900">{item.name}</p>
-                                {item.serialNumber && <p className="text-[10px] text-gray-500 font-mono mt-1">{item.serialNumber}</p>}
+                        <tr key={idx} className="border-b border-gray-100">
+                            <td className="py-6 px-4 align-top">
+                                <p className="font-black text-sm text-black uppercase">{item.name}</p>
+                                {item.serialNumber && <p className="text-[10px] text-gray-500 font-mono mt-1 uppercase">S/N: {item.serialNumber}</p>}
                             </td>
-                            <td className="py-5 px-2 align-top text-center font-medium">{applyVat ? '16%' : '0%'}</td>
-                            <td className="py-5 px-2 align-top text-center font-medium">{item.quantity}</td>
-                            <td className="py-5 px-2 align-top text-right font-medium">KES {formatCurrency(item.price)}</td>
-                            <td className="py-5 px-2 align-top text-right font-medium">KES {formatCurrency(rowSubtotal)}</td>
-                            <td className="py-5 px-2 align-top text-right font-medium">KES {formatCurrency(rowTax)}</td>
-                            <td className="py-5 px-4 align-top text-right font-bold">KES {formatCurrency(rowSubtotal + rowTax)}</td>
+                            <td className="py-6 px-2 align-top text-center font-bold text-black">{applyVat ? '16%' : '0%'}</td>
+                            <td className="py-6 px-2 align-top text-center font-bold text-black">{item.quantity}</td>
+                            <td className="py-6 px-2 align-top text-right font-bold text-black">{formatCurrency(item.price)}</td>
+                            <td className="py-6 px-2 align-top text-right font-bold text-black">{formatCurrency(rowSubtotal)}</td>
+                            <td className="py-6 px-2 align-top text-right font-bold text-black">{formatCurrency(rowTax)}</td>
+                            <td className="py-6 px-4 align-top text-right font-black text-black">KES {formatCurrency(rowSubtotal + rowTax)}</td>
                         </tr>
                     );
                 })}
             </tbody>
         </table>
 
-        {/* TOTALS SECTION */}
-        <div className="flex justify-between items-start mt-10">
+        {/* TOTALS FOOTER BLOCK */}
+        <div className="flex justify-between items-start mt-12 pt-8 border-t-2 border-black">
             <div className="max-w-[400px]">
-                <p className="text-[11px] font-bold text-gray-700">
-                    Total (in words) : <span className="uppercase text-black">{numberToWords(amount)}</span>
+                <h4 className="font-black uppercase text-[10px] tracking-widest opacity-60 mb-2">Total Amount In Words</h4>
+                <p className="text-[13px] font-black text-black underline decoration-indigo-200 underline-offset-4">
+                    {numberToWords(amount)}
                 </p>
             </div>
             
-            <div className="w-[300px] space-y-4">
+            <div className="w-[320px] space-y-4">
                 <div className="flex justify-between items-center text-sm">
-                    <span className="font-medium text-gray-600">Amount</span>
-                    <span className="font-bold">KES {formatCurrency(subtotal || amountPaid || amount)}</span>
+                    <span className="font-black uppercase text-[10px] tracking-widest opacity-60">Subtotal</span>
+                    <span className="font-bold text-black">KES {formatCurrency(subtotal || amount)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                    <span className="font-medium text-gray-600">TAX</span>
-                    <span className="font-bold">KES {formatCurrency(vat || 0)}</span>
+                    <span className="font-black uppercase text-[10px] tracking-widest opacity-60">Total TAX</span>
+                    <span className="font-bold text-black">KES {formatCurrency(vat || 0)}</span>
                 </div>
                 
-                <div className="pt-4 border-t-2 border-black flex justify-between items-center">
-                    <span className="text-lg font-black tracking-tight">Total (KES)</span>
-                    <span className="text-xl font-black">KES {formatCurrency(amount)}</span>
+                <div className="pt-6 border-t-4 border-black border-double flex justify-between items-center">
+                    <span className="text-xl font-black uppercase tracking-tighter" style={{ color: primaryColor }}>Grand Total</span>
+                    <span className="text-2xl font-black text-black">KES {formatCurrency(amount)}</span>
                 </div>
-                <div className="h-0.5 w-full bg-black"></div>
             </div>
         </div>
       </section>
 
-      {/* PROFESSIONAL FOOTER */}
-      <footer className="mt-auto pt-20">
-         <div className="text-center space-y-2 mb-12">
-            <p className="text-[13px] font-medium text-gray-700">
-                For any enquiry, reach out via email at <span className="font-bold text-black">{workspace?.email}</span>, call on <span className="font-bold text-black">{workspace?.phone}</span>
+      {/* FINAL COMPLIANCE FOOTER */}
+      <footer className="mt-auto pt-20 border-t border-gray-100">
+         <div className="text-center space-y-2 mb-8">
+            <p className="text-[13px] font-bold text-black">
+                For any enquiry, please contact us at <span className="underline">{workspace?.email}</span> or call <span className="font-black">{workspace?.phone}</span>
             </p>
          </div>
          
-         <div className="text-center pt-8 border-t border-gray-100">
-            <p className="text-[10px] text-gray-400">
-                This is an electronically generated document, no signature is required.
-            </p>
+         <div className="flex justify-between items-end pt-6">
+            <div className="text-[9px] font-black uppercase tracking-widest opacity-30">
+                Processed By: {docSnapshot.createdBy?.name || 'System Node'}
+            </div>
+            <div className="text-center space-y-1">
+                <div className="h-1 w-32 bg-black mx-auto"></div>
+                <p className="text-[9px] font-black uppercase tracking-widest">Authorized Signatory</p>
+            </div>
+            <div className="text-[9px] font-black uppercase tracking-widest opacity-30">
+                Printed: {format(new Date(), "yyyy-MM-dd HH:mm")}
+            </div>
          </div>
+         <p className="text-center text-[10px] font-bold text-gray-400 mt-10">
+            This is a computer generated document. No physical signature is required.
+         </p>
       </footer>
     </div>
   );
