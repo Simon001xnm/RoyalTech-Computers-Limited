@@ -27,14 +27,20 @@ export function LpoPdf({ document: docSnapshot }: { document: AppDocument }) {
   const firestore = useFirestore();
   const companyRef = useMemoFirebase(() => tenant?.id ? doc(firestore, 'companies', tenant.id) : null, [firestore, tenant?.id]);
   const { data: cloudCompany } = useDoc(companyRef);
-  if (!docSnapshot.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
+  if (!docSnapshot?.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
   const workspace = docSnapshot.data.workspace || cloudCompany;
   const data = docSnapshot.data;
   const supplier = data.supplier || { name: 'VENDOR / SUPPLIER', address: 'Kenya', email: '' };
   const { items, subtotal, total } = data;
   const formatCurrency = (v: number | undefined) => new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
-  const primaryIndigo = "#7c3aed";
-  const secondaryIndigo = "#f5f3ff";
+  const primaryIndigo = "#1d4ed8"; // Professional Blue
+  const secondaryIndigo = "#f8fafc";
+  
+  const contactInfo = workspace?.phone || workspace?.email || 'Nairobi, Kenya';
+
+  const lpoNo = (docSnapshot.title || '').includes('#') 
+    ? docSnapshot.title.split('#').pop() 
+    : (docSnapshot.id || 'TEMP').slice(0, 5).toUpperCase();
 
   return (
     <div className="p-[10mm] font-sans text-[10px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border">
@@ -42,7 +48,7 @@ export function LpoPdf({ document: docSnapshot }: { document: AppDocument }) {
         <div className="space-y-2">
             <h1 className="text-2xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Purchase Order</h1>
             <div className="space-y-0.5 text-[10px] font-medium text-black">
-                <p><span className="w-20 inline-block opacity-60">LPO No</span> <span className="font-bold">{docSnapshot.title.split('#').pop()}</span></p>
+                <p><span className="w-20 inline-block opacity-60">LPO No</span> <span className="font-bold">{lpoNo}</span></p>
                 <p><span className="w-20 inline-block opacity-60">Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
             </div>
         </div>
@@ -83,7 +89,7 @@ export function LpoPdf({ document: docSnapshot }: { document: AppDocument }) {
                 {items?.map((item: DocumentLineItem, idx: number) => (
                     <tr key={idx} className="border-b border-gray-100">
                         <td className="py-2 px-3 align-top">
-                            <p className="font-bold text-[10px]">{item.description}</p>
+                            <p className="font-bold text-[10px] uppercase">{item.description}</p>
                         </td>
                         <td className="py-2 text-right text-[9px]">{item.quantity}</td>
                         <td className="py-2 text-right text-[9px]">KES {formatCurrency(item.unitPrice)}</td>
@@ -120,6 +126,7 @@ export function LpoPdf({ document: docSnapshot }: { document: AppDocument }) {
             </div>
             <div className="text-right space-y-2">
                 <p className="text-[9px] font-medium text-black">Authorized Signature for <span className="font-bold">{workspace?.name}</span></p>
+                <p className="text-[8px] font-bold text-muted-foreground uppercase">{contactInfo}</p>
             </div>
       </footer>
     </div>

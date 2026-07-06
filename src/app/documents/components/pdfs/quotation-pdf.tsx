@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
@@ -28,14 +27,20 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
   const firestore = useFirestore();
   const companyRef = useMemoFirebase(() => tenant?.id ? doc(firestore, 'companies', tenant.id) : null, [firestore, tenant?.id]);
   const { data: cloudCompany } = useDoc(companyRef);
-  if (!docSnapshot.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
+  if (!docSnapshot?.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
   const workspace = docSnapshot.data.workspace || cloudCompany;
   const data = docSnapshot.data;
   const customer = data.customer || { name: 'VALUED CLIENT', phone: '', email: '', address: 'Kenya' };
   const { items, subtotal, vat, total, applyVat } = data;
   const formatCurrency = (v: number | undefined) => new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
-  const primaryIndigo = "#7c3aed";
-  const secondaryIndigo = "#f5f3ff";
+  const primaryIndigo = "#1d4ed8"; // Professional Blue
+  const secondaryIndigo = "#f8fafc";
+  
+  const contactInfo = workspace?.phone || workspace?.email || 'Nairobi, Kenya';
+
+  const quoteNo = (docSnapshot.title || '').includes('#') 
+    ? docSnapshot.title.split('#').pop() 
+    : (docSnapshot.id || 'TEMP').slice(0, 5).toUpperCase();
 
   return (
     <div className="p-[10mm] font-sans text-[10px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border">
@@ -43,7 +48,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
         <div className="space-y-2">
             <h1 className="text-2xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Quotation</h1>
             <div className="space-y-0.5 text-[10px] font-medium text-black">
-                <p><span className="w-20 inline-block opacity-60">Number</span> <span className="font-bold">{docSnapshot.title.split('#').pop()}</span></p>
+                <p><span className="w-20 inline-block opacity-60">Number</span> <span className="font-bold">{workspace?.quotePrefix || 'QTN'}{quoteNo}</span></p>
                 <p><span className="w-20 inline-block opacity-60">Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
                 <p><span className="w-20 inline-block opacity-60">Valid Until</span> <span className="font-bold">{format(new Date(new Date(docSnapshot.generatedDate).setDate(new Date(docSnapshot.generatedDate).getDate() + 30)), "MMM dd, yyyy")}</span></p>
             </div>
@@ -136,7 +141,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
 
       <footer className="mt-auto pt-6 text-center border-t border-gray-100">
          <p className="text-[9px] font-medium text-black">
-            Reach out via <span className="font-bold">{workspace?.phone || workspace?.email}</span>
+            Reach out via <span className="font-bold">{contactInfo}</span>
          </p>
          <p className="text-[8px] font-medium text-gray-400 mt-2">
             Validity: 30 Days from date of issue.

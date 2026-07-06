@@ -48,10 +48,11 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const handleGenerateDelivery = async (sale: Sale) => {
         if (!tenant) return;
         
+        const saleIdStr = sale.id?.toString() || 'TEMP';
         const deliveryData = {
             tenantId: tenant.id,
             type: 'DeliveryNote' as const,
-            title: `Delivery Note #DEL-${sale.id.slice(0, 5).toUpperCase()}`,
+            title: `Delivery Note #DEL-${saleIdStr.slice(0, 5).toUpperCase()}`,
             generatedDate: new Date().toISOString(),
             relatedTo: `Sale to ${sale.customerName || 'Walk-in'}`,
             data: {
@@ -65,7 +66,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                     serialNumber: item.serialNumber || 'N/A',
                     quantity: item.quantity || 1
                 })),
-                details: `Generated from Sale ${sale.id.slice(0, 4)}`,
+                details: `Generated from Sale ${saleIdStr.slice(0, 4)}`,
             },
             createdAt: new Date().toISOString(),
         };
@@ -94,23 +95,24 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
 
             if (snap.empty) {
                 // Temporary mock if doc not found
+                const saleIdStr = sale.id?.toString() || 'TEMP';
                 docToUse = {
-                    id: 'temp',
+                    id: sale.id || 'temp',
                     tenantId: tenant?.id || '',
                     type: 'Receipt',
-                    title: `Receipt #${sale.id.slice(0, 5).toUpperCase()}`,
-                    generatedDate: sale.date,
+                    title: `Receipt #${saleIdStr.slice(0, 5).toUpperCase()}`,
+                    generatedDate: sale.date || new Date().toISOString(),
                     data: { ...sale, applyVat: false },
-                    createdAt: sale.createdAt
+                    createdAt: sale.createdAt || new Date().toISOString()
                 };
             } else {
-                docToUse = snap.docs[0].data() as AppDocument;
+                docToUse = { ...snap.docs[0].data(), id: snap.docs[0].id } as AppDocument;
             }
 
             setExportDoc(docToUse);
             
             // Wait for React to render the hidden receipt
-            await new Promise(r => setTimeout(r, 200));
+            await new Promise(r => setTimeout(r, 300));
 
             const element = document.getElementById('recent-sale-export-target');
             if (!element) throw new Error("Export target not found");
@@ -128,7 +130,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
             const imgData = canvas.toDataURL('image/png', 1.0);
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-            pdf.save(`${docToUse.title.replace(/\s+/g, '_')}.pdf`);
+            pdf.save(`${(docToUse.title || 'Receipt').replace(/\s+/g, '_')}.pdf`);
             toast({ title: "Receipt Downloaded" });
         } catch (e) {
             toast({ variant: 'destructive', title: "Export Failed" });

@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Document as AppDocument, SaleItem } from "@/types";
@@ -39,7 +38,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
   );
   const { data: cloudCompany } = useDoc(companyRef);
 
-  if (!docSnapshot.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
+  if (!docSnapshot?.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
 
   const workspace = docSnapshot.data.workspace || cloudCompany;
   const data = docSnapshot.data;
@@ -61,10 +60,15 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
     }).format(value || 0);
   };
   
-  const receiptNo = docSnapshot.title.split('#').pop() || docSnapshot.id.slice(0, 5).toUpperCase();
+  const receiptNo = (docSnapshot.title || '').includes('#') 
+    ? docSnapshot.title.split('#').pop() 
+    : (docSnapshot.id || 'TEMP').slice(0, 5).toUpperCase();
+
   const companyName = workspace?.name || 'BUSINESS NAME';
-  const primaryIndigo = "#7c3aed"; 
-  const secondaryIndigo = "#f5f3ff";
+  const primaryIndigo = "#1d4ed8"; // Professional Blue
+  const secondaryIndigo = "#f8fafc";
+
+  const contactInfo = workspace?.phone || workspace?.email || 'Nairobi, Kenya';
 
   return (
     <div className="p-[12mm] font-sans text-[11px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border selection:bg-indigo-100">
@@ -124,7 +128,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                                 <div className="flex gap-2">
                                     <span className="opacity-50 text-[10px]">{idx + 1}.</span>
                                     <div>
-                                        <p className="font-bold text-[11px]">{item.name}</p>
+                                        <p className="font-bold text-[11px] uppercase">{item.name}</p>
                                         {item.description && <p className="text-[9px] text-gray-500 mt-0.5 italic leading-tight">{item.description}</p>}
                                         {item.serialNumber && <p className="text-[9px] text-gray-500 mt-0.5 font-mono">S/N: {item.serialNumber}</p>}
                                     </div>
@@ -173,7 +177,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             Goods once sold cannot be returned
          </p>
          <p className="text-[10px] font-medium text-black mb-6">
-            For any enquiry, reach out via <span className="font-bold">{workspace?.phone || workspace?.email}</span>
+            For any enquiry, reach out via <span className="font-bold">{contactInfo}</span>
          </p>
          
          <p className="text-[8px] font-medium text-gray-400">

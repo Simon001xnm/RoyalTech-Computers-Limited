@@ -11,11 +11,17 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
   const firestore = useFirestore();
   const companyRef = useMemoFirebase(() => tenant?.id ? doc(firestore, 'companies', tenant.id) : null, [firestore, tenant?.id]);
   const { data: cloudCompany } = useDoc(companyRef);
-  if (!docSnapshot.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
+  if (!docSnapshot?.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
   const workspace = docSnapshot.data.workspace || cloudCompany;
   const { customer, items, details } = docSnapshot.data;
-  const primaryIndigo = "#7c3aed";
-  const secondaryIndigo = "#f5f3ff";
+  const primaryIndigo = "#1d4ed8"; // Professional Blue
+  const secondaryIndigo = "#f8fafc";
+  
+  const contactInfo = workspace?.phone || workspace?.email || 'Nairobi, Kenya';
+
+  const deliveryNo = (docSnapshot.title || '').includes('#') 
+    ? docSnapshot.title.split('#').pop() 
+    : (docSnapshot.id || 'TEMP').slice(0, 5).toUpperCase();
 
   return (
     <div className="p-[10mm] font-sans text-[10px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border">
@@ -23,7 +29,7 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
         <div className="space-y-2">
             <h1 className="text-2xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Delivery Note</h1>
             <div className="space-y-0.5 text-[10px] font-medium text-black">
-                <p><span className="w-20 inline-block opacity-60">Number</span> <span className="font-bold">{docSnapshot.title.split('#').pop()}</span></p>
+                <p><span className="w-20 inline-block opacity-60">Number</span> <span className="font-bold">{workspace?.deliveryPrefix || 'DLV'}{deliveryNo}</span></p>
                 <p><span className="w-20 inline-block opacity-60">Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
             </div>
         </div>
@@ -63,7 +69,7 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
                 {items?.map((item: any, idx: number) => (
                     <tr key={idx} className="border-b border-gray-100">
                         <td className="py-3 px-3 align-top">
-                            <p className="font-bold text-[10px]">{item.description}</p>
+                            <p className="font-bold text-[10px] uppercase">{item.description || item.name}</p>
                         </td>
                         <td className="py-3 text-center text-[9px] font-mono uppercase">{item.serialNumber || 'N/A'}</td>
                         <td className="py-3 px-3 text-right text-[9px] font-bold">{item.quantity}</td>
@@ -96,7 +102,7 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
             Goods once sold cannot be returned
          </p>
          <p className="text-[8px] font-medium text-gray-400 mt-2 italic">
-            Items received in good condition. Official Document.
+            Items received in good condition. Official Document &bull; {contactInfo}
          </p>
       </footer>
     </div>
