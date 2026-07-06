@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument, SaleItem } from "@/types";
@@ -124,7 +125,8 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                                     <span className="opacity-50 text-[10px]">{idx + 1}.</span>
                                     <div>
                                         <p className="font-bold text-[11px]">{item.name}</p>
-                                        {item.serialNumber && <p className="text-[9px] text-gray-500 mt-0.5">S/N: {item.serialNumber}</p>}
+                                        {item.description && <p className="text-[9px] text-gray-500 mt-0.5 italic leading-tight">{item.description}</p>}
+                                        {item.serialNumber && <p className="text-[9px] text-gray-500 mt-0.5 font-mono">S/N: {item.serialNumber}</p>}
                                     </div>
                                 </div>
                             </td>

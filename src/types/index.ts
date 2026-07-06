@@ -142,6 +142,7 @@ export interface Document extends Auditable {
 export interface SaleItem {
     id: string;
     name: string;
+    description?: string;
     serialNumber: string;
     price: number; 
     quantity: number;

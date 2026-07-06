@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
@@ -83,18 +84,22 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                 </tr>
             </thead>
             <tbody>
-                {items?.map((item: DocumentLineItem, idx: number) => {
-                    const rowSubtotal = item.quantity * item.unitPrice;
+                {items?.map((item: any, idx: number) => {
+                    const name = item.name || item.description;
+                    const desc = item.description && item.name ? item.description : null;
+                    const unitPrice = item.price || item.unitPrice;
+                    const rowSubtotal = item.quantity * unitPrice;
                     const rowTax = applyVat ? rowSubtotal * 0.16 : 0;
                     return (
                         <tr key={idx} className="border-b border-gray-100">
                             <td className="py-2 px-3 align-top">
-                                <p className="font-bold text-[10px]">{item.description}</p>
-                                {item.serialNumber && <p className="text-[8px] text-gray-500">S/N: {item.serialNumber}</p>}
+                                <p className="font-bold text-[10px] uppercase">{name}</p>
+                                {desc && <p className="text-[8px] text-gray-500 italic leading-tight">{desc}</p>}
+                                {item.serialNumber && <p className="text-[8px] text-gray-500 font-mono">S/N: {item.serialNumber}</p>}
                             </td>
                             <td className="py-2 text-right text-[9px]">{applyVat ? '16%' : '0%'}</td>
                             <td className="py-2 text-right text-[9px]">{item.quantity}</td>
-                            <td className="py-2 text-right text-[9px]">KES {formatCurrency(item.unitPrice)}</td>
+                            <td className="py-2 text-right text-[9px]">KES {formatCurrency(unitPrice)}</td>
                             <td className="py-2 text-right text-[9px]">KES {formatCurrency(rowSubtotal)}</td>
                             <td className="py-2 text-right text-[9px]">KES {formatCurrency(rowTax)}</td>
                             <td className="py-2 px-3 text-right text-[9px] font-bold">KES {formatCurrency(rowSubtotal + rowTax)}</td>

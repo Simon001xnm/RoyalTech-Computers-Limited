@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
@@ -115,8 +116,11 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 </tr>
             </thead>
             <tbody>
-                {items?.map((item: DocumentLineItem, idx: number) => {
-                    const rowSubtotal = item.quantity * item.unitPrice;
+                {items?.map((item: any, idx: number) => {
+                    const name = item.name || item.description;
+                    const desc = item.description && item.name ? item.description : null;
+                    const unitPrice = item.price || item.unitPrice;
+                    const rowSubtotal = item.quantity * unitPrice;
                     const rowTax = applyVat ? rowSubtotal * 0.16 : 0;
                     return (
                         <tr key={idx} className="border-b border-gray-100">
@@ -124,14 +128,15 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                                 <div className="flex gap-2">
                                     <span className="opacity-50 text-[10px]">{idx + 1}.</span>
                                     <div>
-                                        <p className="font-bold text-[11px]">{item.description}</p>
-                                        {item.serialNumber && <p className="text-[9px] text-gray-500 mt-0.5">S/N: {item.serialNumber}</p>}
+                                        <p className="font-bold text-[11px] uppercase">{name}</p>
+                                        {desc && <p className="text-[9px] text-gray-500 mt-0.5 italic leading-tight">{desc}</p>}
+                                        {item.serialNumber && <p className="text-[9px] text-gray-500 mt-0.5 font-mono">S/N: {item.serialNumber}</p>}
                                     </div>
                                 </div>
                             </td>
                             <td className="py-3 text-right text-[10px] font-medium">{applyVat ? '16%' : '0%'}</td>
                             <td className="py-3 text-right text-[10px] font-medium">{item.quantity}</td>
-                            <td className="py-3 text-right text-[10px] font-medium">KES {formatCurrency(item.unitPrice)}</td>
+                            <td className="py-3 text-right text-[10px] font-medium">KES {formatCurrency(unitPrice)}</td>
                             <td className="py-3 text-right text-[10px] font-medium">KES {formatCurrency(rowSubtotal)}</td>
                             <td className="py-3 text-right text-[10px] font-medium">KES {formatCurrency(rowTax)}</td>
                             <td className="py-3 px-3 text-right text-[10px] font-bold">KES {formatCurrency(rowSubtotal + rowTax)}</td>

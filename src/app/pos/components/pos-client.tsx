@@ -32,6 +32,7 @@ type Product = {
   serialNumber: string; 
   type: 'asset' | 'accessory' | 'custom';
   model?: string;
+  description?: string;
 };
 
 type CartItem = SaleItem & { productType: 'asset' | 'accessory' | 'custom'; quantity: number; unitPrice: number; discount: number; };
@@ -96,14 +97,23 @@ export function PosClient() {
     
     // Filter Available Items (Inventory)
     if (rawAssets) {
-        rawAssets.filter(a => a.status === 'Available').forEach(asset => list.push({
-            id: asset.id,
-            displayName: `ITEM: ${asset.model} (ID: ${asset.serialNumber})`,
-            price: asset.purchasePrice || 0,
-            serialNumber: asset.serialNumber,
-            type: 'asset',
-            model: asset.model
-        }));
+        rawAssets.filter(a => a.status === 'Available').forEach(asset => {
+            const description = [
+              asset.specifications?.ram,
+              asset.specifications?.storage,
+              asset.specifications?.processor
+            ].filter(Boolean).join(' • ');
+
+            list.push({
+                id: asset.id,
+                displayName: `ITEM: ${asset.model} (ID: ${asset.serialNumber})`,
+                price: asset.purchasePrice || 0,
+                serialNumber: asset.serialNumber,
+                type: 'asset',
+                model: asset.model,
+                description: description || undefined
+            });
+        });
     }
 
     // Filter Available Accessories
@@ -169,6 +179,7 @@ export function PosClient() {
     const newItem: CartItem = {
       id: selectedProduct?.id || `custom_${Date.now()}`,
       name: selectedProduct?.model || customName,
+      description: selectedProduct?.description,
       serialNumber: selectedProduct?.serialNumber || 'N/A',
       price: price, 
       unitPrice: price, 
@@ -389,6 +400,7 @@ export function PosClient() {
                                     <TableRow key={item.id} className="hover:bg-muted/20">
                                         <TableCell>
                                             <p className="font-semibold text-sm">{item.name}</p>
+                                            {item.description && <p className="text-[10px] text-muted-foreground">{item.description}</p>}
                                             <p className="text-[10px] opacity-60">ID: {item.serialNumber}</p>
                                             <Badge variant="outline" className="text-[8px] uppercase mt-1">{item.productType}</Badge>
                                         </TableCell>

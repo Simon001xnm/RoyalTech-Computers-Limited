@@ -139,12 +139,30 @@ export function DocumentsClient() {
     }
 
     if (type === 'Receipt') {
-        const parsedAmount = parseFloat(amount);
-        if (isNaN(parsedAmount) || parsedAmount <= 0) {
-            toast({ variant: 'destructive', title: 'Check the price' });
-            return;
+        // Receipts from this screen can now be itemized
+        const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
+        
+        if (validLineItems.length > 0) {
+            documentData.items = validLineItems.map(i => ({
+                id: `manual_${Date.now()}`,
+                name: i.description,
+                price: i.unitPrice,
+                quantity: i.quantity,
+                type: 'custom'
+            }));
+            const subtotal = validLineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+            const vat = applyVat ? subtotal * VAT_RATE : 0;
+            documentData.amount = subtotal + vat;
+            documentData.subtotal = subtotal;
+            documentData.vat = vat;
+        } else {
+            const parsedAmount = parseFloat(amount);
+            if (isNaN(parsedAmount) || parsedAmount <= 0) {
+                toast({ variant: 'destructive', title: 'Check the price or items' });
+                return;
+            }
+            documentData.amount = parsedAmount;
         }
-        documentData.amount = parsedAmount;
     } else if (['Quotation', 'Invoice', 'Proforma', 'LeaseAgreement'].includes(type)) {
         const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
         documentData.items = validLineItems;
@@ -333,7 +351,7 @@ export function DocumentsClient() {
   };
 
   const renderForm = (type: DocumentType) => {
-    const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'LPO', 'LeaseAgreement'].includes(type);
+    const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'LPO', 'LeaseAgreement', 'Receipt'].includes(type);
     return (
       <Card className="shadow-lg border-primary/10">
         <CardHeader className="bg-primary/5 border-b">
@@ -422,12 +440,6 @@ export function DocumentsClient() {
               </div>
           )}
 
-          {type === 'Receipt' && (
-            <div className="max-w-xs space-y-2">
-                <Label>Total Paid (KES)</Label>
-                <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11" placeholder="0.00" />
-            </div>
-          )}
           {showsItemEntry && (
             <div className="space-y-4">
                 <Label className="text-[10px] font-black uppercase opacity-60">List Items Below</Label>
@@ -454,6 +466,13 @@ export function DocumentsClient() {
                     </Table>
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={() => setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }])} className="h-8 font-bold"><PlusCircle className="mr-2 h-3 w-3"/>Add Another Row</Button>
+            </div>
+          )}
+          
+          {type === 'Receipt' && lineItems.length === 1 && lineItems[0].description === '' && (
+            <div className="max-w-xs space-y-2">
+                <Label>Total Paid (KES)</Label>
+                <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11" placeholder="0.00" />
             </div>
           )}
         </CardContent>
