@@ -19,7 +19,9 @@ import {
   Users,
   Clock,
   ChevronRight,
-  Loader2
+  Loader2,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react';
 import { format, startOfDay, subDays, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -227,6 +229,28 @@ export default function DashboardPage() {
             </>
         )}
       </div>
+
+      {/* Saymoh AI Promotional Card */}
+      <Card className="border-none bg-primary text-primary-foreground shadow-2xl overflow-hidden relative group">
+          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-700">
+              <Sparkles className="h-32 w-32" />
+          </div>
+          <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+              <div className="space-y-3 text-center md:text-left">
+                  <Badge variant="secondary" className="bg-white/20 text-white border-none font-black uppercase tracking-widest text-[9px] px-3 h-6">Autonomous Intelligence</Badge>
+                  <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">Meet Saymoh AI</h2>
+                  <p className="text-primary-foreground/70 text-sm font-medium max-w-xl">
+                      Your business has its own brain. Ask Saymoh to audit your stock, summarize your weekly revenue, or draft professional quotes instantly.
+                  </p>
+              </div>
+              <Button asChild className="h-14 px-8 bg-white text-primary hover:bg-white/90 font-black uppercase tracking-widest shadow-xl shrink-0 group">
+                  <Link href="/ai">
+                      Ask Saymoh Now
+                      <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+              </Button>
+          </CardContent>
+      </Card>
 
       <div className={cn(
         "grid gap-6 transition-all duration-500",

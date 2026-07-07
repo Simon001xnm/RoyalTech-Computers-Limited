@@ -1,4 +1,3 @@
-
 "use client";
 
 import { usePathname } from "next/navigation";
@@ -11,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { HelpCircle, CheckCircle2, Lightbulb } from "lucide-react";
+import { HelpCircle, CheckCircle2, Lightbulb, Sparkles } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface TutorialContent {
@@ -28,11 +27,26 @@ const TUTORIAL_DATA: Record<string, TutorialContent> = {
     features: [
       "Revenue Analytics: Track your sales trends over the last 7 days.",
       "KPI Cards: Monitor inventory availability, client growth, and monthly volume.",
-      "Recent Activity: A live feed of every transaction recorded in the system."
+      "Recent Activity: A live feed of every transaction recorded in the system.",
+      "Saymoh AI: Ask the assistant for instant reports without opening charts."
     ],
     tips: [
       "Hover over the chart points to see exact revenue figures.",
       "Use the summary cards to quickly identify stock shortages."
+    ]
+  },
+  "/ai": {
+    title: "Saymoh AI Hub",
+    description: "Your autonomous business intelligence agent. Saymoh uses Genkit to analyze your live cloud data and provide reasoning.",
+    features: [
+      "Inventory Audit: Ask 'What items are currently available?'",
+      "Sales Reconciliation: Ask 'Summarize our revenue for this week.'",
+      "CRM Insights: Ask 'How many new clients did we register this month?'",
+      "Creative Tasks: Ask 'Draft a professional quote for a high-end laptop.'"
+    ],
+    tips: [
+      "Saymoh has direct read-access to your inventory and sales transactions.",
+      "Keep your queries specific for the best data-driven results."
     ]
   },
   "/pos": {
@@ -115,11 +129,11 @@ export function ModuleTutorial() {
           <span className="hidden sm:inline">Module Guide</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0 border-none shadow-2xl">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
             <div className="bg-primary/10 p-2 rounded-lg">
-                <HelpCircle className="h-5 w-5 text-primary" />
+                {pathname === '/ai' ? <Sparkles className="h-5 w-5 text-primary" /> : <HelpCircle className="h-5 w-5 text-primary" />}
             </div>
             {tutorial.title} Tutorial
           </DialogTitle>
