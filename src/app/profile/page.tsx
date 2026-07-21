@@ -1,4 +1,3 @@
-
 'use client';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -6,26 +5,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Camera, Image as ImageIcon, Check, Loader2, Building2, Upload, Repeat, PlusCircle, ShieldCheck, Crown, Zap, Globe, Phone, MapPin, Briefcase, Wallet, FileText, Settings2, DownloadCloud, Database, History, Users, ShoppingCart } from "lucide-react";
+import { Camera, Image as ImageIcon, Check, Loader2, Upload, Settings2, DownloadCloud, Database, Users, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { useEffect, useState, useRef } from "react";
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import placeholderAvatars from '@/lib/placeholder-images.json';
 import { cn, exportToCsv } from "@/lib/utils";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { SaaSUsageMeters } from "@/components/saas/saas-usage-meters";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { logger } from "@/lib/logger";
 
 export default function ProfilePage() {
   const { user: authUser, isUserLoading } = useUser();
-  const { tenant, plan, isLegacyUser, switchTenant } = useSaaS();
+  const { tenant } = useSaaS();
   const firestore = useFirestore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -42,37 +38,20 @@ export default function ProfilePage() {
   // Company fields state
   const [compData, setCompData] = useState({
     name: '',
-    businessType: '',
+    businessType: 'retail',
     industry: '',
     description: '',
     logoUrl: '',
     website: '',
     email: '',
     phone: '',
-    altPhone: '',
     address: '',
-    city: '',
-    country: '',
-    adminPosition: '',
     taxPin: '',
-    certRegistration: '',
-    businessPermit: '',
-    nationalId: '',
-    paymentMethod: '',
-    billingIdentifier: '',
-    bankName: '',
-    bankBranch: '',
-    bankAccNo: '',
-    bankAccName: '',
-    bankCode: '',
     vatRate: 16,
-    documentTheme: 'Corporate',
     invoicePrefix: 'INV',
     receiptPrefix: 'RCT',
     quotePrefix: 'QTN',
     deliveryPrefix: 'DLV',
-    currency: 'KES',
-    timezone: 'Africa/Nairobi',
     primaryColor: '#1e293b',
     secondaryColor: '#f1f5f9',
   });
@@ -80,10 +59,10 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const userRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
-  const { data: userProfile } = useDoc(userRef);
+  const { data: userProfile } = useDoc<any>(userRef);
 
   const companyRef = useMemoFirebase(() => tenant?.id ? doc(firestore, 'companies', tenant.id) : null, [firestore, tenant?.id]);
-  const { data: company } = useDoc(companyRef);
+  const { data: company } = useDoc<any>(companyRef);
 
   useEffect(() => {
     if (userProfile) {
@@ -151,23 +130,23 @@ export default function ProfilePage() {
         switch (type) {
             case 'inventory':
                 collectionName = 'assets';
-                fileName = `Inventory_Export_${tenant.name.replace(/\s+/g, '_')}.csv`;
-                mapping = { model: 'Model', serialNumber: 'Serial Number', status: 'Status', quantity: 'Qty', purchasePrice: 'Acquisition Cost', leasePrice: 'Daily Rate', purchaseDate: 'Purchase Date' };
+                fileName = `Inventory_Export.csv`;
+                mapping = { model: 'Model', serialNumber: 'Serial Number', status: 'Status', quantity: 'Qty' };
                 break;
             case 'customers':
                 collectionName = 'customers';
-                fileName = `Client_Directory_${tenant.name.replace(/\s+/g, '_')}.csv`;
-                mapping = { name: 'Full Name', email: 'Email', phone: 'Phone', address: 'Address', registrationDate: 'Joined Date' };
+                fileName = `Client_Directory.csv`;
+                mapping = { name: 'Full Name', email: 'Email', phone: 'Phone' };
                 break;
             case 'sales':
                 collectionName = 'sales_transactions';
-                fileName = `Sales_Ledger_${tenant.name.replace(/\s+/g, '_')}.csv`;
-                mapping = { id: 'Sale ID', date: 'Transaction Date', customerName: 'Customer', amount: 'Total KES', paymentMethod: 'Method', status: 'Payment Status', referenceCode: 'Reference' };
+                fileName = `Sales_Ledger.csv`;
+                mapping = { id: 'Sale ID', date: 'Transaction Date', amount: 'Total KES' };
                 break;
             case 'leases':
                 collectionName = 'leases';
-                fileName = `Lease_History_${tenant.name.replace(/\s+/g, '_')}.csv`;
-                mapping = { customerName: 'Lessee', laptopModel: 'Hardware', serialNumber: 'S/N', startDate: 'Commencement', endDate: 'Expiry', duration: 'Duration', status: 'Agreement Status', paymentStatus: 'Billing Status' };
+                fileName = `Lease_History.csv`;
+                mapping = { customerName: 'Lessee', laptopModel: 'Hardware', serialNumber: 'S/N' };
                 break;
         }
 
@@ -176,15 +155,15 @@ export default function ProfilePage() {
         const data = snap.docs.map(doc => doc.data());
 
         if (data.length === 0) {
-            toast({ variant: 'outline', title: 'Export Empty', description: `No records found in ${collectionName}.` });
+            toast({ variant: 'outline', title: 'Export Empty' });
             return;
         }
 
         exportToCsv(fileName, data, mapping);
-        logger.business('Identity', 'Data Export Triggered', { type, recordCount: data.length });
-        toast({ title: 'Export Successful', description: `${fileName} has been generated.` });
+        logger.business('Identity', 'Data Export Triggered', { type });
+        toast({ title: 'Export Successful' });
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Export Failed', description: e.message });
+        toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
         setIsExporting(null);
     }
@@ -254,12 +233,11 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent className="p-0">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-5 h-14 bg-muted/30 rounded-none border-b p-0">
-                            <TabsTrigger value="profile" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full font-black uppercase text-[10px] tracking-widest">Identity</TabsTrigger>
-                            <TabsTrigger value="contact" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full font-black uppercase text-[10px] tracking-widest">Contact</TabsTrigger>
-                            <TabsTrigger value="documents" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full font-black uppercase text-[10px] tracking-widest">Prefixes</TabsTrigger>
-                            <TabsTrigger value="billing" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full font-black uppercase text-[10px] tracking-widest">Financials</TabsTrigger>
-                            <TabsTrigger value="data" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full font-black uppercase text-[10px] tracking-widest text-primary">Export</TabsTrigger>
+                        <TabsList className="grid w-full grid-cols-4 h-14 bg-muted/30 rounded-none border-b p-0">
+                            <TabsTrigger value="profile" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Identity</TabsTrigger>
+                            <TabsTrigger value="contact" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Contact</TabsTrigger>
+                            <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Prefs</TabsTrigger>
+                            <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest text-primary">Export</TabsTrigger>
                         </TabsList>
                         
                         <div className="p-8">
@@ -276,15 +254,16 @@ export default function ProfilePage() {
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Business Name</Label><Input value={compData.name} onChange={e => handleInputChange('name', e.target.value)} className="h-11 font-bold" /></div>
-                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Document Theme</Label>
-                                                <Select onValueChange={v => handleInputChange('documentTheme', v)} value={compData.documentTheme}>
+                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Shop Category (Modules Adapt)</Label>
+                                                <Select onValueChange={v => handleInputChange('businessType', v)} value={compData.businessType}>
                                                     <SelectTrigger className="h-11 font-bold"><SelectValue /></SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="Corporate">Theme 1: Corporate</SelectItem>
-                                                        <SelectItem value="Retail">Theme 2: Retail</SelectItem>
-                                                        <SelectItem value="Wholesale">Theme 3: Wholesale</SelectItem>
-                                                        <SelectItem value="RentalLeasing">Theme 4: Rental Leasing</SelectItem>
-                                                        <SelectItem value="Construction">Theme 5: Construction</SelectItem>
+                                                        <SelectItem value="retail">Retail / Hardware</SelectItem>
+                                                        <SelectItem value="sacco">SACCO / Financial</SelectItem>
+                                                        <SelectItem value="hospitality">Restaurant / Hotel</SelectItem>
+                                                        <SelectItem value="barber">Barber / Salon</SelectItem>
+                                                        <SelectItem value="tech">Computers & IT</SelectItem>
+                                                        <SelectItem value="service">General Services</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -314,73 +293,26 @@ export default function ProfilePage() {
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="billing" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
-                                <div className="p-8 bg-white rounded-3xl border-2 border-black space-y-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-                                    <div className="flex items-center gap-3"><Briefcase className="h-5 w-5 text-black" /><h4 className="font-black uppercase tracking-widest text-xs">Official Settlement Channel</h4></div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Bank Institution</Label><Input value={compData.bankName} onChange={e => handleInputChange('bankName', e.target.value)} className="h-11 border-black" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Branch Location</Label><Input value={compData.bankBranch} onChange={e => handleInputChange('bankBranch', e.target.value)} className="h-11 border-black" /></div>
-                                        <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase">Account Name</Label><Input value={compData.bankAccName} onChange={e => handleInputChange('bankAccName', e.target.value)} className="h-11 border-black font-bold" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Account Number</Label><Input value={compData.bankAccNo} onChange={e => handleInputChange('bankAccNo', e.target.value)} className="h-11 border-black font-mono" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Paybill/M-Pesa ID</Label><Input value={compData.billingIdentifier} onChange={e => handleInputChange('billingIdentifier', e.target.value)} className="h-11 border-black font-black" /></div>
-                                    </div>
-                                </div>
-                            </TabsContent>
-
                             <TabsContent value="data" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
                                         <CardHeader className="bg-primary/5 py-4">
-                                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                                                <Database className="h-4 w-4" /> Cloud Inventory
-                                            </CardTitle>
+                                            <CardTitle className="text-sm font-black uppercase tracking-widest">Cloud Inventory</CardTitle>
                                         </CardHeader>
-                                        <CardContent className="pt-6 space-y-4">
-                                            <p className="text-[11px] text-muted-foreground leading-relaxed">Download a complete snapshot of all high-value hardware and generic accessories registered in this workspace.</p>
+                                        <CardContent className="pt-6">
                                             <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('inventory')} disabled={!!isExporting}>
-                                                {isExporting === 'inventory' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export Inventory CSV
+                                                {isExporting === 'inventory' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export Inventory
                                             </Button>
                                         </CardContent>
                                     </Card>
 
                                     <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
                                         <CardHeader className="bg-primary/5 py-4">
-                                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                                                <Users className="h-4 w-4" /> Client Directory
-                                            </CardTitle>
+                                            <CardTitle className="text-sm font-black uppercase tracking-widest">Client Directory</CardTitle>
                                         </CardHeader>
-                                        <CardContent className="pt-6 space-y-4">
-                                            <p className="text-[11px] text-muted-foreground leading-relaxed">Export your CRM database including contact details, addresses, and registration dates for all unique clients.</p>
+                                        <CardContent className="pt-6">
                                             <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('customers')} disabled={!!isExporting}>
-                                                {isExporting === 'customers' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export CRM CSV
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
-                                        <CardHeader className="bg-primary/5 py-4">
-                                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                                                <ShoppingCart className="h-4 w-4" /> Sales Ledger
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="pt-6 space-y-4">
-                                            <p className="text-[11px] text-muted-foreground leading-relaxed">A full list of point-of-sale transactions, payment methods, and revenue figures for accounting reconciliation.</p>
-                                            <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('sales')} disabled={!!isExporting}>
-                                                {isExporting === 'sales' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export Sales CSV
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
-                                        <CardHeader className="bg-primary/5 py-4">
-                                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                                                <Database className="h-4 w-4" /> Hire Agreements
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="pt-6 space-y-4">
-                                            <p className="text-[11px] text-muted-foreground leading-relaxed">Download a record of all current and historical hardware lease agreements for this node.</p>
-                                            <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('leases')} disabled={!!isExporting}>
-                                                {isExporting === 'leases' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export Leases CSV
+                                                {isExporting === 'customers' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export CRM
                                             </Button>
                                         </CardContent>
                                     </Card>
@@ -392,7 +324,7 @@ export default function ProfilePage() {
                 <CardFooter className="justify-end bg-muted/10 border-t p-8">
                     <Button onClick={handleSaveCompany} disabled={isSaving} className="h-14 px-10 font-black uppercase tracking-widest shadow-xl border-2 border-black hover:bg-black hover:text-white transition-all">
                         {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} 
-                        Sync Workspace Metadata
+                        Sync Workspace Settings
                     </Button>
                 </CardFooter>
             </Card>

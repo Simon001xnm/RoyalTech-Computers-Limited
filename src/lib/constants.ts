@@ -1,5 +1,9 @@
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Users, Printer, BookOpen, UserPlus, BarChart3, User, ShoppingCart, Briefcase, Package } from 'lucide-react';
+import { 
+    LayoutDashboard, Users, Printer, BookOpen, UserPlus, 
+    BarChart3, User, ShoppingCart, Briefcase, Package, 
+    ShieldCheck, Landmark, Utensils, Scissors, FileJson
+} from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
 
@@ -12,24 +16,44 @@ export const MPESA_CONFIG = {
   CALLBACK_URL: "https://businesshub.co.ke/api/mpesa/callback",
 };
 
+export type BusinessCategory = 'retail' | 'tech' | 'service' | 'sacco' | 'hospitality' | 'barber' | 'other';
+
 export interface NavItem {
   id: string;
   href: string;
   label: string;
   icon: LucideIcon;
   group?: string;
+  businessTypes?: BusinessCategory[]; // If undefined, available to all
 }
 
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', href: '/', label: 'Home', icon: LayoutDashboard },
   { id: 'pos', href: '/pos', label: 'Sell Items', icon: ShoppingCart },
-  { id: 'stock', href: '/stock', label: 'Inventory', icon: Package },
-  { id: 'accessories', href: '/accessories', label: 'Chargers & More', icon: ShoppingCart },
+  
+  // RETAIL / TECH SPECIFIC
+  { id: 'stock', href: '/stock', label: 'Inventory', icon: Package, businessTypes: ['retail', 'tech'] },
+  { id: 'accessories', href: '/accessories', label: 'Chargers & More', icon: ShoppingCart, businessTypes: ['retail', 'tech'] },
+  { id: 'leases', href: '/leases', label: 'Hire Agreements', icon: Briefcase, businessTypes: ['retail', 'tech'] },
+  
+  // SACCO SPECIFIC
+  { id: 'sacco', href: '/sacco', label: 'SACCO Node', icon: Landmark, businessTypes: ['sacco'] },
+  
+  // HOSPITALITY SPECIFIC
+  { id: 'hospitality', href: '/hospitality', label: 'Orders & Tables', icon: Utensils, businessTypes: ['hospitality'] },
+  
+  // BARBER / SERVICE SPECIFIC
+  { id: 'services', href: '/services', label: 'Booking', icon: Scissors, businessTypes: ['barber', 'service'] },
+
+  // UNIVERSAL MODULES
   { id: 'customers', href: '/customers', label: 'Clients', icon: Users },
   { id: 'documents', href: '/documents', label: 'Papers', icon: Printer },
   { id: 'accounting', href: '/books', label: 'Money In/Out', icon: BookOpen },
   { id: 'financials', href: '/reports', label: 'Profit Reports', icon: BarChart3 },
-  { id: 'resellers', href: '/resellers', label: 'Partners', icon: Briefcase },
+  { id: 'kra', href: '/kra', label: 'KRA / iTax', icon: FileJson },
+  
+  // MANAGEMENT
+  { id: 'resellers', href: '/resellers', label: 'Partners', icon: Briefcase, businessTypes: ['retail', 'tech', 'service'] },
   { id: 'users', href: '/users', label: 'Staff Members', icon: UserPlus },
   { id: 'settings', href: '/profile', label: 'My Shop Settings', icon: User },
 ];

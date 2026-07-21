@@ -1,16 +1,10 @@
-
-import type { NavItem } from '@/lib/constants';
+import type { NavItem, BusinessCategory } from '@/lib/constants';
 import { NAV_ITEMS } from '@/lib/constants';
-import { isFeatureEnabled } from '@/lib/feature-flags';
-import type { User } from '@/types';
+import type { User, Company } from '@/types';
 
 export const USER_ROLES = ['admin', 'user', 'super_admin'] as const;
 export type Role = typeof USER_ROLES[number];
 
-/**
- * MASTER_KEYS: Hardcoded identities restricted to exactly 2 authorized emails.
- * These bypass cloud database checks for instant, zero-latency admin access.
- */
 export const MASTER_KEYS = [
     "info@simonstyless.co.ke",
     "master@businesshub.co.ke"
@@ -28,34 +22,36 @@ export const isMasterKey = (email?: string | null): boolean => {
 };
 
 /**
- * Filter navigation items based on user role and granular permissions.
+ * Filter navigation items based on user role, granular permissions, and business type.
  */
-export const getPermittedNavItems = (user?: User | null, email?: string | null): NavItem[] => {
+export const getPermittedNavItems = (user?: User | null, email?: string | null, company?: Company | null): NavItem[] => {
     const isMaster = isMasterKey(email);
     const role = user?.role || 'user';
     const permissions = user?.permissions || [];
+    const bizType = (company?.businessType || 'retail') as BusinessCategory;
     
-    // 1. Super Admin / Master Keys: Access to everything
+    // Base filter: Check business type compatibility
+    let items = NAV_ITEMS.filter(item => {
+        if (!item.businessTypes) return true; // Universal
+        return item.businessTypes.includes(bizType);
+    });
+
+    // 1. Super Admin / Master Keys: Access to all filtered by bizType
     if (role === 'super_admin' || isMaster) {
-        return NAV_ITEMS;
+        return items;
     }
     
     // 2. Workspace Admin: Access to everything except Platform Command
     if (role === 'admin') {
-        return NAV_ITEMS.filter(item => item.href !== '/admin');
+        return items.filter(item => item.href !== '/admin');
     }
     
     // 3. Standard User: Respect granular permissions
-    // We always allow Profile/Settings and Dashboard (Home) for basic context
     const alwaysAllowedHrefs = ['/', '/profile'];
     
-    return NAV_ITEMS.filter(item => {
+    return items.filter(item => {
         if (alwaysAllowedHrefs.includes(item.href)) return true;
-        
-        // Block restricted modules
         if (item.href === '/admin' || item.href === '/users' || item.href === '/audit') return false;
-        
-        // Allow if specifically ticked in permissions
         return permissions.includes(item.id);
     });
 };

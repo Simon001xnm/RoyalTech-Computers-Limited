@@ -36,7 +36,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
   const [formData, setFormData] = useState({
     name: '',
-    businessType: '',
+    businessType: 'retail',
     industry: '',
     email: '',
     phone: '',
@@ -147,8 +147,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                     <div className="flex items-start gap-4">
                         <div className="bg-white/10 p-2 rounded-lg mt-1"><ShieldCheck className="h-4 w-4" /></div>
                         <div>
-                            <p className="font-bold text-xs uppercase tracking-widest">Saved Forever</p>
-                            <p className="text-[10px] opacity-60">This shop will be linked to your account.</p>
+                            <p className="font-bold text-xs uppercase tracking-widest">Universal Node</p>
+                            <p className="text-[10px] opacity-60">Modules adapt to your business type.</p>
                         </div>
                     </div>
                 </div>
@@ -184,8 +184,20 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                     <Input type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} required placeholder="office@company.com" className="h-11" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Phone Number <span className="text-red-500">*</span></Label>
-                                    <Input value={formData.phone} onChange={e => handleInputChange('phone', e.target.value)} required placeholder="+254..." className="h-11" />
+                                    <Label className="text-[10px] font-black uppercase">Shop Type</Label>
+                                    <Select onValueChange={v => handleInputChange('businessType', v)} value={formData.businessType}>
+                                        <SelectTrigger className="h-11">
+                                            <SelectValue placeholder="What do you sell?" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="retail">Retail / Hardware</SelectItem>
+                                            <SelectItem value="sacco">SACCO / Financial</SelectItem>
+                                            <SelectItem value="hospitality">Restaurant / Hotel</SelectItem>
+                                            <SelectItem value="barber">Barber / Salon</SelectItem>
+                                            <SelectItem value="tech">Computers & IT</SelectItem>
+                                            <SelectItem value="service">General Services</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase">Your Position <span className="text-red-500">*</span></Label>
@@ -202,18 +214,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                     <Input value={formData.address} onChange={e => handleInputChange('address', e.target.value)} required placeholder="Building, Street..." className="h-11" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Shop Type</Label>
-                                    <Select onValueChange={v => handleInputChange('businessType', v)} value={formData.businessType}>
-                                        <SelectTrigger className="h-11">
-                                            <SelectValue placeholder="What do you sell?" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="retail">Selling Items (Retail)</SelectItem>
-                                            <SelectItem value="tech">Computers & Tech</SelectItem>
-                                            <SelectItem value="service">Services</SelectItem>
-                                            <SelectItem value="other">Other</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <Label className="text-[10px] font-black uppercase">Phone Number <span className="text-red-500">*</span></Label>
+                                    <Input value={formData.phone} onChange={e => handleInputChange('phone', e.target.value)} required placeholder="+254..." className="h-11" />
                                 </div>
                             </div>
                         </section>

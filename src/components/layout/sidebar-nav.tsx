@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -17,7 +16,7 @@ import { useSaaS } from "@/components/saas/saas-provider";
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { parseISO, differenceInDays } from "date-fns";
 import { useMemo } from "react";
-import type { User as AppUser } from '@/types';
+import type { User as AppUser, Company } from '@/types';
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -30,6 +29,12 @@ export function SidebarNav() {
     [firestore, user]
   );
   const { data: currentUser, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
+
+  const companyRef = useMemoFirebase(() => 
+    tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
+    [firestore, tenant?.id]
+  );
+  const { data: company } = useDoc<Company>(companyRef);
 
   const isMaster = useMemo(() => isMasterKey(user?.email), [user?.email]);
 
@@ -45,8 +50,8 @@ export function SidebarNav() {
   }, [plan, usage, isLegacyUser, tenant]);
 
   const permittedNavItems = useMemo(() => {
-    return getPermittedNavItems(currentUser, user?.email);
-  }, [currentUser, user?.email]);
+    return getPermittedNavItems(currentUser, user?.email, company);
+  }, [currentUser, user?.email, company]);
 
   if (isUserLoading || isProfileLoading) {
     return (
