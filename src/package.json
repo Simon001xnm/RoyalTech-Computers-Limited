@@ -1,10 +1,6 @@
-
 {
   "name": "nextn-src",
   "version": "0.1.0",
   "private": true,
-  "dependencies": {
-    "genkit": "^1.39.0",
-    "@genkit-ai/google-genai": "^1.39.0"
-  }
+  "dependencies": {}
 }

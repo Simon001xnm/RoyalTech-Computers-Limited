@@ -4,10 +4,8 @@ import type { Sale } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, FileText, Truck, Printer, MessageCircle, Download } from "lucide-react";
-import { format } from "date-fns";
+import { MoreHorizontal, FileText, Truck, Download } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface SaleColumnActions {
   onView: (sale: Sale) => void;
@@ -16,90 +14,70 @@ export interface SaleColumnActions {
   onDownload?: (sale: Sale) => void;
 }
 
+/**
+ * Ultra-Compact Columns for Mobile App Experience
+ * Microscopic fonts and strict sizing for perfect screen fit.
+ */
 export const getSaleColumns = (actions: SaleColumnActions): ColumnDef<Sale>[] => [
   {
-    accessorKey: "id",
-    header: "ID",
-    cell: ({ row }) => <span className="font-mono text-xs uppercase font-bold">{`#${row.original.id.slice(0, 4)}`}</span>,
-  },
-  {
-    accessorKey: "date",
-    header: "Date",
-    cell: ({ row }) => format(new Date(row.getValue("date")), "MMM d, h:mm a"),
-  },
-  {
     accessorKey: "customerName",
-    header: "Customer",
-    cell: ({ row }) => <span className="font-medium">{row.original.customerName || "Walk-in Client"}</span>,
+    header: () => <div className="text-[7px] font-black uppercase">Client</div>,
+    cell: ({ row }) => <span className="font-bold text-[8px] truncate block max-w-full">{row.original.customerName || "Walk-in"}</span>,
+    size: 100,
   },
   {
     accessorKey: "amount",
-    header: () => <div className="text-right">Total</div>,
+    header: () => <div className="text-right text-[7px] font-black uppercase">KES</div>,
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("amount"))
       const formatted = new Intl.NumberFormat("en-KE", {
-        style: "currency",
-        currency: "KES",
+        style: "decimal",
+        maximumFractionDigits: 0
       }).format(amount)
  
-      return <div className="text-right font-black text-primary">{formatted}</div>
+      return <div className="text-right font-black text-primary text-[8px]">{formatted}</div>
     },
+    size: 70,
   },
   {
     accessorKey: "status",
-    header: "Status",
+    header: () => <div className="hidden text-[7px] font-black uppercase">Status</div>,
     cell: ({ row }) => {
       const status = row.getValue("status") as Sale["status"];
-      return <Badge variant={status === 'Paid' ? 'default' : 'secondary'} className="font-black text-[9px] uppercase tracking-tighter">{status}</Badge>;
+      return <div className="hidden"><Badge variant={status === 'Paid' ? 'default' : 'secondary'} className="font-black text-[7px] h-3.5 uppercase tracking-tighter px-1">{status}</Badge></div>;
     },
+    size: 0,
   },
   {
     id: "actions",
+    header: () => <div className="text-right text-[7px] font-black uppercase">Ops</div>,
     cell: ({ row }) => {
       const sale = row.original as Sale;
       return (
-        <div className="text-right flex items-center justify-end gap-2">
-           <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 w-9 text-green-600 border-green-200 hover:bg-green-50 shadow-sm" onClick={() => actions.onWhatsApp?.(sale)}>
-                            <MessageCircle className="h-5 w-5" />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>WhatsApp Receipt</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 w-9 text-blue-600 border-blue-200 hover:bg-blue-50 shadow-sm" onClick={() => actions.onDownload?.(sale)}>
-                            <Download className="h-5 w-5" />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Download PDF</TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-
+        <div className="text-right">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-9 w-9 p-0 rounded-full">
-                <MoreHorizontal className="h-5 w-5" />
+              <Button variant="ghost" className="h-6 w-6 p-0 rounded-full hover:bg-muted">
+                <MoreHorizontal className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Sale Workflows</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => actions.onView(sale)}>
-                <FileText className="mr-2 h-4 w-4" /> Open Details
+            <DropdownMenuContent align="end" className="w-36 border-none shadow-xl ring-1 ring-black/5 p-1">
+              <DropdownMenuLabel className="text-[8px] uppercase font-black px-2 py-1 opacity-50">Workflows</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => actions.onView(sale)} className="text-[9px] font-bold h-7 rounded-sm">
+                <FileText className="mr-2 h-3 w-3" /> View Detail
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => actions.onDownload?.(sale)}>
-                <Download className="mr-2 h-4 w-4" /> Export Receipt
+              <DropdownMenuItem onClick={() => actions.onDownload?.(sale)} className="text-[9px] font-bold h-7 rounded-sm">
+                <Download className="mr-2 h-3 w-3" /> PDF Receipt
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => actions.onGenerateDelivery?.(sale)} className="font-bold text-primary">
-                <Truck className="mr-2 h-4 w-4" /> Dispatch Delivery Note
+              <DropdownMenuItem onClick={() => actions.onGenerateDelivery?.(sale)} className="font-black text-primary text-[9px] h-7 rounded-sm">
+                <Truck className="mr-2 h-3 w-3" /> Dispatch Note
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       );
     },
+    size: 40,
   },
 ];

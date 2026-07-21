@@ -1,12 +1,8 @@
-
-import type { Metadata } from 'next';
-import { AiClient } from './components/ai-client';
-
-export const metadata: Metadata = {
-  title: 'Saymoh AI',
-  description: 'Autonomous business intelligence and assistant hub.',
-};
-
-export default function SaymohAiPage() {
-  return <AiClient />;
+export default function AiModuleRetired() {
+  return (
+    <div className="flex h-[80vh] flex-col items-center justify-center text-center p-8">
+      <h1 className="text-2xl font-black uppercase">Module Retired</h1>
+      <p className="text-muted-foreground mt-2">The AI Intelligence module has been removed per your request.</p>
+    </div>
+  );
 }

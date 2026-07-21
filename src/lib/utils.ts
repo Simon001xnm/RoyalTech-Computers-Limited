@@ -40,8 +40,8 @@ export function exportToCsv<T extends Record<string, any>>(filename: string, dat
 }
 
 /**
- * Converts a numeric figure into its full English word representation.
- * Handles thousands, hundreds, tens, cents and decimals in correct order.
+ * Professional Currency to Words Converter
+ * Optimized for Kenyan Shillings with precision for Millions, Thousands, Hundreds, and Cents.
  */
 export function numberToWords(num: number): string {
   const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
@@ -65,10 +65,10 @@ export function numberToWords(num: number): string {
         str += ones[n];
       }
     }
-    return str;
+    return str.trim();
   }
 
-  if (num === 0) return 'ZERO SHILLINGS ONLY';
+  if (num === 0 || isNaN(num)) return 'ZERO SHILLINGS ONLY';
 
   const absoluteNum = Math.abs(num);
   const integerPart = Math.floor(absoluteNum);
@@ -98,13 +98,22 @@ export function numberToWords(num: number): string {
   }
 
   result = result.trim();
-  if (result === '' && integerPart === 0) result = 'ZERO';
   
-  result += ' SHILLINGS';
-  
-  if (decimalPart > 0) {
-    result += ' AND ' + convertGroup(decimalPart) + ' CENTS';
+  let finalStr = '';
+  if (integerPart > 0) {
+    finalStr = result + ' KENYA SHILLINGS';
   }
-  
-  return result.trim() + ' ONLY';
+
+  if (decimalPart > 0) {
+    const centsText = convertGroup(decimalPart);
+    if (integerPart > 0) {
+      finalStr += ' AND ' + centsText + ' CENTS';
+    } else {
+      finalStr = centsText + ' CENTS';
+    }
+  }
+
+  if (!finalStr) return 'ZERO SHILLINGS ONLY';
+
+  return finalStr.trim() + ' ONLY';
 }

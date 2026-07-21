@@ -84,27 +84,6 @@ export function LandingPage() {
                 </div>
             </section>
 
-            {/* AI Agent Teaser */}
-            <section className="py-12 px-6">
-                <div className="max-w-7xl mx-auto">
-                    <div className="bg-black text-white rounded-[24px] p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden relative">
-                        <div className="absolute top-0 right-0 opacity-10 pointer-events-none">
-                            <Rocket className="h-48 w-48 -mr-16 -mt-16 rotate-12" />
-                        </div>
-                        <div className="space-y-3 relative z-10">
-                            <Badge className="bg-primary text-white border-none font-black uppercase tracking-widest text-[8px] px-3">AI Ready</Badge>
-                            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter">Introducing Saymoh AI</h2>
-                            <p className="text-gray-400 font-medium text-sm max-w-lg">
-                                Build autonomous agents that can qualify leads, resolve tickets, draft emails, and handle sales queries using Genkit.
-                            </p>
-                            <Button variant="outline" className="bg-white text-black hover:bg-gray-100 border-none font-black uppercase tracking-widest h-10 text-[10px]">
-                                Explore Saymoh Agents
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
             {/* Featured Apps Grid */}
             <section id="products" className="py-24 px-6">
                 <div className="max-w-7xl mx-auto">

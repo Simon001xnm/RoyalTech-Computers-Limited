@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { Sale, Document as AppDocument } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef, getPaginationRowModel, type PaginationState } from "@tanstack/react-table";
 import { getSaleColumns, type SaleColumnActions } from './sale-columns';
@@ -18,6 +18,10 @@ interface RecentSalesProps {
     onViewReceipt: (sale: Sale) => void;
 }
 
+/**
+ * High-Density Transaction History
+ * Optimized for small mobile screens with microscopic fonts and fixed layouts.
+ */
 export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const router = useRouter();
     const { toast } = useToast();
@@ -28,7 +32,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const [isExporting, setIsExporting] = useState(false);
     const [exportDoc, setExportDoc] = useState<AppDocument | null>(null);
 
-    // CLOUD QUERY
     const salesQuery = useMemoFirebase(() => {
         if (!tenant) return null;
         return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
@@ -86,7 +89,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         const { default: jsPDF } = await import('jspdf');
 
         try {
-            // Find existing document in cloud
             const docsRef = collection(firestore, 'documents');
             const q = query(docsRef, where('saleId', '==', sale.id), limit(1));
             const snap = await getDocs(q);
@@ -94,7 +96,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             let docToUse: AppDocument;
 
             if (snap.empty) {
-                // Temporary mock if doc not found
                 const saleIdStr = sale.id?.toString() || 'TEMP';
                 docToUse = {
                     id: sale.id || 'temp',
@@ -110,8 +111,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             }
 
             setExportDoc(docToUse);
-            
-            // Wait for React to render the hidden receipt
             await new Promise(r => setTimeout(r, 300));
 
             const element = document.getElementById('recent-sale-export-target');
@@ -164,41 +163,49 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     });
 
     return (
-        <Card className="shadow-lg border-none overflow-hidden">
-            <CardHeader className="bg-muted/30">
-                <CardTitle className="text-xl font-black uppercase tracking-tight">Recent Transactions</CardTitle>
-                <CardDescription>Direct cloud-synced sale records.</CardDescription>
+        <Card className="shadow-lg border-none overflow-hidden ring-1 ring-black/5 bg-white mx-auto w-full max-w-full">
+            <CardHeader className="bg-muted/30 py-2 px-3">
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest">History</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-hidden">
                 {isLoading ? (
-                    <p className="text-muted-foreground animate-pulse p-8">Syncing transaction registry...</p>
+                    <p className="text-muted-foreground animate-pulse p-4 text-[8px] font-bold uppercase text-center">Syncing...</p>
                 ) : (
-                    <div className="border-t">
-                        <Table>
+                    <div className="w-full overflow-hidden">
+                        <Table className="w-full table-fixed border-collapse">
                             <TableHeader className="bg-muted/50">
                                 {salesTable.getHeaderGroups().map(hg => (
-                                    <TableRow key={hg.id}>
-                                        {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
+                                    <TableRow key={hg.id} className="h-7 border-b border-muted">
+                                        {hg.headers.map(header => (
+                                            <TableHead key={header.id} className="text-[8px] font-black uppercase py-0 h-7 px-2" style={{ width: header.getSize() }}>
+                                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                            </TableHead>
+                                        ))}
                                     </TableRow>
                                 ))}
                             </TableHeader>
                             <TableBody>
                                 {salesTable.getRowModel().rows.length ? (
                                     salesTable.getRowModel().rows.map(row => (
-                                        <TableRow key={row.id} className="hover:bg-muted/20">
-                                            {row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
+                                        <TableRow key={row.id} className="hover:bg-muted/10 h-9 border-b last:border-0 border-muted">
+                                            {row.getVisibleCells().map(cell => (
+                                                <TableCell key={cell.id} className="py-0 px-2 overflow-hidden truncate">
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </TableCell>
+                                            ))}
                                         </TableRow>
                                     ))
                                 ) : (
-                                    <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">No sales recorded yet.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={saleColumns.length} className="h-16 text-center text-muted-foreground italic text-[8px]">No records found.</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>
-                        <DataTablePagination table={salesTable} />
+                        <div className="px-1 py-1 border-t border-muted">
+                            <DataTablePagination table={salesTable} />
+                        </div>
                     </div>
                 )}
                 
-                {/* Hidden export target */}
                 <div className="fixed left-[-9999px] top-0 pointer-events-none">
                     <div id="recent-sale-export-target" className="bg-white" style={{ width: '210mm', minHeight: '297mm' }}>
                         {exportDoc && <ReceiptPdf document={exportDoc} />}

@@ -1,6 +1,5 @@
-
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Users, Printer, BookOpen, UserPlus, BarChart3, User, ShoppingCart, Briefcase, Package, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Users, Printer, BookOpen, UserPlus, BarChart3, User, ShoppingCart, Briefcase, Package } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
 
@@ -23,7 +22,6 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', href: '/', label: 'Home', icon: LayoutDashboard },
-  { id: 'ai', href: '/ai', label: 'Saymoh AI', icon: Sparkles },
   { id: 'pos', href: '/pos', label: 'Sell Items', icon: ShoppingCart },
   { id: 'stock', href: '/stock', label: 'Inventory', icon: Package },
   { id: 'accessories', href: '/accessories', label: 'Chargers & More', icon: ShoppingCart },
