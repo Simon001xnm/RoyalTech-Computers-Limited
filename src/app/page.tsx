@@ -9,25 +9,20 @@ import {
   Zap,
   CalendarClock,
   Users,
-  Clock,
-  ChevronRight,
   Loader2,
   Sparkles,
   ArrowRight,
-  DollarSign,
-  Wallet,
   Activity,
   TrendingUp,
   BarChart3,
   ShoppingCart
 } from 'lucide-react';
-import { format, parseISO, isSameDay, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { isSameDay, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { LandingPage } from '@/components/marketing/landing-page';
 import { PosClient } from './pos/components/pos-client';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
@@ -81,13 +76,6 @@ export default function DashboardPage() {
     });
 
     return { day: dayTotal, week: weekTotal, month: monthTotal };
-  }, [sales]);
-
-  const recentSales = useMemo(() => {
-    if (!sales) return [];
-    return [...sales]
-        .sort((a,b) => (new Date(b.date).getTime() - new Date(a.date).getTime()))
-        .slice(0, 5);
   }, [sales]);
 
   const formatCurrency = (amount: number) => {
@@ -199,48 +187,6 @@ export default function DashboardPage() {
                           </Link>
                       </Button>
                   </CardContent>
-              </Card>
-
-              <Card className="shadow-lg border-none overflow-hidden bg-white">
-                  <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between py-4 px-6">
-                      <div>
-                          <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
-                              <Clock className="h-3 w-3 text-primary" />
-                              Recent Feed
-                          </CardTitle>
-                      </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                      <ScrollArea className="h-[350px]">
-                          {salesLoading ? (
-                              <div className="space-y-3 p-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}</div>
-                          ) : recentSales.length > 0 ? (
-                              <div className="divide-y divide-muted/30">
-                                  {recentSales.map(sale => (
-                                      <div key={sale.id} className="flex items-center justify-between p-4 hover:bg-primary/5 transition-colors cursor-pointer group">
-                                          <div className="space-y-0.5 overflow-hidden">
-                                              <p className="text-xs font-black uppercase truncate group-hover:text-primary transition-colors">{sale.customerName || 'Walk-in Client'}</p>
-                                              <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-bold uppercase tracking-tighter">
-                                                  <Clock className="h-2.5 w-2.5" /> 
-                                                  {sale.date ? format(parseISO(sale.date), 'h:mm a') : 'Now'}
-                                              </div>
-                                          </div>
-                                          <div className="text-right">
-                                              <p className="text-sm font-black text-primary tracking-tighter">{formatCurrency(sale.amount)}</p>
-                                          </div>
-                                      </div>
-                                  ))}
-                              </div>
-                          ) : (
-                              <div className="py-20 text-center text-muted-foreground italic text-[10px] uppercase font-bold tracking-widest opacity-30">No activity found</div>
-                          )}
-                      </ScrollArea>
-                  </CardContent>
-                  <CardFooter className="bg-muted/5 border-t p-2">
-                      <Button variant="ghost" asChild className="w-full text-[9px] font-black uppercase tracking-widest h-8 text-primary hover:text-primary hover:bg-primary/5">
-                          <Link href="/books" className="flex items-center gap-2">View Full Ledger <ChevronRight className="h-3 w-3" /></Link>
-                      </Button>
-                  </CardFooter>
               </Card>
 
               <div className="grid grid-cols-1 gap-4">

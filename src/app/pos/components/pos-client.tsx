@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -7,7 +6,7 @@ import type { SaleItem, Sale, Customer, Document as AppDocument } from '@/types'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone, Package } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +15,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { RecentSales } from './recent-sales';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
@@ -475,8 +473,6 @@ export function PosClient() {
             </CardFooter>
         </Card>
       </div>
-
-      <RecentSales onViewReceipt={() => {}} />
 
       <Dialog open={isWaitingForConfirmation} onOpenChange={() => {}}>
         <DialogContent className="sm:max-w-md text-center p-12">
