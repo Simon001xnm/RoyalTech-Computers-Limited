@@ -1,9 +1,11 @@
+import { TrackingClient } from "./components/tracking-client";
+import type { Metadata } from "next";
 
-export default function TrackingRetired() {
-  return (
-    <div className="flex h-[80vh] flex-col items-center justify-center text-center p-8">
-      <h1 className="text-2xl font-black uppercase">Module Retired</h1>
-      <p className="text-muted-foreground mt-2">The map-based tracking module has been removed per your request.</p>
-    </div>
-  );
+export const metadata: Metadata = {
+  title: "Asset Tracking",
+  description: "Live GPS tracking for your leased hardware units.",
+};
+
+export default function TrackingPage() {
+  return <TrackingClient />;
 }

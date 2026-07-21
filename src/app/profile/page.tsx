@@ -111,6 +111,8 @@ export default function ProfilePage() {
         updatedAt: new Date().toISOString()
       });
       toast({ title: 'Workspace Settings Synced' });
+      // Reload to apply sidebar changes
+      window.location.reload();
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Error syncing cloud settings' });
     } finally {

@@ -2,7 +2,8 @@ import type { LucideIcon } from 'lucide-react';
 import { 
     LayoutDashboard, Users, Printer, BookOpen, UserPlus, 
     BarChart3, User, ShoppingCart, Briefcase, Package, 
-    ShieldCheck, Landmark, Utensils, Scissors, FileJson
+    ShieldCheck, Landmark, Utensils, Scissors, FileJson,
+    MapPin, History
 } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
@@ -35,6 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'stock', href: '/stock', label: 'Inventory', icon: Package, businessTypes: ['retail', 'tech'] },
   { id: 'accessories', href: '/accessories', label: 'Chargers & More', icon: ShoppingCart, businessTypes: ['retail', 'tech'] },
   { id: 'leases', href: '/leases', label: 'Hire Agreements', icon: Briefcase, businessTypes: ['retail', 'tech'] },
+  { id: 'tracking', href: '/tracking', label: 'GPS Tracking', icon: MapPin, businessTypes: ['retail', 'tech'] },
   
   // SACCO SPECIFIC
   { id: 'sacco', href: '/sacco', label: 'SACCO Node', icon: Landmark, businessTypes: ['sacco'] },
@@ -43,7 +45,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'hospitality', href: '/hospitality', label: 'Orders & Tables', icon: Utensils, businessTypes: ['hospitality'] },
   
   // BARBER / SERVICE SPECIFIC
-  { id: 'services', href: '/services', label: 'Booking', icon: Scissors, businessTypes: ['barber', 'service'] },
+  { id: 'services', href: '/services', label: 'Appointments', icon: Scissors, businessTypes: ['barber', 'service'] },
 
   // UNIVERSAL MODULES
   { id: 'customers', href: '/customers', label: 'Clients', icon: Users },
@@ -52,6 +54,9 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'financials', href: '/reports', label: 'Profit Reports', icon: BarChart3 },
   { id: 'kra', href: '/kra', label: 'KRA / iTax', icon: FileJson },
   
+  // AUDIT & LOGS (Admins only)
+  { id: 'audit', href: '/audit', label: 'Audit Trail', icon: History },
+
   // MANAGEMENT
   { id: 'resellers', href: '/resellers', label: 'Partners', icon: Briefcase, businessTypes: ['retail', 'tech', 'service'] },
   { id: 'users', href: '/users', label: 'Staff Members', icon: UserPlus },

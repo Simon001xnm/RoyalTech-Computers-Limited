@@ -1,9 +1,11 @@
+import { StockClient } from "../stock/components/stock-client";
+import type { Metadata } from "next";
 
-export default function InventoryDeleted() {
-  return (
-    <div className="flex h-[80vh] flex-col items-center justify-center text-center p-8">
-      <h1 className="text-2xl font-black uppercase">Module Retired</h1>
-      <p className="text-muted-foreground mt-2">The hardware asset inventory module has been removed per your request.</p>
-    </div>
-  );
+export const metadata: Metadata = {
+  title: "Inventory",
+  description: "Manage your stock items and high-value assets.",
+};
+
+export default function InventoryPage() {
+  return <StockClient />;
 }
