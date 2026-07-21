@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
@@ -15,7 +15,8 @@ import {
   Activity,
   TrendingUp,
   BarChart3,
-  ShoppingCart
+  ShoppingCart,
+  FileText
 } from 'lucide-react';
 import { isSameDay, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -25,12 +26,18 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { LandingPage } from '@/components/marketing/landing-page';
 import { PosClient } from './pos/components/pos-client';
+import { RecentSales } from './pos/components/recent-sales';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ReceiptPdf } from './documents/components/pdfs/receipt-pdf';
+import type { Sale, Document as AppDocument } from '@/types';
 
 export default function DashboardPage() {
   const { tenant, isLoading: isSaaSLoading } = useSaaS();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+
+  const [viewingSale, setViewingSale] = useState<Sale | null>(null);
 
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -167,6 +174,8 @@ export default function DashboardPage() {
                       </div>
                   </CardContent>
               </Card>
+
+              <RecentSales onViewReceipt={(sale) => setViewingSale(sale)} />
           </div>
 
           <div className="space-y-8">
@@ -232,6 +241,33 @@ export default function DashboardPage() {
               &copy; 2026 shopmanager suite &bull; secured cloud node &bull; encrypted
           </div>
       </div>
+
+      <Dialog open={!!viewingSale} onOpenChange={(o) => !o && setViewingSale(null)}>
+        <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 border-none shadow-2xl">
+          <DialogHeader className="p-6 border-b bg-white">
+            <DialogTitle className="text-xl font-black uppercase">Receipt View</DialogTitle>
+          </DialogHeader>
+          <div className="flex-grow overflow-auto bg-muted/20 p-8">
+            <div className="bg-white shadow-2xl mx-auto rounded-sm overflow-hidden" style={{ width: '210mm', minHeight: '297mm' }}>
+                {viewingSale && (
+                    <ReceiptPdf document={{
+                        id: viewingSale.id,
+                        tenantId: tenant?.id || '',
+                        type: 'Receipt',
+                        title: `Receipt #${viewingSale.id.slice(0, 5).toUpperCase()}`,
+                        generatedDate: viewingSale.date,
+                        data: { ...viewingSale, applyVat: !!viewingSale.vat },
+                        createdAt: viewingSale.createdAt || new Date().toISOString()
+                    } as AppDocument} />
+                )}
+            </div>
+          </div>
+          <div className="p-4 border-t flex justify-end gap-3 bg-white no-print">
+            <Button variant="outline" onClick={() => setViewingSale(null)}>Close</Button>
+            <Button onClick={() => window.print()} className="font-black uppercase">Print</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -15,7 +15,6 @@ export function exportToCsv<T extends Record<string, any>>(filename: string, dat
       columnKeys
         .map(key => {
           let cell = row[key] === null || row[key] === undefined ? '' : String(row[key]);
-          // Escape quotes and wrap in quotes if it contains a comma
           cell = cell.replace(/"/g, '""');
           if (cell.includes(',')) {
             cell = `"${cell}"`;
