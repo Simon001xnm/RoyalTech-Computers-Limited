@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Image as ImageIcon, Check, Loader2, Upload, Settings2, DownloadCloud, Database, Users, ShoppingCart } from "lucide-react";
+import { Camera, Image as ImageIcon, Check, Loader2, Upload, Settings2, DownloadCloud, Database, Users, ShoppingCart, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { useEffect, useState, useRef } from "react";
