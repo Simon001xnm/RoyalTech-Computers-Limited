@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
@@ -5,22 +6,7 @@ import { format } from "date-fns";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
-
-function numberToWords(num: number): string {
-  const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
-  const tens = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
-  const teens = ['TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
-  if (num === 0) return 'ZERO';
-  const convert = (n: number): string => {
-    if (n < 10) return ones[n];
-    if (n < 20) return teens[n - 10];
-    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
-    if (n < 1000) return ones[Math.floor(n / 100)] + ' HUNDRED' + (n % 100 !== 0 ? ' AND ' + convert(n % 100) : '');
-    if (n < 1000000) return convert(Math.floor(n / 1000)) + ' THOUSAND' + (n % 1000 !== 0 ? ' ' + convert(n % 100) : '');
-    return n.toString();
-  };
-  return convert(Math.floor(num)) + ' SHILLINGS ONLY';
-}
+import { numberToWords } from "@/lib/utils";
 
 export function LeaseAgreementPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -31,9 +17,9 @@ export function LeaseAgreementPdf({ document: docSnapshot }: { document: AppDocu
   const workspace = docSnapshot.data.workspace || cloudCompany;
   const data = docSnapshot.data;
   const customer = data.customer || { name: 'VALUED CLIENT', phone: '', email: '', address: 'Nairobi' };
-  const { items, lease, total, clientType, verification, signature } = data;
+  const { items, lease, total, verification, signature } = data;
   const formatCurrency = (v: number | undefined) => new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
-  const primaryIndigo = "#1d4ed8"; // Professional Blue
+  const primaryIndigo = "#1d4ed8";
   const secondaryIndigo = "#f8fafc";
   
   const contactInfo = workspace?.phone || workspace?.email || 'Nairobi, Kenya';
@@ -118,7 +104,7 @@ export function LeaseAgreementPdf({ document: docSnapshot }: { document: AppDocu
         </div>
 
         <div className="mt-8 space-y-4">
-            <h4 className="font-black text-[10px] uppercase tracking-widest style={{ color: primaryIndigo }}">Standard Lease Terms</h4>
+            <h4 className="font-black text-[10px] uppercase tracking-widest" style={{ color: primaryIndigo }}>Standard Lease Terms</h4>
             <div className="grid grid-cols-1 gap-1 text-[8px] font-medium leading-tight opacity-70">
                 <p>1. OWNER: The equipment remains property of {workspace?.name} at all times.</p>
                 <p>2. DAMAGE: Lessee is liable for full market value replacement if damaged, lost or stolen.</p>

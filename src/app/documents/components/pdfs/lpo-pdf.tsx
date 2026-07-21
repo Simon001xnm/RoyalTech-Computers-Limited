@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
@@ -5,22 +6,7 @@ import { format } from "date-fns";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
-
-function numberToWords(num: number): string {
-  const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
-  const tens = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
-  const teens = ['TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
-  if (num === 0) return 'ZERO';
-  const convert = (n: number): string => {
-    if (n < 10) return ones[n];
-    if (n < 20) return teens[n - 10];
-    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
-    if (n < 1000) return ones[Math.floor(n / 100)] + ' HUNDRED' + (n % 100 !== 0 ? ' AND ' + convert(n % 100) : '');
-    if (n < 1000000) return convert(Math.floor(n / 1000)) + ' THOUSAND' + (n % 1000 !== 0 ? ' ' + convert(n % 100) : '');
-    return n.toString();
-  };
-  return convert(Math.floor(num)) + ' SHILLINGS ONLY';
-}
+import { numberToWords } from "@/lib/utils";
 
 export function LpoPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -33,7 +19,7 @@ export function LpoPdf({ document: docSnapshot }: { document: AppDocument }) {
   const supplier = data.supplier || { name: 'VENDOR / SUPPLIER', address: 'Kenya', email: '' };
   const { items, subtotal, total } = data;
   const formatCurrency = (v: number | undefined) => new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
-  const primaryIndigo = "#1d4ed8"; // Professional Blue
+  const primaryIndigo = "#1d4ed8";
   const secondaryIndigo = "#f8fafc";
   
   const contactInfo = workspace?.phone || workspace?.email || 'Nairobi, Kenya';

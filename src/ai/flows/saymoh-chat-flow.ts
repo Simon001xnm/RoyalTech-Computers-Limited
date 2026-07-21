@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Saymoh AI Chat Flow
@@ -11,11 +10,12 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { initializeFirebase } from '@/firebase';
-import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 const ChatInputSchema = z.object({
   message: z.string().describe('The user\'s question or instruction.'),
   tenantId: z.string().describe('The current business node ID.'),
+  currentDate: z.string().optional().describe('The current ISO date for context.'),
   history: z.array(z.object({
     role: z.enum(['user', 'model']),
     content: z.string()
@@ -41,11 +41,15 @@ const getInventoryStatus = ai.defineTool(
     outputSchema: z.object({ totalItems: z.number(), items: z.array(z.string()) }),
   },
   async ({ tenantId }) => {
-    const { firestore } = initializeFirebase();
-    const q = query(collection(firestore, 'assets'), where('tenantId', '==', tenantId));
-    const snap = await getDocs(q);
-    const items = snap.docs.map(d => `${d.data().model} (${d.data().status})`);
-    return { totalItems: snap.size, items: items.slice(0, 10) };
+    try {
+        const { firestore } = initializeFirebase();
+        const q = query(collection(firestore, 'assets'), where('tenantId', '==', tenantId));
+        const snap = await getDocs(q);
+        const items = snap.docs.map(d => `${d.data().model} (${d.data().status})`);
+        return { totalItems: snap.size, items: items.slice(0, 10) };
+    } catch (e) {
+        return { totalItems: 0, items: [] };
+    }
   }
 );
 
@@ -60,12 +64,16 @@ const getRecentSalesSummary = ai.defineTool(
     outputSchema: z.object({ totalRevenue: z.number(), recentCount: z.number() }),
   },
   async ({ tenantId }) => {
-    const { firestore } = initializeFirebase();
-    const q = query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenantId), limit(20));
-    const snap = await getDocs(q);
-    let totalRevenue = 0;
-    snap.docs.forEach(d => totalRevenue += (d.data().amount || 0));
-    return { totalRevenue, recentCount: snap.size };
+    try {
+        const { firestore } = initializeFirebase();
+        const q = query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenantId), limit(20));
+        const snap = await getDocs(q);
+        let totalRevenue = 0;
+        snap.docs.forEach(d => totalRevenue += (d.data().amount || 0));
+        return { totalRevenue, recentCount: snap.size };
+    } catch (e) {
+        return { totalRevenue: 0, recentCount: 0 };
+    }
   }
 );
 
@@ -80,10 +88,14 @@ const getClientCount = ai.defineTool(
     outputSchema: z.number(),
   },
   async ({ tenantId }) => {
-    const { firestore } = initializeFirebase();
-    const q = query(collection(firestore, 'customers'), where('tenantId', '==', tenantId));
-    const snap = await getDocs(q);
-    return snap.size;
+    try {
+        const { firestore } = initializeFirebase();
+        const q = query(collection(firestore, 'customers'), where('tenantId', '==', tenantId));
+        const snap = await getDocs(q);
+        return snap.size;
+    } catch (e) {
+        return 0;
+    }
   }
 );
 
@@ -121,22 +133,29 @@ Previous conversation:
 });
 
 /**
+ * DEFINE FLOW (Top Level)
+ */
+const saymohChatFlow = ai.defineFlow(
+  {
+    name: 'saymohChatFlow',
+    inputSchema: ChatInputSchema,
+    outputSchema: ChatOutputSchema,
+  },
+  async (input) => {
+    // Override logic to return Coming soon as requested
+    return {
+      response: "Coming soon",
+      suggestedActions: ["Intelligence node undergoing maintenance"]
+    };
+  }
+);
+
+/**
  * EXPORTED FLOW WRAPPER
  */
 export async function askSaymoh(input: ChatInput): Promise<ChatOutput> {
-  const flow = ai.defineFlow(
-    {
-      name: 'saymohChatFlow',
-      inputSchema: ChatInputSchema,
-      outputSchema: ChatOutputSchema,
-    },
-    async (input) => {
-      const { output } = await saymohPrompt({
-        ...input,
-        currentDate: new Date().toLocaleDateString()
-      });
-      return output!;
-    }
-  );
-  return flow(input);
+  return saymohChatFlow({
+      ...input,
+      currentDate: new Date().toLocaleDateString()
+  });
 }

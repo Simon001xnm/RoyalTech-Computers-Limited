@@ -1,32 +1,12 @@
+
 'use client';
 
-import type { Document as AppDocument, DocumentLineItem } from "@/types";
+import type { Document as AppDocument } from "@/types";
 import { format } from "date-fns";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
-
-/**
- * Converts numbers to professional English words (KES Specific)
- */
-function numberToWords(num: number): string {
-  const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
-  const tens = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
-  const teens = ['TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
-
-  if (num === 0) return 'ZERO';
-
-  const convert = (n: number): string => {
-    if (n < 10) return ones[n];
-    if (n < 20) return teens[n - 10];
-    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
-    if (n < 1000) return ones[Math.floor(n / 100)] + ' HUNDRED' + (n % 100 !== 0 ? ' AND ' + convert(n % 100) : '');
-    if (n < 1000000) return convert(Math.floor(n / 1000)) + ' THOUSAND' + (n % 1000 !== 0 ? ' ' + convert(n % 100) : '');
-    return n.toString();
-  };
-
-  return convert(Math.floor(num)) + ' SHILLINGS ONLY';
-}
+import { numberToWords } from "@/lib/utils";
 
 export function InvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -65,14 +45,13 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     : (docSnapshot.id || 'TEMP').slice(0, 5).toUpperCase();
 
   const companyName = workspace?.name || 'BUSINESS NAME';
-  const primaryIndigo = "#1d4ed8"; // Professional Blue
+  const primaryIndigo = "#1d4ed8";
   const secondaryIndigo = "#f8fafc";
   
   const contactInfo = workspace?.phone || workspace?.email || 'Nairobi, Kenya';
 
   return (
     <div className="p-[12mm] font-sans text-[11px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border">
-      
       <header className="flex justify-between items-start mb-6">
         <div className="space-y-3">
             <h1 className="text-3xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Invoice</h1>
@@ -82,7 +61,6 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 <p><span className="w-24 inline-block opacity-60">Due Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
             </div>
         </div>
-        
         <div className="flex flex-col items-end">
            {workspace?.logoUrl ? (
             <img src={workspace.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
@@ -156,7 +134,6 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     Total (in words) : {numberToWords(total)}
                 </p>
             </div>
-            
             <div className="w-[280px] space-y-3">
                 <div className="flex justify-between items-center text-[10px]">
                     <span className="font-bold opacity-60">Amount</span>
@@ -166,7 +143,6 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     <span className="font-bold opacity-60">TAX</span>
                     <span className="font-bold">KES {formatCurrency(vat || 0)}</span>
                 </div>
-                
                 <div className="pt-3 border-t-2 border-black flex justify-between items-center">
                     <span className="text-[14px] font-bold">Total (KES)</span>
                     <span className="text-[16px] font-bold">KES {formatCurrency(total)}</span>
@@ -183,7 +159,6 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
          <p className="text-[10px] font-medium text-black mb-6">
             For any enquiry, reach out via <span className="font-bold">{contactInfo}</span>
          </p>
-         
          <p className="text-[8px] font-medium text-gray-400">
             This is an electronically generated document, no signature is required.
          </p>
