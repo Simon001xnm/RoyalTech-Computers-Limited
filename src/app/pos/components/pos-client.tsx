@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -99,7 +100,6 @@ export function PosClient() {
   const availableProducts = useMemo<Product[]>(() => {
     const list: Product[] = [];
     
-    // Filter Available Items (Inventory)
     if (rawAssets) {
         rawAssets.filter(a => a.status === 'Available').forEach(asset => {
             const description = [
@@ -110,8 +110,8 @@ export function PosClient() {
 
             list.push({
                 id: asset.id,
-                displayName: `ITEM: ${asset.model} (ID: ${asset.serialNumber})`,
-                price: asset.purchasePrice || 0,
+                displayName: `ITEM: ${asset.model} (${asset.serialNumber})`,
+                price: asset.leasePrice || asset.purchasePrice || 0,
                 serialNumber: asset.serialNumber,
                 type: 'asset',
                 model: asset.model,
@@ -120,11 +120,10 @@ export function PosClient() {
         });
     }
 
-    // Filter Available Accessories
     if (rawAccessories) {
       rawAccessories.filter(a => a.status === 'Available').forEach(acc => list.push({
         id: acc.id,
-        displayName: `ACC: ${acc.name} (ID: ${acc.serialNumber})`,
+        displayName: `ACC: ${acc.name} (${acc.serialNumber})`,
         price: acc.sellingPrice || 0,
         serialNumber: acc.serialNumber,
         type: 'accessory',
@@ -200,13 +199,6 @@ export function PosClient() {
     setCustomName('');
   };
 
-  const handleUpdateCartPrice = (index: number, newPrice: string) => {
-    const updated = [...cart];
-    updated[index].unitPrice = parseFloat(newPrice) || 0;
-    updated[index].price = updated[index].unitPrice;
-    setCart(updated);
-  };
-
   const handleQuickAddCustomer = async () => {
     if (!newCustName || !tenant || !user) return;
     setIsSavingCust(true);
@@ -227,7 +219,7 @@ export function PosClient() {
         setNewCustPhone('');
         toast({ title: "Customer Registered" });
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Failed to add customer' });
+        toast({ variant: 'destructive', title: 'Registration Failed' });
     } finally {
         setIsSavingCust(false);
     }
@@ -311,7 +303,7 @@ export function PosClient() {
             setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode(''); setCustomerPhone('');
         }
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Sale Failed', description: e.message });
+        toast({ variant: 'destructive', title: 'Cloud Sync Failed', description: e.message });
         setIsProcessing(false);
     }
   };
@@ -343,45 +335,46 @@ export function PosClient() {
   };
 
   return (
-    <div className="space-y-6 md:space-y-8">
-      <PageHeader title="Point of Sale" description="Process transactions instantly with cloud synchronization." />
+    <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-md">
-            <CardHeader>
+            <CardHeader className="bg-muted/10 py-3 px-4">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2"><ShoppingCart className="h-5 w-5" /> Basket</CardTitle>
-                    <Button variant="outline" size="sm" onClick={() => setIsQuickAddOpen(true)} className="h-8 text-[10px] font-black uppercase">
-                        <UserPlus className="h-3 w-3 mr-1" /> Quick Register Client
+                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
+                        <ShoppingCart className="h-4 w-4" /> Basket
+                    </CardTitle>
+                    <Button variant="outline" size="sm" onClick={() => setIsQuickAddOpen(true)} className="h-8 text-[10px] font-black uppercase tracking-widest border-2">
+                        <UserPlus className="h-3 w-3 mr-1.5" /> Quick Register Client
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
                 <div className="space-y-2">
                     <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
-                        <PopoverTrigger asChild><Button variant="outline" className="w-full justify-between h-11 text-left font-normal">{selectedCustomer ? selectedCustomer.name : "Search clients..."}</Button></PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Client name..." /><CommandList><CommandEmpty>None found.</CommandEmpty><CommandGroup>{(customers || []).map(c => <CommandItem key={c.id} onSelect={() => { setSelectedCustomer(c); setCustomerPhone(c.phone || ''); setIsCustomerSearchOpen(false); }}>{c.name}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent>
+                        <PopoverTrigger asChild><Button variant="outline" className="w-full justify-between h-11 text-left font-normal">{selectedCustomer ? selectedCustomer.name : "Select Client..."}</Button></PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Search directory..." /><CommandList><CommandEmpty>No matching clients.</CommandEmpty><CommandGroup>{(customers || []).map(c => <CommandItem key={c.id} onSelect={() => { setSelectedCustomer(c); setCustomerPhone(c.phone || ''); setIsCustomerSearchOpen(false); }}>{c.name}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent>
                     </Popover>
                 </div>
                 
-                <div className="bg-muted/30 p-4 rounded-xl space-y-4">
+                <div className="bg-muted/30 p-4 rounded-xl space-y-4 border border-black/5">
                   <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
                     <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-black opacity-50">Select Inventory Item or Accessory</Label>
+                        <Label className="text-[10px] uppercase font-black opacity-50">Find Item / Accessory</Label>
                         <Popover open={searchOpen} onOpenChange={setSearchOpen}>
                           <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full h-11 truncate text-left font-normal">
-                              {selectedProduct ? selectedProduct.displayName : customName || "Search inventory or type manual item..."}
+                            <Button variant="outline" className="w-full h-11 truncate text-left font-normal bg-white">
+                              {selectedProduct ? selectedProduct.displayName : customName || "Scan serial or type manual..."}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                             <Command>
                               <CommandInput 
-                                placeholder="Search by name or Serial Number..." 
+                                placeholder="Model or S/N..." 
                                 value={customName}
                                 onValueChange={(v) => setCustomName(v)}
                               />
                               <CommandList>
-                                <CommandGroup heading="Available Inventory">
+                                <CommandGroup heading="In Stock">
                                   {availableProducts.map(p => (
                                     <CommandItem key={p.id} onSelect={() => { setSelectedProduct(p); setUnitPrice(p.price.toString()); setSearchOpen(false); }}>
                                       {p.displayName}
@@ -389,9 +382,9 @@ export function PosClient() {
                                   ))}
                                 </CommandGroup>
                                 {customName && (
-                                  <CommandGroup heading="Manual Entry">
+                                  <CommandGroup heading="Manual">
                                     <CommandItem onSelect={() => { setSelectedProduct(null); setSearchOpen(false); }}>
-                                      Sell "{customName}" (Non-Inventory)
+                                      Register "{customName}" Sale
                                     </CommandItem>
                                   </CommandGroup>
                                 )}
@@ -407,28 +400,28 @@ export function PosClient() {
                                 type="number" 
                                 value={quantity} 
                                 onChange={e => setQuantity(parseInt(e.target.value) || 1)} 
-                                className="h-11" 
+                                className="h-11 bg-white" 
                                 disabled={selectedProduct?.type === 'asset'}
                              />
                         </div>
                         <div className="space-y-2">
                              <Label className="text-[10px] uppercase font-black opacity-50">Price</Label>
-                             <Input type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="h-11 font-bold" />
+                             <Input type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="h-11 font-black bg-white" />
                         </div>
                     </div>
                   </div>
-                  <Button onClick={handleAddToCart} disabled={!selectedProduct && !customName} className="w-full h-11"><PlusCircle className="h-4 w-4 mr-2" /> Add to Basket</Button>
+                  <Button onClick={handleAddToCart} disabled={!selectedProduct && !customName} className="w-full h-11 font-black uppercase tracking-widest"><PlusCircle className="h-4 w-4 mr-2" /> Add to Sale</Button>
                 </div>
 
                 {cart.length > 0 ? (
-                    <div className="border rounded-xl overflow-hidden overflow-x-auto">
+                    <div className="border rounded-xl overflow-hidden overflow-x-auto shadow-sm">
                         <Table>
                             <TableHeader className="bg-muted/50">
                                 <TableRow>
-                                    <TableHead className="min-w-[150px]">Item</TableHead>
-                                    <TableHead className="text-center w-24">Qty</TableHead>
-                                    <TableHead className="text-right w-40">Unit Price</TableHead>
-                                    <TableHead className="text-right">Total</TableHead>
+                                    <TableHead className="min-w-[150px] text-[10px] font-black uppercase">Item</TableHead>
+                                    <TableHead className="text-center w-20 text-[10px] font-black uppercase">Qty</TableHead>
+                                    <TableHead className="text-right w-32 text-[10px] font-black uppercase">Price</TableHead>
+                                    <TableHead className="text-right text-[10px] font-black uppercase">Total</TableHead>
                                     <TableHead className="w-[50px]"></TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -436,49 +429,54 @@ export function PosClient() {
                                 {cart.map((item, idx) => (
                                     <TableRow key={item.id} className="hover:bg-muted/20">
                                         <TableCell>
-                                            <p className="font-semibold text-sm">{item.name}</p>
-                                            {item.description && <p className="text-[10px] text-muted-foreground">{item.description}</p>}
-                                            <p className="text-[10px] opacity-60">ID: {item.serialNumber}</p>
-                                            <Badge variant="outline" className="text-[8px] uppercase mt-1">{item.productType}</Badge>
+                                            <p className="font-bold text-sm uppercase tracking-tight">{item.name}</p>
+                                            <p className="text-[10px] font-mono text-muted-foreground uppercase">{item.serialNumber}</p>
                                         </TableCell>
-                                        <TableCell className="text-center text-sm">{item.quantity}</TableCell>
+                                        <TableCell className="text-center text-sm font-bold">{item.quantity}</TableCell>
                                         <TableCell className="text-right">
                                           <Input 
                                             type="number" 
                                             value={item.unitPrice} 
-                                            onChange={(e) => handleUpdateCartPrice(idx, e.target.value)}
-                                            className="h-8 w-24 text-right text-xs"
+                                            onChange={(e) => {
+                                                const updated = [...cart];
+                                                updated[idx].unitPrice = parseFloat(e.target.value) || 0;
+                                                updated[idx].price = updated[idx].unitPrice;
+                                                setCart(updated);
+                                            }}
+                                            className="h-8 w-24 text-right text-xs font-bold"
                                           />
                                         </TableCell>
-                                        <TableCell className="text-right font-bold text-sm">KES {(item.unitPrice * item.quantity).toLocaleString()}</TableCell>
-                                        <TableCell><Button variant="ghost" size="icon" onClick={() => setCart(cart.filter(c => c.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
+                                        <TableCell className="text-right font-black text-sm text-primary">KES {(item.unitPrice * item.quantity).toLocaleString()}</TableCell>
+                                        <TableCell><Button variant="ghost" size="icon" onClick={() => setCart(cart.filter(c => c.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive/40 hover:text-destructive"/></Button></TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
                         </Table>
                     </div>
                 ) : (
-                    <div className="py-12 border-2 border-dashed rounded-2xl text-center opacity-60">
-                        <p className="text-sm uppercase tracking-widest">Basket Empty</p>
+                    <div className="py-20 border-2 border-dashed rounded-3xl text-center opacity-30">
+                        <ShoppingCart className="h-10 w-10 mx-auto mb-2" />
+                        <p className="text-[10px] font-black uppercase tracking-widest">Basket Empty</p>
                     </div>
                 )}
             </CardContent>
         </Card>
 
-        <Card className="shadow-lg border-primary/10 flex flex-col">
-            <CardHeader className="bg-primary/5">
-                <CardTitle className="text-lg">Payment Service</CardTitle>
+        <Card className="shadow-lg border-primary/10 flex flex-col overflow-hidden">
+            <CardHeader className="bg-primary/5 py-4">
+                <CardTitle className="text-xs font-black uppercase tracking-widest text-primary">Payment Protocol</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5 pt-6 flex-grow">
+            <CardContent className="space-y-6 pt-6 flex-grow">
                 <div className="space-y-2">
                     <Label className="text-[10px] uppercase font-black opacity-50">Method</Label>
                     <Select onValueChange={(v: any) => setPaymentMethod(v)} value={paymentMethod}>
-                        <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-11 font-bold"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="M-Pesa">M-Pesa STK Push</SelectItem>
                             <SelectItem value="Cash">Cash</SelectItem>
                             <SelectItem value="Bank">Bank Transfer</SelectItem>
                             <SelectItem value="Till">Buy Goods (Till)</SelectItem>
+                            <SelectItem value="Paybill">Paybill</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -486,68 +484,72 @@ export function PosClient() {
                 {paymentMethod === 'M-Pesa' && (
                     <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
                          <Label className="text-[10px] uppercase font-black opacity-50 flex items-center gap-1">
-                            <Phone className="h-3 w-3" /> M-Pesa Number
+                            <Phone className="h-3 w-3" /> Customer Number
                          </Label>
                          <Input 
-                            placeholder="0712345678" 
+                            placeholder="07XXXXXXXX" 
                             value={customerPhone} 
                             onChange={e => setCustomerPhone(e.target.value)} 
-                            className="h-11 font-bold tracking-widest border-primary/20 bg-primary/5" 
+                            className="h-11 font-black tracking-widest border-primary/20 bg-primary/5" 
                          />
                     </div>
                 )}
 
-                <div className="flex items-center space-x-2 pt-2"><Switch id="vat-pos" checked={applyVat} onCheckedChange={setApplyVat} /><Label htmlFor="vat-pos" className="text-xs font-bold cursor-pointer">Apply 16% VAT</Label></div>
-                <div className="space-y-2 p-4 rounded-xl bg-muted/20 border mt-auto">
-                    <div className="flex justify-between text-xl font-black">
-                        <span>Total Due:</span>
-                        <span className="text-primary">KES {grandTotal.toLocaleString()}</span>
-                    </div>
+                <div className="flex items-center space-x-2 pt-2">
+                    <Switch id="vat-pos" checked={applyVat} onCheckedChange={setApplyVat} />
+                    <Label htmlFor="vat-pos" className="text-xs font-bold cursor-pointer">Apply 16% VAT</Label>
+                </div>
+
+                <div className="space-y-2 p-6 rounded-2xl bg-black text-white shadow-xl mt-auto">
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Total Settlement</p>
+                    <div className="text-3xl font-black tracking-tighter">KES {grandTotal.toLocaleString()}</div>
                 </div>
             </CardContent>
             <CardFooter className="pb-8">
-                <Button onClick={handleFinalizeSale} className="w-full h-14 text-lg font-black shadow-xl active:scale-95 transition-all" disabled={isProcessing || isWaitingForConfirmation || !selectedCustomer || cart.length === 0}>
-                    {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Finalize Sale'}
+                <Button onClick={handleFinalizeSale} className="w-full h-16 text-xl font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all" disabled={isProcessing || isWaitingForConfirmation || !selectedCustomer || cart.length === 0}>
+                    {isProcessing ? <Loader2 className="h-8 w-8 animate-spin" /> : 'Finalize Sale'}
                 </Button>
             </CardFooter>
         </Card>
       </div>
 
-      {/* Quick Add Customer Dialog */}
       <Dialog open={isQuickAddOpen} onOpenChange={setIsQuickAddOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md border-none shadow-2xl">
             <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase tracking-tight">Quick Register Client</DialogTitle>
-                <DialogDescription>Add a new customer to the CRM instantly.</DialogDescription>
+                <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Quick Register</DialogTitle>
+                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Add new client to CRM node</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-6">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase">Full Name</Label>
-                    <Input value={newCustName} onChange={e => setNewCustName(e.target.value)} placeholder="e.g. John Doe" className="h-11" />
+                    <Input value={newCustName} onChange={e => setNewCustName(e.target.value)} placeholder="e.g. John Doe" className="h-11 font-bold" />
                 </div>
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase">Phone Number</Label>
-                    <Input value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} placeholder="07XXXXXXXX" className="h-11" />
+                    <Input value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} placeholder="07XXXXXXXX" className="h-11 font-bold tracking-widest" />
                 </div>
             </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsQuickAddOpen(false)}>Cancel</Button>
-                <Button onClick={handleQuickAddCustomer} disabled={isSavingCust || !newCustName} className="font-black uppercase">
-                    {isSavingCust ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} Register and Select
+            <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setIsQuickAddOpen(false)} className="font-bold h-12">Cancel</Button>
+                <Button onClick={handleQuickAddCustomer} disabled={isSavingCust || !newCustName} className="font-black uppercase tracking-widest h-12 px-8">
+                    {isSavingCust ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} Save and Select
                 </Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isWaitingForConfirmation} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md text-center p-12">
+        <DialogContent className="sm:max-w-md text-center p-12 border-none shadow-2xl">
             <DialogHeader>
-                <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Awaiting PIN...</DialogTitle>
-                <DialogDescription>STK Push sent to {customerPhone}.</DialogDescription>
+                <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Awaiting PIN</DialogTitle>
+                <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">STK Push transmitted to {customerPhone}</DialogDescription>
             </DialogHeader>
-            <div className="pt-8 flex flex-col gap-2">
-                <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
-                <Button variant="ghost" className="text-xs text-destructive mt-4" onClick={() => { setIsWaitingForConfirmation(false); setIsProcessing(false); }}>Cancel</Button>
+            <div className="pt-10 flex flex-col gap-2">
+                <div className="relative h-20 w-20 mx-auto">
+                    <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
+                    <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                </div>
+                <Button variant="ghost" className="text-xs text-destructive mt-8 font-black uppercase tracking-widest" onClick={() => { setIsWaitingForConfirmation(false); setIsProcessing(false); }}>Abort Transaction</Button>
             </div>
         </DialogContent>
       </Dialog>
@@ -558,19 +560,20 @@ export function PosClient() {
           }
           setIsSuccessOpen(open);
       }}>
-        <DialogContent className="sm:max-w-md text-center p-8">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <DialogContent className="sm:max-w-md text-center p-10 border-none shadow-2xl">
+            <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner">
                 <Check className="h-10 w-10 text-green-600" />
             </div>
             <DialogHeader>
-                <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Sale Completed!</DialogTitle>
+                <DialogTitle className="text-3xl font-black uppercase tracking-tighter">Transaction Success</DialogTitle>
+                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Receipt encrypted and archived</DialogDescription>
             </DialogHeader>
-            <div className="pt-8 space-y-3">
-                <Button variant="outline" className="w-full h-12 font-bold shadow-sm" onClick={handleDownloadReceipt} disabled={isExporting}>
-                    {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Download Receipt PDF
+            <div className="pt-10 space-y-3">
+                <Button variant="outline" className="w-full h-14 font-black uppercase tracking-widest shadow-sm border-2" onClick={handleDownloadReceipt} disabled={isExporting}>
+                    {isExporting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Download className="mr-2 h-5 w-5" />}
+                    Download A4 Receipt
                 </Button>
-                <Button className="w-full h-12 font-black uppercase" onClick={() => setIsSuccessOpen(false)}>Process Next Sale</Button>
+                <Button className="w-full h-14 font-black uppercase tracking-widest shadow-xl" onClick={() => setIsSuccessOpen(false)}>Start New Sale</Button>
             </div>
             <div className="fixed left-[-9999px] top-0 pointer-events-none">
                 <div id="pos-receipt-target" className="bg-white" style={{ width: '210mm', minHeight: '297mm' }}>

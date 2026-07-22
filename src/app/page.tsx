@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -28,7 +29,7 @@ import type { Sale, Document as AppDocument } from '@/types';
 
 /**
  * @fileOverview Main Shop Dashboard
- * Simplified language and mobile-first density.
+ * Optimized for high-density mobile-first business tracking.
  */
 export default function DashboardPage() {
   const { tenant, isLoading: isSaaSLoading } = useSaaS();
@@ -39,7 +40,7 @@ export default function DashboardPage() {
 
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id), limit(100));
+    return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id), limit(200));
   }, [firestore, tenant?.id]);
   const { data: sales, isLoading: salesLoading } = useCollection(salesQuery);
 
@@ -52,9 +53,9 @@ export default function DashboardPage() {
     const monthEnd = endOfMonth(today);
 
     let dayTotal = 0;
+    let dayCount = 0;
     let weekTotal = 0;
     let monthTotal = 0;
-    const uniqueCustomersToday = new Set();
 
     sales.forEach(sale => {
       try {
@@ -63,14 +64,14 @@ export default function DashboardPage() {
 
         if (isSameDay(saleDate, today)) {
             dayTotal += amount;
-            if (sale.customerId) uniqueCustomersToday.add(sale.customerId);
+            dayCount++;
         }
         if (isWithinInterval(saleDate, { start: weekStart, end: weekEnd })) weekTotal += amount;
         if (isWithinInterval(saleDate, { start: monthStart, end: monthEnd })) monthTotal += amount;
       } catch (e) {}
     });
 
-    return { day: dayTotal, week: weekTotal, month: monthTotal, customersToday: uniqueCustomersToday.size };
+    return { day: dayTotal, week: weekTotal, month: monthTotal, customersToday: dayCount };
   }, [sales]);
 
   const formatCurrency = (amount: number) => {
@@ -98,16 +99,18 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 max-w-full overflow-x-hidden">
       <div className="flex items-center justify-between px-1">
-        <h1 className="text-xl font-black uppercase tracking-tight">Home</h1>
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 font-bold h-6 text-[10px]">
-            <Zap className="h-2.5 w-2.5 mr-1 fill-green-700" /> Online
-        </Badge>
+        <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black uppercase tracking-tight">Dashboard</h1>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 font-bold h-5 text-[8px] uppercase">
+                <Zap className="h-2 w-2 mr-1 fill-green-700" /> Live Node
+            </Badge>
+        </div>
       </div>
 
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
         {showMetricsLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full rounded-xl" />
+                <Skeleton key={i} className="h-24 w-full rounded-xl" />
             ))
         ) : (
             <>
@@ -116,13 +119,14 @@ export default function DashboardPage() {
                   value={formatCurrency(stats.day)} 
                   icon={Activity} 
                   className="border-l-4 border-l-blue-500 shadow-sm"
+                  description="Daily Revenue"
                 />
                 <SummaryCard 
                   title="Served" 
                   value={stats.customersToday} 
                   icon={Users} 
                   className="border-l-4 border-l-orange-500 shadow-sm"
-                  description="Clients today"
+                  description="Transactions Today"
                 />
                 <SummaryCard 
                   title="Week" 
@@ -145,7 +149,7 @@ export default function DashboardPage() {
               <CardHeader className="bg-primary/5 border-b p-3">
                   <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
                     <ShoppingCart className="h-4 w-4 text-primary" />
-                    Sale
+                    Point of Sale
                   </CardTitle>
               </CardHeader>
               <CardContent className="p-3 md:p-6">
@@ -161,7 +165,7 @@ export default function DashboardPage() {
       <Dialog open={!!viewingSale} onOpenChange={(o) => !o && setViewingSale(null)}>
         <DialogContent className="max-w-4xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
           <DialogHeader className="p-4 border-b bg-white no-print">
-            <DialogTitle className="text-lg font-black uppercase">Receipt</DialogTitle>
+            <DialogTitle className="text-lg font-black uppercase">Paper View</DialogTitle>
           </DialogHeader>
           <div className="flex-grow overflow-auto bg-slate-400/20 p-2 md:p-8 flex justify-center">
             <div className="bg-white shadow-2xl overflow-hidden scale-[0.4] sm:scale-[0.6] md:scale-100 origin-top" style={{ width: '210mm', minHeight: '297mm' }}>

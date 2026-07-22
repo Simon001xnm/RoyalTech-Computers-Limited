@@ -1,3 +1,4 @@
+
 'use client';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -5,7 +6,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Image as ImageIcon, Check, Loader2, Upload, Settings2, DownloadCloud, Database, Users, ShoppingCart, ShieldCheck } from "lucide-react";
+import { 
+    Camera, 
+    Image as ImageIcon, 
+    Check, 
+    Loader2, 
+    Upload, 
+    Settings2, 
+    DownloadCloud, 
+    Database, 
+    Users, 
+    ShoppingCart, 
+    ShieldCheck 
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { useEffect, useState, useRef } from "react";
@@ -19,6 +32,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { logger } from "@/lib/logger";
 
+/**
+ * @fileOverview SaaS Control Node
+ * Enhanced with ShieldCheck icon resolution and better type selection.
+ */
 export default function ProfilePage() {
   const { user: authUser, isUserLoading } = useUser();
   const { tenant } = useSaaS();
@@ -30,12 +47,10 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("profile");
   const [isExporting, setIsExporting] = useState<string | null>(null);
 
-  // Profile fields state
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
-  // Company fields state
   const [compData, setCompData] = useState({
     name: '',
     businessType: 'retail',
@@ -52,8 +67,8 @@ export default function ProfilePage() {
     receiptPrefix: 'RCT',
     quotePrefix: 'QTN',
     deliveryPrefix: 'DLV',
-    primaryColor: '#1e293b',
-    secondaryColor: '#f1f5f9',
+    primaryColor: '#1d4ed8',
+    secondaryColor: '#f8fafc',
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -111,7 +126,6 @@ export default function ProfilePage() {
         updatedAt: new Date().toISOString()
       });
       toast({ title: 'Workspace Settings Synced' });
-      // Reload to apply sidebar changes
       window.location.reload();
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Error syncing cloud settings' });
@@ -228,7 +242,7 @@ export default function ProfilePage() {
                             <Settings2 className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                            <CardTitle className="text-2xl font-black uppercase tracking-tighter">Business Logic & Branding</CardTitle>
+                            <CardTitle className="text-2xl font-black uppercase tracking-tighter">Identity & Logic</CardTitle>
                             <CardDescription>SaaS infrastructure and document generation standards.</CardDescription>
                         </div>
                     </div>
@@ -236,10 +250,10 @@ export default function ProfilePage() {
                 <CardContent className="p-0">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="grid w-full grid-cols-4 h-14 bg-muted/30 rounded-none border-b p-0">
-                            <TabsTrigger value="profile" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Identity</TabsTrigger>
+                            <TabsTrigger value="profile" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Branding</TabsTrigger>
                             <TabsTrigger value="contact" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Contact</TabsTrigger>
-                            <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Prefs</TabsTrigger>
-                            <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest text-primary">Export</TabsTrigger>
+                            <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Standards</TabsTrigger>
+                            <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest text-primary">Backups</TabsTrigger>
                         </TabsList>
                         
                         <div className="p-8">
@@ -256,7 +270,7 @@ export default function ProfilePage() {
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Business Name</Label><Input value={compData.name} onChange={e => handleInputChange('name', e.target.value)} className="h-11 font-bold" /></div>
-                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Shop Category (Modules Adapt)</Label>
+                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Shop Category</Label>
                                                 <Select onValueChange={v => handleInputChange('businessType', v)} value={compData.businessType}>
                                                     <SelectTrigger className="h-11 font-bold"><SelectValue /></SelectTrigger>
                                                     <SelectContent>
@@ -269,7 +283,7 @@ export default function ProfilePage() {
                                                     </SelectContent>
                                                 </Select>
                                             </div>
-                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Primary Brand Color</Label><div className="flex gap-2"><Input type="color" value={compData.primaryColor} onChange={e => handleInputChange('primaryColor', e.target.value)} className="w-12 h-11 p-1" /><Input value={compData.primaryColor} onChange={e => handleInputChange('primaryColor', e.target.value)} className="h-11 font-mono" /></div></div>
+                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Brand Primary Color</Label><div className="flex gap-2"><Input type="color" value={compData.primaryColor} onChange={e => handleInputChange('primaryColor', e.target.value)} className="w-12 h-11 p-1" /><Input value={compData.primaryColor} onChange={e => handleInputChange('primaryColor', e.target.value)} className="h-11 font-mono" /></div></div>
                                             <div className="space-y-2"><Label className="text-[10px] font-black uppercase">VAT Rate (%)</Label><Input type="number" value={compData.vatRate} onChange={e => handleInputChange('vatRate', Number(e.target.value))} className="h-11 font-bold" /></div>
                                         </div>
                                     </div>
@@ -280,8 +294,8 @@ export default function ProfilePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Email</Label><Input value={compData.email} onChange={e => handleInputChange('email', e.target.value)} className="h-11" /></div>
                                     <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Primary Phone</Label><Input value={compData.phone} onChange={e => handleInputChange('phone', e.target.value)} className="h-11" /></div>
-                                    <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase">Physical Head Office Address</Label><Input value={compData.address} onChange={e => handleInputChange('address', e.target.value)} className="h-11" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Website URL</Label><Input value={compData.website} onChange={e => handleInputChange('website', e.target.value)} className="h-11" /></div>
+                                    <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase">Head Office Address</Label><Input value={compData.address} onChange={e => handleInputChange('address', e.target.value)} className="h-11" /></div>
+                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Website</Label><Input value={compData.website} onChange={e => handleInputChange('website', e.target.value)} className="h-11" /></div>
                                     <div className="space-y-2"><Label className="text-[10px] font-black uppercase">KRA PIN / Tax ID</Label><Input value={compData.taxPin} onChange={e => handleInputChange('taxPin', e.target.value)} className="h-11 font-mono uppercase" /></div>
                                 </div>
                             </TabsContent>
@@ -299,22 +313,22 @@ export default function ProfilePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
                                         <CardHeader className="bg-primary/5 py-4">
-                                            <CardTitle className="text-sm font-black uppercase tracking-widest">Cloud Inventory</CardTitle>
+                                            <CardTitle className="text-sm font-black uppercase tracking-widest">Inventory Log</CardTitle>
                                         </CardHeader>
                                         <CardContent className="pt-6">
                                             <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('inventory')} disabled={!!isExporting}>
-                                                {isExporting === 'inventory' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export Inventory
+                                                {isExporting === 'inventory' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} CSV Export
                                             </Button>
                                         </CardContent>
                                     </Card>
 
                                     <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
                                         <CardHeader className="bg-primary/5 py-4">
-                                            <CardTitle className="text-sm font-black uppercase tracking-widest">Client Directory</CardTitle>
+                                            <CardTitle className="text-sm font-black uppercase tracking-widest">CRM Directory</CardTitle>
                                         </CardHeader>
                                         <CardContent className="pt-6">
                                             <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('customers')} disabled={!!isExporting}>
-                                                {isExporting === 'customers' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export CRM
+                                                {isExporting === 'customers' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} CSV Export
                                             </Button>
                                         </CardContent>
                                     </Card>
@@ -326,20 +340,20 @@ export default function ProfilePage() {
                 <CardFooter className="justify-end bg-muted/10 border-t p-8">
                     <Button onClick={handleSaveCompany} disabled={isSaving} className="h-14 px-10 font-black uppercase tracking-widest shadow-xl border-2 border-black hover:bg-black hover:text-white transition-all">
                         {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} 
-                        Sync Workspace Settings
+                        Sync Node Settings
                     </Button>
                 </CardFooter>
             </Card>
           )}
 
           <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden">
-            <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight">Security & Infrastructure</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight">Node Security</CardTitle></CardHeader>
             <CardContent className="p-8 space-y-4">
-              <p className="text-sm text-muted-foreground leading-relaxed">System identity protection is active. Multi-tenant isolation ensures your business verification data and API secrets are inaccessible to other nodes.</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">Multi-tenant isolation ensures your business secrets and transaction logs are cryptographically secured and inaccessible to other nodes.</p>
               <div className="flex items-center gap-4 p-6 bg-black/5 rounded-2xl border border-black/20">
                   <ShieldCheck className="h-10 w-10 text-black opacity-50" />
                   <div className="space-y-0.5">
-                    <p className="text-xs font-black uppercase tracking-widest">Cryptographic Isolation</p>
+                    <p className="text-xs font-black uppercase tracking-widest">SaaS Isolation Active</p>
                     <p className="text-[10px] text-muted-foreground font-mono">NODE-ID: {tenant?.id}</p>
                   </div>
               </div>
