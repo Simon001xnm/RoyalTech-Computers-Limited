@@ -6,7 +6,7 @@ import type { SaleItem, Sale, Customer, Document as AppDocument } from '@/types'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone, UserPlus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,9 +14,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot, addDoc } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { SaleService } from '@/services/sale-service';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
@@ -52,6 +52,12 @@ export function PosClient() {
   const [referenceCode, setReferenceCode] = useState('');
   const [amountPaid, setAmountPaid] = useState('');
   const [applyVat, setApplyVat] = useState(false);
+
+  // Quick Add Customer State
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+  const [isSavingCust, setIsSavingCust] = useState(false);
 
   const [isWaitingForConfirmation, setIsWaitingForConfirmation] = useState(false);
   const [pendingSaleId, setPendingSaleId] = useState<string | null>(null);
@@ -201,6 +207,32 @@ export function PosClient() {
     setCart(updated);
   };
 
+  const handleQuickAddCustomer = async () => {
+    if (!newCustName || !tenant || !user) return;
+    setIsSavingCust(true);
+    try {
+        const docRef = await addDoc(collection(firestore, 'customers'), {
+            name: newCustName,
+            phone: newCustPhone,
+            tenantId: tenant.id,
+            registrationDate: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
+        });
+        const newCust = { id: docRef.id, name: newCustName, phone: newCustPhone } as Customer;
+        setSelectedCustomer(newCust);
+        setCustomerPhone(newCustPhone);
+        setIsQuickAddOpen(false);
+        setNewCustName('');
+        setNewCustPhone('');
+        toast({ title: "Customer Registered" });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Failed to add customer' });
+    } finally {
+        setIsSavingCust(false);
+    }
+  };
+
   const handleFinalizeSale = async () => {
     if (cart.length === 0 || !selectedCustomer || !user || !tenant) return;
     setIsProcessing(true);
@@ -315,7 +347,14 @@ export function PosClient() {
       <PageHeader title="Point of Sale" description="Process transactions instantly with cloud synchronization." />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-md">
-            <CardHeader><CardTitle className="flex items-center gap-2"><ShoppingCart className="h-5 w-5" /> Basket</CardTitle></CardHeader>
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2"><ShoppingCart className="h-5 w-5" /> Basket</CardTitle>
+                    <Button variant="outline" size="sm" onClick={() => setIsQuickAddOpen(true)} className="h-8 text-[10px] font-black uppercase">
+                        <UserPlus className="h-3 w-3 mr-1" /> Quick Register Client
+                    </Button>
+                </div>
+            </CardHeader>
             <CardContent className="space-y-6">
                 <div className="space-y-2">
                     <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
@@ -473,6 +512,32 @@ export function PosClient() {
             </CardFooter>
         </Card>
       </div>
+
+      {/* Quick Add Customer Dialog */}
+      <Dialog open={isQuickAddOpen} onOpenChange={setIsQuickAddOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle className="text-xl font-black uppercase tracking-tight">Quick Register Client</DialogTitle>
+                <DialogDescription>Add a new customer to the CRM instantly.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase">Full Name</Label>
+                    <Input value={newCustName} onChange={e => setNewCustName(e.target.value)} placeholder="e.g. John Doe" className="h-11" />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase">Phone Number</Label>
+                    <Input value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} placeholder="07XXXXXXXX" className="h-11" />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsQuickAddOpen(false)}>Cancel</Button>
+                <Button onClick={handleQuickAddCustomer} disabled={isSavingCust || !newCustName} className="font-black uppercase">
+                    {isSavingCust ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} Register and Select
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isWaitingForConfirmation} onOpenChange={() => {}}>
         <DialogContent className="sm:max-w-md text-center p-12">

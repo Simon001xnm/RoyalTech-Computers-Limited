@@ -10,7 +10,8 @@ import {
   Activity,
   TrendingUp,
   BarChart3,
-  ShoppingCart
+  ShoppingCart,
+  Users
 } from 'lucide-react';
 import { isSameDay, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -42,8 +43,8 @@ export default function DashboardPage() {
   }, [firestore, tenant?.id]);
   const { data: sales, isLoading: salesLoading } = useCollection(salesQuery);
 
-  const earnings = useMemo(() => {
-    if (!sales) return { day: 0, week: 0, month: 0 };
+  const stats = useMemo(() => {
+    if (!sales) return { day: 0, week: 0, month: 0, customersToday: 0 };
     const today = new Date();
     const weekStart = startOfWeek(today);
     const weekEnd = endOfWeek(today);
@@ -53,19 +54,23 @@ export default function DashboardPage() {
     let dayTotal = 0;
     let weekTotal = 0;
     let monthTotal = 0;
+    const uniqueCustomersToday = new Set();
 
     sales.forEach(sale => {
       try {
         const saleDate = parseISO(sale.date);
         const amount = sale.amount || 0;
 
-        if (isSameDay(saleDate, today)) dayTotal += amount;
+        if (isSameDay(saleDate, today)) {
+            dayTotal += amount;
+            if (sale.customerId) uniqueCustomersToday.add(sale.customerId);
+        }
         if (isWithinInterval(saleDate, { start: weekStart, end: weekEnd })) weekTotal += amount;
         if (isWithinInterval(saleDate, { start: monthStart, end: monthEnd })) monthTotal += amount;
       } catch (e) {}
     });
 
-    return { day: dayTotal, week: weekTotal, month: monthTotal };
+    return { day: dayTotal, week: weekTotal, month: monthTotal, customersToday: uniqueCustomersToday.size };
   }, [sales]);
 
   const formatCurrency = (amount: number) => {
@@ -99,28 +104,35 @@ export default function DashboardPage() {
         </Badge>
       </div>
 
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
         {showMetricsLoading ? (
-            Array.from({ length: 3 }).map((_, i) => (
+            Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-20 w-full rounded-xl" />
             ))
         ) : (
             <>
                 <SummaryCard 
                   title="Today" 
-                  value={formatCurrency(earnings.day)} 
+                  value={formatCurrency(stats.day)} 
                   icon={Activity} 
                   className="border-l-4 border-l-blue-500 shadow-sm"
                 />
                 <SummaryCard 
+                  title="Served" 
+                  value={stats.customersToday} 
+                  icon={Users} 
+                  className="border-l-4 border-l-orange-500 shadow-sm"
+                  description="Clients today"
+                />
+                <SummaryCard 
                   title="Week" 
-                  value={formatCurrency(earnings.week)} 
+                  value={formatCurrency(stats.week)} 
                   icon={TrendingUp} 
                   className="border-l-4 border-l-purple-500 shadow-sm"
                 />
                 <SummaryCard 
                   title="Month" 
-                  value={formatCurrency(earnings.month)} 
+                  value={formatCurrency(stats.month)} 
                   icon={BarChart3} 
                   className="border-l-4 border-l-emerald-500 shadow-sm"
                 />
