@@ -69,7 +69,7 @@ function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { chil
                 <Button onClick={handleLogout} variant="ghost" size="icon" className="text-sidebar-foreground/70 hover:text-sidebar-foreground" aria-label="Log Out">
                     <LogOut className="h-5 w-5"/>
                 </Button>
-                <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">End Session</span>
+                <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Logout</span>
             </div>
         </SidebarFooter>
       </Sidebar>
@@ -78,12 +78,12 @@ function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { chil
           <div className="flex items-center gap-4">
             <SidebarTrigger />
             <Link href="/" className="flex items-center gap-2 font-bold text-lg md:hidden">
-              <span>{isSuperAdmin ? "PLATFORM COMMAND" : APP_NAME}</span>
+              <span>{isSuperAdmin ? "ADMIN" : APP_NAME}</span>
             </Link>
             {isSuperAdmin && (
                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black uppercase tracking-widest text-[9px] px-3 h-6">
                   <ShieldCheck className="h-3 w-3 mr-1" />
-                  Layer 2 Access
+                  ROOT
                </Badge>
             )}
           </div>
@@ -111,7 +111,7 @@ function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { chil
                   <Link href="/profile">
                     <DropdownMenuItem>
                       <UserIcon className="mr-2 h-4 w-4" />
-                      <span>{isSuperAdmin ? "System Identity" : "Shop Settings"}</span>
+                      <span>Settings</span>
                     </DropdownMenuItem>
                   </Link>
                   <DropdownMenuSeparator />
@@ -137,7 +137,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const firestore = useFirestore();
-  const auth = useAuth();
 
   const isAuthPath = AUTH_PATHS.includes(pathname);
   const isFastTrackAdmin = useMemo(() => isMasterKey(user?.email), [user?.email]);
@@ -180,12 +179,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
                     <Lock className="h-16 w-16 text-destructive" />
                 </div>
                 <div className="max-w-md space-y-2">
-                    <h1 className="text-3xl font-black uppercase tracking-tighter">Access Terminated</h1>
+                    <h1 className="text-3xl font-black uppercase tracking-tighter">Terminated</h1>
                     <p className="text-muted-foreground">
-                        Your account has been suspended by the shop administrator.
+                        Your account has been suspended.
                     </p>
                 </div>
-                <Button onClick={() => auth.signOut()} variant="outline" className="font-bold">Return to Login</Button>
+                <Button onClick={() => window.location.reload()} variant="outline" className="font-bold">Retry</Button>
             </div>
         );
     }
@@ -193,7 +192,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return <AuthenticatedLayout userProfile={userProfile || null} isFastTrackAdmin={isFastTrackAdmin}>{children}</AuthenticatedLayout>;
   }
 
-  // Not logged in and on an auth path
   if (isAuthPath) {
     return <>{children}</>;
   }

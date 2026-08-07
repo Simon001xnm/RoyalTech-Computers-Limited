@@ -1,4 +1,3 @@
-
 'use client';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -14,9 +13,6 @@ import {
     Upload, 
     Settings2, 
     DownloadCloud, 
-    Database, 
-    Users, 
-    ShoppingCart, 
     ShieldCheck 
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -32,10 +28,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { logger } from "@/lib/logger";
 
-/**
- * @fileOverview SaaS Control Node
- * Enhanced with ShieldCheck icon resolution and better type selection.
- */
 export default function ProfilePage() {
   const { user: authUser, isUserLoading } = useUser();
   const { tenant } = useSaaS();
@@ -125,10 +117,9 @@ export default function ProfilePage() {
         ...compData,
         updatedAt: new Date().toISOString()
       });
-      toast({ title: 'Workspace Settings Synced' });
-      window.location.reload();
+      toast({ title: 'Settings Synced' });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error syncing cloud settings' });
+      toast({ variant: 'destructive', title: 'Sync Failed' });
     } finally {
       setIsSaving(false);
     }
@@ -189,7 +180,7 @@ export default function ProfilePage() {
     return (
       <div className="flex flex-col items-center justify-center p-12 space-y-4 text-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
-        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing SaaS Context...</p>
+        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Context...</p>
       </div>
     );
   }
@@ -198,7 +189,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20">
-      <PageHeader title="SaaS Control Node" description="Configure high-fidelity document generation and business identity." />
+      <PageHeader title="Shop Settings" description="Configure branding and high-fidelity generation standards." />
 
       <div className="grid gap-8 lg:grid-cols-[350px_1fr]">
         <div className="space-y-6">
@@ -340,20 +331,20 @@ export default function ProfilePage() {
                 <CardFooter className="justify-end bg-muted/10 border-t p-8">
                     <Button onClick={handleSaveCompany} disabled={isSaving} className="h-14 px-10 font-black uppercase tracking-widest shadow-xl border-2 border-black hover:bg-black hover:text-white transition-all">
                         {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} 
-                        Sync Node Settings
+                        Sync Settings
                     </Button>
                 </CardFooter>
             </Card>
           )}
 
           <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden">
-            <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight">Node Security</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight">Security</CardTitle></CardHeader>
             <CardContent className="p-8 space-y-4">
-              <p className="text-sm text-muted-foreground leading-relaxed">Multi-tenant isolation ensures your business secrets and transaction logs are cryptographically secured and inaccessible to other nodes.</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">System identity protection is active. Multi-tenant isolation ensures your business verification data and API secrets are inaccessible to other nodes.</p>
               <div className="flex items-center gap-4 p-6 bg-black/5 rounded-2xl border border-black/20">
                   <ShieldCheck className="h-10 w-10 text-black opacity-50" />
                   <div className="space-y-0.5">
-                    <p className="text-xs font-black uppercase tracking-widest">SaaS Isolation Active</p>
+                    <p className="text-xs font-black uppercase tracking-widest">Cryptographic Isolation</p>
                     <p className="text-[10px] text-muted-foreground font-mono">NODE-ID: {tenant?.id}</p>
                   </div>
               </div>

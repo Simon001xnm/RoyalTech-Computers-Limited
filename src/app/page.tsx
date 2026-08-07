@@ -88,17 +88,15 @@ export default function DashboardPage() {
     );
   }
 
-  // AuthGuard handles redirection to /login if !user
-
   const showMetricsLoading = isSaaSLoading || salesLoading;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 max-w-full overflow-x-hidden">
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black uppercase tracking-tight">Dashboard</h1>
+            <h1 className="text-xl font-black uppercase tracking-tight">Home</h1>
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 font-bold h-5 text-[8px] uppercase">
-                <Zap className="h-2 w-2 mr-1 fill-green-700" /> System Online
+                <Zap className="h-2 w-2 mr-1 fill-green-700" /> Live
             </Badge>
         </div>
       </div>
@@ -111,25 +109,25 @@ export default function DashboardPage() {
         ) : (
             <>
                 <SummaryCard 
-                  title="Revenue Today" 
+                  title="Today" 
                   value={formatCurrency(stats.day)} 
                   icon={Activity} 
                   className="border-l-4 border-l-blue-500 shadow-sm"
                 />
                 <SummaryCard 
-                  title="Daily Clients" 
+                  title="Clients" 
                   value={stats.customersToday} 
                   icon={Users} 
                   className="border-l-4 border-l-orange-500 shadow-sm"
                 />
                 <SummaryCard 
-                  title="Weekly Volume" 
+                  title="Weekly" 
                   value={formatCurrency(stats.week)} 
                   icon={TrendingUp} 
                   className="border-l-4 border-l-purple-500 shadow-sm"
                 />
                 <SummaryCard 
-                  title="Monthly Target" 
+                  title="Target" 
                   value={formatCurrency(stats.month)} 
                   icon={BarChart3} 
                   className="border-l-4 border-l-emerald-500 shadow-sm"
@@ -143,7 +141,7 @@ export default function DashboardPage() {
               <CardHeader className="bg-primary/5 border-b p-3">
                   <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
                     <ShoppingCart className="h-4 w-4 text-primary" />
-                    Point of Sale
+                    Sale
                   </CardTitle>
               </CardHeader>
               <CardContent className="p-3 md:p-6">
@@ -159,7 +157,7 @@ export default function DashboardPage() {
       <Dialog open={!!viewingSale} onOpenChange={(o) => !o && setViewingSale(null)}>
         <DialogContent className="max-w-4xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
           <DialogHeader className="p-4 border-b bg-white no-print">
-            <DialogTitle className="text-lg font-black uppercase">Receipt Viewer</DialogTitle>
+            <DialogTitle className="text-lg font-black uppercase">Receipt</DialogTitle>
           </DialogHeader>
           <div className="flex-grow overflow-auto bg-slate-400/20 p-2 md:p-8 flex justify-center">
             <div className="bg-white shadow-2xl overflow-hidden scale-[0.4] sm:scale-[0.6] md:scale-100 origin-top" style={{ width: '210mm', minHeight: '297mm' }}>
@@ -178,7 +176,7 @@ export default function DashboardPage() {
           </div>
           <div className="p-4 border-t flex justify-end gap-3 bg-white no-print">
             <Button variant="outline" onClick={() => setViewingSale(null)} className="font-bold">Close</Button>
-            <Button onClick={() => window.print()} className="font-black uppercase">Print Receipt</Button>
+            <Button onClick={() => window.print()} className="font-black uppercase">Print</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -41,7 +41,7 @@ export function exportToCsv<T extends Record<string, any>>(filename: string, dat
 
 /**
  * Professional Currency to Words Converter
- * Optimized for Kenyan Shillings with precision for Millions, Thousands, Hundreds, and Cents.
+ * Optimized for Kenyan Shillings with precision for Millions, Thousands, and Cents.
  */
 export function numberToWords(num: number): string {
   const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
