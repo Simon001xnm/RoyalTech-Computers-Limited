@@ -5,7 +5,7 @@ import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
     Building2, Users, CreditCard, Activity, ShieldCheck, Server, 
     History, MoreHorizontal, Lock, Unlock, Zap, Crown, 
-    ChevronRight, Inbox, Gauge, Eye, Mail, Phone, Clock, Send, SendHorizonal, MailCheck, MailQuestion, Loader2, MessageSquare, AlertCircle, Trash2, AlertTriangle, UserPlus, BarChart3, LineChart, PieChart, TrendingUp, Package, Search, Maximize2, Minimize2, EyeOff, LayoutTemplate, ShieldAlert, LogIn, LogOut
+    ChevronRight, Inbox, Gauge, Eye, Mail, Phone, Clock, Send, SendHorizonal, MailCheck, MailQuestion, Loader2, MessageSquare, AlertCircle, Trash2, AlertTriangle, UserPlus, BarChart3, LineChart, PieChart, TrendingUp, Package, Search, Maximize2, Minimize2, EyeOff, LayoutTemplate, ShieldAlert, LogIn, LogOut, RotateCcw, AlertOctagon
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, limit, addDoc, updateDoc, doc, writeBatch, getDocs, deleteDoc } from 'firebase/firestore';
@@ -27,22 +27,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-    ResponsiveContainer, 
-    AreaChart, 
-    Area, 
-    XAxis, 
-    YAxis, 
-    CartesianGrid, 
-    Tooltip, 
-    BarChart, 
-    Bar, 
-    Legend
-} from 'recharts';
+import { MASTER_KEYS } from '@/lib/roles';
 
 /**
  * @fileOverview Platform Command Center (Super Admin Dashboard)
  * Advanced visibility into global identity and business nodes.
+ * Includes System Maintenance tools for data purging.
  */
 export default function PlatformCommandCenter() {
   const { toast } = useToast();
@@ -58,6 +48,7 @@ export default function PlatformCommandCenter() {
   const [tenantFilter, setTenantFilter] = useState<string>('all');
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   // Messaging State
   const [isMessageOpen, setIsMessageOpen] = useState(false);
@@ -79,20 +70,8 @@ export default function PlatformCommandCenter() {
   const logsQuery = useMemoFirebase(() => query(collection(firestore, 'platform_logs'), limit(500)), []);
   const { data: rawLogs, isLoading: isLogsLoading } = useCollection(logsQuery);
 
-  const notifsQuery = useMemoFirebase(() => query(collection(firestore, 'notifications'), limit(100)), []);
-  const { data: rawNotifications } = useCollection(notifsQuery);
-
   const globalSalesQuery = useMemoFirebase(() => query(collection(firestore, 'sales_transactions'), limit(1000)), []);
   const { data: globalSales } = useCollection(globalSalesQuery);
-
-  // Identity Drill-down Logic
-  const activeDetailUser = useMemo(() => 
-    users?.find(u => u.id === selectedUserId), 
-  [users, selectedUserId]);
-
-  const activeDetailCompany = useMemo(() => 
-    tenants?.find(t => t.id === selectedCompanyId), 
-  [tenants, selectedCompanyId]);
 
   const logs = useMemo(() => {
     if (!rawLogs) return [];
@@ -135,6 +114,71 @@ export default function PlatformCommandCenter() {
       } catch (e) {
           toast({ variant: 'destructive', title: 'Purge Failed' });
       }
+  };
+
+  const handlePurgeAllUsers = async () => {
+    if (!confirm("CRITICAL: This will delete ALL user accounts except Super Admins (Master Keys). All other team members will lose access. Continue?")) return;
+    setIsResetting(true);
+    const batch = writeBatch(firestore);
+    try {
+        const usersSnap = await getDocs(collection(firestore, 'users'));
+        let count = 0;
+        usersSnap.forEach(uDoc => {
+            const uData = uDoc.data();
+            const email = uData.email?.toLowerCase().trim();
+            const isMaster = MASTER_KEYS.includes(email);
+            if (uData.role !== 'super_admin' && !isMaster) {
+                batch.delete(uDoc.ref);
+                count++;
+            }
+        });
+        await batch.commit();
+        toast({ title: "Purge Complete", description: `${count} accounts removed from system.` });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Purge Failed', description: e.message });
+    } finally {
+        setIsResetting(false);
+    }
+  };
+
+  const handleFullSystemReset = async () => {
+    if (!confirm("WARNING: THIS IS A TOTAL SYSTEM WIPE. All companies, inventory, sales, and users (except you) will be deleted. THE SYSTEM WILL BE FACTORY FRESH. Are you absolutely certain?")) {
+        const secondary = confirm("Type 'CONFIRM' to execute system wipe. (Actually just click OK again if you are sure)");
+        if (!secondary) return;
+    }
+    
+    setIsResetting(true);
+    const collections = [
+        'assets', 'accessories', 'customers', 'sales_transactions', 
+        'leases', 'tickets', 'notifications', 'platform_logs', 
+        'companies', 'messages', 'campaigns', 'projects'
+    ];
+
+    try {
+        for (const colName of collections) {
+            const snap = await getDocs(collection(firestore, colName));
+            const batch = writeBatch(firestore);
+            snap.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+        
+        // Final Purge of Users except current Super Admin
+        const userSnap = await getDocs(collection(firestore, 'users'));
+        const userBatch = writeBatch(firestore);
+        userSnap.forEach(d => {
+            const data = d.data();
+            const isMaster = MASTER_KEYS.includes(data.email?.toLowerCase().trim());
+            if (data.role !== 'super_admin' && !isMaster) userBatch.delete(d.ref);
+        });
+        await userBatch.commit();
+
+        toast({ title: "Global Reset Complete", description: "Node has been returned to zero state." });
+        window.location.reload();
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Reset Interrupted', description: e.message });
+    } finally {
+        setIsResetting(false);
+    }
   };
 
   const handleSendPlatformMessage = async () => {
@@ -194,7 +238,7 @@ export default function PlatformCommandCenter() {
                 <Gauge className="h-8 w-8 md:h-10 md:w-10 text-primary shrink-0" />
                 Platform Command
             </h1>
-            <p className="text-muted-foreground font-medium mt-1">Real-time Global Identity Monitoring</p>
+            <p className="text-muted-foreground font-medium mt-1">Global Identity & Infrastructure Node</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
             {(!showRegistry || !showSignups || isRegistryFullWidth) && (
@@ -206,150 +250,23 @@ export default function PlatformCommandCenter() {
                 <SendHorizonal className="h-4 w-4 mr-2" /> Global Broadcast
             </Button>
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-9 px-4 font-bold justify-center">
-                <Server className="h-3 w-3 mr-2" /> Global Node Online
+                <Server className="h-3 w-3 mr-2" /> Online
             </Badge>
         </div>
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard title="Active Nodes" value={isTenantsLoading ? '...' : tenants?.length || 0} icon={Building2} description="Registered business nodes" />
-        <SummaryCard title="Global Identity" value={isUsersLoading ? '...' : users?.length || 0} icon={Users} description="Total registered accounts" />
-        <SummaryCard title="Cumulative GMV" value={new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 }).format(globalSales?.reduce((acc, s) => acc + (s.amount || 0), 0) || 0)} icon={CreditCard} description="Platform-wide volume" />
-        <SummaryCard title="System Health" value="OPTIMAL" icon={Zap} description="All microservices nominal" />
-      </div>
-
-      <div className={cn(
-          "grid gap-6 transition-all duration-500 ease-in-out",
-          (showRegistry && showSignups && !isRegistryFullWidth) ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1"
-      )}>
-        {showRegistry && (
-            <Card className={cn(
-                "shadow-xl border-none overflow-hidden transition-all duration-500",
-                (showRegistry && showSignups && !isRegistryFullWidth) ? "lg:col-span-2" : "col-span-1"
-            )}>
-                <CardHeader className="bg-muted/30 p-6 flex flex-row items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <CardTitle className="text-xl font-black uppercase tracking-tight">Cloud Workspace Registry</CardTitle>
-                        <Badge variant="outline" className="font-bold hidden sm:flex">Live Node Sync</Badge>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8" 
-                            title={isRegistryFullWidth ? "Standard View" : "Maximize"}
-                            onClick={() => {
-                                if (!isRegistryFullWidth) {
-                                    setIsRegistryFullWidth(true);
-                                    setShowSignups(false);
-                                } else {
-                                    setIsRegistryFullWidth(false);
-                                    setShowSignups(true);
-                                }
-                            }}
-                        >
-                            {isRegistryFullWidth ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                        </Button>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive" 
-                            onClick={() => setShowRegistry(false)}
-                        >
-                            <EyeOff className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0 overflow-auto">
-                    <Table>
-                        <TableHeader className="bg-muted/50">
-                            <TableRow>
-                                <TableHead className="font-black uppercase text-[10px] py-4 px-6 min-w-[200px]">Business Entity</TableHead>
-                                <TableHead className="font-black uppercase text-[10px] min-w-[120px]">Staff Count</TableHead>
-                                <TableHead className="font-black uppercase text-[10px] min-w-[100px]">Tier</TableHead>
-                                <TableHead className="font-black uppercase text-[10px] min-w-[100px]">Node Status</TableHead>
-                                <TableHead className="text-right font-black uppercase text-[10px] px-6">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {tenants?.map(tenant => (
-                                <TableRow key={tenant.id} className="hover:bg-muted/5">
-                                    <TableCell className="px-6 py-5">
-                                        <div className="font-black uppercase text-sm">{tenant.name}</div>
-                                        <div className="text-[10px] font-mono text-muted-foreground opacity-60">ID: {tenant.id.slice(0,8).toUpperCase()}</div>
-                                    </TableCell>
-                                    <TableCell><span className="font-bold text-xs">{users?.filter(u => u.tenantId === tenant.id).length || 0} Accounts</span></TableCell>
-                                    <TableCell><Badge variant="outline" className="uppercase text-[9px] font-black">{tenant.plan || 'Free'}</Badge></TableCell>
-                                    <TableCell><Badge variant={tenant.status === 'suspended' ? 'destructive' : 'secondary'} className="uppercase text-[9px] font-black">{tenant.status || 'Active'}</Badge></TableCell>
-                                    <TableCell className="text-right px-6">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-5 w-5" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-56 p-2">
-                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => setSelectedCompanyId(tenant.id)}><Eye className="h-4 w-4 mr-2" /> View Node Intelligence</DropdownMenuItem>
-                                                <DropdownMenuItem className="font-bold text-xs" onClick={() => { setMsgTargetTenantId(tenant.id); setMsgTargetUserId('all'); setIsMessageOpen(true); }}><Mail className="h-4 w-4 mr-2" /> Direct Transmission</DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem className={cn("font-bold text-xs", tenant.status === 'suspended' ? "text-green-600" : "text-destructive")} onClick={() => {}}>
-                                                    {tenant.status === 'suspended' ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
-                                                    {tenant.status === 'suspended' ? "Re-activate Node" : "Suspend Access"}
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        )}
-
-        {showSignups && (
-            <Card className="shadow-xl border-none overflow-hidden transition-all duration-500">
-                <CardHeader className="bg-muted/10 flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle className="text-lg font-black uppercase flex items-center gap-2">
-                            <UserPlus className="h-5 w-5 text-primary" />
-                            New Signups
-                        </CardTitle>
-                        <CardDescription>Latest identity registrations.</CardDescription>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setShowSignups(false)}>
-                        <EyeOff className="h-4 w-4" />
-                    </Button>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <ScrollArea className="h-[450px]">
-                        <div className="divide-y">
-                            {recentUsers.map(user => (
-                                <div key={user.id} className="p-4 hover:bg-muted/5 transition-colors cursor-pointer" onClick={() => setSelectedUserId(user.id)}>
-                                    <div className="flex items-center justify-between gap-3">
-                                        <Avatar className="h-8 w-8 shrink-0">
-                                            <AvatarImage src={user.avatarUrl} />
-                                            <AvatarFallback className="text-[10px]">{user.name?.substring(0,2).toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="overflow-hidden flex-grow">
-                                            <p className="font-bold text-xs truncate">{user.name || 'Unnamed'}</p>
-                                            <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
-                                        </div>
-                                        <div className="text-right shrink-0">
-                                            <Badge variant="secondary" className="text-[7px] font-black uppercase mb-1">
-                                                {user.tenantId ? tenants?.find(t => t.id === user.tenantId)?.name?.slice(0, 10) : 'Pending'}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </ScrollArea>
-                </CardContent>
-            </Card>
-        )}
+        <SummaryCard title="Active Nodes" value={isTenantsLoading ? '...' : tenants?.length || 0} icon={Building2} description="Business entities" />
+        <SummaryCard title="Global Identity" value={isUsersLoading ? '...' : users?.length || 0} icon={Users} description="Registered accounts" />
+        <SummaryCard title="Cumulative GMV" value={new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 }).format(globalSales?.reduce((acc, s) => acc + (s.amount || 0), 0) || 0)} icon={CreditCard} description="Platform volume" />
+        <SummaryCard title="Health" value="OPTIMAL" icon={Zap} description="Services nominal" />
       </div>
 
       <Tabs defaultValue="activity" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6 h-12 p-1 bg-muted/50 border shadow-inner">
-          <TabsTrigger value="activity" className="font-black uppercase tracking-widest text-[10px]">Global Network Trace (Audit)</TabsTrigger>
-          <TabsTrigger value="registry" className="font-black uppercase tracking-widest text-[10px]">Global Account Registry</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 mb-6 h-12 p-1 bg-muted/50 border shadow-inner">
+          <TabsTrigger value="activity" className="font-black uppercase tracking-widest text-[10px]">Global Trace</TabsTrigger>
+          <TabsTrigger value="registry" className="font-black uppercase tracking-widest text-[10px]">Accounts</TabsTrigger>
+          <TabsTrigger value="maintenance" className="font-black uppercase tracking-widest text-[10px] text-destructive">Maintenance</TabsTrigger>
         </TabsList>
         
         <TabsContent value="activity">
@@ -413,17 +330,16 @@ export default function PlatformCommandCenter() {
         <TabsContent value="registry">
             <Card className="shadow-2xl border-none overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b p-6">
-                    <CardTitle className="text-xl font-black uppercase tracking-tight">Identity Registry (All Accounts)</CardTitle>
-                    <CardDescription>Direct management of every unique identity in the cloud node.</CardDescription>
+                    <CardTitle className="text-xl font-black uppercase tracking-tight">Account Registry</CardTitle>
+                    <CardDescription>Direct oversight of all node identities.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead className="font-black uppercase text-[10px] py-4 px-6">Identified User</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Current Workspace</TableHead>
                                 <TableHead className="font-black uppercase text-[10px]">Access Role</TableHead>
-                                <TableHead className="font-black uppercase text-[10px]">Cloud Status</TableHead>
+                                <TableHead className="font-black uppercase text-[10px]">Status</TableHead>
                                 <TableHead className="text-right font-black uppercase text-[10px] px-6">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -437,17 +353,16 @@ export default function PlatformCommandCenter() {
                                                 <AvatarFallback className="text-[10px]">{u.name?.substring(0,2).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <div className="font-bold text-sm">{u.name || 'Unnamed Account'}</div>
+                                                <div className="font-bold text-sm">{u.name || 'Unnamed'}</div>
                                                 <div className="text-[10px] text-muted-foreground">{u.email}</div>
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell><span className="text-xs font-medium">{tenants?.find(t => t.id === u.tenantId)?.name || 'Detached Node'}</span></TableCell>
                                     <TableCell><Badge variant="outline" className="uppercase text-[9px] font-black">{u.role}</Badge></TableCell>
                                     <TableCell><Badge variant={u.status === 'suspended' ? 'destructive' : 'secondary'} className="uppercase text-[9px] font-black">{u.status || 'Active'}</Badge></TableCell>
                                     <TableCell className="text-right px-6">
                                         <Button variant="ghost" size="sm" className="font-black uppercase text-[10px] h-8" onClick={() => setSelectedUserId(u.id)}>
-                                            <Eye className="h-3 w-3 mr-1.5" /> Open Profile
+                                            <Eye className="h-3 w-3 mr-1.5" /> Manage
                                         </Button>
                                     </TableCell>
                                 </TableRow>
@@ -456,6 +371,78 @@ export default function PlatformCommandCenter() {
                     </Table>
                 </CardContent>
             </Card>
+        </TabsContent>
+
+        <TabsContent value="maintenance">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="border-2 border-dashed border-orange-200 bg-orange-50/30">
+                    <CardHeader>
+                        <CardTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2 text-orange-700">
+                            <Users className="h-6 w-6" /> Staff Purge
+                        </CardTitle>
+                        <CardDescription className="text-orange-600/70 font-bold text-[10px] uppercase">Identity Sanitation Protocol</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-sm font-medium leading-relaxed text-orange-800">
+                            Removes all staff members and workspace admins from the database. 
+                            <strong> Only Super Admins (Master Keys) will remain.</strong>
+                        </p>
+                        <div className="p-4 bg-white/50 rounded-xl border border-orange-100 space-y-2">
+                             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-orange-700">
+                                <ShieldCheck className="h-3 w-3" /> Master Keys Preserved
+                             </div>
+                             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-orange-700">
+                                <ShieldCheck className="h-3 w-3" /> Auth sessions invalidated
+                             </div>
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        <Button 
+                            variant="outline" 
+                            className="w-full h-12 font-black uppercase tracking-widest text-xs border-orange-300 text-orange-700 hover:bg-orange-100"
+                            onClick={handlePurgeAllUsers}
+                            disabled={isResetting}
+                        >
+                            {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            Purge Standard Users
+                        </Button>
+                    </CardFooter>
+                </Card>
+
+                <Card className="border-2 border-dashed border-red-200 bg-red-50/30">
+                    <CardHeader>
+                        <CardTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2 text-red-700">
+                            <AlertOctagon className="h-6 w-6" /> Nuclear Reset
+                        </CardTitle>
+                        <CardDescription className="text-red-600/70 font-bold text-[10px] uppercase">Full System Wipe</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-sm font-medium leading-relaxed text-red-800">
+                            Permanently erases all inventory, sales, clients, companies, and non-master users. 
+                            <strong> This action is irreversible.</strong>
+                        </p>
+                        <div className="p-4 bg-white/50 rounded-xl border border-red-100 space-y-2">
+                             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-red-700">
+                                <Trash2 className="h-3 w-3" /> ALL Collections wiped
+                             </div>
+                             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-red-700">
+                                <RotateCcw className="h-3 w-3" /> Return to Factory state
+                             </div>
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        <Button 
+                            variant="destructive" 
+                            className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-xl"
+                            onClick={handleFullSystemReset}
+                            disabled={isResetting}
+                        >
+                            {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
+                            Execute Nuclear Wipe
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </div>
         </TabsContent>
       </Tabs>
 
@@ -466,80 +453,72 @@ export default function PlatformCommandCenter() {
                 <SheetTitle>User Identity Details</SheetTitle>
                 <SheetDescription>Platform identity metadata and technician controls.</SheetDescription>
             </SheetHeader>
-            {activeDetailUser && (
-                <div className="flex flex-col h-full bg-background overflow-hidden">
-                    <div className="p-8 bg-primary text-primary-foreground relative">
-                        <div className="absolute top-0 right-0 p-8 opacity-10">
-                            <ShieldCheck className="h-24 w-24" />
-                        </div>
-                        <Badge variant="secondary" className="font-black uppercase text-[10px] tracking-widest bg-white/20 text-white border-none mb-4">Identity Snapshot</Badge>
-                        <div className="flex items-center gap-4">
-                             <Avatar className="h-20 w-20 ring-4 ring-white/20">
-                                <AvatarImage src={activeDetailUser.avatarUrl} />
-                                <AvatarFallback className="text-2xl bg-white/10">{activeDetailUser.name?.substring(0,2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div className="space-y-1">
-                                <h2 className="text-3xl font-black uppercase tracking-tighter">{activeDetailUser.name}</h2>
-                                <p className="text-sm font-bold opacity-80">{activeDetailUser.email}</p>
+            {users?.find(u => u.id === selectedUserId) && (
+                (() => {
+                    const activeDetailUser = users?.find(u => u.id === selectedUserId)!;
+                    return (
+                        <div className="flex flex-col h-full bg-background overflow-hidden">
+                            <div className="p-8 bg-primary text-primary-foreground relative">
+                                <div className="absolute top-0 right-0 p-8 opacity-10">
+                                    <ShieldCheck className="h-24 w-24" />
+                                </div>
+                                <Badge variant="secondary" className="font-black uppercase text-[10px] tracking-widest bg-white/20 text-white border-none mb-4">Identity Snapshot</Badge>
+                                <div className="flex items-center gap-4">
+                                    <Avatar className="h-20 w-20 ring-4 ring-white/20">
+                                        <AvatarImage src={activeDetailUser.avatarUrl} />
+                                        <AvatarFallback className="text-2xl bg-white/10">{activeDetailUser.name?.substring(0,2).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="space-y-1">
+                                        <h2 className="text-3xl font-black uppercase tracking-tighter">{activeDetailUser.name}</h2>
+                                        <p className="text-sm font-bold opacity-80">{activeDetailUser.email}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <ScrollArea className="flex-grow p-8 space-y-8">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Card className="bg-muted/20 border-none">
+                                        <CardContent className="pt-6">
+                                            <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Access Role</p>
+                                            <p className="text-lg font-black uppercase">{activeDetailUser.role}</p>
+                                        </CardContent>
+                                    </Card>
+                                    <Card className="bg-muted/20 border-none">
+                                        <CardContent className="pt-6">
+                                            <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Identity Status</p>
+                                            <Badge variant={activeDetailUser.status === 'suspended' ? 'destructive' : 'default'} className="font-black uppercase text-[10px]">{activeDetailUser.status || 'Active'}</Badge>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+
+                                <div className="space-y-4 pt-4">
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                        <ShieldAlert className="h-4 w-4" /> Technician Controls
+                                    </h3>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        <Button 
+                                            variant="outline" 
+                                            className={cn("justify-start h-12 font-bold", activeDetailUser.status === 'suspended' ? "text-green-600" : "text-orange-600")}
+                                            onClick={() => handleUpdateUserStatus(activeDetailUser.id, activeDetailUser.status === 'suspended' ? 'active' : 'suspended')}
+                                        >
+                                            {activeDetailUser.status === 'suspended' ? <Unlock className="h-4 w-4 mr-3" /> : <Lock className="h-4 w-4 mr-3" />}
+                                            {activeDetailUser.status === 'suspended' ? "Authorize Platform Access" : "Suspend Account Access"}
+                                        </Button>
+                                        <Button variant="ghost" className="justify-start h-12 font-bold text-destructive hover:bg-destructive/10" onClick={() => handleNuclearDelete(activeDetailUser.id)}>
+                                            <Trash2 className="h-4 w-4 mr-3" /> Nuclear Scrub (Delete Metadata)
+                                        </Button>
+                                    </div>
+                                </div>
+                            </ScrollArea>
+                            
+                            <div className="p-4 border-t bg-muted/10 text-center">
+                                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">
+                                    Authorized Node ID: {activeDetailUser.id}
+                                </p>
                             </div>
                         </div>
-                    </div>
-
-                    <ScrollArea className="flex-grow p-8 space-y-8">
-                        <div className="grid grid-cols-2 gap-4">
-                            <Card className="bg-muted/20 border-none">
-                                <CardContent className="pt-6">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Access Role</p>
-                                    <p className="text-lg font-black uppercase">{activeDetailUser.role}</p>
-                                </CardContent>
-                            </Card>
-                            <Card className="bg-muted/20 border-none">
-                                <CardContent className="pt-6">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Identity Status</p>
-                                    <Badge variant={activeDetailUser.status === 'suspended' ? 'destructive' : 'default'} className="font-black uppercase text-[10px]">{activeDetailUser.status || 'Active'}</Badge>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        <div className="space-y-4 pt-4">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                <Building2 className="h-4 w-4" /> Workspace Association
-                            </h3>
-                            <div className="p-4 rounded-xl border bg-muted/10">
-                                <p className="text-sm font-bold">{tenants?.find(t => t.id === activeDetailUser.tenantId)?.name || 'Global Platform'}</p>
-                                <p className="text-[10px] text-muted-foreground mt-1 uppercase font-mono">Node ID: {activeDetailUser.tenantId || 'ROOT'}</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4 pt-4">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                <ShieldAlert className="h-4 w-4" /> Technician Controls
-                            </h3>
-                            <div className="grid grid-cols-1 gap-2">
-                                <Button variant="outline" className="justify-start h-12 font-bold" onClick={() => { setMsgTargetTenantId(activeDetailUser.tenantId || ''); setMsgTargetUserId(activeDetailUser.id); setIsMessageOpen(true); }}>
-                                    <Mail className="h-4 w-4 mr-3 text-primary" /> Transmission Update to User
-                                </Button>
-                                <Button 
-                                    variant="outline" 
-                                    className={cn("justify-start h-12 font-bold", activeDetailUser.status === 'suspended' ? "text-green-600" : "text-orange-600")}
-                                    onClick={() => handleUpdateUserStatus(activeDetailUser.id, activeDetailUser.status === 'suspended' ? 'active' : 'suspended')}
-                                >
-                                    {activeDetailUser.status === 'suspended' ? <Unlock className="h-4 w-4 mr-3" /> : <Lock className="h-4 w-4 mr-3" />}
-                                    {activeDetailUser.status === 'suspended' ? "Authorize Platform Access" : "Suspend Account Access"}
-                                </Button>
-                                <Button variant="ghost" className="justify-start h-12 font-bold text-destructive hover:bg-destructive/10" onClick={() => handleNuclearDelete(activeDetailUser.id)}>
-                                    <Trash2 className="h-4 w-4 mr-3" /> Nuclear Scrub (Delete Metadata)
-                                </Button>
-                            </div>
-                        </div>
-                    </ScrollArea>
-                    
-                    <div className="p-4 border-t bg-muted/10 text-center">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">
-                            Authorized Node ID: {activeDetailUser.id}
-                        </p>
-                    </div>
-                </div>
+                    );
+                })()
             )}
         </SheetContent>
       </Sheet>
