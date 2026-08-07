@@ -19,8 +19,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { NotificationCenter } from '@/components/layout/notification-center';
 
-const PUBLIC_PATHS = ['/', '/login', '/signup'];
-const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/legal'];
+const AUTH_PATHS = ['/login', '/signup'];
 
 function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { children: React.ReactNode, userProfile: AppUser | null, isFastTrackAdmin: boolean }) {
     const { user } = useUser();
@@ -112,7 +111,7 @@ function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { chil
                   <Link href="/profile">
                     <DropdownMenuItem>
                       <UserIcon className="mr-2 h-4 w-4" />
-                      <span>{isSuperAdmin ? "System Identity" : "Workspace Profile"}</span>
+                      <span>{isSuperAdmin ? "System Identity" : "Shop Settings"}</span>
                     </DropdownMenuItem>
                   </Link>
                   <DropdownMenuSeparator />
@@ -140,7 +139,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   const auth = useAuth();
 
-  const isPublicPath = PUBLIC_PATHS.includes(pathname) || PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix));
+  const isAuthPath = AUTH_PATHS.includes(pathname);
   const isFastTrackAdmin = useMemo(() => isMasterKey(user?.email), [user?.email]);
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -148,14 +147,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isUserLoading) {
-      if (!user && !isPublicPath) {
+      if (!user && !isAuthPath) {
         router.push('/login');
-      } else if (user && (pathname === '/login' || pathname === '/signup')) {
+      } else if (user && isAuthPath) {
         if (isFastTrackAdmin) router.push('/admin');
         else router.push('/');
       }
     }
-  }, [user, isUserLoading, isFastTrackAdmin, userProfile, router, pathname, isPublicPath]);
+  }, [user, isUserLoading, isFastTrackAdmin, userProfile, router, pathname, isAuthPath]);
 
   if (isUserLoading) {
     return (
@@ -163,22 +162,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         <Loader2 className="w-6 h-6 text-primary animate-spin opacity-20" />
       </div>
     );
-  }
-
-  // Handle Logged In user at Root path
-  if (user && pathname === '/') {
-     if (isProfileLoading && !isFastTrackAdmin) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center bg-background">
-                <Loader2 className="w-6 h-6 text-primary animate-spin opacity-20" />
-            </div>
-        );
-    }
-    return <AuthenticatedLayout userProfile={userProfile || null} isFastTrackAdmin={isFastTrackAdmin}>{children}</AuthenticatedLayout>;
-  }
-
-  if (isPublicPath && !user) {
-    return <>{children}</>;
   }
 
   if (user) {
@@ -190,7 +173,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
 
-    // TERMINATION CHECK
     if (userProfile?.status === 'suspended') {
         return (
             <div className="flex h-screen w-full flex-col items-center justify-center p-8 text-center space-y-6 bg-background">
@@ -200,7 +182,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
                 <div className="max-w-md space-y-2">
                     <h1 className="text-3xl font-black uppercase tracking-tighter">Access Terminated</h1>
                     <p className="text-muted-foreground">
-                        Your account has been suspended by your workspace administrator. Please contact your IT department for resolution.
+                        Your account has been suspended by the shop administrator.
                     </p>
                 </div>
                 <Button onClick={() => auth.signOut()} variant="outline" className="font-bold">Return to Login</Button>
@@ -209,6 +191,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
 
     return <AuthenticatedLayout userProfile={userProfile || null} isFastTrackAdmin={isFastTrackAdmin}>{children}</AuthenticatedLayout>;
+  }
+
+  // Not logged in and on an auth path
+  if (isAuthPath) {
+    return <>{children}</>;
   }
 
   return null;

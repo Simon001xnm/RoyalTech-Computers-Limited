@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -19,7 +18,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LandingPage } from '@/components/marketing/landing-page';
 import { PosClient } from './pos/components/pos-client';
 import { RecentSales } from './pos/components/recent-sales';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,8 +26,8 @@ import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 import type { Sale, Document as AppDocument } from '@/types';
 
 /**
- * @fileOverview Main Shop Dashboard
- * Optimized for high-density mobile-first business tracking.
+ * @fileOverview Main Business Dashboard (Standalone)
+ * Optimized for high-density business tracking.
  */
 export default function DashboardPage() {
   const { tenant, isLoading: isSaaSLoading } = useSaaS();
@@ -90,9 +88,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
-    return <LandingPage />;
-  }
+  // AuthGuard handles redirection to /login if !user
 
   const showMetricsLoading = isSaaSLoading || salesLoading;
 
@@ -102,7 +98,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
             <h1 className="text-xl font-black uppercase tracking-tight">Dashboard</h1>
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 font-bold h-5 text-[8px] uppercase">
-                <Zap className="h-2 w-2 mr-1 fill-green-700" /> Live Node
+                <Zap className="h-2 w-2 mr-1 fill-green-700" /> System Online
             </Badge>
         </div>
       </div>
@@ -115,27 +111,25 @@ export default function DashboardPage() {
         ) : (
             <>
                 <SummaryCard 
-                  title="Today" 
+                  title="Revenue Today" 
                   value={formatCurrency(stats.day)} 
                   icon={Activity} 
                   className="border-l-4 border-l-blue-500 shadow-sm"
-                  description="Daily Revenue"
                 />
                 <SummaryCard 
-                  title="Served" 
+                  title="Daily Clients" 
                   value={stats.customersToday} 
                   icon={Users} 
                   className="border-l-4 border-l-orange-500 shadow-sm"
-                  description="Transactions Today"
                 />
                 <SummaryCard 
-                  title="Week" 
+                  title="Weekly Volume" 
                   value={formatCurrency(stats.week)} 
                   icon={TrendingUp} 
                   className="border-l-4 border-l-purple-500 shadow-sm"
                 />
                 <SummaryCard 
-                  title="Month" 
+                  title="Monthly Target" 
                   value={formatCurrency(stats.month)} 
                   icon={BarChart3} 
                   className="border-l-4 border-l-emerald-500 shadow-sm"
@@ -165,7 +159,7 @@ export default function DashboardPage() {
       <Dialog open={!!viewingSale} onOpenChange={(o) => !o && setViewingSale(null)}>
         <DialogContent className="max-w-4xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
           <DialogHeader className="p-4 border-b bg-white no-print">
-            <DialogTitle className="text-lg font-black uppercase">Paper View</DialogTitle>
+            <DialogTitle className="text-lg font-black uppercase">Receipt Viewer</DialogTitle>
           </DialogHeader>
           <div className="flex-grow overflow-auto bg-slate-400/20 p-2 md:p-8 flex justify-center">
             <div className="bg-white shadow-2xl overflow-hidden scale-[0.4] sm:scale-[0.6] md:scale-100 origin-top" style={{ width: '210mm', minHeight: '297mm' }}>
@@ -184,7 +178,7 @@ export default function DashboardPage() {
           </div>
           <div className="p-4 border-t flex justify-end gap-3 bg-white no-print">
             <Button variant="outline" onClick={() => setViewingSale(null)} className="font-bold">Close</Button>
-            <Button onClick={() => window.print()} className="font-black uppercase">Print</Button>
+            <Button onClick={() => window.print()} className="font-black uppercase">Print Receipt</Button>
           </div>
         </DialogContent>
       </Dialog>

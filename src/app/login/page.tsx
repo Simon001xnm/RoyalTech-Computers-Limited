@@ -7,14 +7,12 @@ import { Label } from '@/components/ui/label';
 import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignIn, initiateGoogleSignIn, initiatePasswordReset } from '@/firebase/non-blocking-login';
-import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ShieldCheck, Zap, Eye, EyeOff } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
 
 /**
- * @fileOverview Floating Login Form
- * Uses simple English and a clean, high-contrast container.
+ * @fileOverview Standalone Login Form
  */
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -94,19 +92,14 @@ export default function LoginPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-6 font-sans">
       <div className="w-full max-w-[420px] animate-in fade-in zoom-in-95 duration-500">
         
-        {/* Logo Container */}
         <div className="flex flex-col items-center mb-8">
-            <Link 
-                href="/" 
-                className="w-14 h-14 bg-white rounded-2xl shadow-md flex items-center justify-center p-3 mb-6 border border-black/5 hover:scale-105 transition-transform"
-            >
+            <div className="w-14 h-14 bg-white rounded-2xl shadow-md flex items-center justify-center p-3 mb-6 border border-black/5">
                 <Zap className="w-full h-full text-primary fill-primary" />
-            </Link>
-            <h1 className="text-2xl font-black uppercase tracking-tighter text-foreground leading-none">Welcome back</h1>
-            <p className="text-xs text-muted-foreground font-bold mt-2 uppercase tracking-widest">Login to your shop</p>
+            </div>
+            <h1 className="text-2xl font-black uppercase tracking-tighter text-foreground leading-none">Business Login</h1>
+            <p className="text-xs text-muted-foreground font-bold mt-2 uppercase tracking-widest">Standalone Management Suite</p>
         </div>
 
-        {/* Floating Card */}
         <div className="bg-white rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-black/5 p-8 md:p-10 space-y-8">
           
           <Button 
@@ -126,7 +119,7 @@ export default function LoginPage() {
 
           <div className="relative text-center">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-black/5" /></div>
-            <span className="relative bg-white px-4 text-[10px] font-black uppercase text-muted-foreground tracking-widest">Or use email</span>
+            <span className="relative bg-white px-4 text-[10px] font-black uppercase text-muted-foreground tracking-widest">Or credentials</span>
           </div>
 
           <div className="space-y-4">
@@ -134,7 +127,7 @@ export default function LoginPage() {
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Email</Label>
                 <Input 
                     type="email" 
-                    placeholder="you@email.com" 
+                    placeholder="name@company.com" 
                     value={email} 
                     onChange={(e) => setEmail(e.target.value)} 
                     className="h-11 rounded-xl bg-muted/20 border-none shadow-inner" 
@@ -171,25 +164,20 @@ export default function LoginPage() {
 
             {isMasterInput && (
               <div className="flex items-center gap-2 p-2 bg-primary/5 border border-primary/20 rounded-lg text-primary text-[9px] font-black uppercase">
-                <ShieldCheck className="h-3 w-3" /> System Admin Session
+                <ShieldCheck className="h-3 w-3" /> Root Access Mode
               </div>
             )}
 
             <Button onClick={handleSignIn} className="w-full h-12 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 bg-primary text-primary-foreground" disabled={isProcessing}>
-                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log in'}
+                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log in to Node'}
             </Button>
           </div>
         </div>
 
         <div className="mt-8 text-center space-y-4">
             <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
-                Need an account? <Link href="/signup" className="text-accent font-black uppercase tracking-widest hover:underline">Sign Up Now</Link>
+                Need to initialize a workspace? <button onClick={() => router.push('/signup')} className="text-accent font-black uppercase tracking-widest hover:underline">Register New Admin</button>
             </p>
-            <div className="pt-4 border-t border-black/5">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                    Protected by secure node encryption
-                </p>
-            </div>
         </div>
       </div>
     </div>

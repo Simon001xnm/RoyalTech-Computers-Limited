@@ -12,11 +12,9 @@ import { doc, setDoc, getDocs, collection, query, where, deleteDoc } from 'fireb
 import { Loader2, Zap, Eye, EyeOff } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
 import { initiateGoogleSignIn } from '@/firebase/non-blocking-login';
-import Link from 'next/link';
 
 /**
- * @fileOverview Floating Signup Form
- * Optimized for ease of use and professional high-contrast aesthetic.
+ * @fileOverview Standalone Signup Form
  */
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
@@ -90,7 +88,7 @@ export default function SignUpPage() {
             await deleteDoc(doc(firestore, 'users', snap.docs[0].id));
         }
 
-        toast({ title: 'Welcome!', description: 'Your account is ready.' });
+        toast({ title: 'Welcome!', description: 'Account created.' });
         router.push('/');
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Signup error', description: error.message });
@@ -121,19 +119,14 @@ export default function SignUpPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-6 font-sans py-12">
       <div className="w-full max-w-[420px] animate-in fade-in slide-in-from-bottom-4 duration-700">
         
-        {/* Logo Container */}
         <div className="flex flex-col items-center mb-8">
-            <Link 
-                href="/" 
-                className="w-14 h-14 bg-white rounded-2xl shadow-md flex items-center justify-center p-3 mb-6 border border-black/5 hover:scale-105 transition-transform"
-            >
+            <div className="w-14 h-14 bg-white rounded-2xl shadow-md flex items-center justify-center p-3 mb-6 border border-black/5">
                 <Zap className="w-full h-full text-primary fill-primary" />
-            </Link>
-            <h1 className="text-2xl font-black uppercase tracking-tighter text-foreground leading-none">Get Started</h1>
-            <p className="text-xs text-muted-foreground font-bold mt-2 uppercase tracking-widest">Create your account</p>
+            </div>
+            <h1 className="text-2xl font-black uppercase tracking-tighter text-foreground leading-none">Node Setup</h1>
+            <p className="text-xs text-muted-foreground font-bold mt-2 uppercase tracking-widest">Register Administrative Identity</p>
         </div>
 
-        {/* Floating Card */}
         <div className="bg-white rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-black/5 p-8 md:p-10 space-y-8">
           
           <Button 
@@ -148,7 +141,7 @@ export default function SignUpPage() {
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.16H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.84l3.66-2.75z" fill="#FBBC05" />
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.16l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
-            <span>Join with Google</span>
+            <span>Register via Google</span>
           </Button>
 
           <div className="relative text-center">
@@ -158,22 +151,22 @@ export default function SignUpPage() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Full Name</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Legal Name</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} className="h-11 rounded-xl bg-muted/20 border-none shadow-inner" placeholder="e.g. John Doe" />
             </div>
             <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Email</Label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 rounded-xl bg-muted/20 border-none shadow-inner" placeholder="name@email.com" />
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Work Email</Label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 rounded-xl bg-muted/20 border-none shadow-inner" placeholder="name@company.com" />
             </div>
             <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">New Password</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">System Password</Label>
                 <div className="relative">
                     <Input 
                         type={showPassword ? "text" : "password"} 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
                         className="h-11 rounded-xl bg-muted/20 border-none shadow-inner pr-10" 
-                        placeholder="Min 6 characters" 
+                        placeholder="Min 6 chars" 
                     />
                     <button
                         type="button"
@@ -185,14 +178,14 @@ export default function SignUpPage() {
                 </div>
             </div>
             <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Repeat Password</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Confirm Access Key</Label>
                 <div className="relative">
                     <Input 
                         type={showConfirmPassword ? "text" : "password"} 
                         value={confirmPassword} 
                         onChange={(e) => setConfirmPassword(e.target.value)} 
                         className="h-11 rounded-xl bg-muted/20 border-none shadow-inner pr-10" 
-                        placeholder="Match your password" 
+                        placeholder="Match password" 
                     />
                     <button
                         type="button"
@@ -205,20 +198,15 @@ export default function SignUpPage() {
             </div>
 
             <Button onClick={handleSignUp} className="w-full h-12 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={isLoading}>
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create Account'}
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Register Administrator'}
             </Button>
           </div>
         </div>
 
         <div className="mt-8 text-center space-y-4">
             <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
-                Have an account? <Link href="/login" className="text-primary font-black uppercase tracking-widest hover:underline">Log in here</Link>
+                Already registered? <button onClick={() => router.push('/login')} className="text-primary font-black uppercase tracking-widest hover:underline">Log in here</button>
             </p>
-            <div className="pt-4 border-t border-black/5">
-                <p className="text-[9px] font-medium text-muted-foreground/60 leading-relaxed px-6">
-                    By joining, you agree to our <Link href="/legal/terms" className="underline">Terms</Link> and <Link href="/legal/privacy" className="underline">Privacy Policy</Link>.
-                </p>
-            </div>
         </div>
       </div>
     </div>
