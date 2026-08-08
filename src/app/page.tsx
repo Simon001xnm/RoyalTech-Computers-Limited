@@ -18,7 +18,9 @@ import {
     ArrowRight,
     TrendingUp,
     Wallet,
-    CreditCard
+    CreditCard,
+    Landmark,
+    Banknote
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -98,21 +100,24 @@ export default function DashboardPage() {
         try { return isWithinInterval(parseISO(e.date), { start: monthStart, end: now }); } catch { return false; }
     }).reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
 
-    // Monthly Settlements Breakdown
-    const mpesaSales = monthSales.reduce((acc, s) => {
-        const mpesaAmt = (s.payments || [])
-            .filter((p: any) => p.method === 'M-Pesa')
-            .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
-        return acc + (mpesaAmt || (s.paymentMethod === 'M-Pesa' ? (Number(s.amount) || Number(s.total) || 0) : 0));
-    }, 0);
+    // Monthly Settlements Breakdown (Expanded)
+    const calculateModeTotal = (mode: string) => {
+        return monthSales.reduce((acc, s) => {
+            const modeAmt = (s.payments || [])
+                .filter((p: any) => p.method === mode)
+                .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+            
+            // Handle legacy simple paymentMethod if payments array is missing
+            const legacyAmt = s.paymentMethod === mode ? (Number(s.amount) || Number(s.total) || 0) : 0;
+            
+            return acc + (modeAmt || legacyAmt);
+        }, 0);
+    };
 
-    const cashSales = monthSales.reduce((acc, s) => {
-        const cashAmt = (s.payments || [])
-            .filter((p: any) => p.method === 'Cash')
-            .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
-        return acc + (cashAmt || (s.paymentMethod === 'Cash' ? (Number(s.amount) || Number(s.total) || 0) : 0));
-    }, 0);
-
+    const mpesaSales = calculateModeTotal('M-Pesa');
+    const cashSales = calculateModeTotal('Cash');
+    const bankSales = calculateModeTotal('Bank');
+    const cardSales = calculateModeTotal('Card');
     const creditSales = monthSales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
 
     // Debts & Overdue (Synced with Invoices)
@@ -148,7 +153,9 @@ export default function DashboardPage() {
         totalMonthProfit, 
         monthExp,
         mpesaSales, 
-        cashSales, 
+        cashSales,
+        bankSales,
+        cardSales,
         creditSales,
         totalOutstandingDebt, 
         unpaidInvoicesCount,
@@ -291,27 +298,65 @@ export default function DashboardPage() {
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
                 <CardTitle className="text-xs font-black uppercase tracking-widest">Monthly Settlements</CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-5 flex-grow">
-                <div className="flex justify-between items-end border-b pb-4">
-                    <div>
-                        <p className="text-[10px] font-black uppercase text-green-600">M-Pesa / Mobile</p>
-                        <p className="text-2xl font-black">{formatKes(stats.mpesaSales)}</p>
+            <CardContent className="p-6 space-y-4 flex-grow">
+                {/* M-Pesa Row */}
+                <div className="flex justify-between items-end border-b pb-3">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-green-100 p-1.5 rounded-lg"><Wallet className="h-3.5 w-3.5 text-green-700" /></div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase text-green-600">M-Pesa / Mobile</p>
+                            <p className="text-xl font-black">{formatKes(stats.mpesaSales)}</p>
+                        </div>
                     </div>
-                    <Badge className="bg-green-50 text-green-700 border-green-200 uppercase text-[8px] font-black h-5">Verified</Badge>
+                    <Badge className="bg-green-50 text-green-700 border-green-200 uppercase text-[7px] font-black h-4">Verified</Badge>
                 </div>
-                <div className="flex justify-between items-end border-b pb-4">
-                    <div>
-                        <p className="text-[10px] font-black uppercase text-primary">Cash Settlements</p>
-                        <p className="text-2xl font-black">{formatKes(stats.cashSales)}</p>
+
+                {/* Bank Row */}
+                <div className="flex justify-between items-end border-b pb-3">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-blue-100 p-1.5 rounded-lg"><Landmark className="h-3.5 w-3.5 text-blue-700" /></div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase text-blue-600">Bank Transfers</p>
+                            <p className="text-xl font-black">{formatKes(stats.bankSales)}</p>
+                        </div>
                     </div>
-                    <Badge variant="outline" className="uppercase text-[8px] font-black h-5">Physical</Badge>
+                    <Badge variant="outline" className="uppercase text-[7px] font-black h-4 border-blue-200 text-blue-600">Account</Badge>
                 </div>
+
+                {/* Card Row */}
+                <div className="flex justify-between items-end border-b pb-3">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-primary/5 p-1.5 rounded-lg"><CreditCard className="h-3.5 w-3.5 text-primary" /></div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase text-primary">Card Terminal</p>
+                            <p className="text-xl font-black">{formatKes(stats.cardSales)}</p>
+                        </div>
+                    </div>
+                    <Badge variant="outline" className="uppercase text-[7px] font-black h-4">Electronic</Badge>
+                </div>
+
+                {/* Cash Row */}
+                <div className="flex justify-between items-end border-b pb-3">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-muted p-1.5 rounded-lg"><Banknote className="h-3.5 w-3.5 text-muted-foreground" /></div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase text-muted-foreground">Cash Settlement</p>
+                            <p className="text-xl font-black">{formatKes(stats.cashSales)}</p>
+                        </div>
+                    </div>
+                    <Badge variant="outline" className="uppercase text-[7px] font-black h-4 opacity-50">Physical</Badge>
+                </div>
+
+                {/* Credit/Debt Row */}
                 <div className="flex justify-between items-end">
-                    <div>
-                        <p className="text-[10px] font-black uppercase text-red-500">Unpaid Balances</p>
-                        <p className="text-2xl font-black">{formatKes(stats.creditSales)}</p>
+                    <div className="flex items-center gap-3">
+                        <div className="bg-red-100 p-1.5 rounded-lg"><Clock className="h-3.5 w-3.5 text-red-600" /></div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase text-red-500">Unpaid Balances</p>
+                            <p className="text-xl font-black">{formatKes(stats.creditSales)}</p>
+                        </div>
                     </div>
-                    <Badge variant="destructive" className="uppercase text-[8px] font-black h-5">Invoiced</Badge>
+                    <Badge variant="destructive" className="uppercase text-[7px] font-black h-4">Invoiced</Badge>
                 </div>
             </CardContent>
           </Card>
@@ -328,7 +373,7 @@ export default function DashboardPage() {
                     </div>
                 </div>
                 <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>This Month (Target)</span><span>{formatKes(stats.totalMonthSales)}</span></div>
+                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>This Month (Current)</span><span>{formatKes(stats.totalMonthSales)}</span></div>
                     <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                         <div className="h-full bg-primary" style={{ width: '85%' }} />
                     </div>
