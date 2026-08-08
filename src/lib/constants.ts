@@ -53,7 +53,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'receivables', href: '/receivables', label: 'Debt Ledger', icon: Wallet },
   
   // FINANCE & AUDIT
-  { id: 'books', href: '/books', label: 'Accounting', icon: BookOpen },
+  { id: 'books', href: '/books', label: 'Expense Feed', icon: BookOpen },
   { id: 'reports', href: '/reports', label: 'P&L Reports', icon: LineChart },
   { id: 'audit', href: '/audit', label: 'Audit Trail', icon: History },
   

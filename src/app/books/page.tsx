@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { AccountingClient } from './components/accounting-client';
 
 export const metadata: Metadata = {
-  title: 'Accounting',
+  title: 'Expense Feed',
   description: 'Manage sales, expenses, and financial health for your workspace.',
 };
 
