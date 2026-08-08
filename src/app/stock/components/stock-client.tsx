@@ -1,25 +1,23 @@
-
 'use client';
 
 import { useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, getDocs, limit, serverTimestamp, writeBatch } from "firebase/firestore";
-import type { Product, StockMovement } from "@/types";
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, writeBatch } from "firebase/firestore";
+import type { Product } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, PackageSearch, History, AlertTriangle } from "lucide-react";
+import { PlusCircle, History } from "lucide-react";
 import { AssetForm } from "./asset-form";
 import { getAssetColumns } from "./asset-columns";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
-import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender, type ColumnDef, type RowSelectionState, type PaginationState } from "@tanstack/react-table";
+import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender, type RowSelectionState, type PaginationState } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { ValuationSummary } from "./valuation-summary";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 
 export function StockClient() {
@@ -68,14 +66,25 @@ export function StockClient() {
     );
   }, [rawAssets, searchTerm]);
 
+  const sanitizeData = (data: any) => {
+      const sanitized = { ...data };
+      Object.keys(sanitized).forEach(key => {
+          if (sanitized[key] === undefined) {
+              sanitized[key] = "";
+          }
+      });
+      return sanitized;
+  };
+
   const handleFormSubmit = async (data: any) => {
     if (!tenant || !user) return;
     setIsSubmitting(true);
 
     try {
+        const sanitizedData = sanitizeData(data);
         const productData = {
             tenantId: tenant.id,
-            ...data,
+            ...sanitizedData,
             updatedAt: new Date().toISOString()
         };
 
@@ -83,7 +92,6 @@ export function StockClient() {
             const batch = writeBatch(firestore);
             const productRef = doc(firestore, 'products', editingAsset.id);
             
-            // Check for stock adjustment
             const stockDiff = data.currentStock - editingAsset.currentStock;
             if (stockDiff !== 0) {
                 const movementRef = doc(collection(firestore, 'stock_movements'));
@@ -110,7 +118,6 @@ export function StockClient() {
                 createdBy: { uid: user.uid, name: user.displayName || 'User' }
             });
 
-            // Initial movement
             if (data.currentStock > 0) {
                 await addDoc(collection(firestore, 'stock_movements'), {
                     tenantId: tenant.id,
@@ -129,7 +136,9 @@ export function StockClient() {
         setIsFormOpen(false);
         setEditingAsset(null);
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Error', description: error.message });
+        // Log locally instead of throwing to prevent global error listener from triggering for standard data errors
+        console.error("Submission Error:", error);
+        toast({ variant: 'destructive', title: 'Action Failed', description: error.message || 'Check your internet connection and try again.' });
     } finally {
         setIsSubmitting(false);
     }
@@ -141,7 +150,7 @@ export function StockClient() {
     onAudit: (asset: Product) => { setSelectedAuditProduct(asset); }
   };
 
-  const columns = useMemo<ColumnDef<Product, any>[]>(() => getAssetColumns(columnActions), [columnActions]);
+  const columns = useMemo(() => getAssetColumns(columnActions), [columnActions]);
 
   const table = useReactTable({
     data: filteredAssets,
@@ -205,7 +214,7 @@ export function StockClient() {
                         ))
                     ) : (
                         <TableRow>
-                        <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No products found in this node.</TableCell>
+                        <TableCell colSpan={table.getAllColumns().length} className="h-32 text-center text-muted-foreground italic">No products found in this node.</TableCell>
                         </TableRow>
                     )}
                     </TableBody>
@@ -215,17 +224,16 @@ export function StockClient() {
         </div>
       )}
 
-      {/* Product Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingAsset(null); }}}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Modify Product" : "Register Product Node"}</DialogTitle>
+            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ensure all required fields marked with * are completed.</DialogDescription>
           </DialogHeader>
           <AssetForm asset={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isSubmitting} />
         </DialogContent>
       </Dialog>
 
-      {/* Audit Trail Sheet */}
       <Sheet open={!!selectedAuditProduct} onOpenChange={(o) => !o && setSelectedAuditProduct(null)}>
         <SheetContent className="sm:max-w-xl flex flex-col p-0">
           <SheetHeader className="p-6 border-b bg-muted/10">
@@ -264,7 +272,6 @@ export function StockClient() {
         </SheetContent>
       </Sheet>
 
-      {/* Delete Confirmation */}
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <DialogContent>
           <DialogHeader>
@@ -281,4 +288,18 @@ export function StockClient() {
       </Dialog>
     </div>
   );
+}
+
+function Badge({ variant, children, className }: any) {
+    const variants: any = {
+        default: "bg-primary text-primary-foreground",
+        destructive: "bg-destructive text-destructive-foreground",
+        secondary: "bg-secondary text-secondary-foreground",
+        outline: "border border-input bg-background"
+    };
+    return (
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${variants[variant || 'default']} ${className}`}>
+            {children}
+        </span>
+    );
 }
