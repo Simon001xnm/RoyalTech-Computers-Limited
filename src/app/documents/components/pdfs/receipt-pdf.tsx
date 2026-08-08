@@ -1,6 +1,6 @@
 'use client';
 
-import type { Document as AppDocument, SaleItem } from "@/types";
+import type { Document as AppDocument } from "@/types";
 import { format } from "date-fns";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
@@ -29,7 +29,13 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
     address: data.customerAddress || 'Nairobi, Kenya'
   };
 
-  const { items, amount, subtotal, vat, applyVat, previousBalance = 0 } = data;
+  // FIX: Handle different field naming between Documents module and POS module
+  const items = data.items || [];
+  const amountToDisplay = data.amountPaid || data.amount || data.total || 0;
+  const subtotalToDisplay = data.subtotal || data.amount || data.total || 0;
+  const vatToDisplay = data.vat || data.vatAmount || 0;
+  const previousBalance = data.previousBalance || 0;
+  const applyVat = data.applyVat || false;
 
   const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat("en-KE", {
@@ -104,22 +110,24 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                 </tr>
             </thead>
             <tbody>
-                {items?.map((item: SaleItem, idx: number) => {
-                    const rowSubtotal = item.price * item.quantity;
+                {items?.map((item: any, idx: number) => {
+                    // FIX: Handle both 'price' (from Documents) and 'sellingPrice' (from POS)
+                    const unitPrice = item.price || item.sellingPrice || item.unitPrice || 0;
+                    const rowSubtotal = unitPrice * item.quantity;
                     return (
                         <tr key={idx} className="border-b border-gray-100">
                             <td className="py-3 px-3 align-top">
                                 <div className="flex gap-2">
                                     <span className="opacity-50 text-[10px] font-bold">{idx + 1}.</span>
                                     <div>
-                                        <p className="font-bold text-[11px] uppercase">{item.name}</p>
+                                        <p className="font-bold text-[11px] uppercase">{item.name || item.description}</p>
                                         {item.serialNumber && <p className="text-[9px] text-gray-500 mt-0.5 font-mono">S/N: {item.serialNumber}</p>}
                                     </div>
                                 </div>
                             </td>
                             <td className="py-3 text-right text-[10px] font-medium">{applyVat ? '16%' : '0%'}</td>
                             <td className="py-3 text-right text-[10px] font-medium">{item.quantity}</td>
-                            <td className="py-3 text-right text-[10px] font-medium">KES {formatCurrency(item.price)}</td>
+                            <td className="py-3 text-right text-[10px] font-medium">KES {formatCurrency(unitPrice)}</td>
                             <td className="py-3 px-3 text-right text-[10px] font-bold">KES {formatCurrency(rowSubtotal)}</td>
                         </tr>
                     );
@@ -130,7 +138,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
         <div className="flex justify-between items-start mt-6">
             <div className="max-w-[350px]">
                 <p className="text-[10px] font-bold text-black uppercase">
-                    Total in words: {numberToWords(amount)}
+                    Total in words: {numberToWords(amountToDisplay)}
                 </p>
                 <div className="mt-8 p-4 bg-muted/20 border-2 border-dashed rounded-xl">
                     <p className="text-[9px] font-black uppercase opacity-40 mb-2">Verification Notice</p>
@@ -142,17 +150,17 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             <div className="w-[280px] space-y-3">
                 <div className="flex justify-between items-center text-[10px]">
                     <span className="font-bold opacity-60">Subtotal</span>
-                    <span className="font-bold">KES {formatCurrency(subtotal || amount)}</span>
+                    <span className="font-bold">KES {formatCurrency(subtotalToDisplay)}</span>
                 </div>
                 {applyVat && (
                     <div className="flex justify-between items-center text-[10px]">
                         <span className="font-bold opacity-60">VAT (16%)</span>
-                        <span className="font-bold">KES {formatCurrency(vat || 0)}</span>
+                        <span className="font-bold">KES {formatCurrency(vatToDisplay)}</span>
                     </div>
                 )}
                 <div className="pt-3 border-t-2 border-black flex justify-between items-center">
                     <span className="text-[14px] font-black">AMOUNT PAID</span>
-                    <span className="text-xl font-black text-blue-900">KES {formatCurrency(amount)}</span>
+                    <span className="text-xl font-black text-blue-900">KES {formatCurrency(amountToDisplay)}</span>
                 </div>
                 <div className="h-0.5 bg-black w-full mt-[-2px]"></div>
             </div>
