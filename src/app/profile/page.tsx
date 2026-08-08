@@ -13,7 +13,8 @@ import {
     Upload, 
     Settings2, 
     DownloadCloud, 
-    ShieldCheck 
+    ShieldCheck,
+    Building2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
@@ -195,13 +196,13 @@ export default function ProfilePage() {
             <CardHeader className="items-center text-center bg-muted/20 pb-8">
               <div className="relative group cursor-pointer mt-4" onClick={() => logoInputRef.current?.click()}>
                 <Avatar className="h-28 w-28 border-4 border-white shadow-xl bg-white">
-                  {/* Primary Profile Identity: Company Logo */}
+                  {/* UNIFIED IDENTITY: Using company logo as the primary profile image */}
                   <AvatarImage 
                     src={compData.logoUrl || `https://picsum.photos/seed/${authUser?.uid}/128/128`} 
                     className="object-contain p-1"
                   />
-                  <AvatarFallback className="text-2xl font-black uppercase">
-                    {(compData.name || displayName || "U").substring(0, 2)}
+                  <AvatarFallback className="text-2xl font-black uppercase bg-primary text-primary-foreground">
+                    {(compData.name || displayName || "CP").substring(0, 2)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
@@ -220,15 +221,12 @@ export default function ProfilePage() {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="p-0 border-t">
-               <div className="p-4 bg-muted/5">
-                  <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest text-center mb-3">Personal Avatar Overlay</p>
-                  <div className="grid grid-cols-5 gap-1">
-                    {placeholderAvatars.avatars.map((av) => (
-                    <button key={av.id} onClick={() => handleAvatarSelect(av.url)} className={cn("aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-all", avatarUrl === av.url ? "border-primary" : "")}>
-                        <img src={av.url} className="w-full h-full object-cover" alt="avatar" />
-                    </button>
-                    ))}
+            <CardContent className="p-6 border-t space-y-4">
+               <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-xl border border-primary/10">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  <div className="space-y-0.5">
+                    <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Shared Identity</p>
+                    <p className="text-[10px] font-bold leading-tight">This logo is shown as the profile image for all users in this shop.</p>
                   </div>
                </div>
             </CardContent>

@@ -9,7 +9,7 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -23,6 +23,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     const auth = useAuth();
     const firestore = useFirestore();
 
+    // Fetch the company based on the user's tenantId to ensure all users see the same logo
     const companyRef = useMemoFirebase(() => 
       userProfile?.tenantId ? doc(firestore, 'companies', userProfile.tenantId) : null,
       [firestore, userProfile?.tenantId]
@@ -45,8 +46,15 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
       <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-md no-print">
         <SidebarHeader className="p-4">
             <Link href="/" className="flex items-center gap-2">
+                <div className="bg-primary p-1.5 rounded-lg shadow-sm">
+                    {company?.logoUrl ? (
+                        <img src={company.logoUrl} className="h-5 w-5 object-contain invert brightness-0" alt="Logo" />
+                    ) : (
+                        <Building2 className="h-5 w-5 text-primary-foreground" />
+                    )}
+                </div>
                 <h1 className="text-lg font-black uppercase tracking-tighter text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-                    {APP_NAME}
+                    {company?.name || APP_NAME}
                 </h1>
             </Link>
         </SidebarHeader>
@@ -68,7 +76,10 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
           <div className="flex items-center gap-4">
             <SidebarTrigger />
             <Link href="/" className="flex items-center gap-2 font-bold text-lg md:hidden">
-              <span>{APP_NAME}</span>
+                <div className="bg-primary p-1 rounded-md">
+                    <Building2 className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-black uppercase tracking-tighter">{company?.name || APP_NAME}</span>
             </Link>
           </div>
           
@@ -78,39 +89,43 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10 border border-border shadow-sm bg-white">
-                      {/* Priority: Company Logo -> User Avatar -> Auth Photo -> Placeholder */}
+                    <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm bg-white">
+                      {/* SHARED IDENTITY: Prioritize Company Logo for all users in same company */}
                       <AvatarImage 
                         src={company?.logoUrl || userProfile?.avatarUrl || user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`} 
-                        alt="Account Identity" 
+                        alt="Workspace Identity" 
                         className="object-contain p-0.5"
                       />
-                      <AvatarFallback className="bg-primary/5 text-primary text-[10px] font-black uppercase">
-                        {company?.name?.substring(0, 2).toUpperCase() || user.displayName?.substring(0, 2).toUpperCase() || 'U'}
+                      <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-black uppercase">
+                        {company?.name?.substring(0, 2).toUpperCase() || 'CP'}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuContent className="w-64" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
+                      <p className="text-xs font-black uppercase tracking-widest text-primary">Active Workspace</p>
                       <p className="text-sm font-black uppercase tracking-tight leading-none truncate">
-                        {company?.name || user.displayName || 'Workspace Admin'}
+                        {company?.name || 'Your Company'}
                       </p>
-                      <p className="text-[10px] font-bold text-muted-foreground truncate">{user.email}</p>
+                      <Separator className="my-2" />
+                      <p className="text-[10px] font-bold text-muted-foreground truncate flex items-center gap-2">
+                        <UserIcon className="h-3 w-3" /> {userProfile?.name || user.displayName}
+                      </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <Link href="/profile">
                     <DropdownMenuItem className="cursor-pointer font-bold">
                       <UserIcon className="mr-2 h-4 w-4" />
-                      <span>Account Settings</span>
+                      <span>Shop Settings</span>
                     </DropdownMenuItem>
                   </Link>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer font-bold">
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                    <span>Log out from node</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
