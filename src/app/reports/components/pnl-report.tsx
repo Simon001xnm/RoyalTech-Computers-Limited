@@ -1,3 +1,4 @@
+
 'use client';
 
 import { format } from 'date-fns';
@@ -6,6 +7,7 @@ import type { DateRange } from 'react-day-picker';
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
+import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview High-Fidelity P&L Report
@@ -40,11 +42,12 @@ const ReportRow = ({
   primaryColor?: string;
 }) => (
   <div
-    className={`flex justify-between py-2 border-b border-gray-100 ${
-      isTotal ? 'font-black bg-gray-50' : 'font-medium'
-    } ${isHeader ? 'text-[11px] font-black mt-4 uppercase tracking-wider' : 'text-[10px]'} ${
+    className={cn(
+      "flex justify-between py-2 border-b border-gray-100",
+      isTotal ? 'font-black bg-gray-50' : 'font-medium',
+      isHeader ? 'text-[11px] font-black mt-4 uppercase tracking-wider' : 'text-[10px]',
       isSubItem ? 'pl-4' : ''
-    }`}
+    )}
     style={isHeader ? { color: primaryColor } : {}}
   >
     <div className="flex-1">{label}</div>
@@ -70,6 +73,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
   const primaryIndigo = "#7c3aed";
   const secondaryIndigo = "#f5f3ff";
   const companyName = company?.name || 'YOUR BUSINESS';
+  const isNegative = netIncome < 0;
 
   return (
     <div className="p-[12mm] font-sans text-black bg-white w-[210mm] min-h-[297mm] flex flex-col box-border selection:bg-indigo-100">
@@ -139,7 +143,10 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
         </div>
 
         {/* FINAL NET INCOME - High Contrast Block */}
-        <div className="mt-8 flex justify-between bg-black text-white p-5 items-center rounded-lg shadow-xl">
+        <div className={cn(
+          "mt-8 flex justify-between p-5 items-center rounded-lg shadow-xl",
+          isNegative ? "bg-red-600 text-white" : "bg-green-600 text-white"
+        )}>
           <div className="space-y-1">
               <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Bottom Line Result</span>
               <p className="text-xl font-black uppercase tracking-tighter">Net Income (Total Profit)</p>
@@ -151,7 +158,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
         </div>
       </div>
 
-      {/* FINANCIAL DEFINITIONS - As requested */}
+      {/* FINANCIAL DEFINITIONS */}
       <section className="mt-12 p-5 bg-gray-50 border border-gray-200 rounded-xl space-y-4">
           <h4 className="text-[10px] font-black uppercase tracking-widest" style={{ color: primaryIndigo }}>Financial Glossary & Explanations</h4>
           <div className="grid grid-cols-2 gap-x-8 gap-y-3">

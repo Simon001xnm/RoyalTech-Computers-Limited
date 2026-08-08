@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -138,6 +139,10 @@ export default function DashboardPage() {
     }));
     const topSelling = Object.entries(productMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
 
+    // Trend Calculation
+    const revenueTrend = totalLastMonthSales > 0 ? ((totalMonthSales - totalLastMonthSales) / totalLastMonthSales) * 100 : 0;
+    const trendLabel = revenueTrend >= 0 ? `+${revenueTrend.toFixed(1)}% vs last month` : `${revenueTrend.toFixed(1)}% vs last month`;
+
     return {
         totalMonthSales, 
         totalMonthProfit, 
@@ -157,6 +162,7 @@ export default function DashboardPage() {
         }).slice(0, 8),
         topSelling,
         lastMonthTotal: totalLastMonthSales,
+        trendLabel,
         monthName: format(now, 'MMMM yyyy')
     };
   }, [sales, assets, documents, expenses]);
@@ -255,7 +261,7 @@ export default function DashboardPage() {
             title="Monthly Revenue" 
             value={formatKes(stats.totalMonthSales)} 
             icon={DollarSign} 
-            trend={stats.totalMonthSales >= stats.lastMonthTotal ? "+ Growth" : "- Lower"} 
+            trend={stats.trendLabel} 
             description={`Aggregated for ${stats.monthName}`}
           />
           <SummaryCard 

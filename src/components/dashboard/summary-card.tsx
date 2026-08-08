@@ -14,6 +14,7 @@ interface SummaryCardProps {
 
 export function SummaryCard({ title, value, icon: Icon, description, trend, className }: SummaryCardProps) {
   const isPositiveTrend = trend?.startsWith('+');
+  const isNegativeTrend = trend?.startsWith('-');
 
   return (
     <Card className={cn("shadow-sm border-muted/40 transition-all hover:shadow-md group", className)}>
@@ -29,7 +30,9 @@ export function SummaryCard({ title, value, icon: Icon, description, trend, clas
         {trend && (
             <div className={cn(
                 "text-[10px] font-bold mt-2 inline-flex items-center px-2 py-0.5 rounded-full border",
-                isPositiveTrend ? "text-green-600 bg-green-50 border-green-100" : "text-blue-600 bg-blue-50 border-blue-100"
+                isPositiveTrend ? "text-green-600 bg-green-50 border-green-100" : 
+                isNegativeTrend ? "text-red-600 bg-red-50 border-red-100" :
+                "text-blue-600 bg-blue-50 border-blue-100"
             )}>
                 {trend}
             </div>
