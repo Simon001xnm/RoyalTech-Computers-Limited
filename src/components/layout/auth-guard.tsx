@@ -9,7 +9,7 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2 } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Settings } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -41,6 +41,8 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             auth.signOut();
         }
     };
+
+    const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -117,13 +119,17 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <Link href="/profile">
-                    <DropdownMenuItem className="cursor-pointer font-bold">
-                      <UserIcon className="mr-2 h-4 w-4" />
-                      <span>Shop Settings</span>
-                    </DropdownMenuItem>
-                  </Link>
-                  <DropdownMenuSeparator />
+                  {isAdmin && (
+                    <>
+                        <Link href="/profile">
+                            <DropdownMenuItem className="cursor-pointer font-bold">
+                                <Settings className="mr-2 h-4 w-4" />
+                                <span>Shop Settings</span>
+                            </DropdownMenuItem>
+                        </Link>
+                        <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer font-bold">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out from node</span>

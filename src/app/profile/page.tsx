@@ -14,7 +14,8 @@ import {
     Settings2, 
     DownloadCloud, 
     ShieldCheck,
-    Building2
+    Building2,
+    Lock
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
@@ -34,7 +35,6 @@ export default function ProfilePage() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState("profile");
@@ -42,7 +42,6 @@ export default function ProfilePage() {
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
 
   const [compData, setCompData] = useState({
     name: '',
@@ -76,7 +75,6 @@ export default function ProfilePage() {
     if (userProfile) {
       setDisplayName(userProfile.name || authUser?.displayName || "");
       setEmail(userProfile.email || authUser?.email || "");
-      setAvatarUrl(userProfile.avatarUrl || authUser?.photoURL || "");
     }
     if (company) {
       setCompData({
@@ -88,17 +86,6 @@ export default function ProfilePage() {
 
   const handleInputChange = (field: string, value: any) => {
     setCompData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleAvatarSelect = async (url: string) => {
-    if (!authUser || !userRef) return;
-    try {
-      setAvatarUrl(url);
-      await updateDoc(userRef, { avatarUrl: url });
-      toast({ title: 'Avatar Updated' });
-    } catch (e) {
-      toast({ variant: 'destructive', title: 'Error' });
-    }
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,6 +173,27 @@ export default function ProfilePage() {
     );
   }
 
+  const isAdmin = userProfile.role === 'admin' || userProfile.role === 'super_admin';
+
+  if (!isAdmin) {
+    return (
+        <div className="flex h-[80vh] flex-col items-center justify-center p-8 text-center space-y-6">
+            <div className="bg-destructive/10 p-6 rounded-full">
+                <Lock className="h-12 w-12 text-destructive" />
+            </div>
+            <div className="max-w-md space-y-2">
+                <h1 className="text-2xl font-black uppercase tracking-tight">Access Restricted</h1>
+                <p className="text-muted-foreground leading-relaxed">
+                    Shop branding and configuration tools are reserved for account administrators.
+                </p>
+            </div>
+            <Button asChild variant="outline" className="font-bold">
+                <a href="/">Return to Command Center</a>
+            </Button>
+        </div>
+    );
+  }
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20">
       <PageHeader title="Shop Settings" description="Configure branding and high-fidelity generation standards." />
@@ -196,7 +204,6 @@ export default function ProfilePage() {
             <CardHeader className="items-center text-center bg-muted/20 pb-8">
               <div className="relative group cursor-pointer mt-4" onClick={() => logoInputRef.current?.click()}>
                 <Avatar className="h-28 w-28 border-4 border-white shadow-xl bg-white">
-                  {/* UNIFIED IDENTITY: Using company logo as the primary profile image */}
                   <AvatarImage 
                     src={compData.logoUrl || `https://picsum.photos/seed/${authUser?.uid}/128/128`} 
                     className="object-contain p-1"

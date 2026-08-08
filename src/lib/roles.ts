@@ -30,12 +30,12 @@ export const getPermittedNavItems = (user?: User | null, company?: Company | nul
     }
     
     // 2. Standard User: Respect granular permissions
-    const alwaysAllowedHrefs = ['/', '/profile'];
+    const alwaysAllowedHrefs = ['/'];
     
     return items.filter(item => {
         if (alwaysAllowedHrefs.includes(item.href)) return true;
         // Specifically block management modules for non-admins
-        if (item.href === '/users' || item.href === '/audit') return false;
+        if (item.href === '/users' || item.href === '/audit' || item.href === '/profile') return false;
         return permissions.includes(item.id);
     });
 };
