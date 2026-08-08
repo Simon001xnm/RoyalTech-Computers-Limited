@@ -26,12 +26,11 @@ import {
     format, 
     startOfWeek, 
     startOfMonth, 
+    endOfMonth,
     isWithinInterval, 
     parseISO, 
     subDays,
-    subMonths,
-    startOfLastMonth,
-    endOfLastMonth
+    subMonths
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -77,8 +76,9 @@ export default function DashboardPage() {
 
     const now = new Date();
     const monthStart = startOfMonth(now);
-    const lastMonthStart = startOfLastMonth(now);
-    const lastMonthEnd = endOfLastMonth(now);
+    const lastMonthDate = subMonths(now, 1);
+    const lastMonthStart = startOfMonth(lastMonthDate);
+    const lastMonthEnd = endOfMonth(lastMonthDate);
 
     // Filter Monthly Sets
     const monthSales = sales.filter(s => {
