@@ -13,7 +13,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, getDocs, orderBy, limit } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -47,7 +47,6 @@ export function PosClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
-  // Initial state is null to force an explicit selection (even Walk-in)
   const [selectedCustomer, setSelectedCustomer] = useState<{id: string, name: string} | null>(null);
   const [customerBalance, setCustomerBalance] = useState(0);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -81,6 +80,13 @@ export function PosClient() {
     return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
   const { data: customers } = useCollection(customersQuery);
+
+  // Existing Docs for sequential numbering
+  const docsQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'documents'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+  const { data: rawDocuments } = useCollection(docsQuery);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [custSearchOpen, setCustSearchOpen] = useState(false);
@@ -206,6 +212,11 @@ export function PosClient() {
         // Define Sale Status based on payment
         const saleStatus = remainingBalance <= 0 ? 'Paid' : (amountPaid > 0 ? 'Partial' : 'Credit');
 
+        // SEQUENTIAL LOGIC: Find next number for this type
+        const typeCount = rawDocuments?.filter(d => d.type === effectiveDocType).length || 0;
+        const seq = typeCount + 1;
+        const docTitle = `${effectiveDocType} #${String(seq).padStart(3, '0')}`;
+
         const baseData = {
             tenantId: tenant.id,
             date: timestamp,
@@ -233,7 +244,7 @@ export function PosClient() {
         batch.set(docRef, {
             tenantId: tenant.id,
             type: effectiveDocType,
-            title: `${effectiveDocType} #${docRef.id.slice(0, 8).toUpperCase()}`,
+            title: docTitle,
             generatedDate: timestamp,
             relatedTo: selectedCustomer.name,
             data: {
@@ -631,7 +642,7 @@ export function PosClient() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
+      <Dialog open={isSuccessOpen} onOpenChange={(open) => !open && setIsSuccessOpen(false)}>
         <DialogContent className="sm:max-w-md text-center p-10 border-none shadow-2xl">
             <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner">
                 <Check className="h-10 w-10 text-green-600" />

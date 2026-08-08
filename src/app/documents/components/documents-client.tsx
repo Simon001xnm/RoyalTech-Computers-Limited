@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, addDoc, doc, getDocs } from "firebase/firestore";
+import { collection, query, where, addDoc, doc, getDocs, orderBy, limit } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -153,15 +153,17 @@ export function DocumentsClient() {
   const handleGenerateDocument = async (type: DocumentType) => {
     if (!tenant || !user) return;
 
-    const docCount = rawDocuments?.length || 0;
-    const prefix = (tenant.name || 'DOC').slice(0, 3).toUpperCase();
-    let title = `${type.replace(/([A-Z])/g, ' $1').trim()} #${prefix}-${new Date().getFullYear()}-${String(docCount + 1).padStart(3,'0')}`;
+    // SEQUENTIAL LOGIC: Find count of this specific type
+    const typeCount = rawDocuments?.filter(d => d.type === type).length || 0;
+    const seq = typeCount + 1;
+    const initials = TYPE_INITIALS[type] || 'DOC';
+    let title = `${type} #${String(seq).padStart(3, '0')}`;
     let relatedTo = "N/A";
     
     const documentData: any = { 
         details: details || '', 
         applyVat,
-        previousBalance: customerBalance, // Capture balance at generation
+        previousBalance: customerBalance, 
         workspace: workspaceProfile ? {
             name: workspaceProfile.name || '',
             address: workspaceProfile.address || '',
@@ -275,10 +277,13 @@ export function DocumentsClient() {
         serialNumber: i.serialNumber || "N/A"
     }));
 
+    const typeCount = rawDocuments?.filter(d => d.type === 'DeliveryNote').length || 0;
+    const seq = typeCount + 1;
+
     const deliveryData = {
         tenantId: tenant.id,
         type: 'DeliveryNote' as const,
-        title: `Delivery Note #DEL-${sourceDoc.title.split('#').pop() || sourceDoc.id.slice(0, 5).toUpperCase()}`,
+        title: `Delivery Note #${String(seq).padStart(3, '0')}`,
         generatedDate: new Date().toISOString(),
         relatedTo: sourceDoc.relatedTo,
         data: {
@@ -317,7 +322,7 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    await new Promise(r => setTimeout(r, 300)); 
+    await new Promise(r => setTimeout(r, 400)); 
 
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
@@ -347,14 +352,14 @@ export function DocumentsClient() {
         const imgData = canvas.toDataURL('image/png', 1.0);
         pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
         
-        // CUSTOM FILENAME: [Initials] [CompPrefix]-[Year][Date][Month]
+        // CUSTOM FILENAME: [Initials] [CustPrefix]-[Year][Day][Month]
         const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
-        const compPrefix = (tenant?.name || 'HUB').slice(0, 3).toUpperCase();
-        const now = new Date();
+        const custPrefix = (docToDownload.relatedTo || 'VAL').slice(0, 3).toUpperCase();
+        const now = new Date(docToDownload.generatedDate);
         const year = now.getFullYear();
-        const date = now.getDate().toString().padStart(2, '0');
+        const day = now.getDate().toString().padStart(2, '0');
         const month = (now.getMonth() + 1).toString().padStart(2, '0');
-        const filename = `${initials} ${compPrefix}-${year}${date}${month}.pdf`;
+        const filename = `${initials} ${custPrefix}-${year}${day}${month}.pdf`;
         
         pdf.save(filename);
     } catch (err) {

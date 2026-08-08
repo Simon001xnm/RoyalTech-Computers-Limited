@@ -21,6 +21,12 @@ interface RecentSalesProps {
     onViewReceipt: (doc: AppDocument) => void;
 }
 
+const TYPE_INITIALS: Record<string, string> = {
+    'Invoice': 'INV',
+    'Receipt': 'RCT',
+    'Quotation': 'QTN'
+};
+
 /**
  * High-Density Transaction History for POS
  * Queries 'documents' collection to include Receipts, Invoices, and Quotations.
@@ -84,10 +90,13 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             quantity: i.quantity || 1
         }));
 
+        const typeCount = rawDocs?.filter(d => d.type === 'DeliveryNote').length || 0;
+        const seq = typeCount + 1;
+
         const deliveryData = {
             tenantId: tenant.id,
             type: 'DeliveryNote' as const,
-            title: `Delivery Note #DEL-${docObj.id.slice(0, 5).toUpperCase()}`,
+            title: `Delivery Note #${String(seq).padStart(3, '0')}`,
             generatedDate: new Date().toISOString(),
             relatedTo: docObj.relatedTo,
             data: {
@@ -114,13 +123,13 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
 
         try {
             setExportDoc(docToDownload);
-            await new Promise(r => setTimeout(r, 400));
+            await new Promise(r => setTimeout(r, 450));
 
             const element = document.getElementById('recent-sale-export-target');
             if (!element) throw new Error("Export target not found");
 
             const canvas = await html2canvas(element, { 
-                scale: 2.5, 
+                scale: 3, 
                 useCORS: true,
                 backgroundColor: "#ffffff",
                 width: 794,
@@ -133,10 +142,14 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             const imgData = canvas.toDataURL('image/png', 1.0);
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
             
-            const initials = docToDownload.type === 'Receipt' ? 'RCT' : (docToDownload.type === 'Invoice' ? 'INV' : 'QTN');
-            const compPrefix = (tenant?.name || 'HUB').slice(0, 3).toUpperCase();
-            const now = new Date();
-            const filename = `${initials} ${compPrefix}-${now.getFullYear()}${String(now.getDate()).padStart(2,'0')}${String(now.getMonth()+1).padStart(2,'0')}.pdf`;
+            // CUSTOM FILENAME: [Initials] [CustPrefix]-[Year][Day][Month]
+            const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
+            const custPrefix = (docToDownload.relatedTo || 'VAL').slice(0, 3).toUpperCase();
+            const now = new Date(docToDownload.generatedDate);
+            const year = now.getFullYear();
+            const day = now.getDate().toString().padStart(2, '0');
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const filename = `${initials} ${custPrefix}-${year}${day}${month}.pdf`;
 
             pdf.save(filename);
             toast({ title: "Document Saved" });
