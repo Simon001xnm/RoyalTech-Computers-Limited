@@ -119,7 +119,7 @@ export function ReceivablesClient() {
         if (!element) throw new Error("Target not found");
 
         const canvas = await html2canvas(element, { 
-            scale: 2.5, 
+            scale: 3.0, // Ultra-high fidelity
             useCORS: true,
             backgroundColor: "#ffffff",
             width: 794,
@@ -304,7 +304,7 @@ export function ReceivablesClient() {
                                                                 {sale.items?.map((item: any, idx: number) => (
                                                                     <div key={idx} className="flex items-center gap-2">
                                                                         <Package className="h-3 w-3 opacity-30" />
-                                                                        <span className="text-[10px] font-bold uppercase truncate">{item.name} ({item.quantity} units)</span>
+                                                                        <span className="text-[10px] font-bold uppercase leading-normal">{item.name} ({item.quantity} units)</span>
                                                                     </div>
                                                                 ))}
                                                             </div>

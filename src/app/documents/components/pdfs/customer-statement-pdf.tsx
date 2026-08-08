@@ -2,7 +2,6 @@
 
 import type { Document as AppDocument, Sale, Customer } from "@/types";
 import { format } from "date-fns";
-import { numberToWords } from "@/lib/utils";
 
 interface CustomerStatementPdfProps {
   customer: Customer;
@@ -101,29 +100,29 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
         <table className="w-full border-collapse">
             <thead>
                 <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>
-                    <th className="p-2 font-black text-[9px] border border-blue-900">DATE</th>
-                    <th className="p-2 font-black text-[9px] border border-blue-900">REFERENCE</th>
-                    <th className="p-2 font-black text-[9px] border border-blue-900">DESCRIPTION</th>
-                    <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-24">INVOICED</th>
-                    <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-24">PAID</th>
-                    <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-28">BALANCE</th>
+                    <th className="p-3 font-black text-[9px] border border-blue-900">DATE</th>
+                    <th className="p-3 font-black text-[9px] border border-blue-900">REFERENCE</th>
+                    <th className="p-3 font-black text-[9px] border border-blue-900">DESCRIPTION</th>
+                    <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-24">INVOICED</th>
+                    <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-24">PAID</th>
+                    <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-28">BALANCE</th>
                 </tr>
             </thead>
             <tbody>
                 {sales.map((sale, idx) => {
                     const balance = (Number(sale.total) || 0) - (Number(sale.amountPaid) || 0);
                     return (
-                        <tr key={sale.id} className="border-b border-gray-200 h-10">
-                            <td className="px-2 font-medium">{format(new Date(sale.date), "dd/MM/yyyy")}</td>
-                            <td className="px-2 font-mono font-bold text-[9px]">#{sale.id.slice(0,8).toUpperCase()}</td>
-                            <td className="px-2">
-                                <p className="font-bold uppercase truncate max-w-[200px]">
+                        <tr key={sale.id} className="border-b border-gray-200">
+                            <td className="p-3 font-medium">{format(new Date(sale.date), "dd/MM/yyyy")}</td>
+                            <td className="p-3 font-mono font-bold text-[9px]">#{sale.id.slice(0,8).toUpperCase()}</td>
+                            <td className="p-3">
+                                <p className="font-bold uppercase leading-normal">
                                     {sale.items?.map(i => i.name).join(", ") || "Sales Transaction"}
                                 </p>
                             </td>
-                            <td className="px-2 text-right tabular-nums">{formatCurrency(Number(sale.total) || 0)}</td>
-                            <td className="px-2 text-right tabular-nums text-green-600">{formatCurrency(Number(sale.amountPaid) || 0)}</td>
-                            <td className="px-2 text-right tabular-nums font-black text-blue-900">{formatCurrency(balance)}</td>
+                            <td className="p-3 text-right tabular-nums font-medium">{formatCurrency(Number(sale.total) || 0)}</td>
+                            <td className="p-3 text-right tabular-nums text-green-600 font-medium">{formatCurrency(Number(sale.amountPaid) || 0)}</td>
+                            <td className="p-3 text-right tabular-nums font-black text-blue-900">{formatCurrency(balance)}</td>
                         </tr>
                     );
                 })}

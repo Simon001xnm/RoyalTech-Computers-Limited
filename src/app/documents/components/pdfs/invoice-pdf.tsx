@@ -133,11 +133,11 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
         <table className="w-full border-collapse">
             <thead>
                 <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>
-                    <th className="p-2 font-black text-[9px] border border-blue-900">ITEM NO</th>
-                    <th className="p-2 font-black text-[9px] border border-blue-900">DESCRIPTION</th>
-                    <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-20">UNITS</th>
-                    <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-28">UNIT PRICE</th>
-                    <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-32">TOTAL</th>
+                    <th className="p-3 font-black text-[9px] border border-blue-900">ITEM NO</th>
+                    <th className="p-3 font-black text-[9px] border border-blue-900">DESCRIPTION</th>
+                    <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-20">UNITS</th>
+                    <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-28">UNIT PRICE</th>
+                    <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-32">TOTAL</th>
                 </tr>
             </thead>
             <tbody>
@@ -146,15 +146,15 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     const unitPrice = item.price || item.sellingPrice || item.unitPrice || 0;
                     const qty = item.quantity || 1;
                     return (
-                        <tr key={idx} className="border-b border-gray-200 h-10">
-                            <td className="px-2 font-medium text-center">{idx + 1}.</td>
-                            <td className="px-2">
-                                <p className="font-bold uppercase">{name}</p>
-                                {item.serialNumber && <p className="text-[8px] font-mono opacity-50">S/N: {item.serialNumber}</p>}
+                        <tr key={idx} className="border-b border-gray-200">
+                            <td className="p-3 font-medium text-center">{idx + 1}.</td>
+                            <td className="p-3">
+                                <p className="font-bold uppercase leading-normal">{name}</p>
+                                {item.serialNumber && <p className="text-[8px] font-mono opacity-50 mt-0.5">S/N: {item.serialNumber}</p>}
                             </td>
-                            <td className="px-2 text-right tabular-nums">{qty.toFixed(2)}</td>
-                            <td className="px-2 text-right tabular-nums">{formatCurrency(unitPrice)}</td>
-                            <td className="px-2 text-right tabular-nums font-bold">{formatCurrency(qty * unitPrice)}</td>
+                            <td className="p-3 text-right tabular-nums">{qty.toFixed(2)}</td>
+                            <td className="p-3 text-right tabular-nums">{formatCurrency(unitPrice)}</td>
+                            <td className="p-3 text-right tabular-nums font-bold">{formatCurrency(qty * unitPrice)}</td>
                         </tr>
                     );
                 })}
