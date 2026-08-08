@@ -24,13 +24,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
     format, 
-    isToday, 
-    isYesterday, 
     startOfWeek, 
     startOfMonth, 
     isWithinInterval, 
     parseISO, 
-    subDays 
+    subDays,
+    subMonths,
+    startOfLastMonth,
+    endOfLastMonth
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -38,7 +39,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview High-Density Business Dashboard
- * Synchronized with high-fidelity invoice logic and split-payment processing.
+ * Shifted from Daily to Monthly Intelligence for better strategic oversight.
  */
 export default function DashboardPage() {
   const { tenant } = useSaaS();
@@ -75,44 +76,43 @@ export default function DashboardPage() {
     if (!sales || !assets || !documents || !expenses) return null;
 
     const now = new Date();
-    const weekStart = startOfWeek(now);
     const monthStart = startOfMonth(now);
+    const lastMonthStart = startOfLastMonth(now);
+    const lastMonthEnd = endOfLastMonth(now);
 
-    // Robust Sales metrics (Preventing NaN)
-    const todaySales = sales.filter(s => {
-        try { return isToday(parseISO(s.date)); } catch { return false; }
-    });
-    const yesterdaySales = sales.filter(s => {
-        try { return isYesterday(parseISO(s.date)); } catch { return false; }
-    });
-    const weekSales = sales.filter(s => {
-        try { return isWithinInterval(parseISO(s.date), { start: weekStart, end: now }); } catch { return false; }
-    });
+    // Filter Monthly Sets
     const monthSales = sales.filter(s => {
         try { return isWithinInterval(parseISO(s.date), { start: monthStart, end: now }); } catch { return false; }
     });
 
-    const totalTodaySales = todaySales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0);
-    const totalTodayProfit = todaySales.reduce((acc, s) => acc + (Number(s.totalProfit) || 0), 0);
-    const todayExp = expenses.filter(e => {
-        try { return isToday(parseISO(e.date)); } catch { return false; }
+    const lastMonthSales = sales.filter(s => {
+        try { return isWithinInterval(parseISO(s.date), { start: lastMonthStart, end: lastMonthEnd }); } catch { return false; }
+    });
+
+    const totalMonthSales = monthSales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0);
+    const totalMonthProfit = monthSales.reduce((acc, s) => acc + (Number(s.totalProfit) || 0), 0);
+    const totalLastMonthSales = lastMonthSales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0);
+
+    const monthExp = expenses.filter(e => {
+        try { return isWithinInterval(parseISO(e.date), { start: monthStart, end: now }); } catch { return false; }
     }).reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
 
-    const mpesaSales = todaySales.reduce((acc, s) => {
+    // Monthly Settlements Breakdown
+    const mpesaSales = monthSales.reduce((acc, s) => {
         const mpesaAmt = (s.payments || [])
             .filter((p: any) => p.method === 'M-Pesa')
             .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
         return acc + (mpesaAmt || (s.paymentMethod === 'M-Pesa' ? (Number(s.amount) || Number(s.total) || 0) : 0));
     }, 0);
 
-    const cashSales = todaySales.reduce((acc, s) => {
+    const cashSales = monthSales.reduce((acc, s) => {
         const cashAmt = (s.payments || [])
             .filter((p: any) => p.method === 'Cash')
             .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
         return acc + (cashAmt || (s.paymentMethod === 'Cash' ? (Number(s.amount) || Number(s.total) || 0) : 0));
     }, 0);
 
-    const creditSales = todaySales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
+    const creditSales = monthSales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
 
     // Debts & Overdue (Synced with Invoices)
     const invoicesWithDebt = sales.filter(s => (Number(s.balance) || 0) > 0);
@@ -139,8 +139,12 @@ export default function DashboardPage() {
     const topSelling = Object.entries(productMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
 
     return {
-        totalTodaySales, totalTodayProfit, todayExp,
-        mpesaSales, cashSales, creditSales,
+        totalMonthSales, 
+        totalMonthProfit, 
+        monthExp,
+        mpesaSales, 
+        cashSales, 
+        creditSales,
         totalOutstandingDebt, 
         unpaidInvoicesCount,
         uniqueDebtorsCount,
@@ -152,9 +156,8 @@ export default function DashboardPage() {
             try { return parseISO(b.date).getTime() - parseISO(a.date).getTime(); } catch { return 0; }
         }).slice(0, 8),
         topSelling,
-        yesterdayTotal: yesterdaySales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0),
-        weekTotal: weekSales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0),
-        monthTotal: monthSales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0)
+        lastMonthTotal: totalLastMonthSales,
+        monthName: format(now, 'MMMM yyyy')
     };
   }, [sales, assets, documents, expenses]);
 
@@ -178,7 +181,7 @@ export default function DashboardPage() {
     <div className="space-y-6 pb-20 selection:bg-primary selection:text-white">
       <PageHeader 
         title="Business Command Center" 
-        description={`Real-time intelligence node for ${format(new Date(), 'EEEE, do MMMM yyyy')}`}
+        description={`Monthly performance intelligence for ${stats.monthName}`}
       />
 
       {/* 1. ACTIONABLE CRITICAL ALERTS */}
@@ -206,7 +209,7 @@ export default function DashboardPage() {
                         <div>
                             <p className="text-[10px] font-black uppercase text-red-600 tracking-widest">Debt Warning</p>
                             <p className="text-xs font-bold leading-tight">
-                                {stats.unpaidInvoicesCount} unpaid bills from {stats.uniqueDebtorsCount} clients owe {formatKes(stats.totalOutstandingDebt)}
+                                {stats.unpaidInvoicesCount} unpaid bills from {stats.uniqueDebtorsCount} clients
                             </p>
                         </div>
                         <ArrowUpRight className="ml-auto h-4 w-4 text-red-300 group-hover:text-red-500 transition-colors" />
@@ -246,19 +249,40 @@ export default function DashboardPage() {
           )}
       </div>
 
-      {/* 2. PRIMARY FINANCIAL KPI CARDS */}
+      {/* 2. PRIMARY FINANCIAL KPI CARDS - Monthly Focus */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <SummaryCard title="Today's Revenue" value={formatKes(stats.totalTodaySales)} icon={DollarSign} trend={stats.totalTodaySales >= stats.yesterdayTotal ? "+ Growth" : "- Lower"} />
-          <SummaryCard title="Today's Net Profit" value={formatKes(stats.totalTodayProfit)} icon={TrendingUp} description="Revenue minus historical COGS" />
-          <SummaryCard title="Operational Exp" value={formatKes(stats.todayExp)} icon={Wallet} description="Expenses recorded today" />
-          <SummaryCard title="Outstanding Receivables" value={formatKes(stats.totalOutstandingDebt)} icon={CreditCard} description="Total aggregate client debt" />
+          <SummaryCard 
+            title="Monthly Revenue" 
+            value={formatKes(stats.totalMonthSales)} 
+            icon={DollarSign} 
+            trend={stats.totalMonthSales >= stats.lastMonthTotal ? "+ Growth" : "- Lower"} 
+            description={`Aggregated for ${stats.monthName}`}
+          />
+          <SummaryCard 
+            title="Monthly Net Profit" 
+            value={formatKes(stats.totalMonthProfit)} 
+            icon={TrendingUp} 
+            description="Revenue minus historical COGS" 
+          />
+          <SummaryCard 
+            title="Operational Exp" 
+            value={formatKes(stats.monthExp)} 
+            icon={Wallet} 
+            description={`Expenses recorded in ${format(new Date(), 'MMM')}`} 
+          />
+          <SummaryCard 
+            title="Outstanding Receivables" 
+            value={formatKes(stats.totalOutstandingDebt)} 
+            icon={CreditCard} 
+            description="Total aggregate client debt" 
+          />
       </div>
 
       {/* 3. CASH FLOW & COMPARISONS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full">
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest">Today's Settlements</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest">Monthly Settlements</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-5 flex-grow">
                 <div className="flex justify-between items-end border-b pb-4">
@@ -291,21 +315,15 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="p-6 space-y-6">
                 <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>Yesterday</span><span>{formatKes(stats.yesterdayTotal)}</span></div>
+                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>Last Month</span><span>{formatKes(stats.lastMonthTotal)}</span></div>
                     <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: `${Math.min(100, (stats.yesterdayTotal / (stats.totalTodaySales || 1)) * 50)}%` }} />
+                        <div className="h-full bg-primary" style={{ width: `${Math.min(100, (stats.lastMonthTotal / (stats.totalMonthSales || 1)) * 50)}%` }} />
                     </div>
                 </div>
                 <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>This Week</span><span>{formatKes(stats.weekTotal)}</span></div>
+                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>This Month (Target)</span><span>{formatKes(stats.totalMonthSales)}</span></div>
                     <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '80%' }} />
-                    </div>
-                </div>
-                <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>This Month</span><span>{formatKes(stats.monthTotal)}</span></div>
-                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '100%' }} />
+                        <div className="h-full bg-primary" style={{ width: '85%' }} />
                     </div>
                 </div>
             </CardContent>
@@ -360,7 +378,7 @@ export default function DashboardPage() {
                         <TableRow key={sale.id} className="h-12 hover:bg-muted/5 transition-colors border-b last:border-0">
                             <TableCell className="pl-6">
                                 <span className="text-[10px] font-mono text-muted-foreground">
-                                    {sale.date ? format(parseISO(sale.date), 'HH:mm:ss') : 'Recently'}
+                                    {sale.date ? format(parseISO(sale.date), 'dd/MM HH:mm') : 'Recently'}
                                 </span>
                             </TableCell>
                             <TableCell><span className="text-[10px] font-black uppercase tracking-tighter">{sale.customerName || 'Walk-in Client'}</span></TableCell>
