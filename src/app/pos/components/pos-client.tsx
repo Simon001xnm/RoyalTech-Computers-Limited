@@ -196,7 +196,7 @@ export function PosClient() {
     'M-Pesa': Wallet,
     Bank: Landmark,
     Card: CreditCard,
-    Credit: Landmank
+    Credit: Landmark
   };
 
   return (
