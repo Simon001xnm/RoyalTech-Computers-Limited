@@ -34,6 +34,7 @@ import {
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview High-Density Business Dashboard
@@ -78,6 +79,7 @@ export default function DashboardPage() {
     const monthStart = startOfMonth(now);
 
     // Robust Sales metrics (Preventing NaN)
+    // ONLY Finalized Sales (Receipts/Invoices), excluding Quotations which aren't in sales_transactions
     const todaySales = sales.filter(s => {
         try { return isToday(parseISO(s.date)); } catch { return false; }
     });
@@ -101,7 +103,6 @@ export default function DashboardPage() {
         const mpesaAmt = (s.payments || [])
             .filter((p: any) => p.method === 'M-Pesa')
             .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
-        // Fallback for non-split payments
         return acc + (mpesaAmt || (s.paymentMethod === 'M-Pesa' ? (Number(s.amount) || Number(s.total) || 0) : 0));
     }, 0);
 
@@ -359,12 +360,21 @@ export default function DashboardPage() {
                             </TableCell>
                             <TableCell><span className="text-[10px] font-black uppercase tracking-tighter">{sale.customerName || 'Walk-in Client'}</span></TableCell>
                             <TableCell>
-                                <Badge variant={sale.status === 'Paid' ? 'default' : (sale.status === 'Partial' ? 'secondary' : 'outline')} className="text-[8px] font-black h-4 px-2 uppercase border-none">
+                                <Badge 
+                                    variant={sale.status === 'Paid' ? 'default' : 'destructive'} 
+                                    className={cn(
+                                        "text-[8px] font-black h-4 px-2 uppercase border-none",
+                                        sale.status === 'Partial' && "bg-red-600 text-white"
+                                    )}
+                                >
                                     {sale.status}
                                 </Badge>
                             </TableCell>
                             <TableCell><span className="text-[10px] font-bold text-muted-foreground uppercase">{sale.paymentMethod}</span></TableCell>
-                            <TableCell className="text-right pr-6 font-black text-sm text-primary">
+                            <TableCell className={cn(
+                                "text-right pr-6 font-black text-sm",
+                                (sale.status === 'Partial' || sale.status === 'Credit') ? "text-red-600" : "text-primary"
+                            )}>
                                 {formatKes(Number(sale.total) || Number(sale.amount) || 0)}
                             </TableCell>
                         </TableRow>

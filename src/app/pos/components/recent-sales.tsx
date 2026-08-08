@@ -18,11 +18,12 @@ import { Search, Calendar as CalendarIcon } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface RecentSalesProps {
-    onViewReceipt: (sale: Sale) => void;
+    onViewReceipt: (doc: AppDocument) => void;
 }
 
 /**
  * High-Density Transaction History for POS
+ * Queries 'documents' collection to include Receipts, Invoices, and Quotations.
  * Filterable by name and date, with 10/25/50/100 row pagination.
  */
 export function RecentSales({ onViewReceipt }: RecentSalesProps) {
@@ -37,59 +38,62 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const [isExporting, setIsExporting] = useState(false);
     const [exportDoc, setExportDoc] = useState<AppDocument | null>(null);
 
-    const salesQuery = useMemoFirebase(() => {
+    // FETCH DOCUMENTS (Receipt, Invoice, Quotation)
+    const docsQuery = useMemoFirebase(() => {
         if (!tenant) return null;
-        return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
+        return query(
+            collection(firestore, 'documents'), 
+            where('tenantId', '==', tenant.id),
+            where('type', 'in', ['Receipt', 'Invoice', 'Quotation'])
+        );
     }, [firestore, tenant?.id]);
     
-    const { data: rawSales, isLoading } = useCollection(salesQuery);
+    const { data: rawDocs, isLoading } = useCollection<AppDocument>(docsQuery);
 
-    const filteredSales = useMemo(() => {
-        if (!rawSales) return [];
+    const filteredDocs = useMemo(() => {
+        if (!rawDocs) return [];
         
-        let results = [...rawSales].sort((a, b) => {
-            const dateA = a.date ? new Date(a.date).getTime() : 0;
-            const dateB = b.date ? new Date(b.date).getTime() : 0;
+        let results = [...rawDocs].sort((a, b) => {
+            const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
+            const dateB = b.generatedDate ? new Date(b.generatedDate).getTime() : 0;
             return dateB - dateA;
         });
 
         if (searchTerm) {
-            results = results.filter(s => 
-                (s.customerName || '').toLowerCase().includes(searchTerm.toLowerCase())
+            results = results.filter(d => 
+                (d.relatedTo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (d.title || '').toLowerCase().includes(searchTerm.toLowerCase())
             );
         }
 
         if (dateFilter) {
-            results = results.filter(s => 
-                s.date.startsWith(dateFilter)
+            results = results.filter(d => 
+                d.generatedDate.startsWith(dateFilter)
             );
         }
 
         return results;
-    }, [rawSales, searchTerm, dateFilter]);
+    }, [rawDocs, searchTerm, dateFilter]);
     
-    const handleGenerateDelivery = async (sale: Sale) => {
+    const handleGenerateDelivery = async (docObj: AppDocument) => {
         if (!tenant) return;
         
-        const saleIdStr = sale.id?.toString() || 'TEMP';
+        const normalizedItems = (docObj.data?.items || []).map((i: any) => ({
+            description: i.name || i.description || 'Item',
+            serialNumber: i.serialNumber || 'N/A',
+            quantity: i.quantity || 1
+        }));
+
         const deliveryData = {
             tenantId: tenant.id,
             type: 'DeliveryNote' as const,
-            title: `Delivery Note #DEL-${saleIdStr.slice(0, 5).toUpperCase()}`,
+            title: `Delivery Note #DEL-${docObj.id.slice(0, 5).toUpperCase()}`,
             generatedDate: new Date().toISOString(),
-            relatedTo: `Sale to ${sale.customerName || 'Walk-in'}`,
+            relatedTo: docObj.relatedTo,
             data: {
-                customer: { 
-                    id: sale.customerId || '', 
-                    name: sale.customerName || 'Walk-in Client', 
-                    phone: sale.customerPhone || '' 
-                },
-                items: (sale.items || []).map(item => ({
-                    description: item.name || 'Unknown Item',
-                    serialNumber: item.serialNumber || 'N/A',
-                    quantity: item.quantity || 1
-                })),
-                details: `Generated from Sale ${saleIdStr.slice(0, 4)}`,
+                customer: docObj.data?.customer,
+                items: normalizedItems,
+                details: `From ${docObj.type}: ${docObj.title}`,
             },
             createdAt: new Date().toISOString(),
         };
@@ -103,34 +107,13 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         }
     };
 
-    const handleDownloadReceipt = async (sale: Sale) => {
+    const handleDownloadPdf = async (docToDownload: AppDocument) => {
         setIsExporting(true);
         const { default: html2canvas } = await import('html2canvas');
         const { default: jsPDF } = await import('jspdf');
 
         try {
-            const docsRef = collection(firestore, 'documents');
-            const q = query(docsRef, where('saleId', '==', sale.id), limit(1));
-            const snap = await getDocs(q);
-            
-            let docToUse: AppDocument;
-
-            if (snap.empty) {
-                const saleIdStr = sale.id?.toString() || 'TEMP';
-                docToUse = {
-                    id: sale.id || 'temp',
-                    tenantId: tenant?.id || '',
-                    type: 'Receipt',
-                    title: `Receipt #${saleIdStr.slice(0, 5).toUpperCase()}`,
-                    generatedDate: sale.date || new Date().toISOString(),
-                    data: { ...sale, applyVat: false },
-                    createdAt: sale.createdAt || new Date().toISOString()
-                };
-            } else {
-                docToUse = { ...snap.docs[0].data(), id: snap.docs[0].id } as AppDocument;
-            }
-
-            setExportDoc(docToUse);
+            setExportDoc(docToDownload);
             await new Promise(r => setTimeout(r, 400));
 
             const element = document.getElementById('recent-sale-export-target');
@@ -150,13 +133,13 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             const imgData = canvas.toDataURL('image/png', 1.0);
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
             
-            const initials = 'RCT';
+            const initials = docToDownload.type === 'Receipt' ? 'RCT' : (docToDownload.type === 'Invoice' ? 'INV' : 'QTN');
             const compPrefix = (tenant?.name || 'HUB').slice(0, 3).toUpperCase();
             const now = new Date();
             const filename = `${initials} ${compPrefix}-${now.getFullYear()}${String(now.getDate()).padStart(2,'0')}${String(now.getMonth()+1).padStart(2,'0')}.pdf`;
 
             pdf.save(filename);
-            toast({ title: "Receipt Saved" });
+            toast({ title: "Document Saved" });
         } catch (e) {
             toast({ variant: 'destructive', title: "Export Failed" });
         } finally {
@@ -165,9 +148,9 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         }
     };
 
-    const handleShareWhatsApp = (sale: Sale) => {
-        const phone = sale.customerPhone || "";
-        const text = `Hello! Your purchase of ${sale.amount.toLocaleString()} KES is confirmed. Thank you!`;
+    const handleShareWhatsApp = (docObj: AppDocument) => {
+        const phone = docObj.data?.customer?.phone || "";
+        const text = `Hello! Your ${docObj.type} (${docObj.title}) is ready. Thank you!`;
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
     };
 
@@ -175,12 +158,12 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         onView: onViewReceipt,
         onGenerateDelivery: handleGenerateDelivery,
         onWhatsApp: handleShareWhatsApp,
-        onDownload: handleDownloadReceipt
+        onDownload: handleDownloadPdf
     };
-    const saleColumns = useMemo<ColumnDef<Sale>[]>(() => getSaleColumns(saleColumnActions), [saleColumnActions]);
+    const saleColumns = useMemo<ColumnDef<AppDocument>[]>(() => getSaleColumns(saleColumnActions), [saleColumnActions]);
     
     const salesTable = useReactTable({
-        data: filteredSales,
+        data: filteredDocs,
         columns: saleColumns,
         state: { pagination },
         onPaginationChange: setPagination,
