@@ -135,7 +135,7 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
                     <SelectItem value="user">Staff Member (Restricted Modules)</SelectItem>
                   </SelectContent>
                 </Select>
-                 {selectedRole && <FormDescription className="text-[10px] font-bold uppercase text-primary mt-1">{roleDescriptions[selectedRole]}</FormDescription>}
+                 {selectedRole && <FormDescription className="text-[10px] font-bold uppercase text-primary mt-1">{roleDescriptions[selectedRole as keyof typeof roleDescriptions]}</FormDescription>}
                 <FormMessage />
               </FormItem>
             )}
@@ -169,7 +169,7 @@ export function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps)
                                             ? field.onChange([...field.value, item.id])
                                             : field.onChange(
                                                 field.value?.filter(
-                                                    (value) => value !== item.id
+                                                    (value: string) => value !== item.id
                                                 )
                                                 )
                                         }}

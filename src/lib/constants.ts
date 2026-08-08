@@ -9,7 +9,8 @@ import {
     History,
     Settings,
     ShieldCheck,
-    LineChart
+    LineChart,
+    UserCog
 } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
@@ -55,6 +56,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'audit', href: '/audit', label: 'Audit Trail', icon: History },
   
   // SYSTEM
+  { id: 'users', href: '/users', label: 'Staff Management', icon: UserCog },
   { id: 'settings', href: '/profile', label: 'Shop Settings', icon: Settings },
 ];
 

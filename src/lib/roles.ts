@@ -25,7 +25,7 @@ export const getPermittedNavItems = (user?: User | null, company?: Company | nul
     });
 
     // 1. Workspace Admin: Access to all permitted modules
-    if (role === 'admin') {
+    if (role === 'admin' || role === 'super_admin') {
         return items;
     }
     
@@ -34,6 +34,7 @@ export const getPermittedNavItems = (user?: User | null, company?: Company | nul
     
     return items.filter(item => {
         if (alwaysAllowedHrefs.includes(item.href)) return true;
+        // Specifically block management modules for non-admins
         if (item.href === '/users' || item.href === '/audit') return false;
         return permissions.includes(item.id);
     });
