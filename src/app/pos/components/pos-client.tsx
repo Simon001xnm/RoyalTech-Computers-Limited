@@ -1,42 +1,40 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
-import type { SaleItem, Sale, Customer, Document as AppDocument } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Phone, UserPlus } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Search, CreditCard, Wallet, Banknote, Landmark } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc, onSnapshot, addDoc } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, addDoc, doc, writeBatch, getDocs, limit } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
-import { SaleService } from '@/services/sale-service';
-import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
-import { initiateStkPush } from '../actions';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
-type Product = { 
-  id: string; 
-  displayName: string; 
-  price: number; 
-  serialNumber: string; 
-  type: 'asset' | 'accessory' | 'custom';
-  model?: string;
-  description?: string;
+type PaymentSplit = {
+    method: 'Cash' | 'M-Pesa' | 'Bank' | 'Card' | 'Credit';
+    amount: number;
+    reference?: string;
 };
 
-type CartItem = SaleItem & { productType: 'asset' | 'accessory' | 'custom'; quantity: number; unitPrice: number; discount: number; };
-
-const VAT_RATE = 0.16;
+type CartItem = {
+    id: string;
+    productId: string;
+    name: string;
+    sku: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+    type: 'retail' | 'wholesale';
+};
 
 export function PosClient() {
   const { toast } = useToast();
@@ -44,544 +42,465 @@ export function PosClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<{id: string, name: string} | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Till' | 'M-Pesa' | 'Bank' | 'Paybill'>('M-Pesa');
-  const [customerPhone, setCustomerPhone] = useState('');
+  const [discount, setDiscount] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [referenceCode, setReferenceCode] = useState('');
-  const [amountPaid, setAmountPaid] = useState('');
-  const [applyVat, setApplyVat] = useState(false);
-
-  // Quick Add Customer State
-  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
-  const [newCustName, setNewCustName] = useState('');
-  const [newCustPhone, setNewCustPhone] = useState('');
-  const [isSavingCust, setIsSavingCust] = useState(false);
-
-  const [isWaitingForConfirmation, setIsWaitingForConfirmation] = useState(false);
-  const [pendingSaleId, setPendingSaleId] = useState<string | null>(null);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
-  const [lastGeneratedDoc, setLastGeneratedDoc] = useState<AppDocument | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
 
-  // CLOUD QUERIES
-  const accessoriesQuery = useMemoFirebase(() => {
+  // Split Payment State
+  const [payments, setPayments] = useState<PaymentSplit[]>([]);
+  const [activePaymentMethod, setActivePaymentMethod] = useState<PaymentSplit['method'] | null>(null);
+  const [currentPaymentAmount, setCurrentPaymentAmount] = useState<string>('');
+  const [currentPaymentRef, setCurrentPaymentRef] = useState<string>('');
+
+  // Inventory Query
+  const productsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'accessories'), where('tenantId', '==', tenant.id));
+    return query(collection(firestore, 'products'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
-  const { data: rawAccessories } = useCollection(accessoriesQuery);
+  const { data: products } = useCollection(productsQuery);
 
-  const assetsQuery = useMemoFirebase(() => {
-    if (!tenant) return null;
-    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
-  }, [firestore, tenant?.id]);
-  const { data: rawAssets } = useCollection(assetsQuery);
-
+  // Customer Query
   const customersQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
   const { data: customers } = useCollection(customersQuery);
 
-  const companyRef = useMemoFirebase(() => 
-    tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
-    [firestore, tenant?.id]
-  );
-  const { data: workspaceProfile } = useDoc(companyRef);
-
   const [searchOpen, setSearchOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [unitPrice, setUnitPrice] = useState('');
-  const [customName, setCustomName] = useState('');
+  const [custSearchOpen, setCustSearchOpen] = useState(false);
 
-  const availableProducts = useMemo<Product[]>(() => {
-    const list: Product[] = [];
-    
-    if (rawAssets) {
-        rawAssets.filter(a => a.status === 'Available').forEach(asset => {
-            const description = [
-              asset.specifications?.ram,
-              asset.specifications?.storage,
-              asset.specifications?.processor
-            ].filter(Boolean).join(' • ');
-
-            list.push({
-                id: asset.id,
-                displayName: `ITEM: ${asset.model} (${asset.serialNumber})`,
-                price: asset.leasePrice || asset.purchasePrice || 0,
-                serialNumber: asset.serialNumber,
-                type: 'asset',
-                model: asset.model,
-                description: description || undefined
-            });
-        });
-    }
-
-    if (rawAccessories) {
-      rawAccessories.filter(a => a.status === 'Available').forEach(acc => list.push({
-        id: acc.id,
-        displayName: `ACC: ${acc.name} (${acc.serialNumber})`,
-        price: acc.sellingPrice || 0,
-        serialNumber: acc.serialNumber,
-        type: 'accessory',
-        model: acc.name
-      }));
-    }
-    return list;
-  }, [rawAccessories, rawAssets]);
-
-  const { subtotal, grandTotal, vatAmount, changeDue } = useMemo(() => {
-    const subtotal = cart.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
-    const vatAmount = applyVat ? subtotal * VAT_RATE : 0;
-    const grandTotal = subtotal + vatAmount;
-    const parsedAmountPaid = parseFloat(amountPaid) || grandTotal;
-    return { subtotal, vatAmount, grandTotal, changeDue: Math.max(0, parsedAmountPaid - grandTotal) };
-  }, [cart, amountPaid, applyVat]);
-
-  useEffect(() => {
-    if (!pendingSaleId || !isWaitingForConfirmation) return;
-
-    const unsubscribe = onSnapshot(doc(firestore, 'sales_transactions', pendingSaleId), (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data() as Sale;
-        if (data.status === 'Paid') {
-          setIsWaitingForConfirmation(false);
-          setPendingSaleId(null);
-          setIsSuccessOpen(true);
-          setIsProcessing(false);
-          toast({ title: 'Payment Confirmed!' });
-        } else if (data.status === 'Failed') {
-          setIsWaitingForConfirmation(false);
-          setPendingSaleId(null);
-          setIsProcessing(false);
-          toast({ variant: 'destructive', title: 'Payment Failed', description: data.paymentError });
-        }
-      }
-    });
-
-    const timeout = setTimeout(() => {
-        if (isWaitingForConfirmation) {
-            setIsWaitingForConfirmation(false);
-            setPendingSaleId(null);
-            setIsProcessing(false);
-            toast({ variant: 'destructive', title: 'Payment Timeout' });
-        }
-    }, 120000); 
-
-    return () => { unsubscribe(); clearTimeout(timeout); };
-  }, [pendingSaleId, isWaitingForConfirmation, firestore, toast]);
-
-  const handleAddToCart = () => {
-    if (!selectedProduct && !customName) return;
-    if (!unitPrice) return;
-    
-    const price = parseFloat(unitPrice);
-    const newItem: CartItem = {
-      id: selectedProduct?.id || `custom_${Date.now()}`,
-      name: selectedProduct?.model || customName,
-      description: selectedProduct?.description,
-      serialNumber: selectedProduct?.serialNumber || 'N/A',
-      price: price, 
-      unitPrice: price, 
-      quantity: selectedProduct?.type === 'asset' ? 1 : quantity, 
-      discount: 0,
-      type: selectedProduct?.type || 'custom', 
-      productType: selectedProduct?.type || 'custom'
+  // Calculations
+  const { subtotal, total, amountPaid, remainingBalance } = useMemo(() => {
+    const sub = cart.reduce((acc, item) => acc + item.total, 0);
+    const tot = Math.max(0, sub - discount);
+    const paid = payments.reduce((acc, p) => acc + p.amount, 0);
+    return {
+        subtotal: sub,
+        total: tot,
+        amountPaid: paid,
+        remainingBalance: tot - paid
     };
+  }, [cart, discount, payments]);
 
-    setCart([...cart, newItem]);
-    setSelectedProduct(null); 
-    setUnitPrice(''); 
-    setQuantity(1);
-    setCustomName('');
+  const handleAddToCart = (product: any) => {
+    const existing = cart.find(i => i.productId === product.id);
+    if (existing) {
+        setCart(cart.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + 1, total: (i.quantity + 1) * i.unitPrice } : i));
+    } else {
+        setCart([...cart, {
+            id: crypto.randomUUID(),
+            productId: product.id,
+            name: product.name,
+            sku: product.sku,
+            quantity: 1,
+            unitPrice: product.sellingPriceRetail,
+            total: product.sellingPriceRetail,
+            type: 'retail'
+        }]);
+    }
+    setSearchOpen(false);
   };
 
-  const handleQuickAddCustomer = async () => {
-    if (!newCustName || !tenant || !user) return;
-    setIsSavingCust(true);
-    try {
-        const docRef = await addDoc(collection(firestore, 'customers'), {
-            name: newCustName,
-            phone: newCustPhone,
-            tenantId: tenant.id,
-            registrationDate: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            createdBy: { uid: user.uid, name: user.displayName || 'User' }
-        });
-        const newCust = { id: docRef.id, name: newCustName, phone: newCustPhone } as Customer;
-        setSelectedCustomer(newCust);
-        setCustomerPhone(newCustPhone);
-        setIsQuickAddOpen(false);
-        setNewCustName('');
-        setNewCustPhone('');
-        toast({ title: "Customer Registered" });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Registration Failed' });
-    } finally {
-        setIsSavingCust(false);
-    }
+  const handleRemoveFromCart = (id: string) => {
+    setCart(cart.filter(i => i.id !== id));
+  };
+
+  const handleAddPayment = () => {
+    if (!activePaymentMethod || !currentPaymentAmount) return;
+    const amount = parseFloat(currentPaymentAmount);
+    if (isNaN(amount) || amount <= 0) return;
+
+    setPayments([...payments, {
+        method: activePaymentMethod,
+        amount: amount,
+        reference: currentPaymentRef
+    }]);
+    
+    setActivePaymentMethod(null);
+    setCurrentPaymentAmount('');
+    setCurrentPaymentRef('');
   };
 
   const handleFinalizeSale = async () => {
-    if (cart.length === 0 || !selectedCustomer || !user || !tenant) return;
+    if (cart.length === 0 || !tenant || !user) return;
     setIsProcessing(true);
-    let mpesaCheckoutId = referenceCode;
-
-    if (paymentMethod === 'M-Pesa') {
-        if (!customerPhone || customerPhone.length < 10) {
-            toast({ variant: 'destructive', title: 'Phone Required' });
-            setIsProcessing(false);
-            return;
-        }
-        const mpesaResult = await initiateStkPush(customerPhone, grandTotal);
-        if (!mpesaResult.success) {
-            toast({ variant: 'destructive', title: 'M-Pesa Failed', description: mpesaResult.error });
-            setIsProcessing(false);
-            return;
-        }
-        mpesaCheckoutId = mpesaResult.checkoutRequestId || '';
-    }
 
     try {
+        const batch = writeBatch(firestore);
         const saleId = crypto.randomUUID();
-        const saleDate = new Date().toISOString();
-        const prefix = (tenant.name || 'DOC').slice(0, 3).toUpperCase();
-        
-        const workspaceMetadata = workspaceProfile ? {
-            name: workspaceProfile.name || '', 
-            address: workspaceProfile.address || '',
-            phone: workspaceProfile.phone || '', 
-            email: workspaceProfile.email || '',
-            logoUrl: workspaceProfile.logoUrl || null, 
-            primaryColor: workspaceProfile.primaryColor || null,
-            secondaryColor: workspaceProfile.secondaryColor || null
-        } : null;
+        const timestamp = new Date().toISOString();
 
-        const saleData: Sale = {
-            id: saleId, tenantId: tenant.id, date: saleDate, amount: grandTotal, subtotal, vat: vatAmount,
-            amountPaid: parseFloat(amountPaid) || grandTotal, changeDue, paymentMethod, referenceCode: mpesaCheckoutId,
-            items: cart.map(i => ({ ...i, price: i.unitPrice })), 
-            customerName: selectedCustomer.name, 
-            customerId: selectedCustomer.id, 
-            customerPhone: customerPhone || selectedCustomer.phone,
-            status: paymentMethod === 'M-Pesa' ? 'Pending' : 'Paid', createdAt: saleDate, 
-            createdBy: { uid: user.uid, name: user.displayName || 'User' }
+        const saleData = {
+            tenantId: tenant.id,
+            date: timestamp,
+            customerId: selectedCustomer?.id || 'walk-in',
+            customerName: selectedCustomer?.name || 'Walk-in Client',
+            items: cart,
+            subtotal,
+            discount,
+            total,
+            amountPaid,
+            balance: remainingBalance,
+            payments,
+            status: remainingBalance <= 0 ? 'Paid' : (amountPaid > 0 ? 'Partial' : 'Credit'),
+            createdAt: timestamp,
+            createdBy: { uid: user.uid, name: user.displayName }
         };
 
-        const docData: AppDocument = {
-            id: crypto.randomUUID(), tenantId: tenant.id, type: 'Receipt', 
-            title: `Receipt #${prefix}-${saleId.slice(0, 5).toUpperCase()}`,
-            generatedDate: saleDate, relatedTo: `Sale to ${selectedCustomer.name}`, saleId: saleId, 
-            data: { 
-              ...saleData, 
-              customer: {
-                id: selectedCustomer.id,
-                name: selectedCustomer.name,
-                phone: customerPhone || selectedCustomer.phone || '',
-                email: selectedCustomer.email || '',
-                address: selectedCustomer.address || ''
-              },
-              applyVat, 
-              workspace: workspaceMetadata 
-            }, 
-            createdAt: saleDate, 
-            createdBy: { uid: user.uid, name: user.displayName || 'User' }
-        };
+        // 1. Save Sale
+        const saleRef = doc(collection(firestore, 'sales_transactions'));
+        batch.set(saleRef, saleData);
 
-        await SaleService.finalizeSale(firestore, saleData, docData);
-        setLastGeneratedDoc(docData);
+        // 2. Update Inventory & Log Movements
+        for (const item of cart) {
+            const productRef = doc(firestore, 'products', item.productId);
+            const product = products?.find(p => p.id === item.productId);
+            
+            if (product) {
+                const newStock = (product.currentStock || 0) - item.quantity;
+                batch.update(productRef, { currentStock: newStock, updatedAt: timestamp });
 
-        if (paymentMethod === 'M-Pesa') {
-            setPendingSaleId(saleId);
-            setIsWaitingForConfirmation(true);
-        } else {
-            setIsSuccessOpen(true);
-            setIsProcessing(false);
-            setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode(''); setCustomerPhone('');
+                const movementRef = doc(collection(firestore, 'stock_movements'));
+                batch.set(movementRef, {
+                    tenantId: tenant.id,
+                    productId: item.productId,
+                    type: "SALE",
+                    quantity: -item.quantity,
+                    previousStock: product.currentStock,
+                    newStock: newStock,
+                    reason: `Sale ${saleRef.id.slice(0, 5)}`,
+                    referenceId: saleRef.id,
+                    timestamp,
+                    createdBy: { uid: user.uid, name: user.displayName }
+                });
+            }
         }
+
+        await batch.commit();
+        setIsSuccessOpen(true);
+        setCart([]);
+        setPayments([]);
+        setSelectedCustomer(null);
+        setDiscount(0);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Cloud Sync Failed', description: e.message });
+        toast({ variant: 'destructive', title: 'Sale Failed', description: e.message });
+    } finally {
         setIsProcessing(false);
     }
   };
 
-  const handleDownloadReceipt = async () => {
-    if (!lastGeneratedDoc) return;
-    setIsExporting(true);
-    const { default: html2canvas } = await import('html2canvas');
-    const { default: jsPDF } = await import('jspdf');
-    const originalScrollY = window.scrollY;
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    await new Promise(r => setTimeout(r, 200));
-    const element = document.getElementById('pos-receipt-target');
-    if (!element) {
-        window.scrollTo({ top: originalScrollY });
-        setIsExporting(false);
-        return;
-    }
-    try {
-        const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: "#ffffff", width: 794, height: 1123, y: 0, scrollY: 0 });
-        const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-        const imgData = canvas.toDataURL('image/png', 1.0);
-        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-        pdf.save(`${lastGeneratedDoc.title.replace(/\s+/g, '_')}.pdf`);
-    } catch (err) { toast({ variant: 'destructive', title: 'Export Failed' }); } finally {
-        setIsExporting(false);
-        window.scrollTo({ top: originalScrollY });
-    }
+  const paymentIcons = {
+    Cash: Banknote,
+    'M-Pesa': Wallet,
+    Bank: Landmark,
+    Card: CreditCard,
+    Credit: Landmank
   };
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 shadow-md">
-            <CardHeader className="bg-muted/10 py-3 px-4">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
-                        <ShoppingCart className="h-4 w-4" /> Basket
-                    </CardTitle>
-                    <Button variant="outline" size="sm" onClick={() => setIsQuickAddOpen(true)} className="h-8 text-[10px] font-black uppercase tracking-widest border-2">
-                        <UserPlus className="h-3 w-3 mr-1.5" /> Quick Register Client
-                    </Button>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-                <div className="space-y-2">
-                    <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
-                        <PopoverTrigger asChild><Button variant="outline" className="w-full justify-between h-11 text-left font-normal">{selectedCustomer ? selectedCustomer.name : "Select Client..."}</Button></PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Search directory..." /><CommandList><CommandEmpty>No matching clients.</CommandEmpty><CommandGroup>{(customers || []).map(c => <CommandItem key={c.id} onSelect={() => { setSelectedCustomer(c); setCustomerPhone(c.phone || ''); setIsCustomerSearchOpen(false); }}>{c.name}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent>
-                    </Popover>
-                </div>
-                
-                <div className="bg-muted/30 p-4 rounded-xl space-y-4 border border-black/5">
-                  <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] uppercase font-black opacity-50">Find Item / Accessory</Label>
-                        <Popover open={searchOpen} onOpenChange={setSearchOpen}>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full h-11 truncate text-left font-normal bg-white">
-                              {selectedProduct ? selectedProduct.displayName : customName || "Scan serial or type manual..."}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                              <CommandInput 
-                                placeholder="Model or S/N..." 
-                                value={customName}
-                                onValueChange={(v) => setCustomName(v)}
-                              />
-                              <CommandList>
-                                <CommandGroup heading="In Stock">
-                                  {availableProducts.map(p => (
-                                    <CommandItem key={p.id} onSelect={() => { setSelectedProduct(p); setUnitPrice(p.price.toString()); setSearchOpen(false); }}>
-                                      {p.displayName}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                                {customName && (
-                                  <CommandGroup heading="Manual">
-                                    <CommandItem onSelect={() => { setSelectedProduct(null); setSearchOpen(false); }}>
-                                      Register "{customName}" Sale
-                                    </CommandItem>
-                                  </CommandGroup>
-                                )}
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
+        
+        {/* Left: Basket & Search */}
+        <div className="space-y-6">
+            <Card className="shadow-sm border-none ring-1 ring-black/5 overflow-hidden">
+                <CardHeader className="bg-muted/10 p-4 border-b">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full pl-10 h-12 justify-start font-normal bg-white">
+                                        Scan barcode or search product...
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[600px] p-0" align="start">
+                                    <Command>
+                                        <CommandInput placeholder="Type SKU or Name..." />
+                                        <CommandList>
+                                            <CommandEmpty>No products found.</CommandEmpty>
+                                            <CommandGroup heading="Inventory">
+                                                {products?.filter(p => p.currentStock > 0).map(p => (
+                                                    <CommandItem key={p.id} onSelect={() => handleAddToCart(p)} className="p-3">
+                                                        <div className="flex justify-between w-full items-center">
+                                                            <div>
+                                                                <p className="font-bold uppercase text-xs">{p.name}</p>
+                                                                <p className="text-[10px] font-mono text-muted-foreground">{p.sku}</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="font-black text-primary">KES {p.sellingPriceRetail.toLocaleString()}</p>
+                                                                <Badge variant="secondary" className="text-[8px] h-4">{p.currentStock} {p.unit} left</Badge>
+                                                            </div>
+                                                        </div>
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <Popover open={custSearchOpen} onOpenChange={setCustSearchOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="secondary" className="h-12 px-6 font-bold">
+                                    {selectedCustomer ? selectedCustomer.name : 'Walk-in Client'}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-0">
+                                <Command>
+                                    <CommandInput placeholder="Search client..." />
+                                    <CommandList>
+                                        <CommandItem onSelect={() => { setSelectedCustomer(null); setCustSearchOpen(false); }}>Walk-in Client</CommandItem>
+                                        <CommandGroup heading="CRM Directory">
+                                            {customers?.map(c => (
+                                                <CommandItem key={c.id} onSelect={() => { setSelectedCustomer(c); setCustSearchOpen(false); }}>{c.name}</CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
                         </Popover>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                             <Label className="text-[10px] uppercase font-black opacity-50">Qty</Label>
-                             <Input 
-                                type="number" 
-                                value={quantity} 
-                                onChange={e => setQuantity(parseInt(e.target.value) || 1)} 
-                                className="h-11 bg-white" 
-                                disabled={selectedProduct?.type === 'asset'}
-                             />
-                        </div>
-                        <div className="space-y-2">
-                             <Label className="text-[10px] uppercase font-black opacity-50">Price</Label>
-                             <Input type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="h-11 font-black bg-white" />
-                        </div>
-                    </div>
-                  </div>
-                  <Button onClick={handleAddToCart} disabled={!selectedProduct && !customName} className="w-full h-11 font-black uppercase tracking-widest"><PlusCircle className="h-4 w-4 mr-2" /> Add to Sale</Button>
-                </div>
-
-                {cart.length > 0 ? (
-                    <div className="border rounded-xl overflow-hidden overflow-x-auto shadow-sm">
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="min-h-[500px]">
                         <Table>
                             <TableHeader className="bg-muted/50">
                                 <TableRow>
-                                    <TableHead className="min-w-[150px] text-[10px] font-black uppercase">Item</TableHead>
-                                    <TableHead className="text-center w-20 text-[10px] font-black uppercase">Qty</TableHead>
-                                    <TableHead className="text-right w-32 text-[10px] font-black uppercase">Price</TableHead>
-                                    <TableHead className="text-right text-[10px] font-black uppercase">Total</TableHead>
-                                    <TableHead className="w-[50px]"></TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase">Product</TableHead>
+                                    <TableHead className="w-24 text-center text-[10px] font-black uppercase">Qty</TableHead>
+                                    <TableHead className="w-32 text-right text-[10px] font-black uppercase">Price</TableHead>
+                                    <TableHead className="w-32 text-right text-[10px] font-black uppercase">Total</TableHead>
+                                    <TableHead className="w-12"></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {cart.map((item, idx) => (
-                                    <TableRow key={item.id} className="hover:bg-muted/20">
+                                {cart.map((item) => (
+                                    <TableRow key={item.id} className="hover:bg-muted/5 group">
                                         <TableCell>
                                             <p className="font-bold text-sm uppercase tracking-tight">{item.name}</p>
-                                            <p className="text-[10px] font-mono text-muted-foreground uppercase">{item.serialNumber}</p>
+                                            <p className="text-[10px] font-mono text-muted-foreground">{item.sku}</p>
                                         </TableCell>
-                                        <TableCell className="text-center text-sm font-bold">{item.quantity}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <Input 
+                                                    type="number" 
+                                                    value={item.quantity} 
+                                                    onChange={(e) => {
+                                                        const q = parseInt(e.target.value) || 1;
+                                                        setCart(cart.map(i => i.id === item.id ? { ...i, quantity: q, total: q * i.unitPrice } : i));
+                                                    }}
+                                                    className="h-8 w-16 text-center font-bold"
+                                                />
+                                            </div>
+                                        </TableCell>
                                         <TableCell className="text-right">
-                                          <Input 
-                                            type="number" 
-                                            value={item.unitPrice} 
-                                            onChange={(e) => {
-                                                const updated = [...cart];
-                                                updated[idx].unitPrice = parseFloat(e.target.value) || 0;
-                                                updated[idx].price = updated[idx].unitPrice;
-                                                setCart(updated);
-                                            }}
-                                            className="h-8 w-24 text-right text-xs font-bold"
-                                          />
+                                            <Input 
+                                                type="number" 
+                                                value={item.unitPrice} 
+                                                onChange={(e) => {
+                                                    const p = parseFloat(e.target.value) || 0;
+                                                    setCart(cart.map(i => i.id === item.id ? { ...i, unitPrice: p, total: p * i.quantity } : i));
+                                                }}
+                                                className="h-8 w-24 text-right font-bold ml-auto"
+                                            />
                                         </TableCell>
-                                        <TableCell className="text-right font-black text-sm text-primary">KES {(item.unitPrice * item.quantity).toLocaleString()}</TableCell>
-                                        <TableCell><Button variant="ghost" size="icon" onClick={() => setCart(cart.filter(c => c.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive/40 hover:text-destructive"/></Button></TableCell>
+                                        <TableCell className="text-right font-black text-sm text-primary">
+                                            {(item.total).toLocaleString()}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Button variant="ghost" size="icon" onClick={() => handleRemoveFromCart(item.id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Trash2 className="h-4 w-4 text-destructive/50" />
+                                            </Button>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
+                                {cart.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="h-96 text-center text-muted-foreground/30">
+                                            <div className="space-y-2">
+                                                <ShoppingCart className="h-12 w-12 mx-auto" />
+                                                <p className="text-xs font-black uppercase tracking-widest">Basket Empty</p>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
                     </div>
-                ) : (
-                    <div className="py-20 border-2 border-dashed rounded-3xl text-center opacity-30">
-                        <ShoppingCart className="h-10 w-10 mx-auto mb-2" />
-                        <p className="text-[10px] font-black uppercase tracking-widest">Basket Empty</p>
+                </CardContent>
+            </Card>
+        </div>
+
+        {/* Right: Checkout & Settlement */}
+        <div className="space-y-6">
+            <Card className="shadow-xl border-none ring-1 ring-black/5 flex flex-col h-full bg-white">
+                <CardHeader className="bg-primary/5 py-4 border-b">
+                    <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                        <LANDMARK className="h-3.5 w-3.5" /> Settlement Mix
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6 flex-grow">
+                    <div className="space-y-3">
+                        <div className="flex justify-between text-xs font-bold opacity-60"><span>Subtotal</span><span>KES {subtotal.toLocaleString()}</span></div>
+                        <div className="flex justify-between items-center gap-4">
+                            <span className="text-xs font-bold opacity-60">Discount</span>
+                            <Input 
+                                type="number" 
+                                value={discount} 
+                                onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)} 
+                                className="h-8 w-24 text-right font-bold" 
+                            />
+                        </div>
+                        <div className="pt-3 border-t-2 border-black flex justify-between items-end">
+                            <span className="text-sm font-black uppercase">Payable Total</span>
+                            <span className="text-3xl font-black tracking-tighter">KES {total.toLocaleString()}</span>
+                        </div>
                     </div>
-                )}
-            </CardContent>
-        </Card>
 
-        <Card className="shadow-lg border-primary/10 flex flex-col overflow-hidden">
-            <CardHeader className="bg-primary/5 py-4">
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-primary">Payment Protocol</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6 flex-grow">
-                <div className="space-y-2">
-                    <Label className="text-[10px] uppercase font-black opacity-50">Method</Label>
-                    <Select onValueChange={(v: any) => setPaymentMethod(v)} value={paymentMethod}>
-                        <SelectTrigger className="h-11 font-bold"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="M-Pesa">M-Pesa STK Push</SelectItem>
-                            <SelectItem value="Cash">Cash</SelectItem>
-                            <SelectItem value="Bank">Bank Transfer</SelectItem>
-                            <SelectItem value="Till">Buy Goods (Till)</SelectItem>
-                            <SelectItem value="Paybill">Paybill</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                
-                {paymentMethod === 'M-Pesa' && (
-                    <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                         <Label className="text-[10px] uppercase font-black opacity-50 flex items-center gap-1">
-                            <Phone className="h-3 w-3" /> Customer Number
-                         </Label>
-                         <Input 
-                            placeholder="07XXXXXXXX" 
-                            value={customerPhone} 
-                            onChange={e => setCustomerPhone(e.target.value)} 
-                            className="h-11 font-black tracking-widest border-primary/20 bg-primary/5" 
-                         />
+                    <Separator />
+
+                    <div className="space-y-4">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Payment Allocation</p>
+                        
+                        <div className="grid grid-cols-3 gap-2">
+                            {(['Cash', 'M-Pesa', 'Bank', 'Card', 'Credit'] as const).map(m => (
+                                <Button 
+                                    key={m} 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className={cn(
+                                        "h-10 text-[10px] font-black uppercase tracking-tighter border-2",
+                                        activePaymentMethod === m ? "border-primary bg-primary/5 text-primary" : "border-muted"
+                                    )}
+                                    onClick={() => setActivePaymentMethod(m)}
+                                >
+                                    {m}
+                                </Button>
+                            ))}
+                        </div>
+
+                        {activePaymentMethod && (
+                            <div className="p-4 bg-muted/30 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-[10px] font-black uppercase">Allocating {activePaymentMethod}</Label>
+                                    <Button variant="ghost" size="icon" onClick={() => setActivePaymentMethod(null)} className="h-5 w-5"><Trash2 className="h-3 w-3" /></Button>
+                                </div>
+                                <Input 
+                                    type="number" 
+                                    placeholder="Amount..." 
+                                    value={currentPaymentAmount} 
+                                    onChange={e => setCurrentPaymentAmount(e.target.value)}
+                                    className="h-10 font-bold bg-white"
+                                />
+                                {['M-Pesa', 'Bank', 'Card'].includes(activePaymentMethod) && (
+                                    <Input 
+                                        placeholder="Reference / Transaction ID" 
+                                        value={currentPaymentRef} 
+                                        onChange={e => setCurrentPaymentRef(e.target.value)}
+                                        className="h-10 font-mono text-[10px] bg-white"
+                                    />
+                                )}
+                                <Button className="w-full h-10 font-black uppercase text-[10px]" onClick={handleAddPayment}>Apply Payment</Button>
+                            </div>
+                        )}
+
+                        <div className="space-y-2 max-h-[150px] overflow-auto">
+                            {payments.map((p, idx) => (
+                                <div key={idx} className="flex justify-between items-center p-2 bg-muted/10 rounded-lg border border-black/5">
+                                    <div className="flex items-center gap-2">
+                                        <div className="bg-white p-1 rounded border shadow-sm">
+                                            {p.method === 'Cash' && <Banknote className="h-3 w-3" />}
+                                            {p.method === 'M-Pesa' && <Wallet className="h-3 w-3" />}
+                                            {p.method === 'Bank' && <Landmark className="h-3 w-3" />}
+                                            {p.method === 'Card' && <CreditCard className="h-3 w-3" />}
+                                            {p.method === 'Credit' && <Landmark className="h-3 w-3 text-red-500" />}
+                                        </div>
+                                        <span className="text-[10px] font-bold uppercase">{p.method}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs font-black">KES {p.amount.toLocaleString()}</span>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPayments(payments.filter((_, i) => i !== idx))}><Trash2 className="h-3 w-3 opacity-20 hover:opacity-100" /></Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                )}
 
-                <div className="flex items-center space-x-2 pt-2">
-                    <Switch id="vat-pos" checked={applyVat} onCheckedChange={setApplyVat} />
-                    <Label htmlFor="vat-pos" className="text-xs font-bold cursor-pointer">Apply 16% VAT</Label>
-                </div>
-
-                <div className="space-y-2 p-6 rounded-2xl bg-black text-white shadow-xl mt-auto">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Total Settlement</p>
-                    <div className="text-3xl font-black tracking-tighter">KES {grandTotal.toLocaleString()}</div>
-                </div>
-            </CardContent>
-            <CardFooter className="pb-8">
-                <Button onClick={handleFinalizeSale} className="w-full h-16 text-xl font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all" disabled={isProcessing || isWaitingForConfirmation || !selectedCustomer || cart.length === 0}>
-                    {isProcessing ? <Loader2 className="h-8 w-8 animate-spin" /> : 'Finalize Sale'}
-                </Button>
-            </CardFooter>
-        </Card>
+                    <div className="mt-auto space-y-4 pt-6 border-t">
+                        <div className="flex justify-between items-center p-4 bg-black text-white rounded-2xl shadow-xl">
+                            <div>
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-50">Remaining</p>
+                                <p className="text-xl font-black">KES {remainingBalance.toLocaleString()}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-50">Status</p>
+                                <Badge className={cn(
+                                    "text-[9px] font-black uppercase px-2 h-5 border-none",
+                                    remainingBalance <= 0 ? "bg-green-500" : (amountPaid > 0 ? "bg-orange-500" : "bg-red-500")
+                                )}>
+                                    {remainingBalance <= 0 ? 'Full Settlement' : (amountPaid > 0 ? 'Partial Payment' : 'Unpaid Credit')}
+                                </Badge>
+                            </div>
+                        </div>
+                        
+                        <Button 
+                            onClick={handleFinalizeSale} 
+                            className="w-full h-20 text-2xl font-black uppercase tracking-widest shadow-2xl transition-all active:scale-95" 
+                            disabled={isProcessing || cart.length === 0}
+                        >
+                            {isProcessing ? <Loader2 className="h-8 w-8 animate-spin" /> : 'Finalize Sale'}
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
       </div>
 
-      <Dialog open={isQuickAddOpen} onOpenChange={setIsQuickAddOpen}>
-        <DialogContent className="sm:max-w-md border-none shadow-2xl">
-            <DialogHeader>
-                <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Quick Register</DialogTitle>
-                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Add new client to CRM node</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-6">
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase">Full Name</Label>
-                    <Input value={newCustName} onChange={e => setNewCustName(e.target.value)} placeholder="e.g. John Doe" className="h-11 font-bold" />
-                </div>
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase">Phone Number</Label>
-                    <Input value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} placeholder="07XXXXXXXX" className="h-11 font-bold tracking-widest" />
-                </div>
-            </div>
-            <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setIsQuickAddOpen(false)} className="font-bold h-12">Cancel</Button>
-                <Button onClick={handleQuickAddCustomer} disabled={isSavingCust || !newCustName} className="font-black uppercase tracking-widest h-12 px-8">
-                    {isSavingCust ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} Save and Select
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isWaitingForConfirmation} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md text-center p-12 border-none shadow-2xl">
-            <DialogHeader>
-                <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Awaiting PIN</DialogTitle>
-                <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">STK Push transmitted to {customerPhone}</DialogDescription>
-            </DialogHeader>
-            <div className="pt-10 flex flex-col gap-2">
-                <div className="relative h-20 w-20 mx-auto">
-                    <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
-                    <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                </div>
-                <Button variant="ghost" className="text-xs text-destructive mt-8 font-black uppercase tracking-widest" onClick={() => { setIsWaitingForConfirmation(false); setIsProcessing(false); }}>Abort Transaction</Button>
-            </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isSuccessOpen} onOpenChange={(open) => {
-          if (!open) {
-              setCart([]); setSelectedCustomer(null); setAmountPaid(''); setReferenceCode(''); setCustomerPhone(''); setLastGeneratedDoc(null);
-          }
-          setIsSuccessOpen(open);
-      }}>
+      <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
         <DialogContent className="sm:max-w-md text-center p-10 border-none shadow-2xl">
             <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner">
                 <Check className="h-10 w-10 text-green-600" />
             </div>
             <DialogHeader>
-                <DialogTitle className="text-3xl font-black uppercase tracking-tighter">Transaction Success</DialogTitle>
-                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Receipt encrypted and archived</DialogDescription>
+                <DialogTitle className="text-3xl font-black uppercase tracking-tighter">Sale Recorded</DialogTitle>
+                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Transaction synced to cloud ledger</DialogDescription>
             </DialogHeader>
             <div className="pt-10 space-y-3">
-                <Button variant="outline" className="w-full h-14 font-black uppercase tracking-widest shadow-sm border-2" onClick={handleDownloadReceipt} disabled={isExporting}>
-                    {isExporting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Download className="mr-2 h-5 w-5" />}
-                    Download A4 Receipt
+                <Button variant="outline" className="w-full h-14 font-black uppercase tracking-widest shadow-sm border-2">
+                    <Download className="mr-2 h-5 w-5" />
+                    Print Receipt
                 </Button>
                 <Button className="w-full h-14 font-black uppercase tracking-widest shadow-xl" onClick={() => setIsSuccessOpen(false)}>Start New Sale</Button>
-            </div>
-            <div className="fixed left-[-9999px] top-0 pointer-events-none">
-                <div id="pos-receipt-target" className="bg-white" style={{ width: '210mm', minHeight: '297mm' }}>
-                    {lastGeneratedDoc && <ReceiptPdf document={lastGeneratedDoc} />}
-                </div>
             </div>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+
+function LANDMARK(props: any) {
+    return (
+      <svg
+        {...props}
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <line x1="2" x2="22" y1="20" y2="20" />
+        <line x1="18" x2="18" y1="14" y2="11" />
+        <line x1="14" x2="14" y1="14" y2="11" />
+        <line x1="10" x2="10" y1="14" y2="11" />
+        <line x1="6" x2="6" y1="14" y2="11" />
+        <path d="m2 7 10-5 10 5v4H2Z" />
+      </svg>
+    )
+  }
