@@ -8,27 +8,26 @@ import { useSaaS } from "@/components/saas/saas-provider";
 
 /**
  * @fileOverview Professional Thermal Receipt (80mm)
- * Optimized for POS printers. High-density branded layout.
+ * Optimized for POS printers with authentic monospaced typography.
  * Strictly uses 'Official Business Name' from settings.
  */
 export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
-  // Secondary source: Live company profile if snapshot is missing details
+  // Connect to live company profile to ensure branding is always fresh
   const companyRef = useMemoFirebase(() => 
     tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
     [firestore, tenant?.id]
   );
   const { data: liveCompany } = useDoc(companyRef);
 
-  if (!docSnapshot?.data) return <div className="p-4 text-center text-xs">Error: No Data</div>;
+  if (!docSnapshot?.data) return <div className="p-4 text-center text-xs font-mono">ERROR: DATA_NODE_MISSING</div>;
 
   const data = docSnapshot.data;
-  // Use archived workspace data, fallback to live company data if archived is missing
   const workspace = data.workspace || liveCompany;
   const items = data.items || [];
-  const customer = data.customer || { name: data.customerName || 'Valued Client' };
+  const customer = data.customer || { name: data.customerName || 'VALUED CLIENT' };
   
   const subtotal = Number(data.subtotal || data.amount || 0);
   const vat = Number(data.vatAmount || data.vat || 0);
@@ -42,118 +41,118 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
   const bizName = workspace?.name || liveCompany?.name || 'OFFICIAL BUSINESS';
 
   return (
-    <div className="flex flex-col items-center bg-white p-0">
-      <div className="w-[80mm] p-6 bg-white text-black font-sans text-[10px] leading-relaxed flex flex-col items-center min-h-fit">
+    <div className="flex flex-col items-center bg-white p-0 overflow-visible">
+      <div className="w-[80mm] p-4 bg-white text-black font-mono text-[10px] leading-tight flex flex-col items-center min-h-fit">
         
-        {/* BRANDED HEADER - HIGHEST PRIORITY */}
-        <div className="text-center space-y-1 mb-6 w-full">
-          <h1 className="text-xl font-black uppercase leading-none mb-2 tracking-tighter">
+        {/* BRANDED HEADER - POS STYLE */}
+        <div className="text-center space-y-1 mb-4 w-full">
+          <h1 className="text-lg font-black uppercase leading-none mb-1 tracking-tighter">
             {bizName}
           </h1>
-          <p className="text-[11px] font-black tracking-[0.2em] border-y-2 border-black py-1.5 mb-3">OFFICIAL RECEIPT</p>
+          <p className="text-[11px] font-black border-y border-black border-dashed py-1 mb-2">*** OFFICIAL RECEIPT ***</p>
           
-          <div className="text-[9px] uppercase font-bold space-y-1 opacity-80">
-              <p className="leading-tight">{workspace?.address || 'Nairobi, Kenya'}</p>
-              {workspace?.phone && <p>Tel: {workspace.phone}</p>}
-              {workspace?.email && <p className="lowercase">Email: {workspace.email}</p>}
+          <div className="text-[9px] uppercase space-y-0.5 opacity-90">
+              <p className="font-bold">{workspace?.address || 'NAIROBI, KENYA'}</p>
+              {workspace?.phone && <p>TEL: {workspace.phone}</p>}
+              {workspace?.email && <p className="lowercase">EMAIL: {workspace.email}</p>}
               {workspace?.website && <p className="lowercase">{workspace.website}</p>}
               {workspace?.taxPin && <p className="font-black pt-1 border-t border-dashed border-black/20 mt-1">KRA PIN: {workspace.taxPin}</p>}
           </div>
         </div>
 
-        <div className="w-full border-t border-black my-4" />
+        <div className="w-full border-t border-black border-dashed my-2" />
 
-        {/* TRANSACTION INFO - ENHANCED PADDING */}
-        <div className="w-full space-y-4 mb-6 text-[10px]">
-          <div className="flex justify-between items-baseline py-1">
-            <span className="font-bold opacity-60">Receipt No:</span>
-            <span className="font-black text-xs">#{docSnapshot.title?.split('#').pop() || '001'}</span>
+        {/* TRANSACTION METADATA */}
+        <div className="w-full space-y-2 mb-4 text-[9px]">
+          <div className="flex justify-between">
+            <span className="font-bold">RCPT NO:</span>
+            <span className="font-black">#{docSnapshot.title?.split('#').pop() || '001'}</span>
           </div>
-          <div className="flex justify-between items-baseline py-1">
-            <span className="font-bold opacity-60">Date:</span>
-            <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "dd/MM/yy HH:mm")}</span>
+          <div className="flex justify-between">
+            <span className="font-bold">DATE:</span>
+            <span>{format(new Date(docSnapshot.generatedDate), "dd/MM/yy HH:mm")}</span>
           </div>
           
-          <div className="pt-3 border-t border-black/20 space-y-3">
-            <div className="flex justify-between items-start gap-4">
-                <span className="opacity-60 whitespace-nowrap font-black uppercase text-[8px]">Served By:</span>
-                <span className="font-black uppercase text-right leading-tight flex-1">
-                    {docSnapshot.createdBy?.name || 'Staff Member'}
+          <div className="pt-2 border-t border-black border-dotted space-y-1.5">
+            <div className="flex justify-between items-start gap-2 py-1">
+                <span className="font-bold uppercase text-[8px] whitespace-nowrap">SERVED BY:</span>
+                <span className="font-black uppercase text-right leading-none flex-1">
+                    {docSnapshot.createdBy?.name || 'STAFF'}
                 </span>
             </div>
-            <div className="flex justify-between items-start gap-4">
-                <span className="opacity-60 whitespace-nowrap font-black uppercase text-[8px]">Customer:</span>
-                <span className="font-black uppercase text-right leading-tight flex-1">
+            <div className="flex justify-between items-start gap-2 py-1">
+                <span className="font-bold uppercase text-[8px] whitespace-nowrap">CUSTOMER:</span>
+                <span className="font-black uppercase text-right leading-none flex-1">
                     {customer.name}
                 </span>
             </div>
           </div>
         </div>
 
-        <div className="w-full border-t-2 border-black my-2" />
+        <div className="w-full border-t border-black my-1" />
 
-        {/* ITEMS TABLE - DYNAMIC FLOW */}
-        <div className="w-full space-y-4 mb-8">
+        {/* ITEMS LIST */}
+        <div className="w-full space-y-3 mb-6">
           <div className="flex justify-between font-black uppercase text-[8px] border-b border-black pb-1">
-            <span className="w-1/2">Description</span>
-            <span className="w-1/4 text-center">Qty</span>
-            <span className="w-1/4 text-right">Total</span>
+            <span className="w-1/2">DESC</span>
+            <span className="w-1/4 text-center">QTY</span>
+            <span className="w-1/4 text-right">TOTAL</span>
           </div>
           {items.map((item: any, i: number) => (
-            <div key={i} className="flex justify-between items-start pt-1 pb-1 border-b border-gray-50 last:border-0">
+            <div key={i} className="flex justify-between items-start border-b border-gray-100 border-dotted pb-1 last:border-0">
               <div className="w-1/2 flex flex-col">
                 <span className="uppercase font-bold text-[9px] leading-tight">{item.name || item.description}</span>
-                {item.serialNumber && <span className="text-[7px] opacity-70 font-mono mt-1">S/N: {item.serialNumber}</span>}
+                {item.serialNumber && <span className="text-[7px] opacity-70 font-mono">S/N: {item.serialNumber}</span>}
               </div>
-              <span className="w-1/4 text-center font-bold">{item.quantity}</span>
-              <span className="w-1/4 text-right font-black">{formatCurrency((item.sellingPrice || item.price || 0) * item.quantity)}</span>
+              <span className="w-1/4 text-center">{item.quantity}</span>
+              <span className="w-1/4 text-right font-bold">{formatCurrency((item.sellingPrice || item.price || 0) * item.quantity)}</span>
             </div>
           ))}
         </div>
 
-        {/* TOTALS & TAX */}
-        <div className="w-full space-y-2 mb-8 bg-gray-50 p-3 rounded-lg border border-black/5">
-          <div className="flex justify-between text-[10px]">
-            <span className="uppercase font-bold">Subtotal:</span>
-            <span className="font-bold">{formatCurrency(subtotal)}</span>
+        {/* TOTALS BLOCK */}
+        <div className="w-full space-y-1.5 mb-6 border-t border-black pt-2">
+          <div className="flex justify-between">
+            <span className="uppercase">SUBTOTAL:</span>
+            <span>{formatCurrency(subtotal)}</span>
           </div>
           {vat > 0 && (
-            <div className="flex justify-between text-[10px]">
-              <span className="uppercase font-bold">VAT (16%):</span>
-              <span className="font-bold">{formatCurrency(vat)}</span>
+            <div className="flex justify-between">
+              <span className="uppercase">VAT (16%):</span>
+              <span>{formatCurrency(vat)}</span>
             </div>
           )}
-          <div className="flex justify-between text-xs font-black pt-2 border-t border-black/10 mt-1">
-            <span className="uppercase">Net Total:</span>
-            <span>KES {formatCurrency(total)}</span>
+          <div className="flex justify-between text-xs font-black pt-1 border-t border-black border-double mt-1">
+            <span className="uppercase">TOTAL KES:</span>
+            <span>{formatCurrency(total)}</span>
           </div>
-          <div className="flex justify-between pt-2 border-t border-black border-dotted mt-2">
-            <span className="font-black uppercase text-[9px]">Amount Paid:</span>
-            <span className="font-black text-xs text-green-700">KES {formatCurrency(paid)}</span>
+          <div className="flex justify-between pt-1 border-t border-black border-dotted">
+            <span className="uppercase text-[9px]">PAID:</span>
+            <span className="font-black text-[11px]">{formatCurrency(paid)}</span>
           </div>
           {balance > 0 && (
-            <div className="flex justify-between font-black text-red-600 pt-1">
-              <span className="uppercase">Balance Due:</span>
-              <span>KES {formatCurrency(balance)}</span>
+            <div className="flex justify-between font-black text-red-600">
+              <span className="uppercase">BALANCE DUE:</span>
+              <span>{formatCurrency(balance)}</span>
             </div>
           )}
         </div>
 
-        {/* FOOTER & SETTLEMENT */}
-        <div className="text-center space-y-4 mb-6 w-full">
-          <div className="py-2 border-y border-dashed border-black/20">
-            <p className="text-[8px] font-black uppercase opacity-40 mb-1">Settlement Method</p>
-            <p className="font-black uppercase text-[10px]">{data.paymentMethod || 'Settled'}</p>
+        {/* SETTLEMENT & FOOTER */}
+        <div className="text-center space-y-3 mb-4 w-full">
+          <div className="py-2 border-y border-black border-dotted">
+            <p className="text-[8px] font-bold uppercase opacity-60">METHOD OF SETTLEMENT</p>
+            <p className="font-black uppercase text-[10px]">{data.paymentMethod || 'CASH'}</p>
           </div>
           
-          <div className="space-y-1">
-              <p className="text-[9px] uppercase font-black tracking-tighter">*** THANK YOU FOR YOUR BUSINESS ***</p>
-              <p className="text-[8px] uppercase italic opacity-60 leading-tight">"Goods once sold cannot be returned"</p>
+          <div className="space-y-1 pt-2">
+              <p className="text-[9px] font-black">*** THANK YOU ***</p>
+              <p className="text-[8px] italic opacity-70 uppercase leading-none">Goods once sold cannot be returned</p>
           </div>
         </div>
 
-        <div className="w-full border-t border-dashed border-black pt-4 text-center text-[7px] opacity-40 uppercase tracking-[0.3em]">
-          Electronic Node: {bizName}
+        <div className="w-full border-t border-black border-dashed pt-2 text-center text-[7px] opacity-40 uppercase tracking-widest">
+          ELECTRONIC NODE: {bizName}
         </div>
       </div>
     </div>
