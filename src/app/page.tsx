@@ -79,7 +79,6 @@ export default function DashboardPage() {
     const monthStart = startOfMonth(now);
 
     // Robust Sales metrics (Preventing NaN)
-    // ONLY Finalized Sales (Receipts/Invoices), excluding Quotations which aren't in sales_transactions
     const todaySales = sales.filter(s => {
         try { return isToday(parseISO(s.date)); } catch { return false; }
     });
@@ -116,9 +115,11 @@ export default function DashboardPage() {
     const creditSales = todaySales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
 
     // Debts & Overdue (Synced with Invoices)
-    const totalOutstandingDebt = sales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
-    const debtCount = sales.filter(s => (Number(s.balance) || 0) > 0).length;
-    
+    const invoicesWithDebt = sales.filter(s => (Number(s.balance) || 0) > 0);
+    const unpaidInvoicesCount = invoicesWithDebt.length;
+    const uniqueDebtorsCount = new Set(invoicesWithDebt.map(s => s.customerId)).size;
+    const totalOutstandingDebt = invoicesWithDebt.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
+
     // Inventory Alerts
     const lowStock = assets.filter(a => Number(a.currentStock) > 0 && Number(a.currentStock) <= (Number(a.minStock) || 5));
     const outOfStock = assets.filter(a => Number(a.currentStock) <= 0);
@@ -140,7 +141,9 @@ export default function DashboardPage() {
     return {
         totalTodaySales, totalTodayProfit, todayExp,
         mpesaSales, cashSales, creditSales,
-        totalOutstandingDebt, debtCount,
+        totalOutstandingDebt, 
+        unpaidInvoicesCount,
+        uniqueDebtorsCount,
         lowStockCount: lowStock.length,
         outOfStockCount: outOfStock.length,
         pendingQuotesCount: pendingQuotes.length,
@@ -195,14 +198,16 @@ export default function DashboardPage() {
             </Link>
           )}
 
-          {stats.debtCount > 0 && (
-            <Link href="/customers">
+          {stats.unpaidInvoicesCount > 0 && (
+            <Link href="/receivables">
                 <Card className="border-l-4 border-l-red-500 hover:bg-red-50 transition-colors cursor-pointer group">
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-red-100 p-2.5 rounded-xl"><Users className="h-5 w-5 text-red-600" /></div>
                         <div>
                             <p className="text-[10px] font-black uppercase text-red-600 tracking-widest">Debt Warning</p>
-                            <p className="text-sm font-bold">{stats.debtCount} clients owe {formatKes(stats.totalOutstandingDebt)}</p>
+                            <p className="text-xs font-bold leading-tight">
+                                {stats.unpaidInvoicesCount} unpaid bills from {stats.uniqueDebtorsCount} clients owe {formatKes(stats.totalOutstandingDebt)}
+                            </p>
                         </div>
                         <ArrowUpRight className="ml-auto h-4 w-4 text-red-300 group-hover:text-red-500 transition-colors" />
                     </CardContent>
