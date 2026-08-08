@@ -37,7 +37,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 /**
  * @fileOverview High-Density Business Dashboard
- * An action-oriented command center for the standalone shop node.
+ * Synchronized with high-fidelity invoice logic and split-payment processing.
  */
 export default function DashboardPage() {
   const { tenant } = useSaaS();
@@ -51,7 +51,7 @@ export default function DashboardPage() {
 
   const stockQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
+    return query(collection(firestore, 'products'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
 
   const docsQuery = useMemoFirebase(() => {
@@ -77,68 +77,98 @@ export default function DashboardPage() {
     const weekStart = startOfWeek(now);
     const monthStart = startOfMonth(now);
 
-    // Sales metrics
-    const todaySales = sales.filter(s => isToday(parseISO(s.date)));
-    const yesterdaySales = sales.filter(s => isYesterday(parseISO(s.date)));
-    const weekSales = sales.filter(s => isWithinInterval(parseISO(s.date), { start: weekStart, end: now }));
-    const monthSales = sales.filter(s => isWithinInterval(parseISO(s.date), { start: monthStart, end: now }));
+    // Robust Sales metrics (Preventing NaN)
+    const todaySales = sales.filter(s => {
+        try { return isToday(parseISO(s.date)); } catch { return false; }
+    });
+    const yesterdaySales = sales.filter(s => {
+        try { return isYesterday(parseISO(s.date)); } catch { return false; }
+    });
+    const weekSales = sales.filter(s => {
+        try { return isWithinInterval(parseISO(s.date), { start: weekStart, end: now }); } catch { return false; }
+    });
+    const monthSales = sales.filter(s => {
+        try { return isWithinInterval(parseISO(s.date), { start: monthStart, end: now }); } catch { return false; }
+    });
 
-    const totalTodaySales = todaySales.reduce((acc, s) => acc + s.amount, 0);
-    const totalTodayProfit = todaySales.reduce((acc, s) => acc + (s.amount - (s.cogs || 0)), 0);
-    const todayExp = expenses.filter(e => isToday(parseISO(e.date))).reduce((acc, e) => acc + e.amount, 0);
+    const totalTodaySales = todaySales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0);
+    const totalTodayProfit = todaySales.reduce((acc, s) => acc + (Number(s.totalProfit) || 0), 0);
+    const todayExp = expenses.filter(e => {
+        try { return isToday(parseISO(e.date)); } catch { return false; }
+    }).reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
 
-    const mpesaSales = todaySales.filter(s => s.paymentMethod === 'M-Pesa').reduce((acc, s) => acc + s.amount, 0);
-    const cashSales = todaySales.filter(s => s.paymentMethod === 'Cash').reduce((acc, s) => acc + s.amount, 0);
-    const creditSales = todaySales.filter(s => s.status === 'Pending').reduce((acc, s) => acc + s.amount, 0);
+    const mpesaSales = todaySales.reduce((acc, s) => {
+        const mpesaAmt = (s.payments || [])
+            .filter((p: any) => p.method === 'M-Pesa')
+            .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+        // Fallback for non-split payments
+        return acc + (mpesaAmt || (s.paymentMethod === 'M-Pesa' ? (Number(s.amount) || Number(s.total) || 0) : 0));
+    }, 0);
 
-    // Debts & Overdue
-    const customerDebt = sales.filter(s => s.status === 'Pending').reduce((acc, s) => acc + s.amount, 0);
-    const debtCount = sales.filter(s => s.status === 'Pending').length;
+    const cashSales = todaySales.reduce((acc, s) => {
+        const cashAmt = (s.payments || [])
+            .filter((p: any) => p.method === 'Cash')
+            .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+        return acc + (cashAmt || (s.paymentMethod === 'Cash' ? (Number(s.amount) || Number(s.total) || 0) : 0));
+    }, 0);
+
+    const creditSales = todaySales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
+
+    // Debts & Overdue (Synced with Invoices)
+    const totalOutstandingDebt = sales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
+    const debtCount = sales.filter(s => (Number(s.balance) || 0) > 0).length;
     
     // Inventory Alerts
-    const lowStock = assets.filter(a => a.status === 'Available' && a.quantity > 0 && a.quantity <= 3);
-    const outOfStock = assets.filter(a => a.status === 'Available' && a.quantity === 0);
+    const lowStock = assets.filter(a => Number(a.currentStock) > 0 && Number(a.currentStock) <= (Number(a.minStock) || 5));
+    const outOfStock = assets.filter(a => Number(a.currentStock) <= 0);
 
     // Document Alerts
     const pendingQuotes = documents.filter(d => d.type === 'Quotation');
-    const unpaidInvoices = documents.filter(d => d.type === 'Invoice' && d.data?.status !== 'Paid');
     const overdueInvoices = documents.filter(d => {
         if (d.type !== 'Invoice' || d.data?.status === 'Paid') return false;
-        // Mocking overdue logic: older than 7 days
-        return parseISO(d.generatedDate) < subDays(now, 7);
+        try { return parseISO(d.generatedDate) < subDays(now, 7); } catch { return false; }
     });
 
-    // Top Selling (Simplified)
+    // Top Selling
     const productMap: Record<string, number> = {};
     sales.forEach(s => s.items?.forEach((i: any) => {
-        productMap[i.name] = (productMap[i.name] || 0) + (i.quantity || 1);
+        productMap[i.name] = (productMap[i.name] || 0) + (Number(i.quantity) || 1);
     }));
     const topSelling = Object.entries(productMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
 
     return {
         totalTodaySales, totalTodayProfit, todayExp,
         mpesaSales, cashSales, creditSales,
-        customerDebt, debtCount,
+        totalOutstandingDebt, debtCount,
         lowStockCount: lowStock.length,
         outOfStockCount: outOfStock.length,
         pendingQuotesCount: pendingQuotes.length,
-        unpaidInvoicesCount: unpaidInvoices.length,
         overdueInvoicesCount: overdueInvoices.length,
-        recent: sales.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).slice(0, 8),
+        recent: sales.sort((a,b) => {
+            try { return parseISO(b.date).getTime() - parseISO(a.date).getTime(); } catch { return 0; }
+        }).slice(0, 8),
         topSelling,
-        yesterdayTotal: yesterdaySales.reduce((acc, s) => acc + s.amount, 0),
-        weekTotal: weekSales.reduce((acc, s) => acc + s.amount, 0),
-        monthTotal: monthSales.reduce((acc, s) => acc + s.amount, 0)
+        yesterdayTotal: yesterdaySales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0),
+        weekTotal: weekSales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0),
+        monthTotal: monthSales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0)
     };
   }, [sales, assets, documents, expenses]);
 
-  const formatKes = (val: number) => new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
+  const formatKes = (val: number) => {
+      const safeVal = Number(val) || 0;
+      return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(safeVal);
+  };
 
   if (salesLoading || stockLoading || docsLoading || expLoading) {
       return <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Synchronizing Node Data...</div>;
   }
 
-  if (!stats) return null;
+  if (!stats) return (
+    <div className="p-20 text-center space-y-4">
+        <div className="bg-muted p-6 rounded-full w-fit mx-auto opacity-20"><DollarSign className="h-12 w-12" /></div>
+        <p className="font-black uppercase text-xs tracking-widest text-muted-foreground">Node data awaiting initialization...</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6 pb-20 selection:bg-primary selection:text-white">
@@ -156,7 +186,7 @@ export default function DashboardPage() {
                         <div className="bg-orange-100 p-2.5 rounded-xl"><Package className="h-5 w-5 text-orange-600" /></div>
                         <div>
                             <p className="text-[10px] font-black uppercase text-orange-600 tracking-widest">Inventory Alert</p>
-                            <p className="text-sm font-bold">{stats.lowStockCount + stats.outOfStockCount} items below reorder level</p>
+                            <p className="text-sm font-bold">{stats.lowStockCount + stats.outOfStockCount} items low or out</p>
                         </div>
                         <ArrowUpRight className="ml-auto h-4 w-4 text-orange-300 group-hover:text-orange-500 transition-colors" />
                     </CardContent>
@@ -171,7 +201,7 @@ export default function DashboardPage() {
                         <div className="bg-red-100 p-2.5 rounded-xl"><Users className="h-5 w-5 text-red-600" /></div>
                         <div>
                             <p className="text-[10px] font-black uppercase text-red-600 tracking-widest">Debt Warning</p>
-                            <p className="text-sm font-bold">{stats.debtCount} clients owe {formatKes(stats.customerDebt)}</p>
+                            <p className="text-sm font-bold">{stats.debtCount} clients owe {formatKes(stats.totalOutstandingDebt)}</p>
                         </div>
                         <ArrowUpRight className="ml-auto h-4 w-4 text-red-300 group-hover:text-red-500 transition-colors" />
                     </CardContent>
@@ -213,45 +243,45 @@ export default function DashboardPage() {
       {/* 2. PRIMARY FINANCIAL KPI CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <SummaryCard title="Today's Revenue" value={formatKes(stats.totalTodaySales)} icon={DollarSign} trend={stats.totalTodaySales >= stats.yesterdayTotal ? "+ Growth" : "- Lower"} />
-          <SummaryCard title="Today's Net Profit" value={formatKes(stats.totalTodayProfit)} icon={TrendingUp} description="Revenue minus COGS" />
+          <SummaryCard title="Today's Net Profit" value={formatKes(stats.totalTodayProfit)} icon={TrendingUp} description="Revenue minus historical COGS" />
           <SummaryCard title="Operational Exp" value={formatKes(stats.todayExp)} icon={Wallet} description="Expenses recorded today" />
-          <SummaryCard title="Outstanding Receivables" value={formatKes(stats.customerDebt)} icon={CreditCard} description="Total client debt" />
+          <SummaryCard title="Outstanding Receivables" value={formatKes(stats.totalOutstandingDebt)} icon={CreditCard} description="Total aggregate client debt" />
       </div>
 
       {/* 3. CASH FLOW & COMPARISONS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full">
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest">Today's Payments</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest">Today's Settlements</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-5 flex-grow">
                 <div className="flex justify-between items-end border-b pb-4">
                     <div>
-                        <p className="text-[10px] font-black uppercase text-green-600">M-Pesa STK</p>
+                        <p className="text-[10px] font-black uppercase text-green-600">M-Pesa / Mobile</p>
                         <p className="text-2xl font-black">{formatKes(stats.mpesaSales)}</p>
                     </div>
                     <Badge className="bg-green-50 text-green-700 border-green-200 uppercase text-[8px] font-black h-5">Verified</Badge>
                 </div>
                 <div className="flex justify-between items-end border-b pb-4">
                     <div>
-                        <p className="text-[10px] font-black uppercase text-primary">Cash on Hand</p>
+                        <p className="text-[10px] font-black uppercase text-primary">Cash Settlements</p>
                         <p className="text-2xl font-black">{formatKes(stats.cashSales)}</p>
                     </div>
                     <Badge variant="outline" className="uppercase text-[8px] font-black h-5">Physical</Badge>
                 </div>
                 <div className="flex justify-between items-end">
                     <div>
-                        <p className="text-[10px] font-black uppercase text-red-500">Credit / Debt</p>
+                        <p className="text-[10px] font-black uppercase text-red-500">Unpaid Balances</p>
                         <p className="text-2xl font-black">{formatKes(stats.creditSales)}</p>
                     </div>
-                    <Badge variant="destructive" className="uppercase text-[8px] font-black h-5">Pending</Badge>
+                    <Badge variant="destructive" className="uppercase text-[8px] font-black h-5">Invoiced</Badge>
                 </div>
             </CardContent>
           </Card>
 
           <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full">
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest">Velocity Comparison</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest">Revenue Velocity</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
                 <div className="space-y-1">
@@ -282,7 +312,7 @@ export default function DashboardPage() {
 
           <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full">
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest">Top Moving Items</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest">Top Selling Products</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
                 <div className="divide-y">
@@ -293,7 +323,7 @@ export default function DashboardPage() {
                         </div>
                     ))}
                     {stats.topSelling.length === 0 && (
-                        <div className="p-12 text-center text-[10px] font-bold text-muted-foreground italic uppercase opacity-30">No inventory moving yet</div>
+                        <div className="p-12 text-center text-[10px] font-bold text-muted-foreground italic uppercase opacity-30">No transaction data recorded</div>
                     )}
                 </div>
             </CardContent>
@@ -303,9 +333,9 @@ export default function DashboardPage() {
       {/* 4. RECENT TRANSACTIONS FEED */}
       <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
         <CardHeader className="bg-muted/30 border-b py-4 px-6 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-black uppercase tracking-widest">Live Transaction Stream</CardTitle>
+            <CardTitle className="text-sm font-black uppercase tracking-widest">Cloud Transaction Feed</CardTitle>
             <Link href="/pos">
-                <Button variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest border-2">Initialize Sale</Button>
+                <Button variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest border-2">Open POS Node</Button>
             </Link>
         </CardHeader>
         <CardContent className="p-0">
@@ -314,28 +344,34 @@ export default function DashboardPage() {
                     <TableRow className="h-10">
                         <TableHead className="text-[10px] font-black uppercase pl-6">Timestamp</TableHead>
                         <TableHead className="text-[10px] font-black uppercase">Client Node</TableHead>
-                        <TableHead className="text-[10px] font-black uppercase">Status</TableHead>
-                        <TableHead className="text-[10px] font-black uppercase">Payment Method</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase">Ledger Status</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase">Method</TableHead>
                         <TableHead className="text-[10px] font-black uppercase text-right pr-6">Value</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {stats.recent.map(sale => (
                         <TableRow key={sale.id} className="h-12 hover:bg-muted/5 transition-colors border-b last:border-0">
-                            <TableCell className="pl-6"><span className="text-[10px] font-mono text-muted-foreground">{format(parseISO(sale.date), 'HH:mm:ss')}</span></TableCell>
+                            <TableCell className="pl-6">
+                                <span className="text-[10px] font-mono text-muted-foreground">
+                                    {sale.date ? format(parseISO(sale.date), 'HH:mm:ss') : 'Recently'}
+                                </span>
+                            </TableCell>
                             <TableCell><span className="text-[10px] font-black uppercase tracking-tighter">{sale.customerName || 'Walk-in Client'}</span></TableCell>
                             <TableCell>
-                                <Badge variant={sale.status === 'Paid' ? 'default' : 'outline'} className="text-[8px] font-black h-4 px-2 uppercase border-none">
+                                <Badge variant={sale.status === 'Paid' ? 'default' : (sale.status === 'Partial' ? 'secondary' : 'outline')} className="text-[8px] font-black h-4 px-2 uppercase border-none">
                                     {sale.status}
                                 </Badge>
                             </TableCell>
-                            <TableCell><span className="text-[10px] font-bold text-muted-foreground">{sale.paymentMethod}</span></TableCell>
-                            <TableCell className="text-right pr-6 font-black text-sm text-primary">{formatKes(sale.amount)}</TableCell>
+                            <TableCell><span className="text-[10px] font-bold text-muted-foreground uppercase">{sale.paymentMethod}</span></TableCell>
+                            <TableCell className="text-right pr-6 font-black text-sm text-primary">
+                                {formatKes(Number(sale.total) || Number(sale.amount) || 0)}
+                            </TableCell>
                         </TableRow>
                     ))}
                     {stats.recent.length === 0 && (
                         <TableRow>
-                            <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic text-[10px] font-bold uppercase opacity-30">No cloud sync data found for this period</TableCell>
+                            <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic text-[10px] font-bold uppercase opacity-30">Waiting for first cloud transaction...</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -345,7 +381,7 @@ export default function DashboardPage() {
       
       <div className="text-center pt-8 opacity-40">
           <p className="text-[9px] text-muted-foreground tracking-[0.5em] uppercase leading-relaxed">
-             Secured Standalone Node &bull; Real-time Ledger Sync Active &bull; Shop Manager v2.5.0
+             Branded Node Sync Active &bull; Financial Integrity Guard &bull; Shop Manager v2.6.1
           </p>
       </div>
     </div>
