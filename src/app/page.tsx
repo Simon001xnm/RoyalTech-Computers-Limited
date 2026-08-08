@@ -212,7 +212,7 @@ export default function DashboardPage() {
                                 {stats.unpaidInvoicesCount} unpaid bills from {stats.uniqueDebtorsCount} clients
                             </p>
                         </div>
-                        <ArrowUpRight className="ml-auto h-4 w-4 text-red-300 group-hover:text-red-500 transition-colors" />
+                        <ArrowUpRight className="ml-auto h-4 w-4 text-red-300 group-hover:text-red-50 transition-colors" />
                     </CardContent>
                 </Card>
             </Link>
@@ -268,6 +268,7 @@ export default function DashboardPage() {
             title="Operational Exp" 
             value={formatKes(stats.monthExp)} 
             icon={Wallet} 
+            className="border-l-4 border-l-red-500"
             description={`Expenses recorded in ${format(new Date(), 'MMM')}`} 
           />
           <SummaryCard 
