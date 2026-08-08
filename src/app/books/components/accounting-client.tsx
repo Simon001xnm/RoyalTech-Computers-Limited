@@ -15,6 +15,7 @@ import { TransactionForm } from './transaction-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { Badge } from '@/components/ui/badge';
 import { useSaaS } from '@/components/saas/saas-provider';
+import { cn } from '@/lib/utils';
 
 type Transaction = (Sale | Expense) & { transactionType: 'Sale' | 'Expense' };
 
