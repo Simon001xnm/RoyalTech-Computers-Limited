@@ -17,7 +17,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender, type RowSelectionState, type PaginationState } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
-import { ValuationSummary } from "./valuation-summary";
 import { format } from "date-fns";
 
 export function StockClient() {
@@ -136,7 +135,6 @@ export function StockClient() {
         setIsFormOpen(false);
         setEditingAsset(null);
     } catch (error: any) {
-        // Log locally instead of throwing to prevent global error listener from triggering for standard data errors
         console.error("Submission Error:", error);
         toast({ variant: 'destructive', title: 'Action Failed', description: error.message || 'Check your internet connection and try again.' });
     } finally {
@@ -172,10 +170,6 @@ export function StockClient() {
         onAction={() => { setEditingAsset(null); setIsFormOpen(true); }}
         ActionIcon={PlusCircle}
       />
-
-      {!isLoading && filteredAssets.length > 0 && (
-        <ValuationSummary assets={filteredAssets as any} />
-      )}
 
       <div className="mb-4">
         <Input
