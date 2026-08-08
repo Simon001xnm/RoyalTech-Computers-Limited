@@ -2,9 +2,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import * as z from "zod";
-import type { Asset } from "@/types";
+import type { Product, TaxStatus } from "@/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,157 +24,324 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Loader2 } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, Plus, Trash2, Box, Tag, DollarSign, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { Separator } from "@/components/ui/separator";
 
-const assetFormSchema = z.object({
-  model: z.string().min(2, "Name or model required."),
-  serialNumber: z.string().min(3, "Serial number is mandatory and must be unique."),
-  purchaseDate: z.date({ required_error: "Acquisition date is required." }),
-  status: z.enum(["Available", "Leased", "Repair", "Sold", "With Reseller"]),
-  quantity: z.coerce.number().min(0, "Quantity cannot be negative."),
-  ram: z.string().optional(),
-  storage: z.string().optional(),
-  processor: z.string().optional(),
-  purchasePrice: z.coerce.number().optional().nullable(),
-  leasePrice: z.coerce.number().optional().nullable(),
+const variantSchema = z.object({
+  name: z.string().min(1, "Variant name required (e.g. Core)"),
+  value: z.string().min(1, "Value required (e.g. 4 Core)"),
+  sku: z.string().optional(),
+  priceAdjustment: z.coerce.number().default(0),
 });
 
-type AssetFormValues = z.infer<typeof assetFormSchema>;
+const productFormSchema = z.object({
+  name: z.string().min(2, "Product name required."),
+  sku: z.string().min(2, "SKU required."),
+  barcode: z.string().optional(),
+  category: z.string().min(2, "Category required."),
+  brand: z.string().optional(),
+  model: z.string().optional(),
+  description: z.string().optional(),
+  unit: z.string().min(1, "Unit required (e.g. Pcs)."),
+  buyingPrice: z.coerce.number().min(0, "Buying price required."),
+  sellingPriceRetail: z.coerce.number().min(0, "Retail price required."),
+  sellingPriceWholesale: z.coerce.number().min(0, "Wholesale price required."),
+  minStock: z.coerce.number().min(0, "Minimum stock required."),
+  currentStock: z.coerce.number().min(0, "Current stock required."),
+  reorderQty: z.coerce.number().min(0, "Reorder quantity required."),
+  supplier: z.string().optional(),
+  locationBin: z.string().optional(),
+  hasSerialNumber: z.boolean().default(false),
+  warrantyPeriod: z.string().optional(),
+  taxStatus: z.enum(["Taxable", "Exempt", "ZeroRated"]),
+  variants: z.array(variantSchema).optional(),
+});
+
+type ProductFormValues = z.infer<typeof productFormSchema>;
 
 interface AssetFormProps {
-  asset?: Asset | null;
-  onSubmit: (data: AssetFormValues) => void;
+  asset?: Product | null;
+  onSubmit: (data: ProductFormValues) => void;
   onCancel: () => void;
   isLoading?: boolean;
 }
 
 export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormProps) {
-  const defaultValues: Partial<AssetFormValues> = asset
+  const defaultValues: Partial<ProductFormValues> = asset
     ? {
         ...asset,
-        purchaseDate: new Date(asset.purchaseDate),
-        ram: asset.specifications?.ram || "",
-        storage: asset.specifications?.storage || "",
-        processor: asset.specifications?.processor || "",
+        variants: asset.variants || [],
       }
     : {
-        model: "",
-        serialNumber: "",
-        status: "Available",
-        quantity: 1,
-        ram: "",
-        storage: "",
-        processor: "",
-        purchasePrice: null,
-        leasePrice: null,
+        name: "",
+        sku: "",
+        category: "",
+        unit: "Pcs",
+        buyingPrice: 0,
+        sellingPriceRetail: 0,
+        sellingPriceWholesale: 0,
+        minStock: 5,
+        currentStock: 0,
+        reorderQty: 10,
+        hasSerialNumber: false,
+        taxStatus: "Taxable",
+        variants: [],
       };
 
-  const form = useForm<AssetFormValues>({
-    resolver: zodResolver(assetFormSchema),
+  const form = useForm<ProductFormValues>({
+    resolver: zodResolver(productFormSchema),
     defaultValues,
   });
 
-  const handleSubmit = (data: AssetFormValues) => {
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "variants",
+  });
+
+  const handleSubmit = (data: ProductFormValues) => {
     onSubmit(data);
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8 py-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Basic Identity */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-primary font-black uppercase text-xs tracking-widest">
+            <Box className="h-4 w-4" />
+            Product Identity
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Product Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Fiber Cable" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="sku"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>SKU / Internal Code *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. FB-SM-001" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Networking" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="brand"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Brand</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Huawei" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="model"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Model</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Single Mode" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
           <FormField
             control={form.control}
-            name="model"
+            name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Item Name / Model *</FormLabel>
+                <FormLabel>Detailed Description</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., MacBook Pro or Samsung S24" {...field} />
+                  <Textarea placeholder="Describe technical features..." {...field} />
                 </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="serialNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Serial Number / ID *</FormLabel>
-                <FormControl>
-                  <Input placeholder="Must be unique" {...field} disabled={!!asset} />
-                </FormControl>
-                <FormDescription className="text-[10px]">Unique identifier for this specific unit.</FormDescription>
-                <FormMessage />
               </FormItem>
             )}
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Separator />
+
+        {/* Inventory & Units */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-primary font-black uppercase text-xs tracking-widest">
+            <Tag className="h-4 w-4" />
+            Stock Control
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <FormField
+              control={form.control}
+              name="unit"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Base Unit *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Pcs, Meters, Kg" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="currentStock"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Initial Stock</FormLabel>
+                  <FormControl>
+                    <Input type="number" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="minStock"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Min Stock Level</FormLabel>
+                  <FormControl>
+                    <Input type="number" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="reorderQty"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reorder Quantity</FormLabel>
+                  <FormControl>
+                    <Input type="number" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="locationBin"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Warehouse Location / Bin</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Shelf A, Row 2" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="supplier"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Main Supplier</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Supplier Name" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Pricing & Tax */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-primary font-black uppercase text-xs tracking-widest">
+            <DollarSign className="h-4 w-4" />
+            Financial Configuration
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <FormField
+              control={form.control}
+              name="buyingPrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Buying Price (KES)</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="sellingPriceRetail"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Retail Price (KES)</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="sellingPriceWholesale"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Wholesale Price (KES)</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
           <FormField
             control={form.control}
-            name="purchaseDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Date Acquired *</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal h-11",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP")
-                        ) : (
-                          <span>Pick acquisition date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) =>
-                        date > new Date() || date < new Date("2000-01-01")
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-           <FormField
-            control={form.control}
-            name="status"
+            name="taxStatus"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Inventory Status *</FormLabel>
+                <FormLabel>Tax Treatment</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Select status" />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select tax status" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="Available">Available for Sale/Lease</SelectItem>
-                    <SelectItem value="Leased">Currently Leased</SelectItem>
-                    <SelectItem value="Repair">Maintenance/Repair</SelectItem>
-                    <SelectItem value="With Reseller">With Partner</SelectItem>
-                    <SelectItem value="Sold">Sold</SelectItem>
+                    <SelectItem value="Taxable">Taxable (16% VAT)</SelectItem>
+                    <SelectItem value="Exempt">Exempt</SelectItem>
+                    <SelectItem value="ZeroRated">Zero Rated</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -182,91 +349,68 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
             )}
           />
         </div>
-        
-        <FormField
-          control={form.control}
-          name="quantity"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Quantity</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="e.g., 1" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
+        <Separator />
+
+        {/* Variants Section */}
         <div className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Product Specifications</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 border rounded-2xl bg-muted/20">
-            <FormField
-                control={form.control}
-                name="ram"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Spec 1 (e.g. RAM)</FormLabel>
-                    <FormControl>
-                    <Input placeholder="e.g., 16GB" {...field} />
-                    </FormControl>
-                </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="storage"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Spec 2 (e.g. Storage)</FormLabel>
-                    <FormControl>
-                    <Input placeholder="e.g., 512GB" {...field} />
-                    </FormControl>
-                </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="processor"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Spec 3 (e.g. Chipset)</FormLabel>
-                    <FormControl>
-                    <Input placeholder="e.g., Apple M2" {...field} />
-                    </FormControl>
-                </FormItem>
-                )}
-            />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-primary font-black uppercase text-xs tracking-widest">
+              <Layers className="h-4 w-4" />
+              Product Variants (Core, Length, Type)
             </div>
-        </div>
-        
-        <div className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Financial Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border rounded-2xl bg-muted/20">
-            <FormField
-                control={form.control}
-                name="purchasePrice"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Purchase Price (KES)</FormLabel>
-                    <FormControl>
-                    <Input type="number" step="0.01" placeholder="Cost price" {...field} value={field.value ?? ''} />
-                    </FormControl>
-                </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="leasePrice"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Daily/Unit Rate (KES)</FormLabel>
-                    <FormControl>
-                    <Input type="number" step="0.01" placeholder="Selling/Rental rate" {...field} value={field.value ?? ''} />
-                    </FormControl>
-                </FormItem>
-                )}
-            />
-            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => append({ name: "", value: "", priceAdjustment: 0 })}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Add Variant
+            </Button>
+          </div>
+          
+          <div className="space-y-4">
+            {fields.map((field, index) => (
+              <div key={field.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-xl bg-muted/10 items-end">
+                <FormField
+                  control={form.control}
+                  name={`variants.${index}.name`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px]">Attribute (e.g. Cores)</FormLabel>
+                      <FormControl><Input placeholder="Cores" {...field} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`variants.${index}.value`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px]">Value (e.g. 48 Core)</FormLabel>
+                      <FormControl><Input placeholder="48 Core" {...field} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`variants.${index}.priceAdjustment`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px]">Price Adj (+/-)</FormLabel>
+                      <FormControl><Input type="number" {...field} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <Button variant="ghost" size="icon" onClick={() => remove(index)} className="text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            {fields.length === 0 && (
+              <p className="text-[10px] text-muted-foreground italic text-center py-4">No variants defined for this product.</p>
+            )}
+          </div>
         </div>
 
         <div className="flex justify-end space-x-3 pt-6 border-t">
@@ -274,7 +418,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading} className="h-11 px-10 font-black uppercase tracking-widest shadow-lg">
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (asset ? "Update Item" : "Register Item")}
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (asset ? "Update Product" : "Create Product")}
           </Button>
         </div>
       </form>

@@ -80,39 +80,67 @@ export interface User {
   createdAt: string;
 }
 
-export interface Asset extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
+export interface ProductVariant {
   id: string;
-  tenantId?: string;
-  model: string;
-  serialNumber: string;
-  purchaseDate: string; 
-  status: 'Available' | 'Leased' | 'Repair' | 'Sold' | 'With Reseller';
-  quantity: number; 
-  location?: { lat: number; lng: number }; 
-  specifications?: {
-    ram: string;
-    storage: string;
-    processor: string;
-    touchscreen?: boolean;
-  };
-  purchasePrice?: number;
-  leasePrice?: number;
+  name: string; // e.g. "Length"
+  value: string; // e.g. "100m"
+  sku?: string;
+  priceAdjustment?: number;
+}
+
+export type TaxStatus = 'Taxable' | 'Exempt' | 'ZeroRated';
+
+export interface Product extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
+  id: string;
+  tenantId: string;
+  name: string;
+  sku: string;
+  barcode?: string;
+  category: string;
+  brand?: string;
+  model?: string;
+  description?: string;
+  unit: string; // e.g. Pcs, Meters, Rolls
+  buyingPrice: number;
+  sellingPriceRetail: number;
+  sellingPriceWholesale: number;
+  minStock: number;
+  currentStock: number;
+  reorderQty: number;
+  supplier?: string;
+  locationBin?: string;
+  hasSerialNumber: boolean;
+  warrantyPeriod?: string;
+  imageUrl?: string;
+  taxStatus: TaxStatus;
+  variants?: ProductVariant[];
   createdAt?: string; 
   updatedAt?: string; 
 }
 
-export interface Accessory extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
+export type StockMovementType = 
+  | 'PURCHASE' 
+  | 'STOCK IN' 
+  | 'SALE' 
+  | 'STOCK OUT' 
+  | 'ADJUSTMENT' 
+  | 'DAMAGED' 
+  | 'RETURNED' 
+  | 'CUSTOMER RETURN' 
+  | 'SUPPLIER RETURN'
+  | 'STOCK COUNT';
+
+export interface StockMovement extends Auditable {
   id: string;
-  tenantId?: string;
-  name: string;
-  serialNumber: string;
-  purchaseDate: string; 
-  status: 'Available' | 'Sold' | 'With Reseller';
-  quantity: number;
-  purchasePrice?: number;
-  sellingPrice: number;
-  createdAt?: string; 
-  updatedAt?: string; 
+  tenantId: string;
+  productId: string;
+  type: StockMovementType;
+  quantity: number; // Positive for IN, Negative for OUT usually
+  previousStock: number;
+  newStock: number;
+  reason?: string;
+  referenceId?: string; // e.g. Invoice #
+  timestamp: string;
 }
 
 export interface Customer extends Omit<Auditable, 'createdAt' | 'updatedAt'>{
@@ -137,167 +165,6 @@ export interface Document extends Auditable {
   relatedTo?: string; 
   saleId?: string; 
   data: any; 
-}
-
-export interface SaleItem {
-    id: string;
-    name: string;
-    description?: string;
-    serialNumber: string;
-    price: number; 
-    quantity: number;
-    discount?: number;
-    type: 'asset' | 'accessory' | 'custom';
-    cogs?: number;
-}
-
-export interface Sale extends Auditable {
-  id: string;
-  tenantId?: string;
-  date: string; 
-  amount: number; 
-  paymentMethod: 'Till' | 'M-Pesa' | 'Bank' | 'Paybill' | 'Cash';
-  cogs?: number;
-  notes?: string;
-  referenceCode?: string;
-  items: SaleItem[];
-  customerName?: string;
-  customerId?: string;
-  customerPhone?: string;
-  resellerId?: string;
-  resellerName?: string;
-  status: 'Paid' | 'Pending' | 'Void' | 'Failed';
-  paymentError?: string;
-  mpesaReceipt?: string;
-  vat?: number;
-  subtotal?: number;
-  totalDiscount?: number;
-  amountPaid?: number;
-  changeDue?: number;
-}
-
-export interface Expense extends Auditable {
-  id: string;
-  tenantId?: string;
-  date: string; 
-  category: string;
-  amount: number;
-  notes?: string;
-}
-
-export interface Campaign extends Auditable {
-  id: string;
-  tenantId?: string;
-  name: string;
-  subject: string;
-  body: string;
-  status: 'Draft' | 'Sent' | 'Archived';
-  audience: {
-    type: 'all' | 'segment';
-    customerIds?: string[];
-  };
-  sentAt?: string; 
-}
-
-export interface Ticket extends Auditable {
-  id: string;
-  tenantId?: string;
-  subject: string;
-  description: string;
-  status: 'Open' | 'In Progress' | 'Closed';
-  priority: 'Low' | 'Medium' | 'High';
-  customerId: string;
-  customerName?: string; 
-}
-
-export interface Project extends Auditable {
-    id: string;
-    tenantId?: string;
-    title: string;
-    description?: string;
-    status: 'Todo' | 'In Progress' | 'Done';
-    dueDate?: string; 
-}
-
-export interface Message extends Omit<Auditable, 'updatedAt'> {
-  id: string;
-  tenantId: string;
-  text: string;
-  userId: string;
-  userName: string;
-  userAvatar?: string;
-  createdAt: string;
-  isSystemMessage?: boolean;
-}
-
-export interface Reseller extends Auditable {
-  id: string;
-  tenantId?: string;
-  name: string;
-  email: string;
-  phone?: string;
-  company?: string;
-  status: 'Active' | 'Suspended';
-  registrationDate: string; 
-}
-
-export interface ItemIssuance extends Auditable {
-  id: string;
-  tenantId?: string;
-  resellerId: string;
-  resellerName: string;
-  itemId: string;
-  itemType: 'asset' | 'accessory';
-  itemSerialNumber: string;
-  itemName: string;
-  costPrice: number;
-  expectedSellingPrice?: number;
-  dateIssued: string; 
-  dateSold?: string; 
-  dateReturned?: string; 
-  status: 'Issued' | 'Sold' | 'Returned';
-}
-
-export interface Notification extends Auditable {
-  id: string;
-  tenantId: string;
-  userId?: string; 
-  from: string;
-  subject: string;
-  message: string;
-  read: boolean;
-  priority: 'info' | 'important' | 'alert';
-}
-
-export interface Lease extends Auditable {
-    id: string;
-    tenantId: string;
-    clientType: 'Individual' | 'Corporate';
-    customerId: string;
-    customerName: string;
-    assetId: string;
-    laptopModel: string;
-    serialNumber: string;
-    startDate: string;
-    endDate: string;
-    duration: number;
-    durationUnit: 'Day' | 'Week' | 'Month' | 'Year';
-    monthlyPayment?: number;
-    status: 'Active' | 'Expired' | 'Terminated' | 'Upcoming';
-    paymentStatus: 'Paid' | 'Pending' | 'Overdue';
-    signature?: string;
-    
-    verification?: {
-        nationalId?: string;
-        guarantorId?: string;
-        studentId?: string;
-        parentName?: string;
-        parentPhone?: string;
-        businessPermit?: string;
-        cr12Reference?: string;
-        directorId?: string;
-        contactPerson?: string;
-    };
 }
 
 export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | 'DeliveryNote' | 'Quotation' | 'LPO' | 'LeaseAgreement' | 'PurchaseOrder' | 'CreditNote' | 'DebitNote' | 'CustomerStatement';

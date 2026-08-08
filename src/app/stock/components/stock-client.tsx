@@ -3,31 +3,35 @@
 
 import { useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, getDocs, limit } from "firebase/firestore";
-import type { Asset } from "@/types";
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, getDocs, limit, serverTimestamp, writeBatch } from "firebase/firestore";
+import type { Product, StockMovement } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, PackageSearch } from "lucide-react";
+import { PlusCircle, PackageSearch, History, AlertTriangle } from "lucide-react";
 import { AssetForm } from "./asset-form";
-import { getAssetColumns, type AssetColumnActions } from "./asset-columns";
+import { getAssetColumns } from "./asset-columns";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender, type ColumnDef, type RowSelectionState, type PaginationState } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { ValuationSummary } from "./valuation-summary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { format } from "date-fns";
 
 export function StockClient() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const [editingAsset, setEditingAsset] = useState<Product | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
+  const [assetToDelete, setAssetToDelete] = useState<Product | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  const [selectedAuditProduct, setSelectedAuditProduct] = useState<Product | null>(null);
+
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
@@ -38,122 +42,106 @@ export function StockClient() {
   
   const assetsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
+    return query(collection(firestore, 'products'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
 
   const { data: rawAssets, isLoading } = useCollection(assetsQuery);
+
+  const movementsQuery = useMemoFirebase(() => {
+    if (!tenant || !selectedAuditProduct) return null;
+    return query(collection(firestore, 'stock_movements'), where('productId', '==', selectedAuditProduct.id));
+  }, [firestore, selectedAuditProduct?.id]);
+  const { data: auditLogs, isLoading: auditLoading } = useCollection(movementsQuery);
 
   const filteredAssets = useMemo(() => {
     if (!rawAssets) return [];
     
     const sorted = [...rawAssets].sort((a, b) => {
-        const dateA = a.purchaseDate ? new Date(a.purchaseDate).getTime() : 0;
-        const dateB = b.purchaseDate ? new Date(b.purchaseDate).getTime() : 0;
+        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
         return dateB - dateA;
     });
 
     return sorted.filter((asset) =>
-      (asset.model || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (asset.serialNumber || '').toLowerCase().includes(searchTerm.toLowerCase())
+      (asset.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (asset.sku || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [rawAssets, searchTerm]);
 
-  const handleAddAsset = () => {
-    setEditingAsset(null);
-    setIsFormOpen(true);
-  };
-
-  const handleEditAsset = (asset: Asset) => {
-    setEditingAsset(asset);
-    setIsFormOpen(true);
-  };
-
-  const handleDeleteAsset = (asset: Asset) => {
-    setAssetToDelete(asset);
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (assetToDelete) {
-      try {
-        await deleteDoc(doc(firestore, 'assets', assetToDelete.id));
-        toast({ title: "Removed from list." });
-      } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: e.message });
-      }
-      setIsDeleteConfirmOpen(false);
-      setAssetToDelete(null);
-    }
-  };
-  
   const handleFormSubmit = async (data: any) => {
     if (!tenant || !user) return;
     setIsSubmitting(true);
 
     try {
-        // 1. Check for Unique Serial Number within this tenant (only on create or if serial changed)
-        if (!editingAsset || editingAsset.serialNumber !== data.serialNumber) {
-            const serialQuery = query(
-                collection(firestore, 'assets'), 
-                where('tenantId', '==', tenant.id), 
-                where('serialNumber', '==', data.serialNumber),
-                limit(1)
-            );
-            const querySnapshot = await getDocs(serialQuery);
-            if (!querySnapshot.empty) {
-                toast({ 
-                    variant: 'destructive', 
-                    title: 'Item Already Exists', 
-                    description: 'This Serial Number is already registered in your inventory.' 
-                });
-                setIsSubmitting(false);
-                return;
-            }
-        }
-
-        const assetData = {
+        const productData = {
             tenantId: tenant.id,
-            model: data.model || '',
-            serialNumber: data.serialNumber || '',
-            status: data.status,
-            quantity: Number(data.quantity) || 0,
-            purchaseDate: data.purchaseDate.toISOString(),
-            updatedAt: new Date().toISOString(),
-            purchasePrice: data.purchasePrice !== undefined ? Number(data.purchasePrice) : null,
-            leasePrice: data.leasePrice !== undefined ? Number(data.leasePrice) : null,
-            specifications: {
-                ram: data.ram || '',
-                storage: data.storage || '',
-                processor: data.processor || ''
-            }
+            ...data,
+            updatedAt: new Date().toISOString()
         };
 
         if (editingAsset) {
-            await updateDoc(doc(firestore, 'assets', editingAsset.id), assetData);
-            toast({ title: "Updated!" });
+            const batch = writeBatch(firestore);
+            const productRef = doc(firestore, 'products', editingAsset.id);
+            
+            // Check for stock adjustment
+            const stockDiff = data.currentStock - editingAsset.currentStock;
+            if (stockDiff !== 0) {
+                const movementRef = doc(collection(firestore, 'stock_movements'));
+                batch.set(movementRef, {
+                    tenantId: tenant.id,
+                    productId: editingAsset.id,
+                    type: "ADJUSTMENT",
+                    quantity: stockDiff,
+                    previousStock: editingAsset.currentStock,
+                    newStock: data.currentStock,
+                    reason: "Manual adjustment in form",
+                    timestamp: new Date().toISOString(),
+                    createdBy: { uid: user.uid, name: user.displayName }
+                });
+            }
+
+            batch.update(productRef, productData);
+            await batch.commit();
+            toast({ title: "Product Updated" });
         } else {
-            await addDoc(collection(firestore, 'assets'), {
-                ...assetData,
+            const docRef = await addDoc(collection(firestore, 'products'), {
+                ...productData,
                 createdAt: new Date().toISOString(),
                 createdBy: { uid: user.uid, name: user.displayName || 'User' }
             });
-            toast({ title: "Saved to inventory." });
+
+            // Initial movement
+            if (data.currentStock > 0) {
+                await addDoc(collection(firestore, 'stock_movements'), {
+                    tenantId: tenant.id,
+                    productId: docRef.id,
+                    type: "STOCK IN",
+                    quantity: data.currentStock,
+                    previousStock: 0,
+                    newStock: data.currentStock,
+                    reason: "Initial stock registration",
+                    timestamp: new Date().toISOString(),
+                    createdBy: { uid: user.uid, name: user.displayName }
+                });
+            }
+            toast({ title: "Product Created" });
         }
         setIsFormOpen(false);
         setEditingAsset(null);
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Failed to save', description: error.message });
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
     } finally {
         setIsSubmitting(false);
     }
   };
 
-  const columnActions: AssetColumnActions = {
-    onEdit: handleEditAsset,
-    onDelete: handleDeleteAsset,
+  const columnActions = {
+    onEdit: (asset: Product) => { setEditingAsset(asset); setIsFormOpen(true); },
+    onDelete: (asset: Product) => { setAssetToDelete(asset); setIsDeleteConfirmOpen(true); },
+    onAudit: (asset: Product) => { setSelectedAuditProduct(asset); }
   };
 
-  const columns = useMemo<ColumnDef<Asset, any>[]>(() => getAssetColumns(columnActions), [columnActions]);
+  const columns = useMemo<ColumnDef<Product, any>[]>(() => getAssetColumns(columnActions), [columnActions]);
 
   const table = useReactTable({
     data: filteredAssets,
@@ -169,20 +157,20 @@ export function StockClient() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Inventory" 
-        description="Manage your stock items and track availability."
-        actionLabel="Add New Item"
-        onAction={handleAddAsset}
+        title="Inventory Engine" 
+        description="Unified product management with variant support and multi-user audit trails."
+        actionLabel="Register New Product"
+        onAction={() => { setEditingAsset(null); setIsFormOpen(true); }}
         ActionIcon={PlusCircle}
       />
 
       {!isLoading && filteredAssets.length > 0 && (
-        <ValuationSummary assets={filteredAssets} />
+        <ValuationSummary assets={filteredAssets as any} />
       )}
 
       <div className="mb-4">
         <Input
-          placeholder="Search by name or serial..."
+          placeholder="Search by name, SKU or barcode..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm bg-card h-11 font-bold"
@@ -190,74 +178,104 @@ export function StockClient() {
       </div>
       
       {isLoading ? (
-        <div className="p-8 text-center text-muted-foreground animate-pulse font-bold uppercase text-[10px] tracking-widest">Loading items...</div>
+        <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-widest">Loading node inventory...</div>
       ) : (
-        <>
-            {rawAssets?.length === 0 ? (
-                <Alert className="bg-card">
-                    <PackageSearch className="h-4 w-4" />
-                    <AlertTitle>Inventory Empty</AlertTitle>
-                    <AlertDescription>You haven't added any items yet. Click the button above to add one.</AlertDescription>
-                </Alert>
-            ) : (
-                <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-muted/50">
-                            {table.getHeaderGroups().map((headerGroup) => (
-                                <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => (
-                                    <TableHead key={header.id} className="font-black uppercase text-[10px] py-4">
-                                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                                    </TableHead>
-                                ))}
-                                </TableRow>
+        <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
+            <div className="overflow-x-auto">
+                <Table>
+                    <TableHeader className="bg-muted/50">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                            <TableHead key={header.id} className="font-black uppercase text-[10px] py-4">
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            </TableHead>
+                        ))}
+                        </TableRow>
+                    ))}
+                    </TableHeader>
+                    <TableBody>
+                    {table.getRowModel().rows.length > 0 ? (
+                        table.getRowModel().rows.map((row) => (
+                        <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                            {row.getVisibleCells().map((cell) => (
+                            <TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                             ))}
-                            </TableHeader>
-                            <TableBody>
-                            {table.getRowModel().rows.length > 0 ? (
-                                table.getRowModel().rows.map((row) => (
-                                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                                    {row.getVisibleCells().map((cell) => (
-                                    <TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                                    ))}
-                                </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground italic">No matching items found.</TableCell>
-                                </TableRow>
-                            )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <DataTablePagination table={table} />
-                </div>
-            )}
-        </>
+                        </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                        <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No products found in this node.</TableCell>
+                        </TableRow>
+                    )}
+                    </TableBody>
+                </Table>
+            </div>
+            <DataTablePagination table={table} />
+        </div>
       )}
 
+      {/* Product Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingAsset(null); }}}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Update Item" : "Register New Item"}</DialogTitle>
-            <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">Enter the item details below.</DialogDescription>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Modify Product" : "Register Product Node"}</DialogTitle>
           </DialogHeader>
           <AssetForm asset={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isSubmitting} />
         </DialogContent>
       </Dialog>
 
+      {/* Audit Trail Sheet */}
+      <Sheet open={!!selectedAuditProduct} onOpenChange={(o) => !o && setSelectedAuditProduct(null)}>
+        <SheetContent className="sm:max-w-xl flex flex-col p-0">
+          <SheetHeader className="p-6 border-b bg-muted/10">
+            <SheetTitle className="text-xl font-black uppercase tracking-tighter">Audit Trail: {selectedAuditProduct?.name}</SheetTitle>
+            <SheetDescription className="font-bold text-[10px] uppercase text-muted-foreground">Historical stock movements and adjustments.</SheetDescription>
+          </SheetHeader>
+          <div className="flex-grow overflow-y-auto">
+            {auditLoading ? (
+                <div className="p-8 text-center animate-pulse">Syncing logs...</div>
+            ) : auditLogs && auditLogs.length > 0 ? (
+                <div className="divide-y">
+                    {[...auditLogs].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(log => (
+                        <div key={log.id} className="p-4 space-y-1">
+                            <div className="flex items-center justify-between">
+                                <Badge variant={log.quantity > 0 ? 'default' : 'destructive'} className="text-[8px] font-black uppercase px-2 h-4 border-none">
+                                    {log.type}
+                                </Badge>
+                                <span className="text-[10px] font-mono opacity-40">{format(new Date(log.timestamp), 'MMM d, HH:mm')}</span>
+                            </div>
+                            <div className="flex justify-between items-baseline pt-1">
+                                <p className="text-sm font-bold">{log.quantity > 0 ? '+' : ''}{log.quantity} {selectedAuditProduct?.unit}</p>
+                                <p className="text-xs text-muted-foreground">Balance: {log.newStock}</p>
+                            </div>
+                            {log.reason && <p className="text-[10px] italic opacity-60">"{log.reason}"</p>}
+                            <p className="text-[8px] uppercase font-black opacity-30">By: {log.createdBy?.name || 'System'}</p>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="p-20 text-center space-y-4">
+                    <History className="h-10 w-10 mx-auto opacity-10" />
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-30">No movement history</p>
+                </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete Confirmation */}
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase">Are you sure?</DialogTitle>
+            <DialogTitle className="text-xl font-black uppercase">Confirm Deletion</DialogTitle>
             <DialogDescription className="font-medium text-base pt-2">
-              This will delete <strong>{assetToDelete?.model}</strong> from your inventory forever.
+              All history and variants for <strong>{assetToDelete?.name}</strong> will be erased.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 mt-4">
-            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold">No, Go Back</Button>
-            <Button variant="destructive" onClick={confirmDelete} className="font-black uppercase">Yes, Delete it</Button>
+            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold">Abort</Button>
+            <Button variant="destructive" onClick={async () => { if (assetToDelete) await deleteDoc(doc(firestore, 'products', assetToDelete.id)); setIsDeleteConfirmOpen(false); }} className="font-black uppercase">Delete Node</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

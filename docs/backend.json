@@ -1,5 +1,65 @@
+
 {
   "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Comprehensive inventory item with variants and financial details.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "name": { "type": "string" },
+        "sku": { "type": "string" },
+        "barcode": { "type": "string" },
+        "category": { "type": "string" },
+        "brand": { "type": "string" },
+        "model": { "type": "string" },
+        "description": { "type": "string" },
+        "unit": { "type": "string" },
+        "buyingPrice": { "type": "number" },
+        "sellingPriceRetail": { "type": "number" },
+        "sellingPriceWholesale": { "type": "number" },
+        "minStock": { "type": "number" },
+        "currentStock": { "type": "number" },
+        "reorderQty": { "type": "number" },
+        "supplier": { "type": "string" },
+        "locationBin": { "type": "string" },
+        "hasSerialNumber": { "type": "boolean" },
+        "warrantyPeriod": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "taxStatus": { "type": "string", "enum": ["Taxable", "Exempt", "ZeroRated"] },
+        "variants": { 
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "value": { "type": "string" },
+              "sku": { "type": "string" },
+              "priceAdjustment": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "StockMovement": {
+      "title": "StockMovement",
+      "description": "Audit trail record for every stock level change.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "productId": { "type": "string" },
+        "type": { "type": "string", "enum": ["PURCHASE", "STOCK IN", "SALE", "STOCK OUT", "ADJUSTMENT", "DAMAGED", "RETURNED", "CUSTOMER RETURN", "SUPPLIER RETURN"] },
+        "quantity": { "type": "number" },
+        "previousStock": { "type": "number" },
+        "newStock": { "type": "number" },
+        "reason": { "type": "string" },
+        "referenceId": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "createdBy": { "type": "object" }
+      }
+    },
     "Company": {
       "title": "Company",
       "description": "Represents a business workspace/tenant.",
@@ -20,41 +80,6 @@
         "createdBy": { "type": "object" }
       }
     },
-    "Asset": {
-      "title": "Asset",
-      "description": "Hardware inventory item (Laptops, Phones, etc).",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "model": { "type": "string" },
-        "serialNumber": { "type": "string" },
-        "status": { "type": "string" },
-        "quantity": { "type": "number" },
-        "purchasePrice": { "type": "number" },
-        "leasePrice": { "type": "number" },
-        "createdAt": { "type": "string" },
-        "purchaseDate": { "type": "string" },
-        "location": { "type": "object" },
-        "specifications": { "type": "object" }
-      }
-    },
-    "Accessory": {
-      "title": "Accessory",
-      "description": "Generic non-serialized components.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "name": { "type": "string" },
-        "serialNumber": { "type": "string" },
-        "status": { "type": "string" },
-        "quantity": { "type": "number" },
-        "purchasePrice": { "type": "number" },
-        "sellingPrice": { "type": "number" },
-        "purchaseDate": { "type": "string" }
-      }
-    },
     "Customer": {
       "title": "Customer",
       "description": "Client record.",
@@ -69,81 +94,6 @@
         "avatarUrl": { "type": "string" },
         "registrationDate": { "type": "string" }
       }
-    },
-    "Sale": {
-      "title": "Sale",
-      "description": "Point of sale transaction.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "date": { "type": "string" },
-        "amount": { "type": "number" },
-        "customerId": { "type": "string" },
-        "customerName": { "type": "string" },
-        "paymentMethod": { "type": "string" },
-        "status": { "type": "string" },
-        "items": { "type": "array" }
-      }
-    },
-    "Lease": {
-      "title": "Lease",
-      "description": "Hardware lease agreement.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "customerId": { "type": "string" },
-        "customerName": { "type": "string" },
-        "assetId": { "type": "string" },
-        "laptopModel": { "type": "string" },
-        "startDate": { "type": "string" },
-        "endDate": { "type": "string" },
-        "monthlyPayment": { "type": "number" },
-        "status": { "type": "string" },
-        "paymentStatus": { "type": "string" }
-      }
-    },
-    "Ticket": {
-      "title": "Ticket",
-      "description": "Customer support case.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "subject": { "type": "string" },
-        "description": { "type": "string" },
-        "status": { "type": "string" },
-        "priority": { "type": "string" },
-        "customerId": { "type": "string" }
-      }
-    },
-    "Notification": {
-      "title": "Notification",
-      "description": "Platform broadcast or alert.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "userId": { "type": "string" },
-        "subject": { "type": "string" },
-        "message": { "type": "string" },
-        "read": { "type": "boolean" },
-        "priority": { "type": "string" }
-      }
-    },
-    "Log": {
-      "title": "Log",
-      "description": "Workspace audit trail log.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "level": { "type": "string" },
-        "module": { "type": "string" },
-        "event": { "type": "string" },
-        "timestamp": { "type": "string" }
-      }
     }
   },
   "auth": {
@@ -154,37 +104,17 @@
       "schema": "#/backend/entities/Company",
       "description": "Global workspace records."
     },
-    "/assets/{assetId}": {
-      "schema": "#/backend/entities/Asset",
-      "description": "Hardware inventory siloed by tenantId."
+    "/products/{productId}": {
+      "schema": "#/backend/entities/Product",
+      "description": "Inventory products siloed by tenantId."
     },
-    "/accessories/{accessoryId}": {
-      "schema": "#/backend/entities/Accessory",
-      "description": "Accessory inventory siloed by tenantId."
+    "/stock_movements/{movementId}": {
+      "schema": "#/backend/entities/StockMovement",
+      "description": "Audit trail of stock changes."
     },
     "/customers/{customerId}": {
       "schema": "#/backend/entities/Customer",
       "description": "Customer CRM siloed by tenantId."
-    },
-    "/sales_transactions/{saleId}": {
-      "schema": "#/backend/entities/Sale",
-      "description": "POS transactions siloed by tenantId."
-    },
-    "/leases/{leaseId}": {
-      "schema": "#/backend/entities/Lease",
-      "description": "Lease agreements siloed by tenantId."
-    },
-    "/tickets/{ticketId}": {
-      "schema": "#/backend/entities/Ticket",
-      "description": "Support cases siloed by tenantId."
-    },
-    "/notifications/{notifId}": {
-      "schema": "#/backend/entities/Notification",
-      "description": "Platform alerts siloed by tenantId."
-    },
-    "/platform_logs/{logId}": {
-      "schema": "#/backend/entities/Log",
-      "description": "Audit trails siloed by tenantId."
     },
     "/users/{userId}": {
       "schema": {
