@@ -59,6 +59,7 @@ export interface Company extends Auditable {
   bankBranch?: string;
   bankAccNo?: string;
   bankAccName?: string;
+  bankAccName2?: string;
   bankCode?: string;
 
   // Theming
@@ -144,6 +145,7 @@ export interface Customer extends Omit<Auditable, 'createdAt' | 'updatedAt'>{
   id: string;
   tenantId?: string;
   name: string;
+  alias?: string; // Business name or alternate alias
   email: string;
   phone?: string;
   address?: string;

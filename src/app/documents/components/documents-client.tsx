@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Info } from "lucide-react";
-import type { DocumentType, Document as AppDocument, DocumentLineItem } from "@/types";
+import { Trash2, PlusCircle, Loader2, Info, Wallet } from "lucide-react";
+import type { DocumentType, Document as AppDocument, DocumentLineItem, Sale } from "@/types";
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, addDoc, doc } from "firebase/firestore";
+import { collection, query, where, addDoc, doc, getDocs } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -48,6 +48,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { addDays, addWeeks, addMonths, addYears } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
 const VAT_RATE = 0.16;
 
@@ -77,6 +78,8 @@ export function DocumentsClient() {
   const { data: workspaceProfile } = useDoc(companyRef);
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [customerBalance, setCustomerBalance] = useState(0);
+  const [isBalanceLoading, setIsBalanceLoading] = useState(false);
   const [details, setDetails] = useState('');
   const [amount, setAmount] = useState<string>('');
   const [applyVat, setApplyVat] = useState(false);
@@ -93,6 +96,36 @@ export function DocumentsClient() {
   const [leaseUnit, setLeaseUnit] = useState<'Day' | 'Week' | 'Month' | 'Year'>('Day');
   const [isStudent, setIsStudent] = useState(false);
   const [verification, setVerification] = useState<any>({});
+
+  // Fetch Customer Balance
+  useEffect(() => {
+    if (!selectedCustomerId || !tenant) {
+      setCustomerBalance(0);
+      return;
+    }
+
+    const fetchBalance = async () => {
+      setIsBalanceLoading(true);
+      try {
+        const salesRef = collection(firestore, 'sales_transactions');
+        const q = query(
+          salesRef, 
+          where('tenantId', '==', tenant.id), 
+          where('customerId', '==', selectedCustomerId)
+        );
+        const snap = await getDocs(q);
+        const sales = snap.docs.map(d => d.data() as Sale);
+        const totalBalance = sales.reduce((acc, sale) => acc + (sale.balance || 0), 0);
+        setCustomerBalance(totalBalance);
+      } catch (e) {
+        console.error("Balance fetch error:", e);
+      } finally {
+        setIsBalanceLoading(false);
+      }
+    };
+
+    fetchBalance();
+  }, [selectedCustomerId, tenant, firestore]);
 
   const sortedDocuments = useMemo(() => {
       if (!rawDocuments) return [];
@@ -114,6 +147,7 @@ export function DocumentsClient() {
     const documentData: any = { 
         details: details || '', 
         applyVat,
+        previousBalance: customerBalance, // Capture balance at generation
         workspace: workspaceProfile ? {
             name: workspaceProfile.name || '',
             address: workspaceProfile.address || '',
@@ -131,15 +165,15 @@ export function DocumentsClient() {
         documentData.customer = {
             id: selectedCustomer.id || '',
             name: selectedCustomer.name || 'Client',
+            alias: selectedCustomer.alias || '',
             phone: selectedCustomer.phone || '',
             email: selectedCustomer.email || '',
             address: selectedCustomer.address || ''
         };
-        relatedTo = `${selectedCustomer.name}`;
+        relatedTo = selectedCustomer.alias ? `${selectedCustomer.alias} (${selectedCustomer.name})` : selectedCustomer.name;
     }
 
     if (type === 'Receipt') {
-        // Receipts from this screen can now be itemized
         const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
         
         if (validLineItems.length > 0) {
@@ -360,12 +394,29 @@ export function DocumentsClient() {
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <Label className="text-[10px] font-black uppercase opacity-60">Select Client</Label>
                 <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId}>
-                <SelectTrigger className="h-11"><SelectValue placeholder="Pick a client..." /></SelectTrigger>
-                <SelectContent>{customers?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Pick a client..." /></SelectTrigger>
+                  <SelectContent>
+                    {customers?.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.alias ? `${c.alias} (${c.name})` : c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
+                {selectedCustomerId && (
+                  <div className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                    <Wallet className="h-4 w-4 text-orange-600" />
+                    <div className="space-y-0.5">
+                      <p className="text-[8px] font-black uppercase text-orange-600">Previous Account Balance</p>
+                      <p className="text-sm font-black text-orange-900">
+                        {isBalanceLoading ? "..." : `KES ${customerBalance.toLocaleString()}`}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-xl border h-11 self-end">
                 <Switch id="vat-switch" checked={applyVat} onCheckedChange={setApplyVat} />

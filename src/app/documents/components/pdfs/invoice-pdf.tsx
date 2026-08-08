@@ -25,12 +25,14 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
   
   const customer = data.customer || {
     name: data.customerName || 'VALUED CLIENT',
+    alias: '',
     phone: data.customerPhone || '',
     email: data.customerEmail || '',
     address: data.customerAddress || 'Nairobi, Kenya'
   };
 
-  const { items, subtotal, vatAmount, total, applyVat } = data;
+  const { items, subtotal, vatAmount, total, applyVat, previousBalance = 0 } = data;
+  const totalAmountDue = (total || 0) + previousBalance;
 
   const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat("en-KE", {
@@ -78,7 +80,8 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
         </div>
         <div className="p-4 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
             <h3 className="font-medium text-[14px] mb-1" style={{ color: primaryIndigo }}>Billed To</h3>
-            <p className="font-bold text-xs">{customer.name}</p>
+            <p className="font-bold text-xs uppercase">{customer.alias || customer.name}</p>
+            {customer.alias && <p className="text-[9px] font-bold text-black/60 uppercase">Attn: {customer.name}</p>}
             <p className="text-[10px] font-medium text-black/70">{customer.address || 'Nairobi, Kenya'}</p>
             <p className="text-[10px] font-medium text-black/70">{customer.phone}</p>
         </div>
@@ -101,7 +104,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 {items?.map((item: any, idx: number) => {
                     const name = item.name || item.description;
                     const desc = item.description && item.name ? item.description : null;
-                    const unitPrice = item.price || item.sellingPrice || 0;
+                    const unitPrice = item.price || item.sellingPrice || item.unitPrice || 0;
                     const rowSubtotal = item.quantity * unitPrice;
                     const rowTax = applyVat ? rowSubtotal * 0.16 : 0;
                     return (
@@ -129,23 +132,41 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
         </table>
 
         <div className="flex justify-between items-start mt-6">
-            <div className="max-w-[350px]">
+            <div className="max-w-[350px] space-y-4">
                 <p className="text-[10px] font-bold text-black uppercase">
-                    Total (in words) : {numberToWords(total)}
+                    Total Due (in words) : {numberToWords(totalAmountDue)}
                 </p>
+                {previousBalance > 0 && (
+                   <div className="p-3 bg-red-50 border border-red-100 rounded-lg">
+                      <p className="text-[8px] font-black uppercase text-red-600 mb-1">Account Summary Notice</p>
+                      <p className="text-[9px] font-medium text-red-900 leading-tight">
+                        Please note that this invoice includes a carried-forward balance of <span className="font-black">KES {formatCurrency(previousBalance)}</span> from previous transactions.
+                      </p>
+                   </div>
+                )}
             </div>
-            <div className="w-[280px] space-y-3">
+            <div className="w-[280px] space-y-2">
                 <div className="flex justify-between items-center text-[10px]">
-                    <span className="font-bold opacity-60">Amount</span>
+                    <span className="font-bold opacity-60">Current Invoice Subtotal</span>
                     <span className="font-bold">KES {formatCurrency(subtotal || total)}</span>
                 </div>
                 <div className="flex justify-between items-center text-[10px]">
-                    <span className="font-bold opacity-60">TAX</span>
+                    <span className="font-bold opacity-60">Current TAX (VAT 16%)</span>
                     <span className="font-bold">KES {formatCurrency(vatAmount || 0)}</span>
                 </div>
+                <div className="flex justify-between items-center text-[10px] border-t pt-2 mt-2">
+                    <span className="font-bold uppercase tracking-tighter opacity-60">Current Total</span>
+                    <span className="font-black">KES {formatCurrency(total)}</span>
+                </div>
+                {previousBalance > 0 && (
+                  <div className="flex justify-between items-center text-[10px] text-red-600">
+                      <span className="font-bold uppercase tracking-tighter">Balance Forward</span>
+                      <span className="font-black">+ KES {formatCurrency(previousBalance)}</span>
+                  </div>
+                )}
                 <div className="pt-3 border-t-2 border-black flex justify-between items-center">
-                    <span className="text-[14px] font-bold">Total (KES)</span>
-                    <span className="text-[16px] font-bold">KES {formatCurrency(total)}</span>
+                    <span className="text-[14px] font-bold">NET AMOUNT DUE</span>
+                    <span className="text-[16px] font-black">KES {formatCurrency(totalAmountDue)}</span>
                 </div>
                 <div className="h-0.5 bg-black w-full mt-[-2px]"></div>
             </div>

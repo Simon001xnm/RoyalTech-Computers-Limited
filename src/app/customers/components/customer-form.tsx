@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,12 +14,14 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 const customerFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
+  alias: z.string().optional(),
   email: z.string().email("Invalid email address."),
   phone: z.string().optional(),
   address: z.string().optional(),
@@ -36,9 +39,13 @@ interface CustomerFormProps {
 
 export function CustomerForm({ customer, onSubmit, onCancel, isLoading }: CustomerFormProps) {
   const defaultValues: Partial<CustomerFormValues> = customer
-    ? customer
+    ? {
+        ...customer,
+        alias: customer.alias || '',
+      }
     : {
         name: "",
+        alias: "",
         email: "",
         phone: "",
         address: "",
@@ -57,19 +64,35 @@ export function CustomerForm({ customer, onSubmit, onCancel, isLoading }: Custom
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Full Name</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., John Doe" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Full Name / Primary Contact</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., John Doe" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="alias"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Alias / Business Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., Quest Networking LTD" {...field} />
+                </FormControl>
+                <FormDescription className="text-[10px]">How the client appears on official documents.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <FormField
           control={form.control}
           name="email"
