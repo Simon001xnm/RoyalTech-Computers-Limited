@@ -13,14 +13,17 @@ import { useSaaS } from '@/components/saas/saas-provider';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, addDoc, getDocs, limit } from 'firebase/firestore';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
+import { Input } from '@/components/ui/input';
+import { Search, Calendar as CalendarIcon } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 
 interface RecentSalesProps {
     onViewReceipt: (sale: Sale) => void;
 }
 
 /**
- * High-Density Transaction History
- * Optimized for small mobile screens with microscopic fonts and fixed layouts.
+ * High-Density Transaction History for POS
+ * Filterable by name and date, with 10/25/50/100 row pagination.
  */
 export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const router = useRouter();
@@ -28,7 +31,9 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const { tenant } = useSaaS();
     const firestore = useFirestore();
 
-    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 5 });
+    const [searchTerm, setSearchTerm] = useState("");
+    const [dateFilter, setDateFilter] = useState("");
+    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
     const [isExporting, setIsExporting] = useState(false);
     const [exportDoc, setExportDoc] = useState<AppDocument | null>(null);
 
@@ -39,14 +44,29 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     
     const { data: rawSales, isLoading } = useCollection(salesQuery);
 
-    const sortedSales = useMemo(() => {
+    const filteredSales = useMemo(() => {
         if (!rawSales) return [];
-        return [...rawSales].sort((a, b) => {
+        
+        let results = [...rawSales].sort((a, b) => {
             const dateA = a.date ? new Date(a.date).getTime() : 0;
             const dateB = b.date ? new Date(b.date).getTime() : 0;
             return dateB - dateA;
         });
-    }, [rawSales]);
+
+        if (searchTerm) {
+            results = results.filter(s => 
+                (s.customerName || '').toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+
+        if (dateFilter) {
+            results = results.filter(s => 
+                s.date.startsWith(dateFilter)
+            );
+        }
+
+        return results;
+    }, [rawSales, searchTerm, dateFilter]);
     
     const handleGenerateDelivery = async (sale: Sale) => {
         if (!tenant) return;
@@ -111,13 +131,13 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             }
 
             setExportDoc(docToUse);
-            await new Promise(r => setTimeout(r, 300));
+            await new Promise(r => setTimeout(r, 400));
 
             const element = document.getElementById('recent-sale-export-target');
             if (!element) throw new Error("Export target not found");
 
             const canvas = await html2canvas(element, { 
-                scale: 2, 
+                scale: 2.5, 
                 useCORS: true,
                 backgroundColor: "#ffffff",
                 width: 794,
@@ -130,16 +150,13 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             const imgData = canvas.toDataURL('image/png', 1.0);
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
             
-            // CUSTOM FILENAME: RCT [CompPrefix]-[Year][Date][Month]
+            const initials = 'RCT';
             const compPrefix = (tenant?.name || 'HUB').slice(0, 3).toUpperCase();
             const now = new Date();
-            const year = now.getFullYear();
-            const date = now.getDate().toString().padStart(2, '0');
-            const month = (now.getMonth() + 1).toString().padStart(2, '0');
-            const filename = `RCT ${compPrefix}-${year}${date}${month}.pdf`;
+            const filename = `${initials} ${compPrefix}-${now.getFullYear()}${String(now.getDate()).padStart(2,'0')}${String(now.getMonth()+1).padStart(2,'0')}.pdf`;
 
             pdf.save(filename);
-            toast({ title: "Receipt Downloaded" });
+            toast({ title: "Receipt Saved" });
         } catch (e) {
             toast({ variant: 'destructive', title: "Export Failed" });
         } finally {
@@ -163,7 +180,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const saleColumns = useMemo<ColumnDef<Sale>[]>(() => getSaleColumns(saleColumnActions), [saleColumnActions]);
     
     const salesTable = useReactTable({
-        data: sortedSales,
+        data: filteredSales,
         columns: saleColumns,
         state: { pagination },
         onPaginationChange: setPagination,
@@ -172,21 +189,43 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     });
 
     return (
-        <Card className="shadow-lg border-none overflow-hidden ring-1 ring-black/5 bg-white mx-auto w-full max-w-full">
-            <CardHeader className="bg-muted/30 py-2 px-3">
-                <CardTitle className="text-[10px] font-black uppercase tracking-widest">History</CardTitle>
+        <Card className="shadow-xl border-none overflow-hidden ring-1 ring-black/5 bg-white w-full">
+            <CardHeader className="bg-muted/10 py-4 px-6 border-b">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <CardTitle className="text-sm font-black uppercase tracking-widest">Transaction History</CardTitle>
+                    <div className="flex items-center gap-2">
+                        <div className="relative">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input 
+                                placeholder="Filter by client..." 
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="pl-8 h-9 text-xs w-48 bg-white"
+                            />
+                        </div>
+                        <div className="relative">
+                            <CalendarIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input 
+                                type="date"
+                                value={dateFilter}
+                                onChange={e => setDateFilter(e.target.value)}
+                                className="pl-8 h-9 text-xs w-40 bg-white"
+                            />
+                        </div>
+                    </div>
+                </div>
             </CardHeader>
-            <CardContent className="p-0 overflow-hidden">
+            <CardContent className="p-0">
                 {isLoading ? (
-                    <p className="text-muted-foreground animate-pulse p-4 text-[8px] font-bold uppercase text-center">Syncing...</p>
+                    <div className="p-12 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Syncing Cloud Ledger...</div>
                 ) : (
-                    <div className="w-full overflow-hidden">
-                        <Table className="w-full table-fixed border-collapse">
+                    <div className="w-full">
+                        <Table>
                             <TableHeader className="bg-muted/50">
                                 {salesTable.getHeaderGroups().map(hg => (
-                                    <TableRow key={hg.id} className="h-7 border-b border-muted">
+                                    <TableRow key={hg.id}>
                                         {hg.headers.map(header => (
-                                            <TableHead key={header.id} className="text-[8px] font-black uppercase py-0 h-7 px-2" style={{ width: header.getSize() }}>
+                                            <TableHead key={header.id} className="text-[10px] font-black uppercase py-4">
                                                 {flexRender(header.column.columnDef.header, header.getContext())}
                                             </TableHead>
                                         ))}
@@ -196,25 +235,28 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                             <TableBody>
                                 {salesTable.getRowModel().rows.length ? (
                                     salesTable.getRowModel().rows.map(row => (
-                                        <TableRow key={row.id} className="hover:bg-muted/10 h-9 border-b last:border-0 border-muted">
+                                        <TableRow key={row.id} className="hover:bg-muted/10">
                                             {row.getVisibleCells().map(cell => (
-                                                <TableCell key={cell.id} className="py-0 px-2 overflow-hidden truncate">
+                                                <TableCell key={cell.id} className="py-3">
                                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                                 </TableCell>
                                             ))}
                                         </TableRow>
                                     ))
                                 ) : (
-                                    <TableRow><TableCell colSpan={saleColumns.length} className="h-16 text-center text-muted-foreground italic text-[8px]">No records found.</TableCell></TableRow>
+                                    <TableRow>
+                                        <TableCell colSpan={saleColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">
+                                            No matching records found.
+                                        </TableCell>
+                                    </TableRow>
                                 )}
                             </TableBody>
                         </Table>
-                        <div className="px-1 py-1 border-t border-muted">
-                            <DataTablePagination table={salesTable} />
-                        </div>
+                        <DataTablePagination table={salesTable} />
                     </div>
                 )}
                 
+                {/* Hidden PDF Render Target */}
                 <div className="fixed left-[-9999px] top-0 pointer-events-none">
                     <div id="recent-sale-export-target" className="bg-white" style={{ width: '210mm', minHeight: '297mm' }}>
                         {exportDoc && <ReceiptPdf document={exportDoc} />}

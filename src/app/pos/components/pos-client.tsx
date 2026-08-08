@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -6,14 +5,14 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2 } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2, Receipt } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { cn } from '@/lib/utils';
@@ -22,6 +21,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import type { DocumentType, Sale } from '@/types';
 import { useEffect } from 'react';
+import { RecentSales } from './recent-sales';
 
 const VAT_RATE = 0.16;
 
@@ -142,7 +142,7 @@ export function PosClient() {
     const qty = parseInt(selectionQty) || 1;
     const price = parseFloat(selectionPrice) || 0;
 
-    if (qty > selectedProduct.currentStock) {
+    if (qty > (selectedProduct.currentStock || 0)) {
         toast({ variant: 'destructive', title: 'Insufficient Stock', description: `Only ${selectedProduct.currentStock} units available.` });
         return;
     }
@@ -306,7 +306,7 @@ export function PosClient() {
                                         <CommandList>
                                             <CommandEmpty>No products found.</CommandEmpty>
                                             <CommandGroup heading="Inventory">
-                                                {products?.filter(p => p.currentStock > 0).map(p => (
+                                                {products?.filter(p => (p.currentStock || 0) > 0).map(p => (
                                                     <CommandItem key={p.id} onSelect={() => handleSelectProduct(p)} className="p-3">
                                                         <div className="flex justify-between w-full items-center">
                                                             <div>
@@ -339,7 +339,7 @@ export function PosClient() {
                                         <CommandItem onSelect={() => { setSelectedCustomer(null); setCustSearchOpen(false); }}>Walk-in Client</CommandItem>
                                         <CommandGroup heading="CRM Directory">
                                             {customers?.map(c => (
-                                                <CommandItem key={c.id} onSelect={() => { setSelectedCustomer(c); setCustSearchOpen(false); }}>{c.name}</CommandItem>
+                                                <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({id: c.id, name: c.name}); setCustSearchOpen(false); }}>{c.name}</CommandItem>
                                             ))}
                                         </CommandGroup>
                                     </CommandList>
@@ -380,7 +380,7 @@ export function PosClient() {
                                 ))}
                                 {cart.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-96 text-center text-muted-foreground/30">
+                                        <TableCell colSpan={5} className="h-[400px] text-center text-muted-foreground/30">
                                             <div className="space-y-2">
                                                 <ShoppingCart className="h-12 w-12 mx-auto" />
                                                 <p className="text-xs font-black uppercase tracking-widest">Basket Empty</p>
@@ -393,6 +393,8 @@ export function PosClient() {
                     </div>
                 </CardContent>
             </Card>
+
+            <RecentSales onViewReceipt={(s) => {}} />
         </div>
 
         <div className="space-y-6">
