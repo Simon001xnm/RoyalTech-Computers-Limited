@@ -402,7 +402,7 @@ export function PosClient() {
                 <CardHeader className="bg-primary/5 py-4 border-b">
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                            Settlement Mix
+                            Payment Details
                         </CardTitle>
                         <div className="flex items-center gap-2">
                             <Switch checked={applyVat} onCheckedChange={setApplyVat} id="vat-mode" />
@@ -437,7 +437,7 @@ export function PosClient() {
                     <Separator />
 
                     <div className="space-y-4">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Payment Allocation</p>
+                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Payment Methods</p>
                         
                         <div className="grid grid-cols-3 gap-2">
                             {(['Cash', 'M-Pesa', 'Bank', 'Card', 'Credit'] as const).map(m => (
@@ -459,7 +459,7 @@ export function PosClient() {
                         {activePaymentMethod && (
                             <div className="p-4 bg-muted/30 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                                 <div className="flex justify-between items-center">
-                                    <Label className="text-[10px] font-black uppercase">Allocating {activePaymentMethod}</Label>
+                                    <Label className="text-[10px] font-black uppercase">Paying with {activePaymentMethod}</Label>
                                     <Button variant="ghost" size="icon" onClick={() => setActivePaymentMethod(null)} className="h-5 w-5"><Trash2 className="h-3 w-3" /></Button>
                                 </div>
                                 <Input 

@@ -222,7 +222,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full">
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest">Daily Settlement Mix</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest">Today's Payments</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-5 flex-grow">
                 <div className="flex justify-between items-end border-b pb-4">
@@ -315,7 +315,7 @@ export default function DashboardPage() {
                         <TableHead className="text-[10px] font-black uppercase pl-6">Timestamp</TableHead>
                         <TableHead className="text-[10px] font-black uppercase">Client Node</TableHead>
                         <TableHead className="text-[10px] font-black uppercase">Status</TableHead>
-                        <TableHead className="text-[10px] font-black uppercase">Settlement</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase">Payment Method</TableHead>
                         <TableHead className="text-[10px] font-black uppercase text-right pr-6">Value</TableHead>
                     </TableRow>
                 </TableHeader>
