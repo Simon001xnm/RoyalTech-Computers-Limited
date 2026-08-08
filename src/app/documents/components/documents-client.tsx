@@ -108,13 +108,6 @@ export function DocumentsClient() {
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [isExporting, setIsExporting] = useState(false);
 
-  // Lease Specific
-  const [clientType, setClientType] = useState<'Individual' | 'Corporate'>('Individual');
-  const [leaseDuration, setLeaseDuration] = useState('1');
-  const [leaseUnit, setLeaseUnit] = useState<'Day' | 'Week' | 'Month' | 'Year'>('Day');
-  const [isStudent, setIsStudent] = useState(false);
-  const [verification, setVerification] = useState<any>({});
-
   // Fetch Customer Balance
   useEffect(() => {
     if (!selectedCustomerId || !tenant) {
@@ -222,12 +215,7 @@ export function DocumentsClient() {
         const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
         documentData.items = validLineItems;
         
-        const dur = parseInt(leaseDuration) || 1;
-        const subtotal = validLineItems.reduce((acc, item) => {
-            const base = item.quantity * item.unitPrice;
-            return acc + (type === 'LeaseAgreement' ? (base * dur) : base);
-        }, 0);
-
+        const subtotal = validLineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
         const vat = applyVat ? subtotal * VAT_RATE : 0;
         documentData.subtotal = subtotal;
         documentData.vat = vat;
@@ -268,7 +256,7 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    await new Promise(r => setTimeout(r, 450)); 
+    await new Promise(r => setTimeout(r, 600)); 
 
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
@@ -280,11 +268,10 @@ export function DocumentsClient() {
     try {
         const isThermal = type === 'Thermal';
         const canvas = await html2canvas(element, { 
-            scale: 3, 
+            scale: 3.5, 
             useCORS: true,
             backgroundColor: "#ffffff",
-            width: isThermal ? 302 : 794, // 80mm vs A4
-            height: isThermal ? 1600 : 1123, // Thermal height adjusted for two copies
+            width: isThermal ? 302 : 794, 
             y: 0,
             scrollY: 0
         });
@@ -292,12 +279,12 @@ export function DocumentsClient() {
         const pdf = new jsPDF({
             orientation: 'p',
             unit: 'mm',
-            format: isThermal ? [80, 400] : 'a4',
+            format: isThermal ? [80, canvas.height * 0.264583 / 3.5] : 'a4',
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
         if (isThermal) {
-            pdf.addImage(imgData, 'PNG', 0, 0, 80, 400, undefined, 'FAST');
+            pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.5, undefined, 'FAST');
         } else {
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
         }
@@ -349,7 +336,7 @@ export function DocumentsClient() {
 
   const renderPdfPreview = () => {
     if (!selectedDocument) return null;
-    if (exportType === 'Thermal' && selectedDocument.type === 'Receipt') {
+    if (exportType === 'Thermal' && (selectedDocument.type === 'Receipt' || selectedDocument.type === 'Invoice')) {
         return <ThermalReceiptPdf document={selectedDocument} />;
     }
     switch(selectedDocument.type) {
@@ -365,7 +352,86 @@ export function DocumentsClient() {
     }
   };
 
-  const renderForm = (type: DocumentType) => {
+  const handleLineItemChange = (index: number, field: keyof DocumentLineItem, value: string | number) => {
+    const updatedItems = [...lineItems];
+    updatedItems[index] = { ...updatedItems[index], [field]: field === 'description' ? value : Number(value) || 0 };
+    setLineItems(updatedItems);
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Document Node" description="High-fidelity business paperwork synchronized with your cloud ledger." />
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
+        <TabsList className="grid w-full grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
+          <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
+          <TabsTrigger value="Invoice" className="font-black uppercase text-[8px] md:text-[9px] py-3">Invoice</TabsTrigger>
+          <TabsTrigger value="LeaseAgreement" className="font-black uppercase text-[8px] md:text-[9px] py-3">Lease Hire</TabsTrigger>
+          <TabsTrigger value="Proforma" className="font-black uppercase text-[8px] md:text-[9px] py-3">Proforma</TabsTrigger>
+          <TabsTrigger value="Receipt" className="font-black uppercase text-[8px] md:text-[9px] py-3">Receipt</TabsTrigger>
+        </TabsList>
+        <TabsContent value="Quotation">{renderForm("Quotation")}</TabsContent>
+        <TabsContent value="Invoice">{renderForm("Invoice")}</TabsContent>
+        <TabsContent value="LeaseAgreement">{renderForm("LeaseAgreement")}</TabsContent>
+        <TabsContent value="Proforma">{renderForm("Proforma")}</TabsContent>
+        <TabsContent value="Receipt">{renderForm("Receipt")}</TabsContent>
+      </Tabs>
+      
+      {/* Table and Dialogs below omitted for brevity but preserved in context */}
+      <Card className="mt-8 shadow-2xl border-none overflow-hidden">
+          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Archive Registry</CardTitle></CardHeader>
+          <CardContent className="p-0 overflow-auto">
+            <Table>
+                <TableHeader className="bg-muted/20">
+                    {table.getHeaderGroups().map(hg => (
+                        <TableRow key={hg.id}>
+                            {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
+                        </TableRow>
+                    ))}
+                </TableHeader>
+                <TableBody>
+                    {table.getRowModel().rows.length ? (
+                        table.getRowModel().rows.map(row => (
+                            <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
+                        ))
+                    ) : (
+                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No document records found in this node.</TableCell></TableRow>
+                    )}
+                </TableBody>
+            </Table>
+            <DataTablePagination table={table} />
+          </CardContent>
+      </Card>
+
+       <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
+        <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
+          <DialogHeader className="p-6 bg-white border-b no-print">
+            <div className="flex items-center justify-between">
+                <DialogTitle className="text-xl font-black uppercase tracking-tight">Paper Preview</DialogTitle>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'A4')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download A4</Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'Thermal')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download Thermal</Button>
+                </div>
+            </div>
+          </DialogHeader>
+          <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-4 md:p-8">
+            <div id="pdf-preview-target" className={cn(
+                "shrink-0 shadow-2xl relative bg-white overflow-hidden origin-top scale-[0.4] sm:scale-[0.6] md:scale-100",
+                exportType === 'Thermal' ? "w-[80mm] h-fit" : "w-[210mm] min-h-[297mm]"
+            )}>
+                {renderPdfPreview()}
+            </div>
+          </div>
+          <div className="p-4 border-t flex flex-col sm:flex-row justify-end gap-3 bg-white no-print">
+            {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold w-full sm:w-auto">Close Preview</Button>
+            <Button onClick={() => window.print()} className="font-black uppercase w-full sm:w-auto"><Printer className="mr-2 h-4 w-4" />Execute Print</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+
+  function renderForm(type: DocumentType) {
     const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'LPO', 'LeaseAgreement', 'Receipt'].includes(type);
     return (
       <Card className="shadow-lg border-primary/10">
@@ -430,83 +496,5 @@ export function DocumentsClient() {
         </CardFooter>
       </Card>
     );
-  };
-
-  const handleLineItemChange = (index: number, field: keyof DocumentLineItem, value: string | number) => {
-    const updatedItems = [...lineItems];
-    updatedItems[index] = { ...updatedItems[index], [field]: field === 'description' ? value : Number(value) || 0 };
-    setLineItems(updatedItems);
-  };
-
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Document Node" description="High-fidelity business paperwork synchronized with your cloud ledger." />
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
-          <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
-          <TabsTrigger value="Invoice" className="font-black uppercase text-[8px] md:text-[9px] py-3">Invoice</TabsTrigger>
-          <TabsTrigger value="LeaseAgreement" className="font-black uppercase text-[8px] md:text-[9px] py-3">Lease Hire</TabsTrigger>
-          <TabsTrigger value="Proforma" className="font-black uppercase text-[8px] md:text-[9px] py-3">Proforma</TabsTrigger>
-          <TabsTrigger value="Receipt" className="font-black uppercase text-[8px] md:text-[9px] py-3">Receipt</TabsTrigger>
-        </TabsList>
-        <TabsContent value="Quotation">{renderForm("Quotation")}</TabsContent>
-        <TabsContent value="Invoice">{renderForm("Invoice")}</TabsContent>
-        <TabsContent value="LeaseAgreement">{renderForm("LeaseAgreement")}</TabsContent>
-        <TabsContent value="Proforma">{renderForm("Proforma")}</TabsContent>
-        <TabsContent value="Receipt">{renderForm("Receipt")}</TabsContent>
-      </Tabs>
-      
-      <Card className="mt-8 shadow-2xl border-none overflow-hidden">
-          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Archive Registry</CardTitle></CardHeader>
-          <CardContent className="p-0 overflow-auto">
-            <Table>
-                <TableHeader className="bg-muted/20">
-                    {table.getHeaderGroups().map(hg => (
-                        <TableRow key={hg.id}>
-                            {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
-                        </TableRow>
-                    ))}
-                </TableHeader>
-                <TableBody>
-                    {table.getRowModel().rows.length ? (
-                        table.getRowModel().rows.map(row => (
-                            <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
-                        ))
-                    ) : (
-                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No document records found in this node.</TableCell></TableRow>
-                    )}
-                </TableBody>
-            </Table>
-            <DataTablePagination table={table} />
-          </CardContent>
-      </Card>
-
-       <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
-        <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
-          <DialogHeader className="p-6 bg-white border-b no-print">
-            <div className="flex items-center justify-between">
-                <DialogTitle className="text-xl font-black uppercase tracking-tight">Paper Preview</DialogTitle>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'A4')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download A4</Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'Thermal')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download Thermal</Button>
-                </div>
-            </div>
-          </DialogHeader>
-          <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-4 md:p-8">
-            <div id="pdf-preview-target" className={cn(
-                "shrink-0 shadow-2xl relative bg-white overflow-hidden origin-top scale-[0.4] sm:scale-[0.6] md:scale-100",
-                exportType === 'Thermal' ? "w-[80mm]" : "w-[210mm] min-h-[297mm]"
-            )}>
-                {renderPdfPreview()}
-            </div>
-          </div>
-          <div className="p-4 border-t flex flex-col sm:flex-row justify-end gap-3 bg-white no-print">
-            {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold w-full sm:w-auto">Close Preview</Button>
-            <Button onClick={() => window.print()} className="font-black uppercase w-full sm:w-auto"><Printer className="mr-2 h-4 w-4" />Execute Print</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
+  }
 }

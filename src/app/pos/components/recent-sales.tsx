@@ -30,7 +30,6 @@ const TYPE_INITIALS: Record<string, string> = {
 };
 
 export function RecentSales({ onViewReceipt }: RecentSalesProps) {
-    const router = useRouter();
     const { toast } = useToast();
     const { tenant } = useSaaS();
     const firestore = useFirestore();
@@ -86,18 +85,17 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
 
         try {
             setExportDoc(docToDownload);
-            await new Promise(r => setTimeout(r, 450));
+            await new Promise(r => setTimeout(r, 600));
 
             const element = document.getElementById('recent-sale-export-target');
             if (!element) throw new Error("Export target not found");
 
             const isThermal = type === 'Thermal';
             const canvas = await html2canvas(element, { 
-                scale: 3, 
+                scale: 3.5, 
                 useCORS: true,
                 backgroundColor: "#ffffff",
                 width: isThermal ? 302 : 794,
-                height: isThermal ? 800 : 1123,
                 y: 0,
                 scrollY: 0
             });
@@ -105,12 +103,12 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             const pdf = new jsPDF({ 
                 orientation: 'p', 
                 unit: 'mm', 
-                format: isThermal ? [80, 200] : 'a4' 
+                format: isThermal ? [80, canvas.height * 0.264583 / 3.5] : 'a4' 
             });
 
             const imgData = canvas.toDataURL('image/png', 1.0);
             if (isThermal) {
-                pdf.addImage(imgData, 'PNG', 0, 0, 80, 200, undefined, 'FAST');
+                pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.5, undefined, 'FAST');
             } else {
                 pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
             }
