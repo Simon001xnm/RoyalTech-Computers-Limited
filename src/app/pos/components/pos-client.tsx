@@ -1,19 +1,20 @@
+
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Download, Search, CreditCard, Wallet, Banknote, Landmark } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, doc, writeBatch, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -29,11 +30,10 @@ type CartItem = {
     id: string;
     productId: string;
     name: string;
-    sku: string;
     quantity: number;
-    unitPrice: number;
+    sellingPrice: number;
+    buyingPrice: number; // Snapshot at time of sale
     total: number;
-    type: 'retail' | 'wholesale';
 };
 
 export function PosClient() {
@@ -47,6 +47,11 @@ export function PosClient() {
   const [discount, setDiscount] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+
+  // Selection state
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectionQty, setSelectionQty] = useState<string>('1');
+  const [selectionPrice, setSelectionPrice] = useState<string>('');
 
   // Split Payment State
   const [payments, setPayments] = useState<PaymentSplit[]>([]);
@@ -72,35 +77,51 @@ export function PosClient() {
   const [custSearchOpen, setCustSearchOpen] = useState(false);
 
   // Calculations
-  const { subtotal, total, amountPaid, remainingBalance } = useMemo(() => {
+  const { subtotal, total, amountPaid, remainingBalance, totalProfit } = useMemo(() => {
     const sub = cart.reduce((acc, item) => acc + item.total, 0);
     const tot = Math.max(0, sub - discount);
     const paid = payments.reduce((acc, p) => acc + p.amount, 0);
+    const profit = cart.reduce((acc, item) => acc + (item.total - (item.buyingPrice * item.quantity)), 0) - discount;
+    
     return {
         subtotal: sub,
         total: tot,
         amountPaid: paid,
-        remainingBalance: tot - paid
+        remainingBalance: tot - paid,
+        totalProfit: profit
     };
   }, [cart, discount, payments]);
 
-  const handleAddToCart = (product: any) => {
-    const existing = cart.find(i => i.productId === product.id);
+  const handleSelectProduct = (product: any) => {
+    setSelectedProduct(product);
+    setSelectionQty('1');
+    setSelectionPrice(''); // Let user enter price or default to some rule
+    setSearchOpen(false);
+  };
+
+  const handleAddToCart = () => {
+    if (!selectedProduct) return;
+    const qty = parseInt(selectionQty) || 1;
+    const price = parseFloat(selectionPrice) || 0;
+
+    const existing = cart.find(i => i.productId === selectedProduct.id && i.sellingPrice === price);
+    
     if (existing) {
-        setCart(cart.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + 1, total: (i.quantity + 1) * i.unitPrice } : i));
+        setCart(cart.map(i => i.productId === selectedProduct.id && i.sellingPrice === price 
+            ? { ...i, quantity: i.quantity + qty, total: (i.quantity + qty) * i.sellingPrice } 
+            : i));
     } else {
         setCart([...cart, {
             id: crypto.randomUUID(),
-            productId: product.id,
-            name: product.name,
-            sku: product.sku,
-            quantity: 1,
-            unitPrice: product.sellingPriceRetail,
-            total: product.sellingPriceRetail,
-            type: 'retail'
+            productId: selectedProduct.id,
+            name: selectedProduct.name,
+            quantity: qty,
+            sellingPrice: price,
+            buyingPrice: selectedProduct.buyingPrice, // Snapshot
+            total: qty * price
         }]);
     }
-    setSearchOpen(false);
+    setSelectedProduct(null);
   };
 
   const handleRemoveFromCart = (id: string) => {
@@ -129,7 +150,6 @@ export function PosClient() {
 
     try {
         const batch = writeBatch(firestore);
-        const saleId = crypto.randomUUID();
         const timestamp = new Date().toISOString();
 
         const saleData = {
@@ -137,21 +157,38 @@ export function PosClient() {
             date: timestamp,
             customerId: selectedCustomer?.id || 'walk-in',
             customerName: selectedCustomer?.name || 'Walk-in Client',
-            items: cart,
+            items: cart.map(item => ({...item, type: 'asset'})),
             subtotal,
             discount,
             total,
+            totalProfit,
             amountPaid,
             balance: remainingBalance,
             payments,
             status: remainingBalance <= 0 ? 'Paid' : (amountPaid > 0 ? 'Partial' : 'Credit'),
+            paymentMethod: payments.length > 1 ? 'Split' : (payments[0]?.method || 'Cash'),
             createdAt: timestamp,
-            createdBy: { uid: user.uid, name: user.displayName }
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
-        // 1. Save Sale
         const saleRef = doc(collection(firestore, 'sales_transactions'));
         batch.set(saleRef, saleData);
+
+        const invoiceRef = doc(collection(firestore, 'documents'));
+        batch.set(invoiceRef, {
+            tenantId: tenant.id,
+            type: 'Invoice',
+            title: `Invoice #${saleRef.id.slice(0, 8).toUpperCase()}`,
+            generatedDate: timestamp,
+            relatedTo: selectedCustomer?.name || 'Walk-in Client',
+            saleId: saleRef.id,
+            data: {
+                ...saleData,
+                customer: selectedCustomer
+            },
+            createdAt: timestamp,
+            createdBy: { uid: user.uid, name: user.displayName }
+        });
 
         // 2. Update Inventory & Log Movements
         for (const item of cart) {
@@ -191,19 +228,10 @@ export function PosClient() {
     }
   };
 
-  const paymentIcons = {
-    Cash: Banknote,
-    'M-Pesa': Wallet,
-    Bank: Landmark,
-    Card: CreditCard,
-    Credit: Landmark
-  };
-
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
         
-        {/* Left: Basket & Search */}
         <div className="space-y-6">
             <Card className="shadow-sm border-none ring-1 ring-black/5 overflow-hidden">
                 <CardHeader className="bg-muted/10 p-4 border-b">
@@ -213,25 +241,25 @@ export function PosClient() {
                             <Popover open={searchOpen} onOpenChange={setSearchOpen}>
                                 <PopoverTrigger asChild>
                                     <Button variant="outline" className="w-full pl-10 h-12 justify-start font-normal bg-white">
-                                        Scan barcode or search product...
+                                        Search product...
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[600px] p-0" align="start">
                                     <Command>
-                                        <CommandInput placeholder="Type SKU or Name..." />
+                                        <CommandInput placeholder="Type Product Name..." />
                                         <CommandList>
                                             <CommandEmpty>No products found.</CommandEmpty>
                                             <CommandGroup heading="Inventory">
                                                 {products?.filter(p => p.currentStock > 0).map(p => (
-                                                    <CommandItem key={p.id} onSelect={() => handleAddToCart(p)} className="p-3">
+                                                    <CommandItem key={p.id} onSelect={() => handleSelectProduct(p)} className="p-3">
                                                         <div className="flex justify-between w-full items-center">
                                                             <div>
                                                                 <p className="font-bold uppercase text-xs">{p.name}</p>
-                                                                <p className="text-[10px] font-mono text-muted-foreground">{p.sku}</p>
+                                                                <p className="text-[10px] text-muted-foreground">{p.category}</p>
                                                             </div>
                                                             <div className="text-right">
-                                                                <p className="font-black text-primary">KES {p.sellingPriceRetail.toLocaleString()}</p>
-                                                                <Badge variant="secondary" className="text-[8px] h-4">{p.currentStock} {p.unit} left</Badge>
+                                                                <p className="font-black text-primary text-xs">Cost: KES {p.buyingPrice.toLocaleString()}</p>
+                                                                <Badge variant="secondary" className="text-[8px] h-4">{p.currentStock} {p.unit} available</Badge>
                                                             </div>
                                                         </div>
                                                     </CommandItem>
@@ -281,32 +309,9 @@ export function PosClient() {
                                     <TableRow key={item.id} className="hover:bg-muted/5 group">
                                         <TableCell>
                                             <p className="font-bold text-sm uppercase tracking-tight">{item.name}</p>
-                                            <p className="text-[10px] font-mono text-muted-foreground">{item.sku}</p>
                                         </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center justify-center gap-2">
-                                                <Input 
-                                                    type="number" 
-                                                    value={item.quantity} 
-                                                    onChange={(e) => {
-                                                        const q = parseInt(e.target.value) || 1;
-                                                        setCart(cart.map(i => i.id === item.id ? { ...i, quantity: q, total: q * i.unitPrice } : i));
-                                                    }}
-                                                    className="h-8 w-16 text-center font-bold"
-                                                />
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Input 
-                                                type="number" 
-                                                value={item.unitPrice} 
-                                                onChange={(e) => {
-                                                    const p = parseFloat(e.target.value) || 0;
-                                                    setCart(cart.map(i => i.id === item.id ? { ...i, unitPrice: p, total: p * i.quantity } : i));
-                                                }}
-                                                className="h-8 w-24 text-right font-bold ml-auto"
-                                            />
-                                        </TableCell>
+                                        <TableCell className="text-center font-bold">{item.quantity}</TableCell>
+                                        <TableCell className="text-right font-bold">{item.sellingPrice.toLocaleString()}</TableCell>
                                         <TableCell className="text-right font-black text-sm text-primary">
                                             {(item.total).toLocaleString()}
                                         </TableCell>
@@ -334,12 +339,11 @@ export function PosClient() {
             </Card>
         </div>
 
-        {/* Right: Checkout & Settlement */}
         <div className="space-y-6">
             <Card className="shadow-xl border-none ring-1 ring-black/5 flex flex-col h-full bg-white">
                 <CardHeader className="bg-primary/5 py-4 border-b">
                     <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                        <LANDMARK className="h-3.5 w-3.5" /> Settlement Mix
+                        Settlement Mix
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6 flex-grow">
@@ -357,6 +361,10 @@ export function PosClient() {
                         <div className="pt-3 border-t-2 border-black flex justify-between items-end">
                             <span className="text-sm font-black uppercase">Payable Total</span>
                             <span className="text-3xl font-black tracking-tighter">KES {total.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] font-black uppercase text-green-600 pt-1">
+                            <span>Est. Gross Profit</span>
+                            <span>KES {totalProfit.toLocaleString()}</span>
                         </div>
                     </div>
 
@@ -459,6 +467,58 @@ export function PosClient() {
         </div>
       </div>
 
+      <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle className="text-xl font-black uppercase tracking-tight">Configure Sale Item</DialogTitle>
+                <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">{selectedProduct?.name}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 pt-4">
+                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex justify-between items-center">
+                    <div>
+                        <p className="text-[10px] font-black uppercase opacity-40">Buying Price</p>
+                        <p className="text-lg font-black">KES {selectedProduct?.buyingPrice?.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[10px] font-black uppercase opacity-40">Available</p>
+                        <p className="text-lg font-black">{selectedProduct?.currentStock} {selectedProduct?.unit}</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase">Quantity</Label>
+                        <Input 
+                            type="number" 
+                            value={selectionQty} 
+                            onChange={e => setSelectionQty(e.target.value)} 
+                            className="h-12 text-lg font-black"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase">Selling Price (KES)</Label>
+                        <Input 
+                            type="number" 
+                            value={selectionPrice} 
+                            onChange={e => setSelectionPrice(e.target.value)} 
+                            className="h-12 text-lg font-black border-primary ring-1 ring-primary/20"
+                            placeholder="Enter Price"
+                            autoFocus
+                        />
+                    </div>
+                </div>
+
+                <div className="pt-4 flex justify-between items-center border-t">
+                    <div>
+                        <p className="text-[10px] font-black uppercase opacity-40">Item Total</p>
+                        <p className="text-2xl font-black text-primary">KES {((parseInt(selectionQty) || 0) * (parseFloat(selectionPrice) || 0)).toLocaleString()}</p>
+                    </div>
+                    <Button className="h-14 px-8 font-black uppercase tracking-widest shadow-xl" onClick={handleAddToCart}>Add to Cart</Button>
+                </div>
+            </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
         <DialogContent className="sm:max-w-md text-center p-10 border-none shadow-2xl">
             <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner">
@@ -466,13 +526,9 @@ export function PosClient() {
             </div>
             <DialogHeader>
                 <DialogTitle className="text-3xl font-black uppercase tracking-tighter">Sale Recorded</DialogTitle>
-                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Transaction synced to cloud ledger</DialogDescription>
+                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Inventory updated & invoice archived</DialogDescription>
             </DialogHeader>
             <div className="pt-10 space-y-3">
-                <Button variant="outline" className="w-full h-14 font-black uppercase tracking-widest shadow-sm border-2">
-                    <Download className="mr-2 h-5 w-5" />
-                    Print Receipt
-                </Button>
                 <Button className="w-full h-14 font-black uppercase tracking-widest shadow-xl" onClick={() => setIsSuccessOpen(false)}>Start New Sale</Button>
             </div>
         </DialogContent>
@@ -480,27 +536,3 @@ export function PosClient() {
     </div>
   );
 }
-
-function LANDMARK(props: any) {
-    return (
-      <svg
-        {...props}
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <line x1="2" x2="22" y1="20" y2="20" />
-        <line x1="18" x2="18" y1="14" y2="11" />
-        <line x1="14" x2="14" y1="14" y2="11" />
-        <line x1="10" x2="10" y1="14" y2="11" />
-        <line x1="6" x2="6" y1="14" y2="11" />
-        <path d="m2 7 10-5 10 5v4H2Z" />
-      </svg>
-    )
-  }

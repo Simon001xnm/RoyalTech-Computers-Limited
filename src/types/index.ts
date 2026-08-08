@@ -100,10 +100,8 @@ export interface Product extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   brand?: string;
   model?: string;
   description?: string;
-  unit: string; // e.g. Pcs, Meters, Rolls
+  unit: string; 
   buyingPrice: number;
-  sellingPriceRetail: number;
-  sellingPriceWholesale: number;
   minStock: number;
   currentStock: number;
   reorderQty: number;
@@ -113,7 +111,6 @@ export interface Product extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   warrantyPeriod?: string;
   imageUrl?: string;
   taxStatus: TaxStatus;
-  variants?: ProductVariant[];
   createdAt?: string; 
   updatedAt?: string; 
 }
@@ -135,11 +132,11 @@ export interface StockMovement extends Auditable {
   tenantId: string;
   productId: string;
   type: StockMovementType;
-  quantity: number; // Positive for IN, Negative for OUT usually
+  quantity: number; 
   previousStock: number;
   newStock: number;
   reason?: string;
-  referenceId?: string; // e.g. Invoice #
+  referenceId?: string; 
   timestamp: string;
 }
 
@@ -154,6 +151,35 @@ export interface Customer extends Omit<Auditable, 'createdAt' | 'updatedAt'>{
   registrationDate: string; 
   createdAt?: string; 
   updatedAt?: string; 
+}
+
+export interface SaleItem {
+    id: string;
+    productId: string;
+    name: string;
+    quantity: number;
+    sellingPrice: number;
+    buyingPrice: number; // Historical snapshot
+    total: number;
+    type: 'asset' | 'accessory' | 'custom';
+}
+
+export interface Sale extends Auditable {
+    id: string;
+    tenantId: string;
+    date: string;
+    customerId: string;
+    customerName: string;
+    items: SaleItem[];
+    subtotal: number;
+    discount: number;
+    total: number;
+    totalProfit: number;
+    amountPaid: number;
+    balance: number;
+    paymentMethod: 'Cash' | 'M-Pesa' | 'Bank' | 'Card' | 'Credit' | 'Split';
+    payments?: any[];
+    status: 'Paid' | 'Partial' | 'Credit';
 }
 
 export interface Document extends Auditable {
