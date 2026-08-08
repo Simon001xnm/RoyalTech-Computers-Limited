@@ -81,7 +81,7 @@ export function PosClient() {
   }, [firestore, tenant?.id]);
   const { data: customers } = useCollection(customersQuery);
 
-  // Company Profile for high-detail receipts
+  // Company Profile for branding
   const companyRef = useMemoFirebase(() => 
     tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
     [firestore, tenant?.id]
@@ -151,7 +151,7 @@ export function PosClient() {
     }
     setSelectedProduct(product);
     setSelectionQty('1');
-    setSelectionPrice(''); 
+    setSelectionPrice(String(product.buyingPrice || 0)); 
     setSearchOpen(false);
   };
 
@@ -263,7 +263,7 @@ export function PosClient() {
                 } : null
             },
             createdAt: timestamp,
-            createdBy: { uid: user.uid, name: user.displayName }
+            createdBy: { uid: user.uid, name: user.displayName || user.email }
         });
 
         if (actionType === 'Receipt') {
@@ -353,7 +353,7 @@ export function PosClient() {
                                                                 <p className="text-[10px] text-muted-foreground">{p.category}</p>
                                                             </div>
                                                             <div className="text-right">
-                                                                <p className="font-black text-primary text-xs">Cost: KES {p.buyingPrice.toLocaleString()}</p>
+                                                                <p className="font-black text-primary text-xs">Price: KES {p.buyingPrice.toLocaleString()}</p>
                                                                 <Badge variant="secondary" className="text-[8px] h-4">{p.currentStock} {p.unit} available</Badge>
                                                             </div>
                                                         </div>
@@ -608,7 +608,7 @@ export function PosClient() {
             <div className="space-y-6 pt-4">
                 <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex justify-between items-center">
                     <div>
-                        <p className="text-[10px] font-black uppercase opacity-40">Buying Price</p>
+                        <p className="text-[10px] font-black uppercase opacity-40">Cost Price</p>
                         <p className="text-lg font-black">KES {selectedProduct?.buyingPrice?.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
