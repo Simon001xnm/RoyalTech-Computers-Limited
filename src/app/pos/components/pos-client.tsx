@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard } from 'lucide-react';
+import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import type { DocumentType } from '@/types';
 
 const VAT_RATE = 0.16;
 
@@ -35,7 +36,7 @@ type CartItem = {
     name: string;
     quantity: number;
     sellingPrice: number;
-    buyingPrice: number; // Snapshot at time of sale
+    buyingPrice: number; 
     total: number;
 };
 
@@ -50,6 +51,7 @@ export function PosClient() {
   const [discount, setDiscount] = useState<number>(0);
   const [applyVat, setApplyVat] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [successType, setSuccessType] = useState<DocumentType | null>(null);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
   // Selection state
@@ -157,7 +159,7 @@ export function PosClient() {
     setCurrentPaymentRef('');
   };
 
-  const handleFinalizeSale = async () => {
+  const handleProcessPOSAction = async (actionType: 'Receipt' | 'Invoice' | 'Quotation') => {
     if (cart.length === 0 || !tenant || !user) return;
     setIsProcessing(true);
 
@@ -165,7 +167,11 @@ export function PosClient() {
         const batch = writeBatch(firestore);
         const timestamp = new Date().toISOString();
 
-        const saleData = {
+        // Standard document prefixes
+        const prefixes = { Receipt: 'RCT', Invoice: 'INV', Quotation: 'QTN' };
+        const prefix = prefixes[actionType];
+
+        const baseData = {
             tenantId: tenant.id,
             date: timestamp,
             customerId: selectedCustomer?.id || 'walk-in',
@@ -180,56 +186,60 @@ export function PosClient() {
             balance: remainingBalance,
             payments,
             applyVat,
-            status: remainingBalance <= 0 ? 'Paid' : (amountPaid > 0 ? 'Partial' : 'Credit'),
+            status: actionType === 'Receipt' ? 'Paid' : 'Pending',
             paymentMethod: payments.length > 1 ? 'Split' : (payments[0]?.method || 'Cash'),
             createdAt: timestamp,
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
-        const saleRef = doc(collection(firestore, 'sales_transactions'));
-        batch.set(saleRef, saleData);
-
-        const invoiceRef = doc(collection(firestore, 'documents'));
-        batch.set(invoiceRef, {
+        // 1. Create Document for tracking/printing
+        const docRef = doc(collection(firestore, 'documents'));
+        batch.set(docRef, {
             tenantId: tenant.id,
-            type: 'Invoice',
-            title: `Invoice #${saleRef.id.slice(0, 8).toUpperCase()}`,
+            type: actionType,
+            title: `${actionType} #${docRef.id.slice(0, 8).toUpperCase()}`,
             generatedDate: timestamp,
             relatedTo: selectedCustomer?.name || 'Walk-in Client',
-            saleId: saleRef.id,
             data: {
-                ...saleData,
+                ...baseData,
                 customer: selectedCustomer
             },
             createdAt: timestamp,
             createdBy: { uid: user.uid, name: user.displayName }
         });
 
-        for (const item of cart) {
-            const productRef = doc(firestore, 'products', item.productId);
-            const product = products?.find(p => p.id === item.productId);
-            
-            if (product) {
-                const newStock = (product.currentStock || 0) - item.quantity;
-                batch.update(productRef, { currentStock: newStock, updatedAt: timestamp });
+        // 2. Only "Receipt" action triggers inventory deduction and sales ledger
+        if (actionType === 'Receipt') {
+            const saleRef = doc(collection(firestore, 'sales_transactions'));
+            batch.set(saleRef, { ...baseData, documentId: docRef.id });
 
-                const movementRef = doc(collection(firestore, 'stock_movements'));
-                batch.set(movementRef, {
-                    tenantId: tenant.id,
-                    productId: item.productId,
-                    type: "SALE",
-                    quantity: -item.quantity,
-                    previousStock: product.currentStock,
-                    newStock: newStock,
-                    reason: `Sale ${saleRef.id.slice(0, 5)}`,
-                    referenceId: saleRef.id,
-                    timestamp,
-                    createdBy: { uid: user.uid, name: user.displayName }
-                });
+            for (const item of cart) {
+                const productRef = doc(firestore, 'products', item.productId);
+                const product = products?.find(p => p.id === item.productId);
+                
+                if (product) {
+                    const newStock = (product.currentStock || 0) - item.quantity;
+                    batch.update(productRef, { currentStock: newStock, updatedAt: timestamp });
+
+                    const movementRef = doc(collection(firestore, 'stock_movements'));
+                    batch.set(movementRef, {
+                        tenantId: tenant.id,
+                        productId: item.productId,
+                        type: "SALE",
+                        quantity: -item.quantity,
+                        previousStock: product.currentStock,
+                        newStock: newStock,
+                        reason: `Sale ${saleRef.id.slice(0, 5)}`,
+                        referenceId: saleRef.id,
+                        timestamp,
+                        createdBy: { uid: user.uid, name: user.displayName }
+                    });
+                }
             }
         }
 
         await batch.commit();
+        setSuccessType(actionType);
         setIsSuccessOpen(true);
         setCart([]);
         setPayments([]);
@@ -237,7 +247,7 @@ export function PosClient() {
         setDiscount(0);
         setApplyVat(false);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Sale Failed', description: e.message });
+        toast({ variant: 'destructive', title: `${actionType} Failed`, description: e.message });
     } finally {
         setIsProcessing(false);
     }
@@ -389,10 +399,6 @@ export function PosClient() {
                             <span className="text-sm font-black uppercase">Payable Total</span>
                             <span className="text-3xl font-black tracking-tighter">KES {total.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between text-[10px] font-black uppercase text-green-600 pt-1">
-                            <span>Est. Gross Profit</span>
-                            <span>KES {totalProfit.toLocaleString()}</span>
-                        </div>
                     </div>
 
                     <Separator />
@@ -481,13 +487,34 @@ export function PosClient() {
                             </div>
                         </div>
                         
-                        <Button 
-                            onClick={handleFinalizeSale} 
-                            className="w-full h-20 text-2xl font-black uppercase tracking-widest shadow-2xl transition-all active:scale-95" 
-                            disabled={isProcessing || cart.length === 0}
-                        >
-                            {isProcessing ? <Loader2 className="h-8 w-8 animate-spin" /> : 'Finalize Sale'}
-                        </Button>
+                        <div className="space-y-3">
+                            <Button 
+                                onClick={() => handleProcessPOSAction('Receipt')} 
+                                className="w-full h-16 text-lg font-black uppercase tracking-widest shadow-2xl transition-all active:scale-95" 
+                                disabled={isProcessing || cart.length === 0}
+                            >
+                                {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Finalize & Pay'}
+                            </Button>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <Button 
+                                    variant="outline"
+                                    onClick={() => handleProcessPOSAction('Invoice')}
+                                    disabled={isProcessing || cart.length === 0}
+                                    className="h-12 font-black uppercase text-[10px] tracking-widest border-2"
+                                >
+                                    <FileText className="h-3 w-3 mr-2" /> Save as Invoice
+                                </Button>
+                                <Button 
+                                    variant="outline"
+                                    onClick={() => handleProcessPOSAction('Quotation')}
+                                    disabled={isProcessing || cart.length === 0}
+                                    className="h-12 font-black uppercase text-[10px] tracking-widest border-2"
+                                >
+                                    <FilePlus2 className="h-3 w-3 mr-2" /> Save Quotation
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -552,11 +579,17 @@ export function PosClient() {
                 <Check className="h-10 w-10 text-green-600" />
             </div>
             <DialogHeader>
-                <DialogTitle className="text-3xl font-black uppercase tracking-tighter">Sale Recorded</DialogTitle>
-                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Inventory updated & invoice archived</DialogDescription>
+                <DialogTitle className="text-3xl font-black uppercase tracking-tighter">
+                    {successType === 'Receipt' ? 'Sale Recorded' : `${successType} Saved`}
+                </DialogTitle>
+                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {successType === 'Receipt' 
+                        ? 'Inventory updated & confirmation archived.' 
+                        : 'Document archived. Inventory levels were not affected.'}
+                </DialogDescription>
             </DialogHeader>
             <div className="pt-10 space-y-3">
-                <Button className="w-full h-14 font-black uppercase tracking-widest shadow-xl" onClick={() => setIsSuccessOpen(false)}>Start New Sale</Button>
+                <Button className="w-full h-14 font-black uppercase tracking-widest shadow-xl" onClick={() => setIsSuccessOpen(false)}>Start New Session</Button>
             </div>
         </DialogContent>
       </Dialog>
