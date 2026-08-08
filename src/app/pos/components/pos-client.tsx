@@ -13,14 +13,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, writeBatch } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import type { DocumentType } from '@/types';
+import type { DocumentType, Sale } from '@/types';
+import { useEffect } from 'react';
 
 const VAT_RATE = 0.16;
 
@@ -47,6 +48,7 @@ export function PosClient() {
   const firestore = useFirestore();
   
   const [selectedCustomer, setSelectedCustomer] = useState<{id: string, name: string} | null>(null);
+  const [customerBalance, setCustomerBalance] = useState(0);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState<number>(0);
   const [applyVat, setApplyVat] = useState(false);
@@ -81,6 +83,32 @@ export function PosClient() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [custSearchOpen, setCustSearchOpen] = useState(false);
+
+  // Fetch Customer Balance
+  useEffect(() => {
+    if (!selectedCustomer?.id || !tenant) {
+      setCustomerBalance(0);
+      return;
+    }
+
+    const fetchBalance = async () => {
+      try {
+        const salesRef = collection(firestore, 'sales_transactions');
+        const q = query(
+          salesRef, 
+          where('tenantId', '==', tenant.id), 
+          where('customerId', '==', selectedCustomer.id)
+        );
+        const snap = await getDocs(q);
+        const totalBal = snap.docs.reduce((acc, d) => acc + (d.data().balance || 0), 0);
+        setCustomerBalance(totalBal);
+      } catch (e) {
+        console.error("Balance fetch error:", e);
+      }
+    };
+
+    fetchBalance();
+  }, [selectedCustomer?.id, tenant, firestore]);
 
   // Calculations
   const { subtotal, vatAmount, total, amountPaid, remainingBalance, totalProfit } = useMemo(() => {
@@ -186,6 +214,7 @@ export function PosClient() {
             totalProfit,
             amountPaid,
             balance: remainingBalance,
+            previousBalance: customerBalance,
             payments,
             applyVat,
             status: saleStatus,

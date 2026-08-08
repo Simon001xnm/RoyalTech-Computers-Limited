@@ -31,7 +31,9 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     address: data.customerAddress || 'Nairobi, Kenya'
   };
 
-  const { items, subtotal, vatAmount, total, applyVat, previousBalance = 0 } = data;
+  const { items, subtotal, total, amountPaid = 0, balance = 0, previousBalance = 0 } = data;
+  
+  // The Gross Total is the current order + whatever they owed before
   const totalAmountDue = (total || 0) + previousBalance;
 
   const formatCurrency = (value: number | undefined) => {
@@ -46,142 +48,125 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     ? docSnapshot.title.split('#').pop() 
     : (docSnapshot.id || 'TEMP').slice(0, 5).toUpperCase();
 
-  const companyName = workspace?.name || 'BUSINESS NAME';
-  const primaryIndigo = "#1d4ed8";
-  const secondaryIndigo = "#f8fafc";
-  
-  const contactInfo = workspace?.phone || workspace?.email || 'Nairobi, Kenya';
+  const primaryBlue = "#1e3a8a"; // Dark blue for headers
+  const lightBlue = "#dbeafe";
+  const lightGray = "#f3f4f6";
 
   return (
-    <div className="p-[12mm] font-sans text-[11px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border">
-      <header className="flex justify-between items-start mb-6">
-        <div className="space-y-3">
-            <h1 className="text-3xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Invoice</h1>
-            <div className="space-y-0.5 text-[11px] font-medium text-black">
-                <p><span className="w-24 inline-block opacity-60">Invoice No</span> <span className="font-bold">{workspace?.invoicePrefix || 'INV'}{invoiceNo}</span></p>
-                <p><span className="w-24 inline-block opacity-60">Invoice Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
-                <p><span className="w-24 inline-block opacity-60">Due Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
+    <div className="p-[12mm] font-sans text-[11px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border selection:bg-blue-100">
+      
+      {/* Remittance & Account Summary Header */}
+      <div className="flex w-full mb-4 border border-black">
+        <div className="w-7/12 bg-gray-200 px-4 py-2 border-r border-black font-black uppercase text-[10px]">Remittance</div>
+        <div className="w-5/12 bg-blue-100 px-4 py-2 font-black uppercase text-[10px]">Account Summary</div>
+      </div>
+
+      <div className="text-[10px] leading-relaxed mb-6">
+        <p>To ensure proper credit, please enclose a copy of this statement <span className="font-black text-xs">Balance Due: {formatCurrency(totalAmountDue)}</span> with your check and remit to: <span className="font-black uppercase">{workspace?.name || 'MATESH TECHNOLOGIES LTD'}</span></p>
+        <p className="mt-1">Payment Due Date: <span className="font-bold">{format(new Date(), "dd/MM/yyyy")}</span></p>
+      </div>
+
+      {/* Bank & Payment Info */}
+      <div className="grid grid-cols-2 gap-8 mb-8 border-b-2 border-black pb-6">
+        <div className="space-y-1 text-[10px]">
+          <p className="font-black">BANK; DIAMOND TRUST BANK (DTB)</p>
+          <p className="font-bold">NAME: {workspace?.name || 'MATESH TECHNOLOGIES'}</p>
+          <p className="font-bold">ACC NO: 0084976001</p>
+          <p className="font-bold">CONTACT: {workspace?.phone || '0701694469'}</p>
+        </div>
+        <div className="flex flex-col items-end justify-center">
+            <div className="border-2 border-black p-4 min-w-[200px] text-center bg-gray-50">
+                <p className="text-[9px] font-black uppercase opacity-60">Amount Enclosed</p>
+                <p className="text-xl font-black">{formatCurrency(amountPaid)}</p>
             </div>
         </div>
-        <div className="flex flex-col items-end">
-           {workspace?.logoUrl ? (
-            <img src={workspace.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
-          ) : (
-            <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
-          )}
-        </div>
-      </header>
+      </div>
 
-      <section className="grid grid-cols-2 gap-3 mb-8">
-        <div className="p-4 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
-            <h3 className="font-medium text-[14px] mb-1" style={{ color: primaryIndigo }}>Billed By</h3>
-            <p className="font-bold text-xs uppercase">{companyName}</p>
-            <p className="text-[10px] font-medium text-black/70">{workspace?.address || 'Kenya'}</p>
+      {/* Billing Addresses */}
+      <div className="grid grid-cols-2 gap-10 mb-8">
+        <div>
+            <h3 className="text-[9px] font-black uppercase text-blue-900 mb-1">Billed By</h3>
+            <p className="font-black uppercase">{workspace?.name || 'MATESH TECHNOLOGIES LTD'}</p>
+            <p className="opacity-70">{workspace?.address || 'Nairobi, Kenya'}</p>
         </div>
-        <div className="p-4 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
-            <h3 className="font-medium text-[14px] mb-1" style={{ color: primaryIndigo }}>Billed To</h3>
-            <p className="font-bold text-xs uppercase">{customer.alias || customer.name}</p>
-            {customer.alias && <p className="text-[9px] font-bold text-black/60 uppercase">Attn: {customer.name}</p>}
-            <p className="text-[10px] font-medium text-black/70">{customer.address || 'Nairobi, Kenya'}</p>
-            <p className="text-[10px] font-medium text-black/70">{customer.phone}</p>
+        <div>
+            <h3 className="text-[9px] font-black uppercase text-blue-900 mb-1">Billed To</h3>
+            <p className="font-black uppercase">{customer.alias || customer.name}</p>
+            {customer.alias && <p className="text-[8px] font-bold opacity-50 uppercase">Attn: {customer.name}</p>}
+            <p className="opacity-70">{customer.address || 'Nairobi, Kenya'}</p>
+            <p className="opacity-70">{customer.phone}</p>
         </div>
-      </section>
+      </div>
 
-      <section className="flex-grow">
+      {/* Items Table */}
+      <div className="flex-grow">
         <table className="w-full border-collapse">
             <thead>
-                <tr className="text-left text-white" style={{ backgroundColor: primaryIndigo }}>
-                    <th className="py-2 px-3 font-bold text-[10px] rounded-l-sm">Item</th>
-                    <th className="py-2 text-right font-bold text-[10px] w-16">TAX Rate</th>
-                    <th className="py-2 text-right font-bold text-[10px] w-16">Quantity</th>
-                    <th className="py-2 text-right font-bold text-[10px] w-24">Rate</th>
-                    <th className="py-2 text-right font-bold text-[10px] w-24">Amount</th>
-                    <th className="py-2 text-right font-bold text-[10px] w-16">TAX</th>
-                    <th className="py-2 px-3 text-right font-bold text-[10px] rounded-r-sm w-32">Total</th>
+                <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>
+                    <th className="p-2 font-black text-[9px] border border-blue-900">ITEM NO</th>
+                    <th className="p-2 font-black text-[9px] border border-blue-900">DESCRIPTION</th>
+                    <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-20">UNITS</th>
+                    <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-28">UNIT PRICE</th>
+                    <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-32">AMOUNT</th>
                 </tr>
             </thead>
             <tbody>
                 {items?.map((item: any, idx: number) => {
                     const name = item.name || item.description;
-                    const desc = item.description && item.name ? item.description : null;
                     const unitPrice = item.price || item.sellingPrice || item.unitPrice || 0;
-                    const rowSubtotal = item.quantity * unitPrice;
-                    const rowTax = applyVat ? rowSubtotal * 0.16 : 0;
+                    const qty = item.quantity || 1;
                     return (
-                        <tr key={idx} className="border-b border-gray-100">
-                            <td className="py-3 px-3 align-top">
-                                <div className="flex gap-2">
-                                    <span className="opacity-50 text-[10px]">{idx + 1}.</span>
-                                    <div>
-                                        <p className="font-bold text-[11px] uppercase">{name}</p>
-                                        {desc && <p className="text-[9px] text-gray-500 mt-0.5 italic leading-tight">{desc}</p>}
-                                        {item.serialNumber && <p className="text-[9px] text-gray-500 mt-0.5 font-mono">S/N: {item.serialNumber}</p>}
-                                    </div>
-                                </div>
+                        <tr key={idx} className="border-b border-gray-200 h-10">
+                            <td className="px-2 font-medium text-center">{idx + 1}.</td>
+                            <td className="px-2">
+                                <p className="font-bold uppercase">{name}</p>
+                                {item.serialNumber && <p className="text-[8px] font-mono opacity-50">S/N: {item.serialNumber}</p>}
                             </td>
-                            <td className="py-3 text-right text-[10px] font-medium">{applyVat ? '16%' : '0%'}</td>
-                            <td className="py-3 text-right text-[10px] font-medium">{item.quantity}</td>
-                            <td className="py-3 text-right text-[10px] font-medium">KES {formatCurrency(unitPrice)}</td>
-                            <td className="py-3 text-right text-[10px] font-medium">KES {formatCurrency(rowSubtotal)}</td>
-                            <td className="py-3 text-right text-[10px] font-medium">KES {formatCurrency(rowTax)}</td>
-                            <td className="py-3 px-3 text-right text-[10px] font-bold">KES {formatCurrency(rowSubtotal + rowTax)}</td>
+                            <td className="px-2 text-right tabular-nums">{qty.toFixed(2)}</td>
+                            <td className="px-2 text-right tabular-nums">{formatCurrency(unitPrice)}</td>
+                            <td className="px-2 text-right tabular-nums font-bold">{formatCurrency(qty * unitPrice)}</td>
                         </tr>
                     );
                 })}
             </tbody>
         </table>
 
-        <div className="flex justify-between items-start mt-6">
-            <div className="max-w-[350px] space-y-4">
-                <p className="text-[10px] font-bold text-black uppercase">
-                    Total Due (in words) : {numberToWords(totalAmountDue)}
-                </p>
-                {previousBalance > 0 && (
-                   <div className="p-3 bg-red-50 border border-red-100 rounded-lg">
-                      <p className="text-[8px] font-black uppercase text-red-600 mb-1">Account Summary Notice</p>
-                      <p className="text-[9px] font-medium text-red-900 leading-tight">
-                        Please note that this invoice includes a carried-forward balance of <span className="font-black">KES {formatCurrency(previousBalance)}</span> from previous transactions.
-                      </p>
-                   </div>
-                )}
-            </div>
-            <div className="w-[280px] space-y-2">
-                <div className="flex justify-between items-center text-[10px]">
-                    <span className="font-bold opacity-60">Current Invoice Subtotal</span>
-                    <span className="font-bold">KES {formatCurrency(subtotal || total)}</span>
+        {/* Totals Section */}
+        <div className="flex justify-end mt-6">
+            <div className="w-[300px]">
+                <div className="flex justify-between p-2 border border-gray-200">
+                    <span className="font-black uppercase text-[9px] opacity-60">subtotal</span>
+                    <span className="font-bold">{formatCurrency(subtotal || total)}</span>
                 </div>
-                <div className="flex justify-between items-center text-[10px]">
-                    <span className="font-bold opacity-60">Current TAX (VAT 16%)</span>
-                    <span className="font-bold">KES {formatCurrency(vatAmount || 0)}</span>
+                <div className="flex justify-between p-2 border border-t-0 border-gray-200 bg-gray-50">
+                    <span className="font-black uppercase text-[9px] opacity-60">PREV BAL</span>
+                    <span className="font-bold">{formatCurrency(previousBalance)}</span>
                 </div>
-                <div className="flex justify-between items-center text-[10px] border-t pt-2 mt-2">
-                    <span className="font-bold uppercase tracking-tighter opacity-60">Current Total</span>
-                    <span className="font-black">KES {formatCurrency(total)}</span>
+                <div className="flex justify-between p-3 border border-t-0 border-black bg-blue-50">
+                    <span className="font-black uppercase text-xs">TOTAL</span>
+                    <span className="font-black text-lg">{formatCurrency(totalAmountDue)}</span>
                 </div>
-                {previousBalance > 0 && (
-                  <div className="flex justify-between items-center text-[10px] text-red-600">
-                      <span className="font-bold uppercase tracking-tighter">Balance Forward</span>
-                      <span className="font-black">+ KES {formatCurrency(previousBalance)}</span>
-                  </div>
-                )}
-                <div className="pt-3 border-t-2 border-black flex justify-between items-center">
-                    <span className="text-[14px] font-bold">NET AMOUNT DUE</span>
-                    <span className="text-[16px] font-black">KES {formatCurrency(totalAmountDue)}</span>
-                </div>
-                <div className="h-0.5 bg-black w-full mt-[-2px]"></div>
             </div>
         </div>
-      </section>
 
-      <footer className="mt-auto pt-8 text-center">
-         <p className="text-[11px] font-black uppercase text-black mb-4">
-            Goods once sold cannot be returned
+        {/* Words Amount */}
+        <p className="mt-4 text-[9px] font-black uppercase italic opacity-60">
+            Total Amount (in words): {numberToWords(totalAmountDue)}
+        </p>
+      </div>
+
+      {/* Footer Contact */}
+      <footer className="mt-auto pt-8 border-t border-gray-200 text-center">
+         <div className="mb-6 space-y-1">
+            <p className="text-[10px] font-bold">If you have any questions about this INVOICE, please contact,</p>
+            <p className="text-[10px] font-black uppercase">{workspace?.createdBy?.name || 'Samuel Luyo'}</p>
+            <p className="text-[10px] opacity-70">Nairobi, Kenya. Phone: {workspace?.phone || '0701694469'} Email: {workspace?.email || 'mateshtechltd@gmail.com'}</p>
+         </div>
+         <p className="text-sm font-black italic uppercase tracking-tighter text-blue-900">
+            Thank You for Your Business!
          </p>
-         <p className="text-[10px] font-medium text-black mb-6">
-            For any enquiry, reach out via <span className="font-bold">{contactInfo}</span>
-         </p>
-         <p className="text-[8px] font-medium text-gray-400">
-            This is an electronically generated document, no signature is required.
+         <p className="text-[7px] text-gray-300 mt-4 uppercase tracking-[0.3em]">
+            Powered by ShopManager Suite &bull; Secured Node Sync
          </p>
       </footer>
     </div>
