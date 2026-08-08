@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -69,15 +68,27 @@ interface AssetFormProps {
 }
 
 export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormProps) {
-  const defaultValues: Partial<ProductFormValues> = asset
+  // Ensure all fields have a defined initial value to prevent uncontrolled-to-controlled warnings
+  const defaultValues: ProductFormValues = asset
     ? {
         ...asset,
+        barcode: asset.barcode ?? "",
+        brand: asset.brand ?? "",
+        model: asset.model ?? "",
+        description: asset.description ?? "",
+        locationBin: asset.locationBin ?? "",
+        supplier: asset.supplier ?? "",
+        warrantyPeriod: asset.warrantyPeriod ?? "",
         variants: asset.variants || [],
-      }
+      } as ProductFormValues
     : {
         name: "",
         sku: "",
+        barcode: "",
         category: "",
+        brand: "",
+        model: "",
+        description: "",
         unit: "Pcs",
         buyingPrice: 0,
         sellingPriceRetail: 0,
@@ -85,7 +96,10 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
         minStock: 5,
         currentStock: 0,
         reorderQty: 10,
+        supplier: "",
+        locationBin: "",
         hasSerialNumber: false,
+        warrantyPeriod: "",
         taxStatus: "Taxable",
         variants: [],
       };
@@ -121,7 +135,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Product Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Fiber Cable" {...field} />
+                    <Input placeholder="e.g. Fiber Cable" {...field} value={field.value ?? ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -134,7 +148,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>SKU / Internal Code *</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. FB-SM-001" {...field} />
+                    <Input placeholder="e.g. FB-SM-001" {...field} value={field.value ?? ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -149,7 +163,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Category *</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Networking" {...field} />
+                    <Input placeholder="e.g. Networking" {...field} value={field.value ?? ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -162,7 +176,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Brand</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Huawei" {...field} />
+                    <Input placeholder="e.g. Huawei" {...field} value={field.value ?? ""} />
                   </FormControl>
                 </FormItem>
               )}
@@ -174,7 +188,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Model</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Single Mode" {...field} />
+                    <Input placeholder="e.g. Single Mode" {...field} value={field.value ?? ""} />
                   </FormControl>
                 </FormItem>
               )}
@@ -187,7 +201,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
               <FormItem>
                 <FormLabel>Detailed Description</FormLabel>
                 <FormControl>
-                  <Textarea placeholder="Describe technical features..." {...field} />
+                  <Textarea placeholder="Describe technical features..." {...field} value={field.value ?? ""} />
                 </FormControl>
               </FormItem>
             )}
@@ -210,7 +224,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Base Unit *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Pcs, Meters, Kg" {...field} />
+                    <Input placeholder="Pcs, Meters, Kg" {...field} value={field.value ?? ""} />
                   </FormControl>
                 </FormItem>
               )}
@@ -222,7 +236,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Initial Stock</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input type="number" {...field} value={field.value ?? ""} />
                   </FormControl>
                 </FormItem>
               )}
@@ -234,7 +248,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Min Stock Level</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input type="number" {...field} value={field.value ?? ""} />
                   </FormControl>
                 </FormItem>
               )}
@@ -246,7 +260,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Reorder Quantity</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input type="number" {...field} value={field.value ?? ""} />
                   </FormControl>
                 </FormItem>
               )}
@@ -260,7 +274,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Warehouse Location / Bin</FormLabel>
                   <FormControl>
-                    <Input placeholder="Shelf A, Row 2" {...field} />
+                    <Input placeholder="Shelf A, Row 2" {...field} value={field.value ?? ""} />
                   </FormControl>
                 </FormItem>
               )}
@@ -272,7 +286,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Main Supplier</FormLabel>
                   <FormControl>
-                    <Input placeholder="Supplier Name" {...field} />
+                    <Input placeholder="Supplier Name" {...field} value={field.value ?? ""} />
                   </FormControl>
                 </FormItem>
               )}
@@ -296,7 +310,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Buying Price (KES)</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" {...field} />
+                    <Input type="number" step="0.01" {...field} value={field.value ?? ""} />
                   </FormControl>
                 </FormItem>
               )}
@@ -308,7 +322,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Retail Price (KES)</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" {...field} />
+                    <Input type="number" step="0.01" {...field} value={field.value ?? ""} />
                   </FormControl>
                 </FormItem>
               )}
@@ -320,7 +334,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                 <FormItem>
                   <FormLabel>Wholesale Price (KES)</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" {...field} />
+                    <Input type="number" step="0.01" {...field} value={field.value ?? ""} />
                   </FormControl>
                 </FormItem>
               )}
@@ -378,7 +392,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-[10px]">Attribute (e.g. Cores)</FormLabel>
-                      <FormControl><Input placeholder="Cores" {...field} /></FormControl>
+                      <FormControl><Input placeholder="Cores" {...field} value={field.value ?? ""} /></FormControl>
                     </FormItem>
                   )}
                 />
@@ -388,7 +402,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-[10px]">Value (e.g. 48 Core)</FormLabel>
-                      <FormControl><Input placeholder="48 Core" {...field} /></FormControl>
+                      <FormControl><Input placeholder="48 Core" {...field} value={field.value ?? ""} /></FormControl>
                     </FormItem>
                   )}
                 />
@@ -398,7 +412,7 @@ export function AssetForm({ asset, onSubmit, onCancel, isLoading }: AssetFormPro
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-[10px]">Price Adj (+/-)</FormLabel>
-                      <FormControl><Input type="number" {...field} /></FormControl>
+                      <FormControl><Input type="number" {...field} value={field.value ?? ""} /></FormControl>
                     </FormItem>
                   )}
                 />
