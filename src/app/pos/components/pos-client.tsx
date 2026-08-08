@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, doc, writeBatch, getDocs, orderBy, limit } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { cn } from '@/lib/utils';
@@ -80,6 +80,13 @@ export function PosClient() {
     return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
   const { data: customers } = useCollection(customersQuery);
+
+  // Company Profile for high-detail receipts
+  const companyRef = useMemoFirebase(() => 
+    tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
+    [firestore, tenant?.id]
+  );
+  const { data: workspaceProfile } = useDoc(companyRef);
 
   // Existing Docs for sequential numbering
   const docsQuery = useMemoFirebase(() => {
@@ -206,13 +213,9 @@ export function PosClient() {
         const batch = writeBatch(firestore);
         const timestamp = new Date().toISOString();
 
-        // AUTOMATIC LOGIC: If a sale has a balance, it MUST be an Invoice, not a Receipt.
         const effectiveDocType = (actionType === 'Receipt' && remainingBalance > 0) ? 'Invoice' : actionType;
-        
-        // Define Sale Status based on payment
         const saleStatus = remainingBalance <= 0 ? 'Paid' : (amountPaid > 0 ? 'Partial' : 'Credit');
 
-        // SEQUENTIAL LOGIC: Find next number for this type
         const typeCount = rawDocuments?.filter(d => d.type === effectiveDocType).length || 0;
         const seq = typeCount + 1;
         const docTitle = `${effectiveDocType} #${String(seq).padStart(3, '0')}`;
@@ -239,7 +242,6 @@ export function PosClient() {
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
-        // 1. Create Document for tracking/printing
         const docRef = doc(collection(firestore, 'documents'));
         batch.set(docRef, {
             tenantId: tenant.id,
@@ -249,13 +251,21 @@ export function PosClient() {
             relatedTo: selectedCustomer.name,
             data: {
                 ...baseData,
-                customer: selectedCustomer
+                customer: selectedCustomer,
+                workspace: workspaceProfile ? {
+                  name: workspaceProfile.name || '',
+                  address: workspaceProfile.address || '',
+                  phone: workspaceProfile.phone || '',
+                  email: workspaceProfile.email || '',
+                  website: workspaceProfile.website || '',
+                  logoUrl: workspaceProfile.logoUrl || null,
+                  taxPin: workspaceProfile.taxPin || null
+                } : null
             },
             createdAt: timestamp,
             createdBy: { uid: user.uid, name: user.displayName }
         });
 
-        // 2. Only "Receipt" (or the intent to sell) triggers inventory deduction and sales ledger
         if (actionType === 'Receipt') {
             const saleRef = doc(collection(firestore, 'sales_transactions'));
             batch.set(saleRef, { ...baseData, documentId: docRef.id });
