@@ -45,44 +45,47 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
       <div className="w-[80mm] p-4 bg-white text-black font-mono text-[10px] leading-tight flex flex-col items-center min-h-fit">
         
         {/* BRANDED HEADER - POS STYLE */}
-        <div className="text-center space-y-1 mb-4 w-full">
-          <h1 className="text-lg font-black uppercase leading-none mb-1 tracking-tighter">
+        <div className="text-center space-y-2 mb-2 w-full">
+          <h1 className="text-lg font-black uppercase leading-tight tracking-tighter pb-1">
             {bizName}
           </h1>
-          <p className="text-[11px] font-black border-y border-black border-dashed py-1 mb-2">*** OFFICIAL RECEIPT ***</p>
           
-          <div className="text-[9px] uppercase space-y-0.5 opacity-90">
-              <p className="font-bold">{workspace?.address || 'NAIROBI, KENYA'}</p>
+          <p className="text-[11px] font-black py-1">*** OFFICIAL RECEIPT ***</p>
+          
+          <div className="text-[9px] uppercase space-y-1 opacity-90 pb-2">
+              <p className="font-bold">NAIROBI, KENYA</p>
+              {workspace?.address && <p>{workspace.address}</p>}
               {workspace?.phone && <p>TEL: {workspace.phone}</p>}
               {workspace?.email && <p className="lowercase">EMAIL: {workspace.email}</p>}
               {workspace?.website && <p className="lowercase">{workspace.website}</p>}
-              {workspace?.taxPin && <p className="font-black pt-1 border-t border-dashed border-black/20 mt-1">KRA PIN: {workspace.taxPin}</p>}
+              {workspace?.taxPin && <p className="font-black pt-1">KRA PIN: {workspace.taxPin}</p>}
           </div>
         </div>
 
+        {/* SECTION SEPARATOR */}
         <div className="w-full border-t border-black border-dashed my-2" />
 
         {/* TRANSACTION METADATA */}
-        <div className="w-full space-y-2 mb-4 text-[9px]">
-          <div className="flex justify-between">
+        <div className="w-full space-y-3 mb-4 text-[9px]">
+          <div className="flex justify-between items-center py-0.5">
             <span className="font-bold">RCPT NO:</span>
             <span className="font-black">#{docSnapshot.title?.split('#').pop() || '001'}</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center py-0.5">
             <span className="font-bold">DATE:</span>
             <span>{format(new Date(docSnapshot.generatedDate), "dd/MM/yy HH:mm")}</span>
           </div>
           
-          <div className="pt-2 border-t border-black border-dotted space-y-1.5">
-            <div className="flex justify-between items-start gap-2 py-1">
-                <span className="font-bold uppercase text-[8px] whitespace-nowrap">SERVED BY:</span>
-                <span className="font-black uppercase text-right leading-none flex-1">
+          <div className="pt-2 border-t border-black border-dotted space-y-2">
+            <div className="flex justify-between items-start gap-4 py-1.5">
+                <span className="font-bold uppercase text-[8px] whitespace-nowrap pt-0.5">SERVED BY:</span>
+                <span className="font-black uppercase text-right leading-tight flex-1">
                     {docSnapshot.createdBy?.name || 'STAFF'}
                 </span>
             </div>
-            <div className="flex justify-between items-start gap-2 py-1">
-                <span className="font-bold uppercase text-[8px] whitespace-nowrap">CUSTOMER:</span>
-                <span className="font-black uppercase text-right leading-none flex-1">
+            <div className="flex justify-between items-start gap-4 py-1.5">
+                <span className="font-bold uppercase text-[8px] whitespace-nowrap pt-0.5">CUSTOMER:</span>
+                <span className="font-black uppercase text-right leading-tight flex-1">
                     {customer.name}
                 </span>
             </div>
@@ -99,8 +102,8 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
             <span className="w-1/4 text-right">TOTAL</span>
           </div>
           {items.map((item: any, i: number) => (
-            <div key={i} className="flex justify-between items-start border-b border-gray-100 border-dotted pb-1 last:border-0">
-              <div className="w-1/2 flex flex-col">
+            <div key={i} className="flex justify-between items-start border-b border-gray-100 border-dotted pb-2 last:border-0">
+              <div className="w-1/2 flex flex-col pr-1">
                 <span className="uppercase font-bold text-[9px] leading-tight">{item.name || item.description}</span>
                 {item.serialNumber && <span className="text-[7px] opacity-70 font-mono">S/N: {item.serialNumber}</span>}
               </div>
@@ -111,27 +114,27 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
         </div>
 
         {/* TOTALS BLOCK */}
-        <div className="w-full space-y-1.5 mb-6 border-t border-black pt-2">
-          <div className="flex justify-between">
+        <div className="w-full space-y-2 mb-6 border-t border-black pt-2">
+          <div className="flex justify-between py-0.5">
             <span className="uppercase">SUBTOTAL:</span>
             <span>{formatCurrency(subtotal)}</span>
           </div>
           {vat > 0 && (
-            <div className="flex justify-between">
+            <div className="flex justify-between py-0.5">
               <span className="uppercase">VAT (16%):</span>
               <span>{formatCurrency(vat)}</span>
             </div>
           )}
-          <div className="flex justify-between text-xs font-black pt-1 border-t border-black border-double mt-1">
+          <div className="flex justify-between text-xs font-black pt-2 border-t border-black border-double mt-1">
             <span className="uppercase">TOTAL KES:</span>
             <span>{formatCurrency(total)}</span>
           </div>
-          <div className="flex justify-between pt-1 border-t border-black border-dotted">
-            <span className="uppercase text-[9px]">PAID:</span>
-            <span className="font-black text-[11px]">{formatCurrency(paid)}</span>
+          <div className="flex justify-between pt-2 border-t border-black border-dotted">
+            <span className="uppercase text-[9px] pt-1">PAID:</span>
+            <span className="font-black text-[12px]">{formatCurrency(paid)}</span>
           </div>
           {balance > 0 && (
-            <div className="flex justify-between font-black text-red-600">
+            <div className="flex justify-between font-black text-red-600 pt-1">
               <span className="uppercase">BALANCE DUE:</span>
               <span>{formatCurrency(balance)}</span>
             </div>
@@ -139,19 +142,19 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
         </div>
 
         {/* SETTLEMENT & FOOTER */}
-        <div className="text-center space-y-3 mb-4 w-full">
+        <div className="text-center space-y-4 mb-4 w-full">
           <div className="py-2 border-y border-black border-dotted">
-            <p className="text-[8px] font-bold uppercase opacity-60">METHOD OF SETTLEMENT</p>
+            <p className="text-[8px] font-bold uppercase opacity-60 mb-1">METHOD OF SETTLEMENT</p>
             <p className="font-black uppercase text-[10px]">{data.paymentMethod || 'CASH'}</p>
           </div>
           
-          <div className="space-y-1 pt-2">
-              <p className="text-[9px] font-black">*** THANK YOU ***</p>
-              <p className="text-[8px] italic opacity-70 uppercase leading-none">Goods once sold cannot be returned</p>
+          <div className="space-y-1.5 pt-2">
+              <p className="text-[10px] font-black">*** THANK YOU ***</p>
+              <p className="text-[8px] italic opacity-70 uppercase leading-normal">Goods once sold cannot be returned</p>
           </div>
         </div>
 
-        <div className="w-full border-t border-black border-dashed pt-2 text-center text-[7px] opacity-40 uppercase tracking-widest">
+        <div className="w-full border-t border-black border-dashed pt-3 text-center text-[7px] opacity-40 uppercase tracking-widest">
           ELECTRONIC NODE: {bizName}
         </div>
       </div>
