@@ -9,7 +9,7 @@ import { numberToWords } from "@/lib/utils";
 
 /**
  * @fileOverview Professional Receipt PDF Component
- * Synchronized to handle data from both manual generation and POS module.
+ * Synchronized to strictly use Official Business Name from branding settings.
  */
 export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -33,20 +33,12 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
     address: data.customerAddress || 'Nairobi, Kenya'
   };
 
-  // ROBUST FIELD MAPPING
-  // POS uses 'sellingPrice' and 'amountPaid', manual docs use 'price' and 'amount'
   const items = data.items || [];
   
-  // Calculate figures based on available data
   const rawSubtotal = Number(data.subtotal || data.amount || data.total || 0);
   const applyVat = data.applyVat || false;
-  
-  // If VAT isn't explicitly saved, calculate it from subtotal if applyVat is true
   const vatAmount = Number(data.vatAmount || data.vat || (applyVat ? rawSubtotal * 0.16 : 0));
-  
-  // The final display total
   const totalAmount = Number(data.amountPaid || data.total || (rawSubtotal + vatAmount));
-  
   const previousBalance = Number(data.previousBalance || 0);
 
   const formatCurrency = (value: number | undefined) => {
@@ -61,7 +53,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
     ? docSnapshot.title.split('#').pop() 
     : (docSnapshot.id || 'TEMP').slice(0, 8).toUpperCase();
 
-  const companyName = workspace?.name || 'MATESH TECHNOLOGIES';
+  const companyName = workspace?.name || 'THE BUSINESS';
   const primaryIndigo = "#1d4ed8";
   const secondaryIndigo = "#f8fafc";
 
@@ -85,7 +77,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
         </div>
         <div className="text-right space-y-1">
             <p className="font-black text-[10px] uppercase">Head Office</p>
-            <p className="text-[9px] font-medium max-w-[200px] leading-tight">{workspace?.address || 'Kenya'}</p>
+            <p className="text-[9px] font-medium max-w-[200px] leading-tight">{workspace?.address || 'Nairobi, Kenya'}</p>
             <p className="text-[9px] font-bold">Tel: {workspace?.phone || 'N/A'}</p>
             <p className="text-[9px] font-bold">Email: {workspace?.email || 'N/A'}</p>
             <div className="pt-2">
@@ -98,12 +90,12 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
       <section className="grid grid-cols-2 gap-3 mb-8">
         <div className="p-4 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
             <h3 className="font-medium text-[14px] mb-1" style={{ color: primaryIndigo }}>Payment From</h3>
-            <p className="font-bold text-xs">{customer.name}</p>
+            <p className="font-bold text-xs uppercase">{customer.name}</p>
             <p className="text-[10px] font-medium text-black/70">{customer.address || 'Nairobi, Kenya'}</p>
             <p className="text-[10px] font-medium text-black/70">{customer.phone}</p>
         </div>
         <div className="p-4 rounded-lg space-y-0.5 border border-black/5" style={{ backgroundColor: "#fdfcf0" }}>
-            <h3 className="font-medium text-[12px] mb-1 text-orange-800">Statement Balance</h3>
+            <h3 className="font-medium text-[12px] mb-1 text-orange-800 uppercase">Statement Balance</h3>
             <p className="text-[10px] font-bold opacity-60">Balance Brought Forward:</p>
             <p className="font-black text-base text-orange-900">KES {formatCurrency(previousBalance)}</p>
             <p className="text-[8px] italic text-orange-700 mt-1">* Debt carried forward from previous transactions</p>
@@ -123,7 +115,6 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             </thead>
             <tbody>
                 {items?.map((item: any, idx: number) => {
-                    // Logic for item unit price: handle all possible key names
                     const unitRate = Number(item.sellingPrice || item.price || item.unitPrice || 0);
                     const qty = Number(item.quantity || 1);
                     const rowTotal = unitRate * qty;
@@ -171,7 +162,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                     <span className="font-bold">KES {formatCurrency(vatAmount)}</span>
                 </div>
                 <div className="pt-3 border-t-2 border-black flex justify-between items-center">
-                    <span className="text-[14px] font-black">AMOUNT PAID</span>
+                    <span className="text-[14px] font-black uppercase">Amount Paid</span>
                     <span className="text-xl font-black text-blue-900">KES {formatCurrency(totalAmount)}</span>
                 </div>
                 <div className="h-0.5 bg-black w-full mt-[-1px]"></div>
@@ -187,7 +178,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             This is an electronically verified payment receipt. No physical signature is required.
          </p>
          <p className="text-[7px] text-gray-300 mt-2 uppercase tracking-[0.2em]">
-            ShopManager Suite &bull; Secured Node Sync
+            {companyName} Node Sync Active
          </p>
       </footer>
     </div>
