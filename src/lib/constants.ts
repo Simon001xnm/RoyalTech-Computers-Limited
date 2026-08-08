@@ -1,6 +1,15 @@
 import type { LucideIcon } from 'lucide-react';
 import { 
-    LayoutDashboard, User, UserPlus, ShieldCheck, History
+    LayoutDashboard, 
+    ShoppingCart, 
+    Package, 
+    Users, 
+    FileText, 
+    BookOpen, 
+    History,
+    Settings,
+    ShieldCheck,
+    LineChart
 } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
@@ -26,16 +35,27 @@ export interface NavItem {
 }
 
 /**
- * CLEAN SLATE NAVIGATION
- * Only core workspace management is active.
+ * STANDALONE NAVIGATION
+ * Full business suite restored for a complete operating node.
  */
 export const NAV_ITEMS: NavItem[] = [
-  { id: 'dashboard', href: '/', label: 'Home', icon: LayoutDashboard },
+  { id: 'dashboard', href: '/', label: 'Command Center', icon: LayoutDashboard },
   
-  // CORE MANAGEMENT
-  { id: 'users', href: '/users', label: 'Staff Members', icon: UserPlus },
+  // SALES & COMMERCE
+  { id: 'pos', href: '/pos', label: 'Point of Sale', icon: ShoppingCart },
+  { id: 'documents', href: '/documents', label: 'Documents', icon: FileText },
+  
+  // INVENTORY & CRM
+  { id: 'stock', href: '/inventory', label: 'Inventory', icon: Package },
+  { id: 'customers', href: '/customers', label: 'Client Directory', icon: Users },
+  
+  // FINANCE & AUDIT
+  { id: 'books', href: '/books', label: 'Accounting', icon: BookOpen },
+  { id: 'reports', href: '/reports', label: 'P&L Reports', icon: LineChart },
   { id: 'audit', href: '/audit', label: 'Audit Trail', icon: History },
-  { id: 'settings', href: '/profile', label: 'Node Settings', icon: User },
+  
+  // SYSTEM
+  { id: 'settings', href: '/profile', label: 'Shop Settings', icon: Settings },
 ];
 
 export const APP_NAME = "Shop Manager";
