@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Document as AppDocument } from "@/types";
@@ -31,10 +30,11 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     address: data.customerAddress || 'Nairobi, Kenya'
   };
 
-  const { items, subtotal, total, amountPaid = 0, balance = 0, previousBalance = 0 } = data;
+  const { items, subtotal, total, amountPaid = 0, previousBalance = 0 } = data;
   
   // The Gross Total is the current order + whatever they owed before
-  const totalAmountDue = (total || 0) + previousBalance;
+  const currentTotal = total || subtotal || 0;
+  const totalAmountDue = currentTotal + previousBalance;
 
   const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat("en-KE", {
@@ -48,53 +48,83 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     ? docSnapshot.title.split('#').pop() 
     : (docSnapshot.id || 'TEMP').slice(0, 5).toUpperCase();
 
-  const primaryBlue = "#1e3a8a"; // Dark blue for headers
-  const lightBlue = "#dbeafe";
-  const lightGray = "#f3f4f6";
+  const primaryBlue = "#1e3a8a"; 
 
   return (
     <div className="p-[12mm] font-sans text-[11px] bg-white text-black w-[210mm] min-h-[297mm] flex flex-col box-border selection:bg-blue-100">
       
+      {/* BRANDED HEADER */}
+      <header className="flex justify-between items-start mb-8 pb-6 border-b-2 border-black">
+        <div className="flex items-center gap-6">
+           {workspace?.logoUrl ? (
+            <img src={workspace.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
+          ) : (
+            <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
+          )}
+          <div className="space-y-0.5">
+            <h1 className="text-2xl font-black uppercase tracking-tighter" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES LTD'}</h1>
+            <p className="font-bold text-[10px] opacity-70">Official Tax Invoice / Statement</p>
+          </div>
+        </div>
+        <div className="text-right space-y-1">
+            <p className="font-black text-[10px] uppercase">Head Office</p>
+            <p className="text-[9px] font-medium max-w-[200px] leading-tight">{workspace?.address || 'Nairobi, Kenya'}</p>
+            <p className="text-[9px] font-bold">Tel: {workspace?.phone || '0701694469'}</p>
+            <p className="text-[9px] font-bold">Email: {workspace?.email || 'mateshtechltd@gmail.com'}</p>
+            <div className="pt-2">
+                <p className="text-[10px] font-black uppercase text-blue-800">Invoice No: {invoiceNo}</p>
+                <p className="text-[9px] font-bold">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
+            </div>
+        </div>
+      </header>
+
       {/* Remittance & Account Summary Header */}
-      <div className="flex w-full mb-4 border border-black">
-        <div className="w-7/12 bg-gray-200 px-4 py-2 border-r border-black font-black uppercase text-[10px]">Remittance</div>
+      <div className="flex w-full mb-4 border border-black overflow-hidden rounded-sm">
+        <div className="w-7/12 bg-gray-200 px-4 py-2 border-r border-black font-black uppercase text-[10px]">Remittance Advice</div>
         <div className="w-5/12 bg-blue-100 px-4 py-2 font-black uppercase text-[10px]">Account Summary</div>
       </div>
 
-      <div className="text-[10px] leading-relaxed mb-6">
-        <p>To ensure proper credit, please enclose a copy of this statement <span className="font-black text-xs">Balance Due: {formatCurrency(totalAmountDue)}</span> with your check and remit to: <span className="font-black uppercase">{workspace?.name || 'MATESH TECHNOLOGIES LTD'}</span></p>
-        <p className="mt-1">Payment Due Date: <span className="font-bold">{format(new Date(), "dd/MM/yyyy")}</span></p>
+      <div className="text-[10px] leading-relaxed mb-6 grid grid-cols-12 gap-4">
+        <div className="col-span-7">
+            <p>To ensure proper credit, please enclose a copy of this statement with your payment and remit to: <span className="font-black uppercase">{workspace?.name || 'MATESH TECHNOLOGIES LTD'}</span></p>
+            <p className="mt-2">Payment Due Date: <span className="font-black">{format(new Date(), "dd/MM/yyyy")}</span></p>
+        </div>
+        <div className="col-span-5 border-l border-black/10 pl-4">
+             <p className="font-black text-xs">Total Balance Due:</p>
+             <p className="text-xl font-black text-blue-900">KES {formatCurrency(totalAmountDue)}</p>
+        </div>
       </div>
 
       {/* Bank & Payment Info */}
-      <div className="grid grid-cols-2 gap-8 mb-8 border-b-2 border-black pb-6">
+      <div className="grid grid-cols-2 gap-8 mb-8 border-y border-black/10 py-6">
         <div className="space-y-1 text-[10px]">
-          <p className="font-black">BANK; DIAMOND TRUST BANK (DTB)</p>
+          <h3 className="font-black text-blue-900 uppercase mb-2">Electronic Settlement Details</h3>
+          <p className="font-black">BANK: DIAMOND TRUST BANK (DTB)</p>
           <p className="font-bold">NAME: {workspace?.name || 'MATESH TECHNOLOGIES'}</p>
           <p className="font-bold">ACC NO: 0084976001</p>
-          <p className="font-bold">CONTACT: {workspace?.phone || '0701694469'}</p>
+          <p className="font-bold">BRANCH: NAIROBI</p>
         </div>
         <div className="flex flex-col items-end justify-center">
-            <div className="border-2 border-black p-4 min-w-[200px] text-center bg-gray-50">
-                <p className="text-[9px] font-black uppercase opacity-60">Amount Enclosed</p>
-                <p className="text-xl font-black">{formatCurrency(amountPaid)}</p>
+            <div className="border-2 border-black p-4 min-w-[200px] text-center bg-gray-50 rounded-lg shadow-sm">
+                <p className="text-[9px] font-black uppercase opacity-60">Current Amount Paid</p>
+                <p className="text-xl font-black">KES {formatCurrency(amountPaid)}</p>
             </div>
         </div>
       </div>
 
       {/* Billing Addresses */}
-      <div className="grid grid-cols-2 gap-10 mb-8">
-        <div>
-            <h3 className="text-[9px] font-black uppercase text-blue-900 mb-1">Billed By</h3>
-            <p className="font-black uppercase">{workspace?.name || 'MATESH TECHNOLOGIES LTD'}</p>
-            <p className="opacity-70">{workspace?.address || 'Nairobi, Kenya'}</p>
+      <div className="grid grid-cols-2 gap-10 mb-8 px-2">
+        <div className="space-y-1">
+            <h3 className="text-[9px] font-black uppercase text-blue-900 mb-1">Billing From</h3>
+            <p className="font-black uppercase text-xs">{workspace?.name || 'MATESH TECHNOLOGIES LTD'}</p>
+            <p className="opacity-70 leading-tight">{workspace?.address || 'Nairobi, Kenya'}</p>
         </div>
-        <div>
-            <h3 className="text-[9px] font-black uppercase text-blue-900 mb-1">Billed To</h3>
-            <p className="font-black uppercase">{customer.alias || customer.name}</p>
+        <div className="space-y-1">
+            <h3 className="text-[9px] font-black uppercase text-blue-900 mb-1">Billing To</h3>
+            <p className="font-black uppercase text-xs">{customer.alias || customer.name}</p>
             {customer.alias && <p className="text-[8px] font-bold opacity-50 uppercase">Attn: {customer.name}</p>}
-            <p className="opacity-70">{customer.address || 'Nairobi, Kenya'}</p>
-            <p className="opacity-70">{customer.phone}</p>
+            <p className="opacity-70 leading-tight">{customer.address || 'Nairobi, Kenya'}</p>
+            <p className="opacity-70 font-bold">{customer.phone}</p>
         </div>
       </div>
 
@@ -107,7 +137,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     <th className="p-2 font-black text-[9px] border border-blue-900">DESCRIPTION</th>
                     <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-20">UNITS</th>
                     <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-28">UNIT PRICE</th>
-                    <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-32">AMOUNT</th>
+                    <th className="p-2 text-right font-black text-[9px] border border-blue-900 w-32">TOTAL</th>
                 </tr>
             </thead>
             <tbody>
@@ -135,15 +165,15 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
         <div className="flex justify-end mt-6">
             <div className="w-[300px]">
                 <div className="flex justify-between p-2 border border-gray-200">
-                    <span className="font-black uppercase text-[9px] opacity-60">subtotal</span>
-                    <span className="font-bold">{formatCurrency(subtotal || total)}</span>
+                    <span className="font-black uppercase text-[9px] opacity-60">current order subtotal</span>
+                    <span className="font-bold">{formatCurrency(currentTotal)}</span>
                 </div>
-                <div className="flex justify-between p-2 border border-t-0 border-gray-200 bg-gray-50">
-                    <span className="font-black uppercase text-[9px] opacity-60">PREV BAL</span>
-                    <span className="font-bold">{formatCurrency(previousBalance)}</span>
+                <div className="flex justify-between p-2 border border-t-0 border-gray-200 bg-orange-50">
+                    <span className="font-black uppercase text-[9px] text-orange-600">previous account balance</span>
+                    <span className="font-bold text-orange-700">{formatCurrency(previousBalance)}</span>
                 </div>
                 <div className="flex justify-between p-3 border border-t-0 border-black bg-blue-50">
-                    <span className="font-black uppercase text-xs">TOTAL</span>
+                    <span className="font-black uppercase text-xs">net amount due</span>
                     <span className="font-black text-lg">{formatCurrency(totalAmountDue)}</span>
                 </div>
             </div>
@@ -151,7 +181,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
         {/* Words Amount */}
         <p className="mt-4 text-[9px] font-black uppercase italic opacity-60">
-            Total Amount (in words): {numberToWords(totalAmountDue)}
+            Amount in words: {numberToWords(totalAmountDue)}
         </p>
       </div>
 
@@ -166,7 +196,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             Thank You for Your Business!
          </p>
          <p className="text-[7px] text-gray-300 mt-4 uppercase tracking-[0.3em]">
-            Powered by ShopManager Suite &bull; Secured Node Sync
+            Electronically Generated &bull; Secured Node Sync
          </p>
       </footer>
     </div>
