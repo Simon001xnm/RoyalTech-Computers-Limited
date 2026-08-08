@@ -193,30 +193,44 @@ export default function ProfilePage() {
         <div className="space-y-6">
           <Card className="shadow-md overflow-hidden border-none ring-1 ring-black/5">
             <CardHeader className="items-center text-center bg-muted/20 pb-8">
-              <div className="relative group cursor-pointer mt-4" onClick={() => fileInputRef.current?.click()}>
-                <Avatar className="h-28 w-28 border-4 border-white shadow-xl">
-                  <AvatarImage src={avatarUrl || `https://picsum.photos/seed/${authUser?.uid}/128/128`} />
-                  <AvatarFallback className="text-2xl">{(displayName || "U").substring(0, 2)}</AvatarFallback>
+              <div className="relative group cursor-pointer mt-4" onClick={() => logoInputRef.current?.click()}>
+                <Avatar className="h-28 w-28 border-4 border-white shadow-xl bg-white">
+                  {/* Primary Profile Identity: Company Logo */}
+                  <AvatarImage 
+                    src={compData.logoUrl || `https://picsum.photos/seed/${authUser?.uid}/128/128`} 
+                    className="object-contain p-1"
+                  />
+                  <AvatarFallback className="text-2xl font-black uppercase">
+                    {(compData.name || displayName || "U").substring(0, 2)}
+                  </AvatarFallback>
                 </Avatar>
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><Camera className="h-6 w-6 text-white" /></div>
-                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="h-6 w-6 text-white" />
+                </div>
               </div>
               <div className="mt-6 space-y-1">
-                <CardTitle className="text-2xl font-black uppercase tracking-tight">{displayName || 'User'}</CardTitle>
-                <CardDescription className="font-medium">{email}</CardDescription>
+                <CardTitle className="text-2xl font-black uppercase tracking-tight leading-tight">
+                    {compData.name || 'Your Shop'}
+                </CardTitle>
+                <CardDescription className="font-bold text-[10px] uppercase tracking-widest text-primary">
+                    Administrator: {displayName}
+                </CardDescription>
                 <Badge className="mt-4 capitalize px-4 h-7 text-[10px] font-black tracking-widest uppercase">
-                    {userProfile.role}
+                    {userProfile.role} Account
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="grid grid-cols-5 gap-0.5 border-t">
-                {placeholderAvatars.avatars.map((av) => (
-                  <button key={av.id} onClick={() => handleAvatarSelect(av.url)} className={cn("aspect-square overflow-hidden hover:opacity-80 transition-opacity", avatarUrl === av.url ? "ring-2 ring-inset ring-primary" : "")}>
-                    <img src={av.url} className="w-full h-full object-cover" alt="avatar" />
-                  </button>
-                ))}
-              </div>
+            <CardContent className="p-0 border-t">
+               <div className="p-4 bg-muted/5">
+                  <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest text-center mb-3">Personal Avatar Overlay</p>
+                  <div className="grid grid-cols-5 gap-1">
+                    {placeholderAvatars.avatars.map((av) => (
+                    <button key={av.id} onClick={() => handleAvatarSelect(av.url)} className={cn("aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-all", avatarUrl === av.url ? "border-primary" : "")}>
+                        <img src={av.url} className="w-full h-full object-cover" alt="avatar" />
+                    </button>
+                    ))}
+                  </div>
+               </div>
             </CardContent>
           </Card>
           <SaaSUsageMeters />
@@ -249,12 +263,13 @@ export default function ProfilePage() {
                             <TabsContent value="profile" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-12">
                                     <div className="space-y-4">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">High-Res Logo</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Identity Logo</Label>
                                         <div className="w-full aspect-square border-2 border-black border-dashed rounded-2xl flex items-center justify-center cursor-pointer overflow-hidden relative group shadow-inner bg-white" onClick={() => logoInputRef.current?.click()}>
                                             {compData.logoUrl ? <img src={compData.logoUrl} className="w-full h-full object-contain p-2" alt="logo" /> : <ImageIcon className="h-8 w-8 text-muted-foreground" />}
                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><Upload className="text-white h-6 w-6" /></div>
                                         </div>
                                         <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                                        <p className="text-[8px] text-center font-bold text-muted-foreground uppercase">This logo appears on all documents and profile icons.</p>
                                     </div>
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
