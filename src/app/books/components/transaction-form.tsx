@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Loader2 } from 'lucide-react';
+import { CalendarIcon, Loader2, ReceiptText } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -18,17 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { User } from 'firebase/auth';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { useState } from 'react';
-
-const saleSchema = z.object({
-  date: z.date(),
-  amount: z.coerce.number().positive("Amount must be positive."),
-  paymentMethod: z.enum(['Till', 'M-Pesa', 'Bank', 'Paybill', 'Cash']),
-  cogs: z.coerce.number().min(0).optional(),
-  notes: z.string().optional(),
-});
 
 const expenseSchema = z.object({
   date: z.date(),
@@ -48,24 +38,23 @@ export function TransactionForm({ user, onFinished }: TransactionFormProps) {
   const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const saleForm = useForm<z.infer<typeof saleSchema>>({
-    resolver: zodResolver(saleSchema),
-    defaultValues: { date: new Date(), amount: 0, paymentMethod: 'M-Pesa' },
-  });
-  
-  const expenseForm = useForm<z.infer<typeof expenseSchema>>({
+  const form = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
-    defaultValues: { date: new Date(), category: '', amount: 0 },
+    defaultValues: { 
+        date: new Date(), 
+        category: '', 
+        amount: 0, 
+        notes: '' 
+    },
   });
 
-  const handleSubmit = async (data: any, type: 'sales' | 'expenses') => {
+  const handleSubmit = async (data: z.infer<typeof expenseSchema>) => {
     if (!user || !tenant) return;
     setIsSubmitting(true);
     
-    const collectionPath = type === 'sales' ? 'sales_transactions' : 'expenses';
-    const colRef = collection(firestore, collectionPath);
+    const colRef = collection(firestore, 'expenses');
 
-    const docData: any = {
+    const docData = {
       ...data,
       tenantId: tenant.id,
       date: data.date.toISOString(),
@@ -75,7 +64,7 @@ export function TransactionForm({ user, onFinished }: TransactionFormProps) {
 
     try {
         addDocumentNonBlocking(colRef, docData);
-        toast({ title: `Transaction Recorded Successfully` });
+        toast({ title: `Expense Recorded Successfully` });
         onFinished();
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Error', description: e.message });
@@ -84,42 +73,86 @@ export function TransactionForm({ user, onFinished }: TransactionFormProps) {
     }
   };
 
+  const categories = [
+    "Salaries & Wages",
+    "Rent & Utilities",
+    "Marketing & Ads",
+    "Software & Tech",
+    "Office Supplies",
+    "Travel & Logistics",
+    "Maintenance",
+    "Other Operating Costs"
+  ];
+
   return (
-    <Tabs defaultValue="sale" className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="sale">Sale</TabsTrigger>
-        <TabsTrigger value="expense">Expense</TabsTrigger>
-      </TabsList>
-      <TabsContent value="sale">
-        <Form {...saleForm}>
-          <form onSubmit={saleForm.handleSubmit((data) => handleSubmit(data, 'sales'))} className="space-y-4 p-4">
-            <FormField control={saleForm.control} name="amount" render={({ field }) => (
-                <FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField control={form.control} name="amount" render={({ field }) => (
+                <FormItem>
+                    <FormLabel className="text-[10px] font-black uppercase">Amount (KES) *</FormLabel>
+                    <FormControl>
+                        <Input type="number" {...field} className="h-12 text-lg font-black border-red-200 ring-red-50" />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
             )}/>
-            <FormField control={saleForm.control} name="paymentMethod" render={({ field }) => (
-              <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Till">Till</SelectItem><SelectItem value="M-Pesa">M-Pesa</SelectItem><SelectItem value="Bank">Bank</SelectItem><SelectItem value="Paybill">Paybill</SelectItem><SelectItem value="Cash">Cash</SelectItem></SelectContent></Select></FormItem>
+
+            <FormField control={form.control} name="date" render={({ field }) => (
+                <FormItem className="flex flex-col">
+                    <FormLabel className="text-[10px] font-black uppercase mb-2">Transaction Date *</FormLabel>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <FormControl>
+                                <Button variant={"outline"} className={cn("h-12 pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    {field.value ? format(field.value, "PPP") : <span>Pick date</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                            </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                </FormItem>
             )}/>
-            <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Record Sale'}
+        </div>
+
+        <FormField control={form.control} name="category" render={({ field }) => (
+            <FormItem>
+                <FormLabel className="text-[10px] font-black uppercase">Expense Category *</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                        <SelectTrigger className="h-12 font-bold">
+                            <SelectValue placeholder="Select type..." />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+            </FormItem>
+        )}/>
+
+        <FormField control={form.control} name="notes" render={({ field }) => (
+            <FormItem>
+                <FormLabel className="text-[10px] font-black uppercase">Additional Details</FormLabel>
+                <FormControl>
+                    <Textarea placeholder="Explain what this payment was for..." {...field} className="bg-muted/5 min-h-[100px]" />
+                </FormControl>
+                <FormMessage />
+            </FormItem>
+        )}/>
+
+        <div className="flex justify-end gap-3 pt-6 border-t">
+            <Button type="button" variant="outline" onClick={onFinished} className="h-12 px-6 font-bold">Cancel</Button>
+            <Button type="submit" disabled={isSubmitting} className="h-12 px-10 font-black uppercase tracking-widest shadow-xl bg-red-600 hover:bg-red-700 text-white">
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><ReceiptText className="mr-2 h-4 w-4" /> Record Payment</>}
             </Button>
-          </form>
-        </Form>
-      </TabsContent>
-      <TabsContent value="expense">
-         <Form {...expenseForm}>
-          <form onSubmit={expenseForm.handleSubmit((data) => handleSubmit(data, 'expenses'))} className="space-y-4 p-4">
-             <FormField control={expenseForm.control} name="amount" render={({ field }) => (
-                <FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-             )}/>
-             <FormField control={expenseForm.control} name="category" render={({ field }) => (
-                <FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g., Rent, Salaries" {...field} /></FormControl><FormMessage /></FormItem>
-             )}/>
-            <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Record Expense'}
-            </Button>
-          </form>
-        </Form>
-      </TabsContent>
-    </Tabs>
+        </div>
+      </form>
+    </Form>
   );
 }
