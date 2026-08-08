@@ -15,6 +15,7 @@ import { doc } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
 import { logger } from '@/lib/logger';
 import { NotificationCenter } from '@/components/layout/notification-center';
+import { Separator } from '@/components/ui/separator';
 
 const AUTH_PATHS = ['/login', '/signup'];
 
