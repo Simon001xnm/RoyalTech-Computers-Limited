@@ -93,7 +93,7 @@ export function PosClient() {
 
   // Fetch Customer Balance
   useEffect(() => {
-    if (!selectedCustomer?.id || selectedCustomer.id === 'walk-in' || !tenant) {
+    if (!selectedCustomer?.id || !tenant) {
       setCustomerBalance(0);
       return;
     }
@@ -249,7 +249,7 @@ export function PosClient() {
             relatedTo: selectedCustomer.name,
             data: {
                 ...baseData,
-                customer: selectedCustomer.id === 'walk-in' ? null : selectedCustomer
+                customer: selectedCustomer
             },
             createdAt: timestamp,
             createdBy: { uid: user.uid, name: user.displayName }
@@ -371,7 +371,6 @@ export function PosClient() {
                                 <Command>
                                     <CommandInput placeholder="Search client..." />
                                     <CommandList>
-                                        <CommandItem onSelect={() => { setSelectedCustomer({id: 'walk-in', name: 'Walk-in Client'}); setCustSearchOpen(false); }}>Walk-in Client</CommandItem>
                                         <CommandGroup heading="CRM Directory">
                                             {customers?.map(c => (
                                                 <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({id: c.id, name: c.name}); setCustSearchOpen(false); }}>{c.name}</CommandItem>
