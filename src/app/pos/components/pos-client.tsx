@@ -19,6 +19,9 @@ import { useSaaS } from '@/components/saas/saas-provider';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+
+const VAT_RATE = 0.16;
 
 type PaymentSplit = {
     method: 'Cash' | 'M-Pesa' | 'Bank' | 'Card' | 'Credit';
@@ -45,6 +48,7 @@ export function PosClient() {
   const [selectedCustomer, setSelectedCustomer] = useState<{id: string, name: string} | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState<number>(0);
+  const [applyVat, setApplyVat] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
@@ -77,25 +81,29 @@ export function PosClient() {
   const [custSearchOpen, setCustSearchOpen] = useState(false);
 
   // Calculations
-  const { subtotal, total, amountPaid, remainingBalance, totalProfit } = useMemo(() => {
+  const { subtotal, vatAmount, total, amountPaid, remainingBalance, totalProfit } = useMemo(() => {
     const sub = cart.reduce((acc, item) => acc + item.total, 0);
-    const tot = Math.max(0, sub - discount);
+    const discountedSub = Math.max(0, sub - discount);
+    const vat = applyVat ? discountedSub * VAT_RATE : 0;
+    const tot = discountedSub + vat;
+    
     const paid = payments.reduce((acc, p) => acc + p.amount, 0);
     const profit = cart.reduce((acc, item) => acc + (item.total - (item.buyingPrice * item.quantity)), 0) - discount;
     
     return {
         subtotal: sub,
+        vatAmount: vat,
         total: tot,
         amountPaid: paid,
         remainingBalance: tot - paid,
         totalProfit: profit
     };
-  }, [cart, discount, payments]);
+  }, [cart, discount, payments, applyVat]);
 
   const handleSelectProduct = (product: any) => {
     setSelectedProduct(product);
     setSelectionQty('1');
-    setSelectionPrice(''); // Let user enter price or default to some rule
+    setSelectionPrice(''); 
     setSearchOpen(false);
   };
 
@@ -103,6 +111,11 @@ export function PosClient() {
     if (!selectedProduct) return;
     const qty = parseInt(selectionQty) || 1;
     const price = parseFloat(selectionPrice) || 0;
+
+    if (qty > selectedProduct.currentStock) {
+        toast({ variant: 'destructive', title: 'Insufficient Stock', description: `Only ${selectedProduct.currentStock} units available.` });
+        return;
+    }
 
     const existing = cart.find(i => i.productId === selectedProduct.id && i.sellingPrice === price);
     
@@ -117,7 +130,7 @@ export function PosClient() {
             name: selectedProduct.name,
             quantity: qty,
             sellingPrice: price,
-            buyingPrice: selectedProduct.buyingPrice, // Snapshot
+            buyingPrice: selectedProduct.buyingPrice, 
             total: qty * price
         }]);
     }
@@ -157,14 +170,16 @@ export function PosClient() {
             date: timestamp,
             customerId: selectedCustomer?.id || 'walk-in',
             customerName: selectedCustomer?.name || 'Walk-in Client',
-            items: cart.map(item => ({...item, type: 'asset'})),
+            items: cart.map(item => ({...item, type: 'asset', cogs: item.buyingPrice * item.quantity})),
             subtotal,
+            vatAmount,
             discount,
             total,
             totalProfit,
             amountPaid,
             balance: remainingBalance,
             payments,
+            applyVat,
             status: remainingBalance <= 0 ? 'Paid' : (amountPaid > 0 ? 'Partial' : 'Credit'),
             paymentMethod: payments.length > 1 ? 'Split' : (payments[0]?.method || 'Cash'),
             createdAt: timestamp,
@@ -190,7 +205,6 @@ export function PosClient() {
             createdBy: { uid: user.uid, name: user.displayName }
         });
 
-        // 2. Update Inventory & Log Movements
         for (const item of cart) {
             const productRef = doc(firestore, 'products', item.productId);
             const product = products?.find(p => p.id === item.productId);
@@ -221,6 +235,7 @@ export function PosClient() {
         setPayments([]);
         setSelectedCustomer(null);
         setDiscount(0);
+        setApplyVat(false);
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Sale Failed', description: e.message });
     } finally {
@@ -342,9 +357,15 @@ export function PosClient() {
         <div className="space-y-6">
             <Card className="shadow-xl border-none ring-1 ring-black/5 flex flex-col h-full bg-white">
                 <CardHeader className="bg-primary/5 py-4 border-b">
-                    <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                        Settlement Mix
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                            Settlement Mix
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Switch checked={applyVat} onCheckedChange={setApplyVat} id="vat-mode" />
+                            <Label htmlFor="vat-mode" className="text-[10px] font-black uppercase cursor-pointer">Apply 16% VAT</Label>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6 flex-grow">
                     <div className="space-y-3">
@@ -358,6 +379,12 @@ export function PosClient() {
                                 className="h-8 w-24 text-right font-bold" 
                             />
                         </div>
+                        {applyVat && (
+                            <div className="flex justify-between text-xs font-bold text-primary">
+                                <span>VAT (16%)</span>
+                                <span>KES {vatAmount.toLocaleString()}</span>
+                            </div>
+                        )}
                         <div className="pt-3 border-t-2 border-black flex justify-between items-end">
                             <span className="text-sm font-black uppercase">Payable Total</span>
                             <span className="text-3xl font-black tracking-tighter">KES {total.toLocaleString()}</span>

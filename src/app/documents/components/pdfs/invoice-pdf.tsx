@@ -30,7 +30,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     address: data.customerAddress || 'Nairobi, Kenya'
   };
 
-  const { items, subtotal, vat, total, applyVat } = data;
+  const { items, subtotal, vatAmount, total, applyVat } = data;
 
   const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat("en-KE", {
@@ -101,7 +101,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 {items?.map((item: any, idx: number) => {
                     const name = item.name || item.description;
                     const desc = item.description && item.name ? item.description : null;
-                    const unitPrice = item.price || item.unitPrice;
+                    const unitPrice = item.price || item.sellingPrice || 0;
                     const rowSubtotal = item.quantity * unitPrice;
                     const rowTax = applyVat ? rowSubtotal * 0.16 : 0;
                     return (
@@ -141,7 +141,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 </div>
                 <div className="flex justify-between items-center text-[10px]">
                     <span className="font-bold opacity-60">TAX</span>
-                    <span className="font-bold">KES {formatCurrency(vat || 0)}</span>
+                    <span className="font-bold">KES {formatCurrency(vatAmount || 0)}</span>
                 </div>
                 <div className="pt-3 border-t-2 border-black flex justify-between items-center">
                     <span className="text-[14px] font-bold">Total (KES)</span>
