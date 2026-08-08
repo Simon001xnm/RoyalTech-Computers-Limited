@@ -167,9 +167,11 @@ export function PosClient() {
         const batch = writeBatch(firestore);
         const timestamp = new Date().toISOString();
 
-        // Standard document prefixes
-        const prefixes = { Receipt: 'RCT', Invoice: 'INV', Quotation: 'QTN' };
-        const prefix = prefixes[actionType];
+        // AUTOMATIC LOGIC: If a sale has a balance, it MUST be an Invoice, not a Receipt.
+        const effectiveDocType = (actionType === 'Receipt' && remainingBalance > 0) ? 'Invoice' : actionType;
+        
+        // Define Sale Status based on payment
+        const saleStatus = remainingBalance <= 0 ? 'Paid' : (amountPaid > 0 ? 'Partial' : 'Credit');
 
         const baseData = {
             tenantId: tenant.id,
@@ -186,7 +188,7 @@ export function PosClient() {
             balance: remainingBalance,
             payments,
             applyVat,
-            status: actionType === 'Receipt' ? 'Paid' : 'Pending',
+            status: saleStatus,
             paymentMethod: payments.length > 1 ? 'Split' : (payments[0]?.method || 'Cash'),
             createdAt: timestamp,
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
@@ -196,8 +198,8 @@ export function PosClient() {
         const docRef = doc(collection(firestore, 'documents'));
         batch.set(docRef, {
             tenantId: tenant.id,
-            type: actionType,
-            title: `${actionType} #${docRef.id.slice(0, 8).toUpperCase()}`,
+            type: effectiveDocType,
+            title: `${effectiveDocType} #${docRef.id.slice(0, 8).toUpperCase()}`,
             generatedDate: timestamp,
             relatedTo: selectedCustomer?.name || 'Walk-in Client',
             data: {
@@ -208,7 +210,7 @@ export function PosClient() {
             createdBy: { uid: user.uid, name: user.displayName }
         });
 
-        // 2. Only "Receipt" action triggers inventory deduction and sales ledger
+        // 2. Only "Receipt" (or the intent to sell) triggers inventory deduction and sales ledger
         if (actionType === 'Receipt') {
             const saleRef = doc(collection(firestore, 'sales_transactions'));
             batch.set(saleRef, { ...baseData, documentId: docRef.id });
@@ -239,7 +241,7 @@ export function PosClient() {
         }
 
         await batch.commit();
-        setSuccessType(actionType);
+        setSuccessType(effectiveDocType);
         setIsSuccessOpen(true);
         setCart([]);
         setPayments([]);
@@ -247,7 +249,7 @@ export function PosClient() {
         setDiscount(0);
         setApplyVat(false);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: `${actionType} Failed`, description: e.message });
+        toast({ variant: 'destructive', title: `Process Failed`, description: e.message });
     } finally {
         setIsProcessing(false);
     }
