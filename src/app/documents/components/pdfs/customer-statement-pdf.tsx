@@ -32,7 +32,7 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
       <header className="flex justify-between items-start mb-8 pb-6 border-b-2 border-black">
         <div className="flex items-center gap-6">
            {workspace?.logoUrl ? (
-            <img src={workspace.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
+            <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain" crossOrigin="anonymous" />
           ) : (
             <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
           )}

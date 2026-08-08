@@ -89,7 +89,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
         
         <div className="flex flex-col items-end">
            {company?.logoUrl ? (
-            <img src={company.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
+            <img src={company.logoUrl} alt="Logo" className="h-28 w-auto object-contain" crossOrigin="anonymous" />
           ) : (
             <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300 uppercase">Logo</div>
           )}

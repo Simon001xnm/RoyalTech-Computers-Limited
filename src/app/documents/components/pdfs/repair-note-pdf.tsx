@@ -35,7 +35,7 @@ export function RepairNotePdf({ document: docSnapshot }: { document: AppDocument
         </div>
         <div className="flex flex-col items-end">
            {workspace?.logoUrl ? (
-            <img src={workspace.logoUrl} alt="Logo" className="h-16 w-auto object-contain" crossOrigin="anonymous" />
+            <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain" crossOrigin="anonymous" />
           ) : (
             <div className="h-14 w-14 bg-gray-50 flex items-center justify-center text-[8px] font-black border border-dashed border-gray-200 text-gray-300">LOGO</div>
           )}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Document as AppDocument, DocumentLineItem } from "@/types";
@@ -11,14 +10,30 @@ import { numberToWords } from "@/lib/utils";
 export function LeaseAgreementPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
-  const companyRef = useMemoFirebase(() => tenant?.id ? doc(firestore, 'companies', tenant.id) : null, [firestore, tenant?.id]);
+  
+  const companyRef = useMemoFirebase(() => 
+    tenant?.id ? doc(firestore, 'companies', tenant.id) : null, 
+    [firestore, tenant?.id]
+  );
+  
   const { data: cloudCompany } = useDoc(companyRef);
-  if (!docSnapshot?.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
+  
+  if (!docSnapshot?.data) {
+    return (
+      <div className="p-10 text-center font-bold text-black border-4 border-black">
+        Error: Document metadata is missing.
+      </div>
+    );
+  }
+
   const workspace = docSnapshot.data.workspace || cloudCompany;
   const data = docSnapshot.data;
   const customer = data.customer || { name: 'VALUED CLIENT', phone: '', email: '', address: 'Nairobi' };
   const { items, lease, total, verification, signature } = data;
-  const formatCurrency = (v: number | undefined) => new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
+  
+  const formatCurrency = (v: number | undefined) => 
+    new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
+  
   const primaryIndigo = "#1d4ed8";
   const secondaryIndigo = "#f8fafc";
   
@@ -40,7 +55,7 @@ export function LeaseAgreementPdf({ document: docSnapshot }: { document: AppDocu
         </div>
         <div className="flex flex-col items-end">
            {workspace?.logoUrl ? (
-            <img src={workspace.logoUrl} alt="Logo" className="h-16 w-auto object-contain" crossOrigin="anonymous" />
+            <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain" crossOrigin="anonymous" />
           ) : (
             <div className="h-14 w-14 bg-gray-50 flex items-center justify-center text-[8px] font-black border border-dashed border-gray-200 text-gray-300">LOGO</div>
           )}
