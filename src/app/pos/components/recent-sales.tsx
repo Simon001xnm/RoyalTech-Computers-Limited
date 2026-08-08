@@ -85,7 +85,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
 
         try {
             setExportDoc(docToDownload);
-            await new Promise(r => setTimeout(r, 600));
+            await new Promise(r => setTimeout(r, 800)); // Increased delay for branding assets
 
             const element = document.getElementById('recent-sale-export-target');
             if (!element) throw new Error("Export target not found");
@@ -97,7 +97,8 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                 backgroundColor: "#ffffff",
                 width: isThermal ? 302 : 794,
                 y: 0,
-                scrollY: 0
+                scrollY: 0,
+                logging: false
             });
             
             const pdf = new jsPDF({ 
@@ -223,8 +224,9 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                     </div>
                 )}
                 
-                <div className="fixed left-[-9999px] top-0 pointer-events-none">
-                    <div id="recent-sale-export-target" className="bg-white" style={{ width: exportType === 'Thermal' ? '80mm' : '210mm' }}>
+                {/* PDF Generation Mirror - Fixed hidden container */}
+                <div className="fixed left-[-9999px] top-0 pointer-events-none overflow-visible">
+                    <div id="recent-sale-export-target" className="bg-white inline-block h-fit" style={{ width: exportType === 'Thermal' ? '80mm' : '210mm' }}>
                         {exportDoc && (
                             exportType === 'Thermal' 
                             ? <ThermalReceiptPdf document={exportDoc} /> 

@@ -22,88 +22,91 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
   const balance = Number(data.balance || 0);
 
   const formatCurrency = (val: number) => 
-    new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 1 }).format(val);
+    new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2 }).format(val);
 
   return (
     <div className="flex flex-col items-center bg-gray-100 p-4">
-      <div className="w-[80mm] p-6 bg-white text-black font-mono text-[10px] shadow-xl leading-relaxed flex flex-col items-center">
-        {/* BRANDED HEADER */}
-        <div className="text-center space-y-1 mb-4 w-full">
-          <h1 className="text-lg font-black uppercase leading-tight mb-1">{workspace?.name || 'THE BUSINESS'}</h1>
-          <p className="text-[10px] font-black tracking-widest border-y border-black/10 py-1 mb-2">OFFICIAL RECEIPT</p>
-          <p className="text-[9px] uppercase font-bold">{workspace?.address || 'NAIROBI, KENYA'}</p>
-          <div className="text-[9px] space-y-0.5 mt-2">
-              {workspace?.phone && <p>TEL: {workspace.phone}</p>}
-              {workspace?.email && <p>EMAIL: {workspace.email}</p>}
-              {workspace?.website && <p>WEB: {workspace.website}</p>}
-              {workspace?.taxPin && <p className="font-black pt-1">KRA PIN: {workspace.taxPin}</p>}
+      <div className="w-[80mm] p-6 bg-white text-black font-mono text-[10px] shadow-xl leading-relaxed flex flex-col items-center min-h-fit">
+        
+        {/* BRANDED HEADER - HIGHEST PRIORITY */}
+        <div className="text-center space-y-1 mb-6 w-full">
+          <h1 className="text-xl font-black uppercase leading-none mb-2">{workspace?.name || 'OFFICIAL BUSINESS NODE'}</h1>
+          <p className="text-[11px] font-black tracking-[0.2em] border-y-2 border-black py-1.5 mb-3">OFFICIAL RECEIPT</p>
+          
+          <div className="text-[9px] uppercase font-bold space-y-1">
+              <p className="leading-tight">{workspace?.address || 'Nairobi, Kenya'}</p>
+              {workspace?.phone && <p>Tel: {workspace.phone}</p>}
+              {workspace?.email && <p className="lowercase">{workspace.email}</p>}
+              {workspace?.website && <p className="lowercase">{workspace.website}</p>}
+              {workspace?.taxPin && <p className="font-black pt-1 border-t border-dashed border-black/20 mt-1">KRA PIN: {workspace.taxPin}</p>}
           </div>
         </div>
 
-        <div className="w-full border-t border-dashed border-black my-3" />
+        <div className="w-full border-t border-black my-4" />
 
-        {/* TRANSACTION INFO - Enhanced Padding */}
-        <div className="w-full space-y-2 mb-4 text-[9px]">
-          <div className="flex justify-between uppercase font-bold">
-            <span>Receipt No:</span>
-            <span className="font-black">#{docSnapshot.title?.split('#').pop() || '001'}</span>
+        {/* TRANSACTION INFO - ENHANCED PADDING */}
+        <div className="w-full space-y-3 mb-6 text-[10px]">
+          <div className="flex justify-between items-baseline">
+            <span className="font-bold opacity-60">No:</span>
+            <span className="font-black text-xs">#{docSnapshot.title?.split('#').pop() || '001'}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Date:</span>
-            <span>{format(new Date(docSnapshot.generatedDate), "dd/MM/yy HH:mm")}</span>
+          <div className="flex justify-between items-baseline">
+            <span className="font-bold opacity-60">Date:</span>
+            <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "dd/MM/yy HH:mm")}</span>
           </div>
-          <div className="flex justify-between border-t border-black/5 pt-2">
-            <span className="opacity-60">Served By:</span>
-            <span className="font-black uppercase text-right pl-2">{docSnapshot.createdBy?.name || 'Staff Node'}</span>
-          </div>
-          <div className="flex justify-between border-t border-black/5 pt-2">
-            <span className="opacity-60">Customer:</span>
-            <span className="font-black uppercase text-right pl-2">{customer.name}</span>
+          
+          <div className="pt-2 border-t border-black/10">
+            <div className="flex justify-between items-start gap-2 py-1">
+                <span className="opacity-60 whitespace-nowrap">Served By:</span>
+                <span className="font-black uppercase text-right leading-tight">{docSnapshot.createdBy?.name || 'Staff Node'}</span>
+            </div>
+            <div className="flex justify-between items-start gap-2 py-1">
+                <span className="opacity-60 whitespace-nowrap">Customer:</span>
+                <span className="font-black uppercase text-right leading-tight">{customer.name}</span>
+            </div>
           </div>
         </div>
 
-        <div className="w-full border-t border-black my-2" />
+        <div className="w-full border-t-2 border-black my-2" />
 
         {/* ITEMS TABLE */}
-        <div className="w-full space-y-3 mb-6">
-          <div className="flex justify-between font-black uppercase text-[8px] border-b pb-1">
-            <span className="w-1/2">Item Description</span>
+        <div className="w-full space-y-4 mb-8">
+          <div className="flex justify-between font-black uppercase text-[8px] border-b border-black pb-1">
+            <span className="w-1/2">Description</span>
             <span className="w-1/4 text-center">Qty</span>
             <span className="w-1/4 text-right">Total</span>
           </div>
           {items.map((item: any, i: number) => (
             <div key={i} className="flex justify-between items-start pt-1">
               <div className="w-1/2 flex flex-col">
-                <span className="uppercase font-bold text-[9px] leading-tight">{item.name || item.description}</span>
-                {item.serialNumber && <span className="text-[7px] opacity-70 font-mono mt-0.5">S/N: {item.serialNumber}</span>}
+                <span className="uppercase font-bold text-[10px] leading-tight">{item.name || item.description}</span>
+                {item.serialNumber && <span className="text-[8px] opacity-70 font-mono mt-1">S/N: {item.serialNumber}</span>}
               </div>
               <span className="w-1/4 text-center font-bold">{item.quantity}</span>
-              <span className="w-1/4 text-right font-bold">{formatCurrency((item.price || item.sellingPrice || 0) * item.quantity)}</span>
+              <span className="w-1/4 text-right font-black">{formatCurrency((item.price || item.sellingPrice || 0) * item.quantity)}</span>
             </div>
           ))}
         </div>
 
-        <div className="w-full border-t border-dashed border-black my-2" />
-
         {/* TOTALS & TAX */}
-        <div className="w-full space-y-1.5 mb-6">
-          <div className="flex justify-between text-[9px]">
+        <div className="w-full space-y-2 mb-8 bg-gray-50 p-3 rounded-lg border border-black/5">
+          <div className="flex justify-between text-[10px]">
             <span>Subtotal:</span>
-            <span>{formatCurrency(subtotal)}</span>
+            <span className="font-bold">{formatCurrency(subtotal)}</span>
           </div>
           {vat > 0 && (
-            <div className="flex justify-between text-[9px]">
+            <div className="flex justify-between text-[10px]">
               <span>VAT (16%):</span>
-              <span>{formatCurrency(vat)}</span>
+              <span className="font-bold">{formatCurrency(vat)}</span>
             </div>
           )}
-          <div className="flex justify-between text-[11px] font-black pt-1 border-t border-black/5 mt-1">
+          <div className="flex justify-between text-xs font-black pt-2 border-t border-black/10 mt-1">
             <span>NET TOTAL:</span>
             <span>KES {formatCurrency(total)}</span>
           </div>
-          <div className="flex justify-between pt-1 border-t border-black border-dotted mt-2">
+          <div className="flex justify-between pt-2 border-t border-black border-dotted mt-2">
             <span className="font-bold">Amount Paid:</span>
-            <span className="font-black">KES {formatCurrency(paid)}</span>
+            <span className="font-black text-xs">KES {formatCurrency(paid)}</span>
           </div>
           {balance > 0 && (
             <div className="flex justify-between font-black text-red-600 pt-1">
@@ -114,17 +117,19 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
         </div>
 
         {/* FOOTER & LOGIC */}
-        <div className="text-center space-y-2 mb-4 w-full">
-          <div className="bg-gray-50 p-2 rounded border border-black/5 mb-4">
-            <p className="text-[8px] font-black uppercase opacity-40 mb-1">Payment Information</p>
-            <p className="font-black uppercase text-[9px]">{data.paymentMethod || 'Settled'}</p>
+        <div className="text-center space-y-4 mb-6 w-full">
+          <div className="py-2 border-y border-dashed border-black/20">
+            <p className="text-[8px] font-black uppercase opacity-40 mb-1">Settlement Method</p>
+            <p className="font-black uppercase text-[10px]">{data.paymentMethod || 'Settled'}</p>
           </div>
           
-          <p className="text-[8px] uppercase mt-4 italic opacity-60">Goods once sold cannot be returned</p>
-          <p className="text-[10px] font-black mt-2 tracking-tight">*** THANK YOU FOR SHOPPING ***</p>
+          <div className="space-y-1">
+              <p className="text-[9px] uppercase font-black tracking-tighter">*** THANK YOU FOR YOUR BUSINESS ***</p>
+              <p className="text-[8px] uppercase italic opacity-60 leading-tight">"Goods once sold cannot be returned"</p>
+          </div>
         </div>
 
-        <div className="w-full border-t border-dashed border-black pt-4 text-center text-[7px] opacity-40 uppercase tracking-[0.2em]">
+        <div className="w-full border-t border-dashed border-black pt-4 text-center text-[7px] opacity-40 uppercase tracking-[0.3em]">
           Electronic Node: {workspace?.name || 'Shop Manager'}
         </div>
       </div>
