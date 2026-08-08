@@ -13,9 +13,11 @@ import { useSaaS } from '@/components/saas/saas-provider';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, addDoc, getDocs, limit } from 'firebase/firestore';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
+import { ThermalReceiptPdf } from '@/app/documents/components/pdfs/thermal-receipt-pdf';
 import { Input } from '@/components/ui/input';
-import { Search, Calendar as CalendarIcon } from 'lucide-react';
+import { Search, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface RecentSalesProps {
     onViewReceipt: (doc: AppDocument) => void;
@@ -27,11 +29,6 @@ const TYPE_INITIALS: Record<string, string> = {
     'Quotation': 'QTN'
 };
 
-/**
- * High-Density Transaction History for POS
- * Queries 'documents' collection to include Receipts, Invoices, and Quotations.
- * Filterable by name and date, with 10/25/50/100 row pagination.
- */
 export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const router = useRouter();
     const { toast } = useToast();
@@ -43,8 +40,8 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
     const [isExporting, setIsExporting] = useState(false);
     const [exportDoc, setExportDoc] = useState<AppDocument | null>(null);
+    const [exportType, setExportType] = useState<'A4' | 'Thermal'>('A4');
 
-    // FETCH DOCUMENTS (Receipt, Invoice, Quotation)
     const docsQuery = useMemoFirebase(() => {
         if (!tenant) return null;
         return query(
@@ -81,43 +78,9 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         return results;
     }, [rawDocs, searchTerm, dateFilter]);
     
-    const handleGenerateDelivery = async (docObj: AppDocument) => {
-        if (!tenant) return;
-        
-        const normalizedItems = (docObj.data?.items || []).map((i: any) => ({
-            description: i.name || i.description || 'Item',
-            serialNumber: i.serialNumber || 'N/A',
-            quantity: i.quantity || 1
-        }));
-
-        const typeCount = rawDocs?.filter(d => d.type === 'DeliveryNote').length || 0;
-        const seq = typeCount + 1;
-
-        const deliveryData = {
-            tenantId: tenant.id,
-            type: 'DeliveryNote' as const,
-            title: `Delivery Note #${String(seq).padStart(3, '0')}`,
-            generatedDate: new Date().toISOString(),
-            relatedTo: docObj.relatedTo,
-            data: {
-                customer: docObj.data?.customer,
-                items: normalizedItems,
-                details: `From ${docObj.type}: ${docObj.title}`,
-            },
-            createdAt: new Date().toISOString(),
-        };
-
-        try {
-            await addDoc(collection(firestore, 'documents'), deliveryData);
-            toast({ title: "Delivery Note Generated" });
-            router.push('/documents');
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: "Error", description: "Cloud sync failed." });
-        }
-    };
-
-    const handleDownloadPdf = async (docToDownload: AppDocument) => {
+    const handleDownloadPdf = async (docToDownload: AppDocument, type: 'A4' | 'Thermal' = 'A4') => {
         setIsExporting(true);
+        setExportType(type);
         const { default: html2canvas } = await import('html2canvas');
         const { default: jsPDF } = await import('jspdf');
 
@@ -128,28 +91,38 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             const element = document.getElementById('recent-sale-export-target');
             if (!element) throw new Error("Export target not found");
 
+            const isThermal = type === 'Thermal';
             const canvas = await html2canvas(element, { 
                 scale: 3, 
                 useCORS: true,
                 backgroundColor: "#ffffff",
-                width: 794,
-                height: 1123,
+                width: isThermal ? 302 : 794,
+                height: isThermal ? 800 : 1123,
                 y: 0,
                 scrollY: 0
             });
             
-            const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+            const pdf = new jsPDF({ 
+                orientation: 'p', 
+                unit: 'mm', 
+                format: isThermal ? [80, 200] : 'a4' 
+            });
+
             const imgData = canvas.toDataURL('image/png', 1.0);
-            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+            if (isThermal) {
+                pdf.addImage(imgData, 'PNG', 0, 0, 80, 200, undefined, 'FAST');
+            } else {
+                pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+            }
             
-            // CUSTOM FILENAME: [Initials] [CustPrefix]-[Year][Day][Month]
             const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
             const custPrefix = (docToDownload.relatedTo || 'VAL').slice(0, 3).toUpperCase();
             const now = new Date(docToDownload.generatedDate);
             const year = now.getFullYear();
             const day = now.getDate().toString().padStart(2, '0');
             const month = (now.getMonth() + 1).toString().padStart(2, '0');
-            const filename = `${initials} ${custPrefix}-${year}${day}${month}.pdf`;
+            const suffix = isThermal ? '_TH' : '';
+            const filename = `${initials} ${custPrefix}-${year}${day}${month}${suffix}.pdf`;
 
             pdf.save(filename);
             toast({ title: "Document Saved" });
@@ -169,7 +142,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
 
     const saleColumnActions: SaleColumnActions = { 
         onView: onViewReceipt,
-        onGenerateDelivery: handleGenerateDelivery,
         onWhatsApp: handleShareWhatsApp,
         onDownload: handleDownloadPdf
     };
@@ -190,6 +162,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <CardTitle className="text-sm font-black uppercase tracking-widest">Transaction History</CardTitle>
                     <div className="flex items-center gap-2">
+                        {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                         <div className="relative">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <Input 
@@ -252,10 +225,13 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                     </div>
                 )}
                 
-                {/* Hidden PDF Render Target */}
                 <div className="fixed left-[-9999px] top-0 pointer-events-none">
-                    <div id="recent-sale-export-target" className="bg-white" style={{ width: '210mm', minHeight: '297mm' }}>
-                        {exportDoc && <ReceiptPdf document={exportDoc} />}
+                    <div id="recent-sale-export-target" className="bg-white" style={{ width: exportType === 'Thermal' ? '80mm' : '210mm' }}>
+                        {exportDoc && (
+                            exportType === 'Thermal' 
+                            ? <ThermalReceiptPdf document={exportDoc} /> 
+                            : <ReceiptPdf document={exportDoc} />
+                        )}
                     </div>
                 </div>
             </CardContent>

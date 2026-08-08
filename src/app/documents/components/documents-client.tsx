@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Info, Wallet } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Info, Wallet, Printer } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem, Sale } from "@/types";
 import {
   Table,
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { InvoicePdf } from "./pdfs/invoice-pdf";
 import { ReceiptPdf } from "./pdfs/receipt-pdf";
+import { ThermalReceiptPdf } from "./pdfs/thermal-receipt-pdf";
 import { ProformaInvoicePdf } from "./pdfs/proforma-pdf";
 import { RepairNotePdf } from "./pdfs/repair-note-pdf";
 import { DeliveryNotePdf } from "./pdfs/delivery-note-pdf";
@@ -73,6 +74,10 @@ export function DocumentsClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
+  const [exportType, setExportType] = useState<'A4' | 'Thermal'>('A4');
+  const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
+
   const docsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'documents'), where('tenantId', '==', tenant.id));
@@ -99,8 +104,6 @@ export function DocumentsClient() {
   const [applyVat, setApplyVat] = useState(false);
   
   const [lineItems, setLineItems] = useState<DocumentLineItem[]>([{ description: '', quantity: 1, unitPrice: 0 }]);
-  const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [isExporting, setIsExporting] = useState(false);
 
@@ -153,7 +156,6 @@ export function DocumentsClient() {
   const handleGenerateDocument = async (type: DocumentType) => {
     if (!tenant || !user) return;
 
-    // SEQUENTIAL LOGIC: Find count of this specific type
     const typeCount = rawDocuments?.filter(d => d.type === type).length || 0;
     const seq = typeCount + 1;
     const initials = TYPE_INITIALS[type] || 'DOC';
@@ -171,7 +173,8 @@ export function DocumentsClient() {
             email: workspaceProfile.email || '',
             logoUrl: workspaceProfile.logoUrl || null,
             primaryColor: workspaceProfile.primaryColor || null,
-            secondaryColor: workspaceProfile.secondaryColor || null
+            secondaryColor: workspaceProfile.secondaryColor || null,
+            taxPin: workspaceProfile.taxPin || null
         } : null
     };
 
@@ -227,24 +230,6 @@ export function DocumentsClient() {
         documentData.subtotal = subtotal;
         documentData.vat = vat;
         documentData.total = subtotal + vat;
-
-        if (type === 'LeaseAgreement') {
-            const startDate = new Date();
-            let endDate = new Date(startDate);
-            if (leaseUnit === "Day") endDate = addDays(startDate, dur);
-            if (leaseUnit === "Week") endDate = addWeeks(startDate, dur);
-            if (leaseUnit === "Month") endDate = addMonths(startDate, dur);
-            if (leaseUnit === "Year") endDate = addYears(startDate, dur);
-
-            documentData.lease = {
-                duration: leaseDuration,
-                unit: leaseUnit,
-                startDate: startDate.toISOString(),
-                endDate: endDate.toISOString()
-            };
-            documentData.clientType = clientType;
-            documentData.verification = verification;
-        }
     }
 
     try {
@@ -258,60 +243,19 @@ export function DocumentsClient() {
             createdAt: new Date().toISOString(),
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         });
-        toast({ title: "Done! Paper is ready." });
+        toast({ title: "Document Created Successfully" });
         setSelectedCustomerId('');
         setDetails('');
         setAmount('');
         setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Something went wrong', description: error.message });
+        toast({ variant: 'destructive', title: 'Action Failed', description: error.message });
     }
   };
 
-  const handleGenerateDeliveryFromExisting = async (sourceDoc: AppDocument) => {
-    if (!tenant || !user) return;
-
-    const normalizedItems = (sourceDoc.data.items || []).map((i: any) => ({
-        description: i.description || i.name || "Item",
-        quantity: i.quantity || 1,
-        serialNumber: i.serialNumber || "N/A"
-    }));
-
-    const typeCount = rawDocuments?.filter(d => d.type === 'DeliveryNote').length || 0;
-    const seq = typeCount + 1;
-
-    const deliveryData = {
-        tenantId: tenant.id,
-        type: 'DeliveryNote' as const,
-        title: `Delivery Note #${String(seq).padStart(3, '0')}`,
-        generatedDate: new Date().toISOString(),
-        relatedTo: sourceDoc.relatedTo,
-        data: {
-            customer: sourceDoc.data.customer,
-            items: normalizedItems,
-            details: `From ${sourceDoc.type}: ${sourceDoc.title}`,
-            workspace: sourceDoc.data.workspace
-        },
-        createdAt: new Date().toISOString(),
-        createdBy: { uid: user.uid, name: user.displayName || 'User' }
-    };
-
-    try {
-        await addDoc(collection(firestore, 'documents'), deliveryData);
-        toast({ title: "Delivery note created!" });
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Failed to create note', description: error.message });
-    }
-  };
-  
-  const handleLineItemChange = (index: number, field: keyof DocumentLineItem, value: string | number) => {
-    const updatedItems = [...lineItems];
-    updatedItems[index] = { ...updatedItems[index], [field]: field === 'description' ? value : Number(value) || 0 };
-    setLineItems(updatedItems);
-  };
-
-  const handleDownloadPdf = async (docToDownload: AppDocument) => {
+  const handleDownloadPdf = async (docToDownload: AppDocument, type: 'A4' | 'Thermal' = 'A4') => {
     setIsExporting(true);
+    setExportType(type);
     
     const originalScrollY = window.scrollY;
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -322,7 +266,7 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    await new Promise(r => setTimeout(r, 400)); 
+    await new Promise(r => setTimeout(r, 450)); 
 
     const element = document.getElementById('pdf-preview-target');
     if (!element) {
@@ -332,13 +276,13 @@ export function DocumentsClient() {
     }
 
     try {
+        const isThermal = type === 'Thermal';
         const canvas = await html2canvas(element, { 
             scale: 3, 
             useCORS: true,
-            logging: false,
             backgroundColor: "#ffffff",
-            width: 794,
-            height: 1123,
+            width: isThermal ? 302 : 794, // 80mm vs A4
+            height: isThermal ? 800 : 1123,
             y: 0,
             scrollY: 0
         });
@@ -346,24 +290,28 @@ export function DocumentsClient() {
         const pdf = new jsPDF({
             orientation: 'p',
             unit: 'mm',
-            format: 'a4',
+            format: isThermal ? [80, 200] : 'a4',
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
-        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        if (isThermal) {
+            pdf.addImage(imgData, 'PNG', 0, 0, 80, 200, undefined, 'FAST');
+        } else {
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        }
         
-        // CUSTOM FILENAME: [Initials] [CustPrefix]-[Year][Day][Month]
         const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
         const custPrefix = (docToDownload.relatedTo || 'VAL').slice(0, 3).toUpperCase();
         const now = new Date(docToDownload.generatedDate);
         const year = now.getFullYear();
         const day = now.getDate().toString().padStart(2, '0');
         const month = (now.getMonth() + 1).toString().padStart(2, '0');
-        const filename = `${initials} ${custPrefix}-${year}${day}${month}.pdf`;
+        const suffix = isThermal ? '_TH' : '';
+        const filename = `${initials} ${custPrefix}-${year}${day}${month}${suffix}.pdf`;
         
         pdf.save(filename);
     } catch (err) {
-        toast({ variant: 'destructive', title: 'Failed to save PDF' });
+        toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
         setIsPdfPreviewOpen(false);
         setIsExporting(false);
@@ -372,7 +320,7 @@ export function DocumentsClient() {
   };
 
   const columnActions: DocumentColumnActions = { 
-    onView: (d) => { setSelectedDocument(d); setIsPdfPreviewOpen(true); }, 
+    onView: (d) => { setExportType('A4'); setSelectedDocument(d); setIsPdfPreviewOpen(true); }, 
     onDownload: handleDownloadPdf,
     onPrint: (d) => { 
         setSelectedDocument(d); 
@@ -384,7 +332,6 @@ export function DocumentsClient() {
         const msg = `Hello! Your ${d.type} (${d.title}) is ready. Thank you!`;
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
     },
-    onGenerateDelivery: handleGenerateDeliveryFromExisting
   };
   
   const customColumns = useMemo(() => getDocumentColumns(columnActions), [columnActions]);
@@ -400,6 +347,9 @@ export function DocumentsClient() {
 
   const renderPdfPreview = () => {
     if (!selectedDocument) return null;
+    if (exportType === 'Thermal' && selectedDocument.type === 'Receipt') {
+        return <ThermalReceiptPdf document={selectedDocument} />;
+    }
     switch(selectedDocument.type) {
       case 'Invoice': return <InvoicePdf document={selectedDocument} />;
       case 'Receipt': return <ReceiptPdf document={selectedDocument} />;
@@ -435,90 +385,12 @@ export function DocumentsClient() {
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedCustomerId && (
-                  <div className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
-                    <Wallet className="h-4 w-4 text-orange-600" />
-                    <div className="space-y-0.5">
-                      <p className="text-[8px] font-black uppercase text-orange-600">Previous Account Balance</p>
-                      <p className="text-sm font-black text-orange-900">
-                        {isBalanceLoading ? "..." : `KES ${customerBalance.toLocaleString()}`}
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-xl border h-11 self-end">
                 <Switch id="vat-switch" checked={applyVat} onCheckedChange={setApplyVat} />
                 <Label htmlFor="vat-switch" className="cursor-pointer font-bold text-xs">Add 16% Tax (VAT)</Label>
               </div>
           </div>
-
-          {type === 'LeaseAgreement' && (
-              <div className="space-y-6 animate-in fade-in duration-500">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-primary/5 rounded-2xl border border-primary/10">
-                      <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase">Who is hiring?</Label>
-                          <Select onValueChange={(v: any) => setClientType(v)} value={clientType}>
-                              <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="Individual">Person</SelectItem>
-                                  <SelectItem value="Corporate">Company</SelectItem>
-                              </SelectContent>
-                          </Select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                              <Label className="text-[10px] font-black uppercase opacity-60">How long?</Label>
-                              <Input type="number" value={leaseDuration} onChange={e => setLeaseDuration(e.target.value)} className="h-11" />
-                          </div>
-                          <div className="space-y-2">
-                              <Label className="text-[10px] font-black uppercase opacity-60">Time Unit</Label>
-                              <Select onValueChange={(v: any) => setLeaseUnit(v)} value={leaseUnit}>
-                                  <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                      <SelectItem value="Day">Days</SelectItem>
-                                      <SelectItem value="Week">Weeks</SelectItem>
-                                      <SelectItem value="Month">Months</SelectItem>
-                                      <SelectItem value="Year">Years</SelectItem>
-                                  </SelectContent>
-                              </Select>
-                          </div>
-                      </div>
-                  </div>
-
-                  <div className="space-y-4">
-                      <h4 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                          <Info className="h-4 w-4" /> Client ID Info
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-xl bg-muted/20">
-                          {clientType === 'Individual' ? (
-                              <>
-                                  <Input placeholder="National ID Card Number" className="h-10" onChange={e => setVerification({...verification, nationalId: e.target.value})} />
-                                  <Input placeholder="Guarantor/Friend ID Number" className="h-10" onChange={e => setVerification({...verification, guarantorId: e.target.value})} />
-                                  <div className="md:col-span-2 flex items-center gap-4 p-3 bg-white rounded-lg border">
-                                      <Switch id="student-toggle" checked={isStudent} onCheckedChange={setIsStudent} />
-                                      <Label htmlFor="student-toggle" className="text-xs font-bold">This is a student</Label>
-                                  </div>
-                                  {isStudent && (
-                                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                          <Input placeholder="Student ID Number" className="h-10" onChange={e => setVerification({...verification, studentId: e.target.value})} />
-                                          <Input placeholder="Parent/Guardian Name" className="h-10" onChange={e => setVerification({...verification, parentName: e.target.value})} />
-                                          <Input placeholder="Parent/Guardian Phone" className="h-10" onChange={e => setVerification({...verification, parentPhone: e.target.value})} />
-                                      </div>
-                                  )}
-                              </>
-                          ) : (
-                              <>
-                                  <Input placeholder="Business Permit Number" className="h-10" onChange={e => setVerification({...verification, businessPermit: e.target.value})} />
-                                  <Input placeholder="Company Registration Number" className="h-10" onChange={e => setVerification({...verification, cr12Reference: e.target.value})} />
-                                  <Input placeholder="Boss/Signatory ID Number" className="h-10" onChange={e => setVerification({...verification, directorId: e.target.value})} />
-                                  <Input placeholder="Contact Person Name" className="h-10" onChange={e => setVerification({...verification, contactPerson: e.target.value})} />
-                              </>
-                          )}
-                      </div>
-                  </div>
-              </div>
-          )}
 
           {showsItemEntry && (
             <div className="space-y-4">
@@ -529,7 +401,7 @@ export function DocumentsClient() {
                             <TableRow>
                                 <TableHead className="text-[10px] font-black uppercase min-w-[200px]">Item Description</TableHead>
                                 <TableHead className="w-24 text-[10px] font-black uppercase">Qty</TableHead>
-                                <TableHead className="w-32 text-[10px] font-black uppercase">{type === 'LeaseAgreement' ? 'Rate' : 'Price'}</TableHead>
+                                <TableHead className="w-32 text-[10px] font-black uppercase">Price</TableHead>
                                 <TableHead className="w-10"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -548,22 +420,25 @@ export function DocumentsClient() {
                 <Button type="button" variant="outline" size="sm" onClick={() => setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }])} className="h-8 font-bold"><PlusCircle className="mr-2 h-3 w-3"/>Add Another Row</Button>
             </div>
           )}
-          
-          {type === 'Receipt' && lineItems.length === 1 && lineItems[0].description === '' && (
-            <div className="max-w-xs space-y-2">
-                <Label>Total Paid (KES)</Label>
-                <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11" placeholder="0.00" />
-            </div>
-          )}
         </CardContent>
-        <CardFooter className="bg-muted/10 border-t py-4"><Button onClick={() => handleGenerateDocument(type)} className="w-full sm:w-auto ml-auto font-black uppercase" disabled={docsLoading}>Save and Create Document</Button></CardFooter>
+        <CardFooter className="bg-muted/10 border-t py-4">
+            <Button onClick={() => handleGenerateDocument(type)} className="w-full sm:w-auto ml-auto font-black uppercase" disabled={docsLoading}>
+                Generate and Sync to Cloud
+            </Button>
+        </CardFooter>
       </Card>
     );
   };
 
+  const handleLineItemChange = (index: number, field: keyof DocumentLineItem, value: string | number) => {
+    const updatedItems = [...lineItems];
+    updatedItems[index] = { ...updatedItems[index], [field]: field === 'description' ? value : Number(value) || 0 };
+    setLineItems(updatedItems);
+  };
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Make Papers" description="Create professional invoices and receipts for your shop." />
+      <PageHeader title="Document Node" description="High-fidelity business paperwork synchronized with your cloud ledger." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
@@ -580,23 +455,23 @@ export function DocumentsClient() {
       </Tabs>
       
       <Card className="mt-8 shadow-2xl border-none overflow-hidden">
-          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase">Papers already made</CardTitle></CardHeader>
+          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Archive Registry</CardTitle></CardHeader>
           <CardContent className="p-0 overflow-auto">
             <Table>
                 <TableHeader className="bg-muted/20">
                     {table.getHeaderGroups().map(hg => (
                         <TableRow key={hg.id}>
-                            {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase min-w-[120px]">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
+                            {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
                         </TableRow>
                     ))}
                 </TableHeader>
                 <TableBody>
                     {table.getRowModel().rows.length ? (
                         table.getRowModel().rows.map(row => (
-                            <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
+                            <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
                         ))
                     ) : (
-                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No papers found yet.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No document records found in this node.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>
@@ -607,17 +482,26 @@ export function DocumentsClient() {
        <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
         <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
           <DialogHeader className="p-6 bg-white border-b no-print">
-            <DialogTitle className="text-xl font-black uppercase tracking-tight">Paper Preview</DialogTitle>
+            <div className="flex items-center justify-between">
+                <DialogTitle className="text-xl font-black uppercase tracking-tight">Paper Preview</DialogTitle>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'A4')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download A4</Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'Thermal')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download Thermal</Button>
+                </div>
+            </div>
           </DialogHeader>
           <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-4 md:p-8">
-            <div id="pdf-preview-target" className="shrink-0 shadow-2xl relative bg-white overflow-hidden origin-top scale-[0.4] sm:scale-[0.6] md:scale-100" style={{ width: '210mm', minHeight: '297mm' }}>
+            <div id="pdf-preview-target" className={cn(
+                "shrink-0 shadow-2xl relative bg-white overflow-hidden origin-top scale-[0.4] sm:scale-[0.6] md:scale-100",
+                exportType === 'Thermal' ? "w-[80mm]" : "w-[210mm] min-h-[297mm]"
+            )}>
                 {renderPdfPreview()}
             </div>
           </div>
           <div className="p-4 border-t flex flex-col sm:flex-row justify-end gap-3 bg-white no-print">
             {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
             <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold w-full sm:w-auto">Close Preview</Button>
-            <Button onClick={() => window.print()} className="font-black uppercase w-full sm:w-auto">Print Now</Button>
+            <Button onClick={() => window.print()} className="font-black uppercase w-full sm:w-auto"><Printer className="mr-2 h-4 w-4" />Execute Print</Button>
           </div>
         </DialogContent>
       </Dialog>
