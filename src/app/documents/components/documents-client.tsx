@@ -49,6 +49,7 @@ import { Switch } from "@/components/ui/switch";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { addDays, addWeeks, addMonths, addYears } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const VAT_RATE = 0.16;
 
@@ -171,6 +172,7 @@ export function DocumentsClient() {
             address: workspaceProfile.address || '',
             phone: workspaceProfile.phone || '',
             email: workspaceProfile.email || '',
+            website: workspaceProfile.website || '',
             logoUrl: workspaceProfile.logoUrl || null,
             primaryColor: workspaceProfile.primaryColor || null,
             secondaryColor: workspaceProfile.secondaryColor || null,
@@ -282,7 +284,7 @@ export function DocumentsClient() {
             useCORS: true,
             backgroundColor: "#ffffff",
             width: isThermal ? 302 : 794, // 80mm vs A4
-            height: isThermal ? 800 : 1123,
+            height: isThermal ? 1600 : 1123, // Thermal height adjusted for two copies
             y: 0,
             scrollY: 0
         });
@@ -290,12 +292,12 @@ export function DocumentsClient() {
         const pdf = new jsPDF({
             orientation: 'p',
             unit: 'mm',
-            format: isThermal ? [80, 200] : 'a4',
+            format: isThermal ? [80, 400] : 'a4',
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
         if (isThermal) {
-            pdf.addImage(imgData, 'PNG', 0, 0, 80, 200, undefined, 'FAST');
+            pdf.addImage(imgData, 'PNG', 0, 0, 80, 400, undefined, 'FAST');
         } else {
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
         }
