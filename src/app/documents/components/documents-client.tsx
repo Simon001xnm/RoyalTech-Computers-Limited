@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -51,6 +50,21 @@ import { addDays, addWeeks, addMonths, addYears } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
 const VAT_RATE = 0.16;
+
+const TYPE_INITIALS: Record<string, string> = {
+    'Invoice': 'INV',
+    'Receipt': 'RCT',
+    'Quotation': 'QTN',
+    'Proforma': 'PRO',
+    'RepairNote': 'RPN',
+    'DeliveryNote': 'DLV',
+    'LPO': 'LPO',
+    'LeaseAgreement': 'LSE',
+    'PurchaseOrder': 'LPO',
+    'CreditNote': 'CRN',
+    'DebitNote': 'DBN',
+    'CustomerStatement': 'STM'
+};
 
 export function DocumentsClient() {
   const [activeTab, setActiveTab] = useState<DocumentType>("Invoice");
@@ -332,7 +346,17 @@ export function DocumentsClient() {
 
         const imgData = canvas.toDataURL('image/png', 1.0);
         pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-        pdf.save(`${docToDownload.title.replace(/\s+/g, '_')}.pdf`);
+        
+        // CUSTOM FILENAME: [Initials] [CompPrefix]-[Year][Date][Month]
+        const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
+        const compPrefix = (tenant?.name || 'HUB').slice(0, 3).toUpperCase();
+        const now = new Date();
+        const year = now.getFullYear();
+        const date = now.getDate().toString().padStart(2, '0');
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const filename = `${initials} ${compPrefix}-${year}${date}${month}.pdf`;
+        
+        pdf.save(filename);
     } catch (err) {
         toast({ variant: 'destructive', title: 'Failed to save PDF' });
     } finally {

@@ -129,7 +129,16 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
             const imgData = canvas.toDataURL('image/png', 1.0);
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-            pdf.save(`${(docToUse.title || 'Receipt').replace(/\s+/g, '_')}.pdf`);
+            
+            // CUSTOM FILENAME: RCT [CompPrefix]-[Year][Date][Month]
+            const compPrefix = (tenant?.name || 'HUB').slice(0, 3).toUpperCase();
+            const now = new Date();
+            const year = now.getFullYear();
+            const date = now.getDate().toString().padStart(2, '0');
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const filename = `RCT ${compPrefix}-${year}${date}${month}.pdf`;
+
+            pdf.save(filename);
             toast({ title: "Receipt Downloaded" });
         } catch (e) {
             toast({ variant: 'destructive', title: "Export Failed" });
