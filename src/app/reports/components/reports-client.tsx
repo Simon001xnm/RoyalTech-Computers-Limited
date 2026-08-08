@@ -73,23 +73,32 @@ export function ReportsClient() {
 
   const pnlData = useMemo<PnlData>(() => {
     const { filteredSales, filteredExpenses } = filteredData;
-    const totalSales = filteredSales.reduce((sum, s) => sum + s.amount, 0);
+    
+    // Revenue based on Gross Sale Value (matches Invoice total)
+    const totalSales = filteredSales.reduce((sum, s) => sum + (Number(s.total) || Number(s.amount) || 0), 0);
+    
+    // COGS based on historical snapshots saved in SaleItems
     const cogsBreakdown = filteredSales.reduce((acc, sale) => {
         if (sale.items && sale.items.length > 0) {
-            sale.items.forEach(item => {
-                const cogs = item.cogs || 0;
+            sale.items.forEach((item: any) => {
+                const cogs = Number(item.cogs) || 0;
                 acc.totalCogs += cogs;
-                let category = item.type === 'asset' ? 'Cost of Assets' : 'Cost of Accessories';
+                
+                // Grouping logic for P&L clarity
+                let category = 'Product Inventory COGS';
+                if (item.type === 'accessory') category = 'Accessories & Spares COGS';
+                if (item.type === 'custom') category = 'Manual Item Costs';
+                
                 acc.cogsByCategory[category] = (acc.cogsByCategory[category] || 0) + cogs;
             });
         }
         return acc;
     }, { totalCogs: 0, cogsByCategory: {} as Record<string, number> });
 
-    const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const expenseByCategory = filteredExpenses.reduce((acc, expense) => {
         const category = expense.category || 'Uncategorized';
-        acc[category] = (acc[category] || 0) + expense.amount;
+        acc[category] = (acc[category] || 0) + (Number(expense.amount) || 0);
         return acc;
     }, {} as { [key: string]: number });
 
@@ -113,11 +122,17 @@ export function ReportsClient() {
     if (!reportElement) return;
 
     try {
-        const canvas = await html2canvas(reportElement, { scale: 2, useCORS: true, windowWidth: 1200 });
+        const canvas = await html2canvas(reportElement, { 
+            scale: 2.5, 
+            useCORS: true, 
+            windowWidth: 1200,
+            backgroundColor: '#ffffff'
+        });
         const pdf = new jsPDF('p', 'mm', 'a4');
         const imgData = canvas.toDataURL('image/png', 1.0);
         pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-        pdf.save(`Financial_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+        pdf.save(`P&L_Report_${format(new Date(), 'yyyyMMdd')}.pdf`);
+        toast({ title: "Report Exported" });
     } catch (error) {
         toast({ variant: 'destructive', title: 'PDF Export Failed' });
     }
@@ -139,7 +154,7 @@ export function ReportsClient() {
             <PopoverContent className="w-auto p-0" align="start"><Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={setDate} numberOfMonths={2} /></PopoverContent>
           </Popover>
           <Button onClick={handleDownloadPdf} disabled={isLoading} className="h-11 px-6 font-bold shadow-md">
-            <Download className="mr-2 h-4 w-4" /> Export Report
+            <Download className="mr-2 h-4 w-4" /> Export PDF
           </Button>
         </CardContent>
       </Card>
