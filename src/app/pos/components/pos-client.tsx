@@ -368,10 +368,10 @@ export function PosClient() {
                         <Popover open={custSearchOpen} onOpenChange={setCustSearchOpen}>
                             <PopoverTrigger asChild>
                                 <Button 
-                                    variant={selectedCustomer ? "secondary" : "outline"} 
+                                    variant={selectedCustomer ? "default" : "outline"} 
                                     className={cn(
-                                        "h-12 px-6 font-bold",
-                                        !selectedCustomer && "border-primary ring-2 ring-primary/20 animate-pulse"
+                                        "h-12 px-6 font-black uppercase tracking-widest transition-all",
+                                        selectedCustomer ? "shadow-lg scale-105" : "border-primary ring-2 ring-primary/20 animate-pulse"
                                     )}
                                 >
                                     {selectedCustomer ? selectedCustomer.name : 'Select Client...'}
