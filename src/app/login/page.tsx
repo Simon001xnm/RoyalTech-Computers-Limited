@@ -8,12 +8,8 @@ import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignIn, initiateGoogleSignIn, initiatePasswordReset } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ShieldCheck, Zap, Eye, EyeOff } from 'lucide-react';
-import { MASTER_KEYS } from '@/lib/roles';
+import { Loader2, Zap, Eye, EyeOff } from 'lucide-react';
 
-/**
- * @fileOverview Standalone Login Form
- */
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,13 +22,9 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const isMasterInput = MASTER_KEYS.includes(email.toLowerCase().trim());
-
   useEffect(() => {
     if (!isUserLoading && user) {
-      const userEmail = user.email?.toLowerCase().trim() || "";
-      const isActuallyMaster = MASTER_KEYS.includes(userEmail);
-      router.push(isActuallyMaster ? '/admin' : '/');
+      router.push('/');
     }
   }, [user, isUserLoading, router]);
 
@@ -161,12 +153,6 @@ export default function LoginPage() {
                     </button>
                 </div>
             </div>
-
-            {isMasterInput && (
-              <div className="flex items-center gap-2 p-2 bg-primary/5 border border-primary/20 rounded-lg text-primary text-[9px] font-black uppercase">
-                <ShieldCheck className="h-3 w-3" /> Root Access Mode
-              </div>
-            )}
 
             <Button onClick={handleSignIn} className="w-full h-12 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 bg-primary text-primary-foreground" disabled={isProcessing}>
                 {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log in to Node'}

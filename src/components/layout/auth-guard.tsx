@@ -2,26 +2,23 @@
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarSeparator, SidebarTrigger } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, ShieldCheck, Loader2, Lock } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
-import { isMasterKey } from '@/lib/roles';
 import { logger } from '@/lib/logger';
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { NotificationCenter } from '@/components/layout/notification-center';
 
 const AUTH_PATHS = ['/login', '/signup'];
 
-function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { children: React.ReactNode, userProfile: AppUser | null, isFastTrackAdmin: boolean }) {
+function AuthenticatedLayout({ children, userProfile }: { children: React.ReactNode, userProfile: AppUser | null }) {
     const { user } = useUser();
     const auth = useAuth();
     const firestore = useFirestore();
@@ -36,28 +33,21 @@ function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { chil
         if (auth) {
             logger.business('Identity', 'Account Session Ended', { 
                 email: user?.email, 
-                company: company?.name || 'ROOT',
+                company: company?.name || 'STANDALONE',
                 uid: user?.uid 
             });
             auth.signOut();
         }
     };
 
-    const isSuperAdmin = isFastTrackAdmin || userProfile?.role === 'super_admin';
-
   return (
     <SidebarProvider defaultOpen={true}>
       <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-md no-print">
         <SidebarHeader className="p-4">
-            <Link href={isSuperAdmin ? "/admin" : "/"} className="flex items-center gap-2">
-            <div className={isSuperAdmin ? "bg-primary p-1.5 rounded-lg shadow-sm" : ""}>
-                <h1 className={cn(
-                    "text-lg font-black uppercase tracking-tighter text-sidebar-foreground group-data-[collapsible=icon]:hidden",
-                    isSuperAdmin && "text-primary-foreground"
-                )}>
-                    {isSuperAdmin ? "PLATFORM" : APP_NAME}
+            <Link href="/" className="flex items-center gap-2">
+                <h1 className="text-lg font-black uppercase tracking-tighter text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+                    {APP_NAME}
                 </h1>
-            </div>
             </Link>
         </SidebarHeader>
         <SidebarContent>
@@ -78,14 +68,8 @@ function AuthenticatedLayout({ children, userProfile, isFastTrackAdmin }: { chil
           <div className="flex items-center gap-4">
             <SidebarTrigger />
             <Link href="/" className="flex items-center gap-2 font-bold text-lg md:hidden">
-              <span>{isSuperAdmin ? "ADMIN" : APP_NAME}</span>
+              <span>{APP_NAME}</span>
             </Link>
-            {isSuperAdmin && (
-               <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black uppercase tracking-widest text-[9px] px-3 h-6">
-                  <ShieldCheck className="h-3 w-3 mr-1" />
-                  ROOT
-               </Badge>
-            )}
           </div>
           
           <div className="flex items-center gap-4">
@@ -139,7 +123,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
 
   const isAuthPath = AUTH_PATHS.includes(pathname);
-  const isFastTrackAdmin = useMemo(() => isMasterKey(user?.email), [user?.email]);
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
@@ -149,11 +132,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       if (!user && !isAuthPath) {
         router.push('/login');
       } else if (user && isAuthPath) {
-        if (isFastTrackAdmin) router.push('/admin');
-        else router.push('/');
+        router.push('/');
       }
     }
-  }, [user, isUserLoading, isFastTrackAdmin, userProfile, router, pathname, isAuthPath]);
+  }, [user, isUserLoading, userProfile, router, pathname, isAuthPath]);
 
   if (isUserLoading) {
     return (
@@ -164,7 +146,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (user) {
-    if (isProfileLoading && !isFastTrackAdmin) {
+    if (isProfileLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <Loader2 className="w-6 h-6 text-primary animate-spin opacity-20" />
@@ -189,7 +171,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
 
-    return <AuthenticatedLayout userProfile={userProfile || null} isFastTrackAdmin={isFastTrackAdmin}>{children}</AuthenticatedLayout>;
+    return <AuthenticatedLayout userProfile={userProfile || null}>{children}</AuthenticatedLayout>;
   }
 
   if (isAuthPath) {

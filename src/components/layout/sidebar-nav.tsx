@@ -11,17 +11,15 @@ import {
 } from "@/components/ui/sidebar";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from 'firebase/firestore';
-import { getPermittedNavItems, isMasterKey } from '@/lib/roles';
+import { getPermittedNavItems } from '@/lib/roles';
 import { useSaaS } from "@/components/saas/saas-provider";
-import { AlertTriangle, ShieldCheck } from "lucide-react";
-import { parseISO, differenceInDays } from "date-fns";
 import { useMemo } from "react";
 import type { User as AppUser, Company } from '@/types';
 
 export function SidebarNav() {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
-  const { tenant, plan, usage, isLegacyUser } = useSaaS();
+  const { tenant } = useSaaS();
   const firestore = useFirestore();
 
   const userProfileRef = useMemoFirebase(() => 
@@ -36,27 +34,14 @@ export function SidebarNav() {
   );
   const { data: company } = useDoc<Company>(companyRef);
 
-  const isMaster = useMemo(() => isMasterKey(user?.email), [user?.email]);
-
-  const hasHealthIssue = useMemo(() => {
-    if (!plan || isLegacyUser) return false;
-    const isHighUsage = usage.assets >= plan.maxAssets * 0.8 || usage.salesThisMonth >= plan.maxSalesPerMonth * 0.8;
-    let isExpiringSoon = false;
-    if (tenant?.expiresAt) {
-        const daysLeft = differenceInDays(parseISO(tenant.expiresAt), new Date());
-        isExpiringSoon = daysLeft <= 7;
-    }
-    return isHighUsage || isExpiringSoon;
-  }, [plan, usage, isLegacyUser, tenant]);
-
   const permittedNavItems = useMemo(() => {
-    return getPermittedNavItems(currentUser, user?.email, company);
-  }, [currentUser, user?.email, company]);
+    return getPermittedNavItems(currentUser, company);
+  }, [currentUser, company]);
 
   if (isUserLoading || isProfileLoading) {
     return (
         <SidebarMenu className="p-2">
-            {Array.from({ length: 8 }).map((_, i) => <SidebarMenuSkeleton key={i} />)}
+            {Array.from({ length: 5 }).map((_, i) => <SidebarMenuSkeleton key={i} />)}
         </SidebarMenu>
     );
   }
@@ -76,35 +61,11 @@ export function SidebarNav() {
               >
                 <item.icon className="h-5 w-5" />
                 <span>{item.label}</span>
-                {item.href === '/profile' && hasHealthIssue && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                      <AlertTriangle className="h-3 w-3 text-destructive animate-pulse" />
-                    </div>
-                )}
               </SidebarMenuButton>
             </Link>
           </SidebarMenuItem>
         ))}
       </SidebarMenu>
-
-      {isMaster && (
-          <div className="mt-auto pt-4 pb-4">
-              <SidebarSeparator className="mb-4" />
-              <SidebarMenu>
-                  <SidebarMenuItem>
-                      <Link href="/admin" legacyBehavior passHref>
-                        <SidebarMenuButton 
-                            isActive={pathname.startsWith('/admin')}
-                            className="text-primary font-bold hover:bg-primary/5"
-                        >
-                            <ShieldCheck className="h-5 w-5" />
-                            <span>Platform Command</span>
-                        </SidebarMenuButton>
-                      </Link>
-                  </SidebarMenuItem>
-              </SidebarMenu>
-          </div>
-      )}
     </div>
   );
 }

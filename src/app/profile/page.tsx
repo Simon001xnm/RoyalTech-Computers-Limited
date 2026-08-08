@@ -185,8 +185,6 @@ export default function ProfilePage() {
     );
   }
 
-  const isSuperAdmin = userProfile?.role === 'super_admin';
-
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20">
       <PageHeader title="Shop Settings" description="Configure branding and high-fidelity generation standards." />
@@ -206,7 +204,7 @@ export default function ProfilePage() {
               <div className="mt-6 space-y-1">
                 <CardTitle className="text-2xl font-black uppercase tracking-tight">{displayName || 'User'}</CardTitle>
                 <CardDescription className="font-medium">{email}</CardDescription>
-                <Badge className={cn("mt-4 capitalize px-4 h-7 text-[10px] font-black tracking-widest uppercase", isSuperAdmin ? "bg-primary text-primary-foreground" : "")}>
+                <Badge className="mt-4 capitalize px-4 h-7 text-[10px] font-black tracking-widest uppercase">
                     {userProfile.role}
                 </Badge>
               </div>
@@ -225,7 +223,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="space-y-8">
-          {!isSuperAdmin && company && (
+          {company && (
             <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden">
                 <CardHeader className="bg-muted/10 border-b p-8">
                     <div className="flex items-center gap-4">
@@ -234,7 +232,7 @@ export default function ProfilePage() {
                         </div>
                         <div>
                             <CardTitle className="text-2xl font-black uppercase tracking-tighter">Identity & Logic</CardTitle>
-                            <CardDescription>SaaS infrastructure and document generation standards.</CardDescription>
+                            <CardDescription>Workspace branding and document standards.</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
