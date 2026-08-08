@@ -47,6 +47,7 @@ export function PosClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
+  // Initial state is null to force an explicit selection (even Walk-in)
   const [selectedCustomer, setSelectedCustomer] = useState<{id: string, name: string} | null>(null);
   const [customerBalance, setCustomerBalance] = useState(0);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -86,7 +87,7 @@ export function PosClient() {
 
   // Fetch Customer Balance
   useEffect(() => {
-    if (!selectedCustomer?.id || !tenant) {
+    if (!selectedCustomer?.id || selectedCustomer.id === 'walk-in' || !tenant) {
       setCustomerBalance(0);
       return;
     }
@@ -131,6 +132,10 @@ export function PosClient() {
   }, [cart, discount, payments, applyVat]);
 
   const handleSelectProduct = (product: any) => {
+    if (!selectedCustomer) {
+        toast({ variant: 'destructive', title: 'Action Required', description: 'Please select a client first.' });
+        return;
+    }
     setSelectedProduct(product);
     setSelectionQty('1');
     setSelectionPrice(''); 
@@ -188,7 +193,7 @@ export function PosClient() {
   };
 
   const handleProcessPOSAction = async (actionType: 'Receipt' | 'Invoice' | 'Quotation') => {
-    if (cart.length === 0 || !tenant || !user) return;
+    if (cart.length === 0 || !tenant || !user || !selectedCustomer) return;
     setIsProcessing(true);
 
     try {
@@ -204,8 +209,8 @@ export function PosClient() {
         const baseData = {
             tenantId: tenant.id,
             date: timestamp,
-            customerId: selectedCustomer?.id || 'walk-in',
-            customerName: selectedCustomer?.name || 'Walk-in Client',
+            customerId: selectedCustomer.id,
+            customerName: selectedCustomer.name,
             items: cart.map(item => ({...item, type: 'asset', cogs: item.buyingPrice * item.quantity})),
             subtotal,
             vatAmount,
@@ -230,10 +235,10 @@ export function PosClient() {
             type: effectiveDocType,
             title: `${effectiveDocType} #${docRef.id.slice(0, 8).toUpperCase()}`,
             generatedDate: timestamp,
-            relatedTo: selectedCustomer?.name || 'Walk-in Client',
+            relatedTo: selectedCustomer.name,
             data: {
                 ...baseData,
-                customer: selectedCustomer
+                customer: selectedCustomer.id === 'walk-in' ? null : selectedCustomer
             },
             createdAt: timestamp,
             createdBy: { uid: user.uid, name: user.displayName }
@@ -294,10 +299,23 @@ export function PosClient() {
                     <div className="flex items-center justify-between gap-4">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Popover open={searchOpen} onOpenChange={setSearchOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" className="w-full pl-10 h-12 justify-start font-normal bg-white">
-                                        Search product...
+                            <Popover open={searchOpen} onOpenChange={(open) => {
+                                if (open && !selectedCustomer) {
+                                    toast({ variant: 'destructive', title: 'Wait!', description: 'Select a client before adding products.' });
+                                    return;
+                                }
+                                setSearchOpen(open);
+                            }}>
+                                <PopoverTrigger asChild disabled={!selectedCustomer}>
+                                    <Button 
+                                        variant="outline" 
+                                        className={cn(
+                                            "w-full pl-10 h-12 justify-start font-normal bg-white",
+                                            !selectedCustomer && "opacity-50 cursor-not-allowed"
+                                        )}
+                                        disabled={!selectedCustomer}
+                                    >
+                                        {selectedCustomer ? 'Search product...' : 'Please select a client first...'}
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[600px] p-0" align="start">
@@ -328,15 +346,21 @@ export function PosClient() {
                         </div>
                         <Popover open={custSearchOpen} onOpenChange={setCustSearchOpen}>
                             <PopoverTrigger asChild>
-                                <Button variant="secondary" className="h-12 px-6 font-bold">
-                                    {selectedCustomer ? selectedCustomer.name : 'Walk-in Client'}
+                                <Button 
+                                    variant={selectedCustomer ? "secondary" : "outline"} 
+                                    className={cn(
+                                        "h-12 px-6 font-bold",
+                                        !selectedCustomer && "border-primary ring-2 ring-primary/20 animate-pulse"
+                                    )}
+                                >
+                                    {selectedCustomer ? selectedCustomer.name : 'Select Client...'}
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-80 p-0">
                                 <Command>
                                     <CommandInput placeholder="Search client..." />
                                     <CommandList>
-                                        <CommandItem onSelect={() => { setSelectedCustomer(null); setCustSearchOpen(false); }}>Walk-in Client</CommandItem>
+                                        <CommandItem onSelect={() => { setSelectedCustomer({id: 'walk-in', name: 'Walk-in Client'}); setCustSearchOpen(false); }}>Walk-in Client</CommandItem>
                                         <CommandGroup heading="CRM Directory">
                                             {customers?.map(c => (
                                                 <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({id: c.id, name: c.name}); setCustSearchOpen(false); }}>{c.name}</CommandItem>
@@ -384,6 +408,7 @@ export function PosClient() {
                                             <div className="space-y-2">
                                                 <ShoppingCart className="h-12 w-12 mx-auto" />
                                                 <p className="text-xs font-black uppercase tracking-widest">Basket Empty</p>
+                                                {!selectedCustomer && <p className="text-[10px] font-bold text-primary animate-bounce">Select a client to start selling</p>}
                                             </div>
                                         </TableCell>
                                     </TableRow>
