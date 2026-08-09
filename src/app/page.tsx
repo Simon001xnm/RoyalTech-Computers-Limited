@@ -20,7 +20,8 @@ import {
     Wallet,
     CreditCard,
     Landmark,
-    Banknote
+    Banknote,
+    CalendarDays
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +34,8 @@ import {
     isWithinInterval, 
     parseISO, 
     subDays,
-    subMonths
+    subMonths,
+    startOfDay
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -42,6 +44,7 @@ import { cn } from '@/lib/utils';
 /**
  * @fileOverview High-Density Business Dashboard
  * Shifted from Daily to Monthly Intelligence for better strategic oversight.
+ * Enhanced with Revenue Velocity (Daily/Weekly) and visual performance fixes.
  */
 export default function DashboardPage() {
   const { tenant } = useSaaS();
@@ -78,12 +81,23 @@ export default function DashboardPage() {
     if (!sales || !assets || !documents || !expenses) return null;
 
     const now = new Date();
+    const todayStart = startOfDay(now);
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const monthStart = startOfMonth(now);
+    
     const lastMonthDate = subMonths(now, 1);
     const lastMonthStart = startOfMonth(lastMonthDate);
     const lastMonthEnd = endOfMonth(lastMonthDate);
 
-    // Filter Monthly Sets
+    // Filter Sets
+    const todaySales = sales.filter(s => {
+        try { return isWithinInterval(parseISO(s.date), { start: todayStart, end: now }); } catch { return false; }
+    });
+
+    const weekSales = sales.filter(s => {
+        try { return isWithinInterval(parseISO(s.date), { start: weekStart, end: now }); } catch { return false; }
+    });
+
     const monthSales = sales.filter(s => {
         try { return isWithinInterval(parseISO(s.date), { start: monthStart, end: now }); } catch { return false; }
     });
@@ -92,6 +106,8 @@ export default function DashboardPage() {
         try { return isWithinInterval(parseISO(s.date), { start: lastMonthStart, end: lastMonthEnd }); } catch { return false; }
     });
 
+    const totalTodaySales = todaySales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0);
+    const totalWeekSales = weekSales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0);
     const totalMonthSales = monthSales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0);
     const totalMonthProfit = monthSales.reduce((acc, s) => acc + (Number(s.totalProfit) || 0), 0);
     const totalLastMonthSales = lastMonthSales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0);
@@ -100,14 +116,13 @@ export default function DashboardPage() {
         try { return isWithinInterval(parseISO(e.date), { start: monthStart, end: now }); } catch { return false; }
     }).reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
 
-    // Monthly Settlements Breakdown (Expanded)
+    // Monthly Settlements Breakdown
     const calculateModeTotal = (mode: string) => {
         return monthSales.reduce((acc, s) => {
             const modeAmt = (s.payments || [])
                 .filter((p: any) => p.method === mode)
                 .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
             
-            // Handle legacy simple paymentMethod if payments array is missing
             const legacyAmt = s.paymentMethod === mode ? (Number(s.amount) || Number(s.total) || 0) : 0;
             
             return acc + (modeAmt || legacyAmt);
@@ -120,7 +135,7 @@ export default function DashboardPage() {
     const cardSales = calculateModeTotal('Card');
     const creditSales = monthSales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
 
-    // Debts & Overdue (Synced with Invoices)
+    // Debts & Overdue
     const invoicesWithDebt = sales.filter(s => (Number(s.balance) || 0) > 0);
     const unpaidInvoicesCount = invoicesWithDebt.length;
     const uniqueDebtorsCount = new Set(invoicesWithDebt.map(s => s.customerId)).size;
@@ -149,6 +164,8 @@ export default function DashboardPage() {
     const trendLabel = revenueTrend >= 0 ? `+${revenueTrend.toFixed(1)}% vs last month` : `${revenueTrend.toFixed(1)}% vs last month`;
 
     return {
+        totalTodaySales,
+        totalWeekSales,
         totalMonthSales, 
         totalMonthProfit, 
         monthExp,
@@ -365,17 +382,29 @@ export default function DashboardPage() {
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
                 <CardTitle className="text-xs font-black uppercase tracking-widest">Revenue Velocity</CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
+            <CardContent className="p-6 space-y-6 flex-grow">
                 <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>Last Month</span><span>{formatKes(stats.lastMonthTotal)}</span></div>
+                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>Today</span><span>{formatKes(stats.totalTodaySales)}</span></div>
                     <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: `${Math.min(100, (stats.lastMonthTotal / (stats.totalMonthSales || 1)) * 50)}%` }} />
+                        <div className="h-full bg-green-500" style={{ width: `${Math.min(100, (stats.totalTodaySales / (stats.totalMonthSales || 1)) * 100)}%` }} />
                     </div>
                 </div>
                 <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>This Month (Current)</span><span>{formatKes(stats.totalMonthSales)}</span></div>
+                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>This Week</span><span>{formatKes(stats.totalWeekSales)}</span></div>
                     <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '85%' }} />
+                        <div className="h-full bg-blue-500" style={{ width: `${Math.min(100, (stats.totalWeekSales / (stats.totalMonthSales || 1)) * 100)}%` }} />
+                    </div>
+                </div>
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>This Month</span><span>{formatKes(stats.totalMonthSales)}</span></div>
+                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-primary" style={{ width: '100%' }} />
+                    </div>
+                </div>
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>Last Month</span><span>{formatKes(stats.lastMonthTotal)}</span></div>
+                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden opacity-50">
+                        <div className="h-full bg-slate-400" style={{ width: `${Math.min(100, (stats.lastMonthTotal / (stats.totalMonthSales || 1)) * 100)}%` }} />
                     </div>
                 </div>
             </CardContent>
@@ -395,7 +424,9 @@ export default function DashboardPage() {
                     {stats.topSelling.map(([name, qty]) => (
                         <div key={name} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
                             <p className="text-[10px] font-bold uppercase truncate max-w-[150px]">{name}</p>
-                            <Badge variant="secondary" className="font-black text-[9px] px-2">{qty} UNITS</Badge>
+                            <Badge variant="secondary" className="font-black text-[10px] px-3 h-6 bg-black text-white border-none">
+                                {qty} UNITS
+                            </Badge>
                         </div>
                     ))}
                     {stats.topSelling.length === 0 && (
@@ -472,3 +503,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
