@@ -197,6 +197,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
         </div>
       </section>
 
+      {/* Footer Contact */}
       <footer className="mt-auto pt-8 text-center">
          <p className="text-[10px] font-medium text-black mb-4">
             If you have any questions, reach out via <span className="font-bold">{contactInfo}</span>

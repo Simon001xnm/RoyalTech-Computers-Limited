@@ -213,6 +213,8 @@ export function PosClient() {
         const batch = writeBatch(firestore);
         const timestamp = new Date().toISOString();
 
+        // LOGIC: If 'Receipt' is selected but balance > 0, it is technically an 'Invoice'
+        // If 'Invoice' is selected explicitly, it stays an Invoice.
         const effectiveDocType = (actionType === 'Receipt' && remainingBalance > 0) ? 'Invoice' : actionType;
         const saleStatus = remainingBalance <= 0 ? 'Paid' : (amountPaid > 0 ? 'Partial' : 'Credit');
 
@@ -266,7 +268,7 @@ export function PosClient() {
             createdBy: { uid: user.uid, name: user.displayName || user.email }
         });
 
-        if (actionType === 'Receipt') {
+        if (actionType === 'Receipt' || actionType === 'Invoice') {
             const saleRef = doc(collection(firestore, 'sales_transactions'));
             batch.set(saleRef, { ...baseData, documentId: docRef.id });
 
@@ -371,7 +373,7 @@ export function PosClient() {
                                     variant={selectedCustomer ? "default" : "outline"} 
                                     className={cn(
                                         "h-12 px-6 font-black uppercase tracking-widest transition-all",
-                                        selectedCustomer ? "shadow-lg scale-105" : "border-primary ring-2 ring-primary/20 animate-pulse"
+                                        selectedCustomer ? "shadow-lg bg-primary text-white scale-105" : "border-primary ring-2 ring-primary/20 animate-pulse"
                                     )}
                                 >
                                     {selectedCustomer ? selectedCustomer.name : 'Select Client...'}
