@@ -9,7 +9,7 @@ import { numberToWords } from "@/lib/utils";
 
 /**
  * @fileOverview Professional Receipt PDF Component
- * Synchronized to strictly use Official Business Name from branding settings.
+ * Enhanced with Account Statement Logic for Debt Tracking.
  */
 export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -35,11 +35,15 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
 
   const items = data.items || [];
   
-  const rawSubtotal = Number(data.subtotal || data.amount || data.total || 0);
+  // CALCULATIONS
+  const rawSubtotal = Number(data.subtotal || data.amount || 0);
   const applyVat = data.applyVat || false;
   const vatAmount = Number(data.vatAmount || data.vat || (applyVat ? rawSubtotal * 0.16 : 0));
-  const totalAmount = Number(data.amountPaid || data.total || (rawSubtotal + vatAmount));
+  const todayTotal = Number(data.total || (rawSubtotal + vatAmount));
+  const amountPaidToday = Number(data.amountPaid || todayTotal);
+  const balanceToday = Math.max(0, todayTotal - amountPaidToday);
   const previousBalance = Number(data.previousBalance || 0);
+  const totalAccountBalance = balanceToday + previousBalance;
 
   const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat("en-KE", {
@@ -95,10 +99,16 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             <p className="text-[10px] font-medium text-black/70">{customer.phone}</p>
         </div>
         <div className="p-4 rounded-lg space-y-0.5 border border-black/5" style={{ backgroundColor: "#fdfcf0" }}>
-            <h3 className="font-medium text-[12px] mb-1 text-orange-800 uppercase">Statement Balance</h3>
-            <p className="text-[10px] font-bold opacity-60">Balance Brought Forward:</p>
-            <p className="font-black text-base text-orange-900">KES {formatCurrency(previousBalance)}</p>
-            <p className="text-[8px] italic text-orange-700 mt-1">* Debt carried forward from previous transactions</p>
+            <h3 className="font-medium text-[12px] mb-1 text-orange-800 uppercase">Account Overview</h3>
+            <div className="flex justify-between items-center border-b border-orange-200 pb-1">
+                <p className="text-[9px] font-bold opacity-60">Balance Brought Forward:</p>
+                <p className="font-bold text-xs">KES {formatCurrency(previousBalance)}</p>
+            </div>
+            <div className="flex justify-between items-center pt-2">
+                <p className="text-[10px] font-black text-orange-900 uppercase">Total Statement Due:</p>
+                <p className="font-black text-lg text-orange-900">KES {formatCurrency(totalAccountBalance)}</p>
+            </div>
+            <p className="text-[7px] italic text-orange-700 mt-1 uppercase">* Includes current unpaid balance and historical debt</p>
         </div>
       </section>
 
@@ -143,7 +153,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
         <div className="flex justify-between items-start mt-6">
             <div className="max-w-[350px]">
                 <p className="text-[10px] font-bold text-black uppercase">
-                    Total in words: {numberToWords(totalAmount)}
+                    Paid in words: {numberToWords(amountPaidToday)}
                 </p>
                 <div className="mt-8 p-4 bg-muted/20 border-2 border-dashed rounded-xl">
                     <p className="text-[9px] font-black uppercase opacity-40 mb-2">Verification Notice</p>
@@ -152,18 +162,35 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                     </p>
                 </div>
             </div>
-            <div className="w-[280px] space-y-3">
+            <div className="w-[300px] space-y-2">
                 <div className="flex justify-between items-center text-[10px]">
-                    <span className="font-bold opacity-60">Subtotal</span>
-                    <span className="font-bold">KES {formatCurrency(rawSubtotal)}</span>
+                    <span className="font-bold opacity-60 uppercase">today's subtotal</span>
+                    <span className="font-bold">{formatCurrency(rawSubtotal)}</span>
                 </div>
-                <div className="flex justify-between items-center text-[10px]">
-                    <span className="font-bold opacity-60">VAT (16%)</span>
-                    <span className="font-bold">KES {formatCurrency(vatAmount)}</span>
+                {applyVat && (
+                  <div className="flex justify-between items-center text-[10px]">
+                      <span className="font-bold opacity-60 uppercase">VAT (16%)</span>
+                      <span className="font-bold">{formatCurrency(vatAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-[10px] border-t border-black/10 pt-1">
+                    <span className="font-black uppercase">receipt total</span>
+                    <span className="font-black">KES {formatCurrency(todayTotal)}</span>
                 </div>
-                <div className="pt-3 border-t-2 border-black flex justify-between items-center">
-                    <span className="text-[14px] font-black uppercase">Amount Paid</span>
-                    <span className="text-xl font-black text-blue-900">KES {formatCurrency(totalAmount)}</span>
+                <div className="flex justify-between items-center text-[10px] bg-green-50 p-2 rounded">
+                    <span className="font-black uppercase text-green-700">amount paid today</span>
+                    <span className="font-black text-green-700">KES {formatCurrency(amountPaidToday)}</span>
+                </div>
+                {balanceToday > 0 && (
+                  <div className="flex justify-between items-center text-[10px] bg-red-50 p-2 rounded">
+                      <span className="font-black uppercase text-red-700">current balance due</span>
+                      <span className="font-black text-red-700">KES {formatCurrency(balanceToday)}</span>
+                  </div>
+                )}
+                
+                <div className="pt-3 border-t-2 border-black flex justify-between items-center px-1">
+                    <span className="text-[11px] font-black uppercase">total account debt</span>
+                    <span className="text-lg font-black text-blue-900">KES {formatCurrency(totalAccountBalance)}</span>
                 </div>
                 <div className="h-0.5 bg-black w-full mt-[-1px]"></div>
             </div>
