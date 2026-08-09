@@ -40,7 +40,9 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
   const applyVat = data.applyVat || false;
   const vatAmount = Number(data.vatAmount || data.vat || (applyVat ? rawSubtotal * 0.16 : 0));
   const todayTotal = Number(data.total || (rawSubtotal + vatAmount));
-  const amountPaidToday = Number(data.amountPaid || todayTotal);
+  
+  // FIX: Ensure 0 is handled correctly by using nullish coalescing or explicit check
+  const amountPaidToday = data.amountPaid !== undefined ? Number(data.amountPaid) : todayTotal;
   const balanceToday = Math.max(0, todayTotal - amountPaidToday);
   const previousBalance = Number(data.previousBalance || 0);
   const totalAccountBalance = balanceToday + previousBalance;

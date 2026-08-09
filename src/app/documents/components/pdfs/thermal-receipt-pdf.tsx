@@ -31,7 +31,9 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
   const subtotal = Number(data.subtotal || data.amount || 0);
   const vat = Number(data.vatAmount || data.vat || 0);
   const todayTotal = Number(data.total || (subtotal + vat));
-  const amountPaidToday = Number(data.amountPaid || todayTotal);
+  
+  // FIX: Ensure 0 is handled correctly
+  const amountPaidToday = data.amountPaid !== undefined ? Number(data.amountPaid) : todayTotal;
   const balanceToday = Math.max(0, todayTotal - amountPaidToday);
   const previousBalance = Number(data.previousBalance || 0);
   const totalAccountBalance = balanceToday + previousBalance;
