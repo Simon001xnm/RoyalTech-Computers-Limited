@@ -2,10 +2,10 @@ import { StockClient } from "./components/stock-client";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Laptops & Assets",
-  description: "Manage your high-value hardware inventory and leased units.",
+  title: "Inventory",
+  description: "Manage your unified stock items and high-value assets.",
 };
 
-export default function LaptopsPage() {
+export default function InventoryPage() {
   return <StockClient />;
 }

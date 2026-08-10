@@ -48,8 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'documents', href: '/documents', label: 'Documents', icon: FileText },
   
   // INVENTORY & CRM
-  { id: 'stock', href: '/stock', label: 'Laptops / Assets', icon: Laptop },
-  { id: 'accessories', href: '/accessories', label: 'Accessories', icon: Component },
+  { id: 'stock', href: '/stock', label: 'Inventory', icon: Package },
   { id: 'customers', href: '/customers', label: 'Client Directory', icon: Users },
   { id: 'receivables', href: '/receivables', label: 'Debt Ledger', icon: Wallet },
   

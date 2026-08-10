@@ -86,14 +86,14 @@ export function StockClient() {
 
         if (editingAsset) {
             await updateDoc(doc(firestore, 'assets', editingAsset.id), assetData);
-            toast({ title: "Asset Updated" });
+            toast({ title: "Inventory Updated" });
         } else {
             await addDoc(collection(firestore, 'assets'), {
                 ...assetData,
                 createdAt: new Date().toISOString(),
                 createdBy: { uid: user.uid, name: user.displayName || 'User' }
             });
-            toast({ title: "Asset Registered" });
+            toast({ title: "Item Registered" });
         }
         setIsFormOpen(false);
         setEditingAsset(null);
@@ -125,9 +125,9 @@ export function StockClient() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Laptop Inventory (Assets)" 
-        description="High-precision tracking for serialized hardware units and leased equipment."
-        actionLabel="Register New Unit"
+        title="Inventory" 
+        description="Unified tracking for all your serialized assets and stock items."
+        actionLabel="Register New Item"
         onAction={() => { setEditingAsset(null); setIsFormOpen(true); }}
         ActionIcon={PlusCircle}
         actions={
@@ -149,7 +149,7 @@ export function StockClient() {
       </div>
       
       {isLoading ? (
-        <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-widest">Syncing Cloud Assets...</div>
+        <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-widest">Syncing Cloud Node...</div>
       ) : (
         <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
             <Table>
@@ -175,7 +175,7 @@ export function StockClient() {
                     ))
                 ) : (
                     <TableRow>
-                    <TableCell colSpan={table.getAllColumns().length} className="h-32 text-center text-muted-foreground italic">No assets found in this node.</TableCell>
+                    <TableCell colSpan={table.getAllColumns().length} className="h-32 text-center text-muted-foreground italic">No items found in this node.</TableCell>
                     </TableRow>
                 )}
                 </TableBody>
@@ -187,7 +187,7 @@ export function StockClient() {
       <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingAsset(null); }}}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Modify Specification" : "Register Hardware Unit"}</DialogTitle>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Modify Specification" : "Register Item"}</DialogTitle>
             <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Synchronize technical specifications with the cloud node.</DialogDescription>
           </DialogHeader>
           <LaptopForm laptop={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isSubmitting} />
@@ -204,7 +204,7 @@ export function StockClient() {
           </DialogHeader>
           <DialogFooter className="gap-2 mt-4">
             <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold">Abort</Button>
-            <Button variant="destructive" onClick={async () => { if (assetToDelete) await deleteDoc(doc(firestore, 'assets', assetToDelete.id)); setIsDeleteConfirmOpen(false); }} className="font-black uppercase">Delete Asset</Button>
+            <Button variant="destructive" onClick={async () => { if (assetToDelete) await deleteDoc(doc(firestore, 'assets', assetToDelete.id)); setIsDeleteConfirmOpen(false); }} className="font-black uppercase">Delete Item</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

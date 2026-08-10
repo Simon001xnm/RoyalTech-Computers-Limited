@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -58,7 +57,7 @@ export default function DashboardPage() {
 
   const stockQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'products'), where('tenantId', '==', tenant.id));
+    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
 
   const docsQuery = useMemoFirebase(() => {
@@ -217,7 +216,7 @@ export default function DashboardPage() {
       {/* 1. ACTIONABLE CRITICAL ALERTS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {(stats.lowStockCount > 0 || stats.outOfStockCount > 0) && (
-            <Link href="/inventory">
+            <Link href="/stock">
                 <Card className="border-l-4 border-l-orange-500 hover:bg-orange-50 transition-colors cursor-pointer group">
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-orange-100 p-2.5 rounded-xl"><Package className="h-5 w-5 text-orange-600" /></div>
@@ -503,4 +502,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
