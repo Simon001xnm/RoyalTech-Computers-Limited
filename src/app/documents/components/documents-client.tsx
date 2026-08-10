@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -18,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, addDoc, doc, getDocs } from "firebase/firestore";
+import { collection, query, where, addDoc, doc, getDocs, deleteDoc, writeBatch } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -26,6 +25,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { InvoicePdf } from "./pdfs/invoice-pdf";
 import { ReceiptPdf } from "./pdfs/receipt-pdf";
@@ -79,6 +80,8 @@ export function DocumentsClient() {
   const [exportType, setExportType] = useState<'A4' | 'Thermal'>('A4');
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [docToDelete, setDocToDelete] = useState<AppDocument | null>(null);
 
   const docsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -212,6 +215,35 @@ export function DocumentsClient() {
     }
   };
 
+  const handleDeleteDocument = async () => {
+    if (!docToDelete || !tenant) return;
+    setIsDeleting(true);
+
+    try {
+        const batch = writeBatch(firestore);
+        
+        // 1. Delete the document record
+        batch.delete(doc(firestore, 'documents', docToDelete.id));
+
+        // 2. Find and delete corresponding sale transaction
+        const salesRef = collection(firestore, 'sales_transactions');
+        const q = query(salesRef, where('tenantId', '==', tenant.id), where('documentId', '==', docToDelete.id));
+        const salesSnap = await getDocs(q);
+        
+        salesSnap.forEach((saleDoc) => {
+            batch.delete(doc(firestore, 'sales_transactions', saleDoc.id));
+        });
+
+        await batch.commit();
+        toast({ title: "Document & Transaction Deleted Permanently" });
+        setDocToDelete(null);
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: "Deletion Failed", description: e.message });
+    } finally {
+        setIsDeleting(false);
+    }
+  };
+
   const handleDownloadPdf = async (docToDownload: AppDocument, type: 'A4' | 'Thermal' = 'A4') => {
     setIsExporting(true);
     setExportType(type);
@@ -280,6 +312,7 @@ export function DocumentsClient() {
   const columnActions: DocumentColumnActions = { 
     onView: (d) => { setExportType('A4'); setSelectedDocument(d); setIsPdfPreviewOpen(true); }, 
     onDownload: handleDownloadPdf,
+    onDelete: (d) => setDocToDelete(d),
     onPrint: (d) => { 
         setSelectedDocument(d); 
         setIsPdfPreviewOpen(true); 
@@ -405,6 +438,23 @@ export function DocumentsClient() {
             <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold w-full sm:w-auto">Close Preview</Button>
             <Button onClick={() => window.print()} className="font-black uppercase w-full sm:w-auto"><Printer className="mr-2 h-4 w-4" />Execute Print</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle className="text-xl font-black uppercase tracking-tight text-destructive">Confirm Permanent Deletion</DialogTitle>
+                <DialogDescription className="font-medium text-base pt-2">
+                    Deleting <strong>{docToDelete?.title}</strong> will also remove the transaction data from your sales reports, dashboard, and customer ledger. This action cannot be undone.
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 mt-4">
+                <Button variant="outline" onClick={() => setDocToDelete(null)} disabled={isDeleting} className="font-bold">Cancel</Button>
+                <Button variant="destructive" onClick={handleDeleteDocument} disabled={isDeleting} className="font-black uppercase tracking-widest">
+                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Purge Document & Sale"}
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

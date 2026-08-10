@@ -4,7 +4,7 @@ import type { Sale, Document as AppDocument } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, FileText, Truck, Download, Printer } from "lucide-react";
+import { MoreHorizontal, FileText, Truck, Download, Printer, Trash2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ export interface SaleColumnActions {
   onGenerateDelivery?: (doc: AppDocument) => void;
   onWhatsApp?: (doc: AppDocument) => void;
   onDownload?: (doc: AppDocument, type?: 'A4' | 'Thermal') => void;
+  onDelete?: (doc: AppDocument) => void;
 }
 
 export const getSaleColumns = (actions: SaleColumnActions): ColumnDef<AppDocument>[] => [
@@ -90,6 +91,10 @@ export const getSaleColumns = (actions: SaleColumnActions): ColumnDef<AppDocumen
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => actions.onGenerateDelivery?.(docObj)} className="font-black text-orange-600 text-[9px] h-7 rounded-sm">
                 <Truck className="mr-2 h-3 w-3" /> Dispatch Note
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => actions.onDelete?.(docObj)} className="text-[9px] font-black text-destructive h-7 rounded-sm">
+                <Trash2 className="mr-2 h-3 w-3" /> Void & Purge
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -11,7 +10,7 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { useToast } from '@/hooks/use-toast';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, doc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 import { ThermalReceiptPdf } from '@/app/documents/components/pdfs/thermal-receipt-pdf';
 import { Input } from '@/components/ui/input';
@@ -20,6 +19,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { format, parseISO, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface RecentSalesProps {
     onViewReceipt: (doc: AppDocument) => void;
@@ -42,6 +43,8 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const [isExporting, setIsExporting] = useState(false);
     const [exportDoc, setExportDoc] = useState<AppDocument | null>(null);
     const [exportType, setExportType] = useState<'A4' | 'Thermal'>('A4');
+    const [docToDelete, setDocToDelete] = useState<AppDocument | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const docsQuery = useMemoFirebase(() => {
         if (!tenant) return null;
@@ -57,7 +60,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const filteredDocs = useMemo(() => {
         if (!rawDocs) return [];
         
-        // Strict Robust Filtering
         let results = rawDocs.filter(d => {
             if (showAllHistory) return true;
             try { 
@@ -140,10 +142,34 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
     };
 
+    const handleDeleteSale = async () => {
+        if (!docToDelete || !tenant) return;
+        setIsDeleting(true);
+
+        try {
+            const batch = writeBatch(firestore);
+            batch.delete(doc(firestore, 'documents', docToDelete.id));
+
+            const salesRef = collection(firestore, 'sales_transactions');
+            const q = query(salesRef, where('tenantId', '==', tenant.id), where('documentId', '==', docToDelete.id));
+            const salesSnap = await getDocs(q);
+            salesSnap.forEach(s => batch.delete(doc(firestore, 'sales_transactions', s.id)));
+
+            await batch.commit();
+            toast({ title: "Transaction Purged" });
+            setDocToDelete(null);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: "Delete Failed", description: e.message });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const saleColumnActions: SaleColumnActions = { 
         onView: onViewReceipt,
         onWhatsApp: handleShareWhatsApp,
-        onDownload: handleDownloadPdf
+        onDownload: handleDownloadPdf,
+        onDelete: (d) => setDocToDelete(d)
     };
     const saleColumns = useMemo<ColumnDef<AppDocument>[]>(() => getSaleColumns(saleColumnActions), [saleColumnActions]);
     
@@ -233,6 +259,23 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                     </div>
                 </div>
             </CardContent>
+
+            <Dialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight text-destructive">Confirm Void Transaction</DialogTitle>
+                        <DialogDescription className="font-medium text-base pt-2">
+                            This will permanently remove <strong>{docToDelete?.title}</strong> and its financial record. Your dashboard metrics will be adjusted accordingly.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 mt-4">
+                        <Button variant="outline" onClick={() => setDocToDelete(null)} disabled={isDeleting} className="font-bold">Cancel</Button>
+                        <Button variant="destructive" onClick={handleDeleteSale} disabled={isDeleting} className="font-black uppercase tracking-widest">
+                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Void Transaction"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }

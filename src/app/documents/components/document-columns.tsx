@@ -4,7 +4,7 @@ import type { Document as AppDocument, DocumentType } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Download, FileText, ListChecks, Receipt, FileWarning, Truck, FilePlus2, ShoppingCart, Printer, MessageCircle } from "lucide-react";
+import { Download, FileText, ListChecks, Receipt, FileWarning, Truck, FilePlus2, ShoppingCart, Printer, MessageCircle, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -12,6 +12,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 export interface DocumentColumnActions {
   onView: (doc: AppDocument) => void;
   onDownload: (doc: AppDocument) => void;
+  onDelete?: (doc: AppDocument) => void;
   onPrint?: (doc: AppDocument) => void;
   onWhatsApp?: (doc: AppDocument) => void;
   onGenerateDelivery?: (doc: AppDocument) => void;
@@ -115,6 +116,16 @@ export const getDocumentColumns = (actions: DocumentColumnActions): ColumnDef<Ap
                             </TooltipTrigger>
                             <TooltipContent>Download PDF</TooltipContent>
                         </Tooltip>
+                        {actions.onDelete && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="icon" className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => actions.onDelete?.(doc)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Delete Permanently</TooltipContent>
+                            </Tooltip>
+                        )}
                     </TooltipProvider>
                     <Button variant="outline" size="sm" onClick={() => actions.onView(doc)} className="font-bold h-8">View</Button>
                 </div>
