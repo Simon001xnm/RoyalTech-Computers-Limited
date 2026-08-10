@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, PlusCircle, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2, Receipt } from 'lucide-react';
+import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,14 +13,13 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc, writeBatch, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import type { DocumentType, Sale } from '@/types';
-import { useEffect } from 'react';
 import { RecentSales } from './recent-sales';
 
 const VAT_RATE = 0.16;
@@ -37,7 +36,6 @@ type CartItem = {
     name: string;
     quantity: number;
     sellingPrice: number;
-    buyingPrice: number; 
     total: number;
 };
 
@@ -56,39 +54,33 @@ export function PosClient() {
   const [successType, setSuccessType] = useState<DocumentType | null>(null);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
-  // Selection state
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectionQty, setSelectionQty] = useState<string>('1');
   const [selectionPrice, setSelectionPrice] = useState<string>('');
 
-  // Split Payment State
   const [payments, setPayments] = useState<PaymentSplit[]>([]);
   const [activePaymentMethod, setActivePaymentMethod] = useState<PaymentSplit['method'] | null>(null);
   const [currentPaymentAmount, setCurrentPaymentAmount] = useState<string>('');
   const [currentPaymentRef, setCurrentPaymentRef] = useState<string>('');
 
-  // Inventory Query
   const productsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'products'), where('tenantId', '==', tenant.id));
+    return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
   const { data: products } = useCollection(productsQuery);
 
-  // Customer Query
   const customersQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
   const { data: customers } = useCollection(customersQuery);
 
-  // Company Profile for branding
   const companyRef = useMemoFirebase(() => 
     tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
     [firestore, tenant?.id]
   );
   const { data: workspaceProfile } = useDoc(companyRef);
 
-  // Existing Docs for sequential numbering
   const docsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'documents'), where('tenantId', '==', tenant.id));
@@ -98,7 +90,6 @@ export function PosClient() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [custSearchOpen, setCustSearchOpen] = useState(false);
 
-  // Fetch Customer Balance
   useEffect(() => {
     if (!selectedCustomer?.id || !tenant) {
       setCustomerBalance(0);
@@ -124,23 +115,19 @@ export function PosClient() {
     fetchBalance();
   }, [selectedCustomer?.id, tenant, firestore]);
 
-  // Calculations
-  const { subtotal, vatAmount, total, amountPaid, remainingBalance, totalProfit } = useMemo(() => {
+  const { subtotal, vatAmount, total, amountPaid, remainingBalance } = useMemo(() => {
     const sub = cart.reduce((acc, item) => acc + item.total, 0);
     const discountedSub = Math.max(0, sub - discount);
     const vat = applyVat ? discountedSub * VAT_RATE : 0;
     const tot = discountedSub + vat;
-    
     const paid = payments.reduce((acc, p) => acc + p.amount, 0);
-    const profit = cart.reduce((acc, item) => acc + (item.total - (item.buyingPrice * item.quantity)), 0) - discount;
     
     return {
         subtotal: sub,
         vatAmount: vat,
         total: tot,
         amountPaid: paid,
-        remainingBalance: tot - paid,
-        totalProfit: profit
+        remainingBalance: tot - paid
     };
   }, [cart, discount, payments, applyVat]);
 
@@ -151,7 +138,7 @@ export function PosClient() {
     }
     setSelectedProduct(product);
     setSelectionQty('1');
-    setSelectionPrice(String(product.buyingPrice || 0)); 
+    setSelectionPrice(String(product.sellingPrice || 0)); 
     setSearchOpen(false);
   };
 
@@ -159,11 +146,6 @@ export function PosClient() {
     if (!selectedProduct) return;
     const qty = parseInt(selectionQty) || 1;
     const price = parseFloat(selectionPrice) || 0;
-
-    if (qty > (selectedProduct.currentStock || 0)) {
-        toast({ variant: 'destructive', title: 'Insufficient Stock', description: `Only ${selectedProduct.currentStock} units available.` });
-        return;
-    }
 
     const existing = cart.find(i => i.productId === selectedProduct.id && i.sellingPrice === price);
     
@@ -175,10 +157,9 @@ export function PosClient() {
         setCart([...cart, {
             id: crypto.randomUUID(),
             productId: selectedProduct.id,
-            name: selectedProduct.name,
+            name: selectedProduct.model || selectedProduct.name,
             quantity: qty,
             sellingPrice: price,
-            buyingPrice: selectedProduct.buyingPrice, 
             total: qty * price
         }]);
     }
@@ -213,8 +194,6 @@ export function PosClient() {
         const batch = writeBatch(firestore);
         const timestamp = new Date().toISOString();
 
-        // LOGIC: If 'Receipt' is selected but balance > 0, it is technically an 'Invoice'
-        // If 'Invoice' is selected explicitly, it stays an Invoice.
         const effectiveDocType = (actionType === 'Receipt' && remainingBalance > 0) ? 'Invoice' : actionType;
         const saleStatus = remainingBalance <= 0 ? 'Paid' : (amountPaid > 0 ? 'Partial' : 'Credit');
 
@@ -227,12 +206,11 @@ export function PosClient() {
             date: timestamp,
             customerId: selectedCustomer.id,
             customerName: selectedCustomer.name,
-            items: cart.map(item => ({...item, type: 'asset', cogs: item.buyingPrice * item.quantity})),
+            items: cart.map(item => ({...item, type: 'asset'})),
             subtotal,
             vatAmount,
             discount,
             total,
-            totalProfit,
             amountPaid,
             balance: remainingBalance,
             previousBalance: customerBalance,
@@ -273,26 +251,12 @@ export function PosClient() {
             batch.set(saleRef, { ...baseData, documentId: docRef.id });
 
             for (const item of cart) {
-                const productRef = doc(firestore, 'products', item.productId);
+                const productRef = doc(firestore, 'assets', item.productId);
                 const product = products?.find(p => p.id === item.productId);
                 
                 if (product) {
-                    const newStock = (product.currentStock || 0) - item.quantity;
-                    batch.update(productRef, { currentStock: newStock, updatedAt: timestamp });
-
-                    const movementRef = doc(collection(firestore, 'stock_movements'));
-                    batch.set(movementRef, {
-                        tenantId: tenant.id,
-                        productId: item.productId,
-                        type: "SALE",
-                        quantity: -item.quantity,
-                        previousStock: product.currentStock,
-                        newStock: newStock,
-                        reason: `Sale ${saleRef.id.slice(0, 5)}`,
-                        referenceId: saleRef.id,
-                        timestamp,
-                        createdBy: { uid: user.uid, name: user.displayName }
-                    });
+                    const newStock = (product.quantity || 0) - item.quantity;
+                    batch.update(productRef, { quantity: newStock, updatedAt: timestamp });
                 }
             }
         }
@@ -338,25 +302,25 @@ export function PosClient() {
                                         )}
                                         disabled={!selectedCustomer}
                                     >
-                                        {selectedCustomer ? 'Search product...' : 'Please select a client first...'}
+                                        {selectedCustomer ? 'Search inventory...' : 'Please select a client first...'}
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[600px] p-0" align="start">
                                     <Command>
                                         <CommandInput placeholder="Type Product Name..." />
                                         <CommandList>
-                                            <CommandEmpty>No products found.</CommandEmpty>
-                                            <CommandGroup heading="Inventory">
-                                                {products?.filter(p => (p.currentStock || 0) > 0).map(p => (
+                                            <CommandEmpty>No items found.</CommandEmpty>
+                                            <CommandGroup heading="Cloud Inventory">
+                                                {products?.filter(p => (p.quantity || 0) > 0).map(p => (
                                                     <CommandItem key={p.id} onSelect={() => handleSelectProduct(p)} className="p-3">
                                                         <div className="flex justify-between w-full items-center">
                                                             <div>
-                                                                <p className="font-bold uppercase text-xs">{p.name}</p>
-                                                                <p className="text-[10px] text-muted-foreground">{p.category}</p>
+                                                                <p className="font-bold uppercase text-xs">{p.model}</p>
+                                                                <p className="text-[10px] text-muted-foreground font-mono">S/N: {p.serialNumber}</p>
                                                             </div>
                                                             <div className="text-right">
-                                                                <p className="font-black text-primary text-xs">Price: KES {p.buyingPrice.toLocaleString()}</p>
-                                                                <Badge variant="secondary" className="text-[8px] h-4">{p.currentStock} {p.unit} available</Badge>
+                                                                <p className="font-black text-primary text-xs">KES {p.sellingPrice?.toLocaleString()}</p>
+                                                                <Badge variant="secondary" className="text-[8px] h-4">{p.quantity} in stock</Badge>
                                                             </div>
                                                         </div>
                                                     </CommandItem>
@@ -373,7 +337,7 @@ export function PosClient() {
                                     variant={selectedCustomer ? "default" : "outline"} 
                                     className={cn(
                                         "h-12 px-6 font-black uppercase tracking-widest transition-all",
-                                        selectedCustomer ? "shadow-lg bg-primary text-white scale-105" : "border-primary ring-2 ring-primary/20 animate-pulse"
+                                        selectedCustomer ? "shadow-lg bg-primary text-white scale-105" : "border-primary ring-2 ring-primary/20"
                                     )}
                                 >
                                     {selectedCustomer ? selectedCustomer.name : 'Select Client...'}
@@ -430,7 +394,6 @@ export function PosClient() {
                                             <div className="space-y-2">
                                                 <ShoppingCart className="h-12 w-12 mx-auto" />
                                                 <p className="text-xs font-black uppercase tracking-widest">Basket Empty</p>
-                                                {!selectedCustomer && <p className="text-[10px] font-bold text-primary animate-bounce">Select a client to start selling</p>}
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -604,18 +567,18 @@ export function PosClient() {
       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase tracking-tight">Configure Sale Item</DialogTitle>
-                <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">{selectedProduct?.name}</DialogDescription>
+                <DialogTitle className="text-xl font-black uppercase tracking-tight">Add to Basket</DialogTitle>
+                <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">{selectedProduct?.model}</DialogDescription>
             </DialogHeader>
             <div className="space-y-6 pt-4">
                 <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex justify-between items-center">
                     <div>
-                        <p className="text-[10px] font-black uppercase opacity-40">Cost Price</p>
-                        <p className="text-lg font-black">KES {selectedProduct?.buyingPrice?.toLocaleString()}</p>
+                        <p className="text-[10px] font-black uppercase opacity-40">Unit Price</p>
+                        <p className="text-lg font-black text-primary">KES {selectedProduct?.sellingPrice?.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
                         <p className="text-[10px] font-black uppercase opacity-40">Available</p>
-                        <p className="text-lg font-black">{selectedProduct?.currentStock} {selectedProduct?.unit}</p>
+                        <p className="text-lg font-black">{selectedProduct?.quantity} Units</p>
                     </div>
                 </div>
 
@@ -630,7 +593,7 @@ export function PosClient() {
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase">Selling Price (KES)</Label>
+                        <Label className="text-[10px] font-black uppercase">Final Price (KES)</Label>
                         <Input 
                             type="number" 
                             value={selectionPrice} 
@@ -644,7 +607,7 @@ export function PosClient() {
 
                 <div className="pt-4 flex justify-between items-center border-t">
                     <div>
-                        <p className="text-[10px] font-black uppercase opacity-40">Item Total</p>
+                        <p className="text-[10px] font-black uppercase opacity-40">Subtotal</p>
                         <p className="text-2xl font-black text-primary">KES {((parseInt(selectionQty) || 0) * (parseFloat(selectionPrice) || 0)).toLocaleString()}</p>
                     </div>
                     <Button className="h-14 px-8 font-black uppercase tracking-widest shadow-xl" onClick={handleAddToCart}>Add to Cart</Button>
@@ -663,13 +626,11 @@ export function PosClient() {
                     {successType === 'Receipt' ? 'Sale Recorded' : `${successType} Saved`}
                 </DialogTitle>
                 <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">
-                    {successType === 'Receipt' 
-                        ? 'Inventory updated & confirmation archived.' 
-                        : 'Document archived. Inventory levels were not affected.'}
+                    Cloud Ledger Sync Successful.
                 </DialogDescription>
             </DialogHeader>
             <div className="pt-10 space-y-3">
-                <Button className="w-full h-14 font-black uppercase tracking-widest shadow-xl" onClick={() => setIsSuccessOpen(false)}>Start New Session</Button>
+                <Button className="w-full h-14 font-black uppercase tracking-widest shadow-xl" onClick={() => setIsSuccessOpen(false)}>Continue Selling</Button>
             </div>
         </DialogContent>
       </Dialog>

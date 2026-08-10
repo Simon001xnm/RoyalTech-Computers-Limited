@@ -2,23 +2,20 @@
 
 import { useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, writeBatch } from "firebase/firestore";
+import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, History, Calculator } from "lucide-react";
+import { PlusCircle, Package } from "lucide-react";
 import { LaptopForm } from "./laptop-form";
 import { getLaptopColumns } from "./laptop-columns";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender, type RowSelectionState, type PaginationState } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
-import { format } from "date-fns";
-import { ValuationSummary } from "./valuation-summary";
 
 export function StockClient() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,10 +24,7 @@ export function StockClient() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showValuation, setShowValuation] = useState(false);
   
-  const [selectedAuditProduct, setSelectedAuditProduct] = useState<Asset | null>(null);
-
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
@@ -39,7 +33,6 @@ export function StockClient() {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   
-  // PRIMARY COLLECTION: Assets (Laptops/Hardware)
   const assetsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'assets'), where('tenantId', '==', tenant.id));
@@ -74,13 +67,7 @@ export function StockClient() {
             status: data.status,
             quantity: Number(data.quantity) || 1,
             purchaseDate: data.purchaseDate.toISOString(),
-            purchasePrice: Number(data.purchasePrice) || 0,
-            leasePrice: Number(data.leasePrice) || 0,
-            specifications: {
-                ram: data.ram || "",
-                storage: data.storage || "",
-                processor: data.processor || ""
-            },
+            sellingPrice: Number(data.sellingPrice) || 0,
             updatedAt: new Date().toISOString()
         };
 
@@ -127,17 +114,10 @@ export function StockClient() {
       <PageHeader 
         title="Inventory" 
         description="Unified tracking for all your serialized assets and stock items."
-        actionLabel="Register New Item"
+        actionLabel="Add New Item"
         onAction={() => { setEditingAsset(null); setIsFormOpen(true); }}
         ActionIcon={PlusCircle}
-        actions={
-            <Button variant="outline" size="sm" className="font-black uppercase text-[10px] tracking-widest border-2" onClick={() => setShowValuation(!showValuation)}>
-                <Calculator className="mr-2 h-4 w-4" /> {showValuation ? 'Hide Valuation' : 'Show Valuation'}
-            </Button>
-        }
       />
-
-      {showValuation && rawAssets && <ValuationSummary assets={rawAssets} />}
 
       <div className="mb-4">
         <Input
@@ -175,7 +155,7 @@ export function StockClient() {
                     ))
                 ) : (
                     <TableRow>
-                    <TableCell colSpan={table.getAllColumns().length} className="h-32 text-center text-muted-foreground italic">No items found in this node.</TableCell>
+                    <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No items found in this node.</TableCell>
                     </TableRow>
                 )}
                 </TableBody>
@@ -185,10 +165,10 @@ export function StockClient() {
       )}
 
       <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingAsset(null); }}}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Modify Specification" : "Register Item"}</DialogTitle>
-            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Synchronize technical specifications with the cloud node.</DialogDescription>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Modify Item" : "Register Item"}</DialogTitle>
+            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Manage your cloud inventory items.</DialogDescription>
           </DialogHeader>
           <LaptopForm laptop={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isSubmitting} />
         </DialogContent>
@@ -199,11 +179,11 @@ export function StockClient() {
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase">Confirm Deletion</DialogTitle>
             <DialogDescription className="font-medium text-base pt-2">
-              All history for <strong>{assetToDelete?.model}</strong> will be erased.
+              Are you sure you want to remove <strong>{assetToDelete?.model}</strong>?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 mt-4">
-            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold">Abort</Button>
+            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold">Cancel</Button>
             <Button variant="destructive" onClick={async () => { if (assetToDelete) await deleteDoc(doc(firestore, 'assets', assetToDelete.id)); setIsDeleteConfirmOpen(false); }} className="font-black uppercase">Delete Item</Button>
           </DialogFooter>
         </DialogContent>

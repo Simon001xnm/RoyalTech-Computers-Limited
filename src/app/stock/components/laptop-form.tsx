@@ -1,16 +1,14 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import type { Laptop } from "@/types";
+import type { Asset } from "@/types";
 
 import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -24,62 +22,52 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, DollarSign, Package } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-const laptopFormSchema = z.object({
+const inventoryFormSchema = z.object({
   model: z.string().min(2, "Model must be at least 2 characters."),
   serialNumber: z.string().min(5, "Serial number must be at least 5 characters."),
-  purchaseDate: z.date({ required_error: "Purchase date is required." }),
+  purchaseDate: z.date({ required_error: "Date is required." }),
   status: z.enum(["Available", "Leased", "Repair", "Sold", "With Reseller"]),
   quantity: z.coerce.number().min(0, "Quantity cannot be negative."),
-  ram: z.string().optional(),
-  storage: z.string().optional(),
-  processor: z.string().optional(),
-  purchasePrice: z.coerce.number().optional(),
-  leasePrice: z.coerce.number().optional(),
+  sellingPrice: z.coerce.number().min(0, "Selling price is required."),
 });
 
-type LaptopFormValues = z.infer<typeof laptopFormSchema>;
+type InventoryFormValues = z.infer<typeof inventoryFormSchema>;
 
-interface LaptopFormProps {
-  laptop?: Laptop | null; // For editing
-  onSubmit: (data: LaptopFormValues) => void;
+interface InventoryFormProps {
+  laptop?: Asset | null;
+  onSubmit: (data: InventoryFormValues) => void;
   onCancel: () => void;
   isLoading?: boolean;
 }
 
-export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopFormProps) {
-  const defaultValues: Partial<LaptopFormValues> = laptop
+export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryFormProps) {
+  const defaultValues: Partial<InventoryFormValues> = laptop
     ? {
         ...laptop,
-        purchaseDate: new Date(laptop.purchaseDate),
-        ram: laptop.specifications?.ram || "",
-        storage: laptop.specifications?.storage || "",
-        processor: laptop.specifications?.processor || "",
+        purchaseDate: laptop.purchaseDate ? new Date(laptop.purchaseDate) : new Date(),
+        sellingPrice: laptop.sellingPrice || 0,
       }
     : {
         model: "",
         serialNumber: "",
         status: "Available",
         quantity: 1,
-        ram: "",
-        storage: "",
-        processor: "",
-        purchasePrice: undefined,
-        leasePrice: undefined,
+        sellingPrice: 0,
+        purchaseDate: new Date(),
       };
 
-  const form = useForm<LaptopFormValues>({
-    resolver: zodResolver(laptopFormSchema),
+  const form = useForm<InventoryFormValues>({
+    resolver: zodResolver(inventoryFormSchema),
     defaultValues,
   });
 
-  const handleSubmit = (data: LaptopFormValues) => {
+  const handleSubmit = (data: InventoryFormValues) => {
     onSubmit(data);
   };
 
@@ -92,9 +80,9 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopForm
             name="model"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Model Name</FormLabel>
+                <FormLabel>Product Model / Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., MacBook Pro 16 M3" {...field} value={field.value ?? ''} />
+                  <Input placeholder="e.g., MacBook Pro 16" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -107,7 +95,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopForm
               <FormItem>
                 <FormLabel>Serial Number</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., C02X1234J1GJ" {...field} value={field.value ?? ''} />
+                  <Input placeholder="e.g., C02X1234J1GJ" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -121,7 +109,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopForm
             name="purchaseDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Purchase Date</FormLabel>
+                <FormLabel>Registration Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -183,95 +171,44 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: LaptopForm
           />
         </div>
         
-        <FormField
-          control={form.control}
-          name="quantity"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Quantity</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="e.g., 10" {...field} value={field.value ?? ''} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormLabel className="text-lg font-semibold">Specifications (Optional)</FormLabel>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 border rounded-md">
-           <FormField
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
             control={form.control}
-            name="ram"
+            name="quantity"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>RAM</FormLabel>
+                <FormLabel>Current Stock Quantity</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., 16GB" {...field} value={field.value ?? ''} />
+                  <Input type="number" placeholder="e.g., 10" {...field} />
                 </FormControl>
+                <FormMessage />
               </FormItem>
             )}
           />
           <FormField
             control={form.control}
-            name="storage"
+            name="sellingPrice"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Storage</FormLabel>
+                <FormLabel className="text-primary font-bold">Selling Price (Ksh)</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., 512GB SSD" {...field} value={field.value ?? ''} />
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input type="number" step="0.01" placeholder="0.00" className="pl-9 font-black" {...field} />
+                  </div>
                 </FormControl>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="processor"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Processor</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., Apple M3 Pro" {...field} value={field.value ?? ''} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-        </div>
-        
-        <FormLabel className="text-lg font-semibold">Pricing (Optional)</FormLabel>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md">
-           <FormField
-            control={form.control}
-            name="purchasePrice"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Purchase Price (Ksh)</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" placeholder="e.g., 120000.00" {...field} value={field.value ?? ''} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="leasePrice"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Monthly Lease Price (Ksh)</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" placeholder="e.g., 7500.00" {...field} value={field.value ?? ''} />
-                </FormControl>
+                <FormMessage />
               </FormItem>
             )}
           />
         </div>
 
-
-        <div className="flex justify-end space-x-3 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+        <div className="flex justify-end space-x-3 pt-6 border-t">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading} className="h-12 px-6">
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? (laptop ? "Saving..." : "Adding...") : (laptop ? "Save Changes" : "Add Laptop")}
+          <Button type="submit" disabled={isLoading} className="h-12 px-10 font-black uppercase tracking-widest shadow-lg">
+            {isLoading ? "Syncing..." : (laptop ? "Update Item" : "Save to Inventory")}
           </Button>
         </div>
       </form>

@@ -1,4 +1,3 @@
-
 import { Timestamp } from "firebase/firestore";
 
 interface Auditable {
@@ -81,71 +80,30 @@ export interface User {
   createdAt: string;
 }
 
-export interface ProductVariant {
-  id: string;
-  name: string; // e.g. "Length"
-  value: string; // e.g. "100m"
-  sku?: string;
-  priceAdjustment?: number;
-}
-
 export type TaxStatus = 'Taxable' | 'Exempt' | 'ZeroRated';
 
-export interface Product extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
+export interface Asset extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   id: string;
   tenantId: string;
-  name: string;
-  sku: string;
-  barcode?: string;
-  category: string;
-  brand?: string;
-  model?: string;
-  description?: string;
-  unit: string; 
-  buyingPrice: number;
-  minStock: number;
-  currentStock: number;
-  reorderQty: number;
-  supplier?: string;
-  locationBin?: string;
-  hasSerialNumber: boolean;
-  warrantyPeriod?: string;
-  imageUrl?: string;
-  taxStatus: TaxStatus;
+  model: string;
+  serialNumber: string;
+  category?: string;
+  status: 'Available' | 'Leased' | 'Repair' | 'Sold' | 'With Reseller';
+  quantity: number;
+  purchaseDate: string;
+  sellingPrice: number;
   createdAt?: string; 
   updatedAt?: string; 
 }
 
-export type StockMovementType = 
-  | 'PURCHASE' 
-  | 'STOCK IN' 
-  | 'SALE' 
-  | 'STOCK OUT' 
-  | 'ADJUSTMENT' 
-  | 'DAMAGED' 
-  | 'RETURNED' 
-  | 'CUSTOMER RETURN' 
-  | 'SUPPLIER RETURN'
-  | 'STOCK COUNT';
-
-export interface StockMovement extends Auditable {
-  id: string;
-  tenantId: string;
-  productId: string;
-  type: StockMovementType;
-  quantity: number; 
-  previousStock: number;
-  newStock: number;
-  reason?: string;
-  referenceId?: string; 
-  timestamp: string;
-}
+// Alias for Product to maintain backward compatibility if needed
+export type Product = Asset;
 
 export interface Customer extends Omit<Auditable, 'createdAt' | 'updatedAt'>{
   id: string;
   tenantId?: string;
   name: string;
-  alias?: string; // Business name or alternate alias
+  alias?: string; 
   email: string;
   phone?: string;
   address?: string;
@@ -161,7 +119,6 @@ export interface SaleItem {
     name: string;
     quantity: number;
     sellingPrice: number;
-    buyingPrice: number; // Historical snapshot
     total: number;
     type: 'asset' | 'accessory' | 'custom';
 }
@@ -176,7 +133,6 @@ export interface Sale extends Auditable {
     subtotal: number;
     discount: number;
     total: number;
-    totalProfit: number;
     amountPaid: number;
     balance: number;
     paymentMethod: 'Cash' | 'M-Pesa' | 'Bank' | 'Card' | 'Credit' | 'Split';
