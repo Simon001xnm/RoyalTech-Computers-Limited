@@ -57,14 +57,11 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const filteredDocs = useMemo(() => {
         if (!rawDocs) return [];
         
-        const todayStr = format(new Date(), 'yyyy-MM-dd');
-
-        // Robust Filtering
+        // Strict Robust Filtering
         let results = rawDocs.filter(d => {
             if (showAllHistory) return true;
             try { 
-                const date = parseISO(d.generatedDate);
-                return format(date, 'yyyy-MM-dd') === todayStr || isToday(date); 
+                return isToday(parseISO(d.generatedDate)); 
             } catch { return false; }
         }).sort((a, b) => {
             const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
@@ -216,7 +213,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                                 ) : (
                                     <TableRow>
                                         <TableCell colSpan={saleColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">
-                                            No transactions found for the selected view.
+                                            No transactions found for today.
                                         </TableCell>
                                     </TableRow>
                                 )}

@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview Business Command Center - Dashboard
- * Includes a toggle to switch between "Today Only" and "Historical" data views.
+ * Includes a strict toggle to switch between "Today Only" and "Historical" data views.
  */
 export default function DashboardPage() {
   const { tenant } = useSaaS();
@@ -73,20 +73,16 @@ export default function DashboardPage() {
   const stats = useMemo(() => {
     if (!sales || !assets || !documents || !expenses) return null;
 
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-
-    // Filter logic based on toggle
+    // Strict Filtering Logic
     const filteredSales = showAllHistory ? sales : sales.filter(s => {
         try { 
-            const d = parseISO(s.date);
-            return format(d, 'yyyy-MM-dd') === todayStr || isToday(d); 
+            return isToday(parseISO(s.date)); 
         } catch { return false; }
     });
 
     const filteredExp = showAllHistory ? expenses : expenses.filter(e => {
         try { 
-            const d = parseISO(e.date);
-            return format(d, 'yyyy-MM-dd') === todayStr || isToday(d); 
+            return isToday(parseISO(e.date)); 
         } catch { return false; }
     });
 
@@ -112,7 +108,7 @@ export default function DashboardPage() {
     const cardTotal = calculateModeTotal('Card');
     const creditTotal = filteredSales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
 
-    // Alerts
+    // Alerts (Always show low stock, but filter unpaid by time view)
     const unpaidInvoices = filteredSales.filter(s => (Number(s.balance) || 0) > 0);
     const totalDebt = unpaidInvoices.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
     const lowStock = assets.filter(a => Number(a.quantity) > 0 && Number(a.quantity) <= (Number(a.minStock) || 5));
@@ -318,7 +314,7 @@ export default function DashboardPage() {
       
       <div className="text-center pt-8 opacity-40">
           <p className="text-[9px] text-muted-foreground tracking-[0.5em] uppercase leading-relaxed">
-             Node-Sync: {showAllHistory ? "FULL LEDGER MODE" : "DAILY FILTER ACTIVE"} &bull; v2.7.5
+             Node-Sync: {showAllHistory ? "FULL LEDGER MODE" : "STRICT DAILY FILTER ACTIVE"} &bull; v2.8.0
           </p>
       </div>
     </div>

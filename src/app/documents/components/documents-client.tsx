@@ -134,13 +134,11 @@ export function DocumentsClient() {
 
   const filteredDocuments = useMemo(() => {
       if (!rawDocuments) return [];
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
 
       return [...rawDocuments].filter(d => {
           if (showAllHistory) return true;
           try { 
-              const date = parseISO(d.generatedDate);
-              return format(date, 'yyyy-MM-dd') === todayStr || isToday(date); 
+              return isToday(parseISO(d.generatedDate)); 
           } catch { return false; }
       }).sort((a, b) => {
           const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
