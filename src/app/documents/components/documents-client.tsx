@@ -7,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Trash2, PlusCircle, Loader2, Printer, History } from "lucide-react";
-import type { DocumentType, Document as AppDocument, DocumentLineItem, Sale } from "@/types";
+import type { DocumentType, Document as AppDocument, DocumentLineItem, User as AppUser } from "@/types";
 import {
   Table,
   TableBody,
@@ -82,6 +82,11 @@ export function DocumentsClient() {
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [docToDelete, setDocToDelete] = useState<AppDocument | null>(null);
+
+  // AUTH Profile check for Admin permissions
+  const profileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: profile } = useDoc<AppUser>(profileRef);
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
 
   const docsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -216,7 +221,7 @@ export function DocumentsClient() {
   };
 
   const handleDeleteDocument = async () => {
-    if (!docToDelete || !tenant) return;
+    if (!docToDelete || !tenant || !isAdmin) return;
     setIsDeleting(true);
 
     try {
@@ -312,7 +317,7 @@ export function DocumentsClient() {
   const columnActions: DocumentColumnActions = { 
     onView: (d) => { setExportType('A4'); setSelectedDocument(d); setIsPdfPreviewOpen(true); }, 
     onDownload: handleDownloadPdf,
-    onDelete: (d) => setDocToDelete(d),
+    onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined, // Only pass if admin
     onPrint: (d) => { 
         setSelectedDocument(d); 
         setIsPdfPreviewOpen(true); 

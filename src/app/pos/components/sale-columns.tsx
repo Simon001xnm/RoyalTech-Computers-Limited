@@ -92,10 +92,14 @@ export const getSaleColumns = (actions: SaleColumnActions): ColumnDef<AppDocumen
               <DropdownMenuItem onClick={() => actions.onGenerateDelivery?.(docObj)} className="font-black text-orange-600 text-[9px] h-7 rounded-sm">
                 <Truck className="mr-2 h-3 w-3" /> Dispatch Note
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => actions.onDelete?.(docObj)} className="text-[9px] font-black text-destructive h-7 rounded-sm">
-                <Trash2 className="mr-2 h-3 w-3" /> Void & Purge
-              </DropdownMenuItem>
+              {actions.onDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => actions.onDelete?.(docObj)} className="text-[9px] font-black text-destructive h-7 rounded-sm">
+                    <Trash2 className="mr-2 h-3 w-3" /> Void & Purge
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

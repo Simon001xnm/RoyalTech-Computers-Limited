@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { Sale, Document as AppDocument } from '@/types';
+import type { Sale, Document as AppDocument, User as AppUser } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef, getPaginationRowModel, type PaginationState } from "@tanstack/react-table";
@@ -9,7 +9,7 @@ import { getSaleColumns, type SaleColumnActions } from './sale-columns';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { useToast } from '@/hooks/use-toast';
 import { useSaaS } from '@/components/saas/saas-provider';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, doc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 import { ThermalReceiptPdf } from '@/app/documents/components/pdfs/thermal-receipt-pdf';
@@ -35,7 +35,13 @@ const TYPE_INITIALS: Record<string, string> = {
 export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const { toast } = useToast();
     const { tenant } = useSaaS();
+    const { user } = useUser();
     const firestore = useFirestore();
+
+    // AUTH Profile check for Admin permissions
+    const profileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: profile } = useDoc<AppUser>(profileRef);
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
 
     const [searchTerm, setSearchTerm] = useState("");
     const [showAllHistory, setShowAllHistory] = useState(false);
@@ -143,7 +149,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     };
 
     const handleDeleteSale = async () => {
-        if (!docToDelete || !tenant) return;
+        if (!docToDelete || !tenant || !isAdmin) return;
         setIsDeleting(true);
 
         try {
@@ -169,7 +175,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         onView: onViewReceipt,
         onWhatsApp: handleShareWhatsApp,
         onDownload: handleDownloadPdf,
-        onDelete: (d) => setDocToDelete(d)
+        onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined // Only pass if admin
     };
     const saleColumns = useMemo<ColumnDef<AppDocument>[]>(() => getSaleColumns(saleColumnActions), [saleColumnActions]);
     
