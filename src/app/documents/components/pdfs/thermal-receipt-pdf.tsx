@@ -128,11 +128,14 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
         {/* FOOTER */}
         <div className="text-center space-y-3 mb-2 w-full">
           <p className="text-[9px] font-black">*** THANK YOU ***</p>
-          <p className="text-[8px] italic opacity-70 uppercase leading-normal">Goods once sold cannot be returned</p>
+          <div className="text-[8px] uppercase space-y-1 opacity-80">
+            {workspace?.website && <p>{workspace.website}</p>}
+            <p>TEL: {workspace?.phone || 'N/A'}</p>
+          </div>
         </div>
 
         <div className="w-full border-t border-black border-dashed pt-3 text-center text-[7px] opacity-40 uppercase tracking-widest">
-          NODE-SYNC: {bizName}
+          {bizName}
         </div>
       </div>
     </div>

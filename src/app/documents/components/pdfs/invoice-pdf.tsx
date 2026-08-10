@@ -187,17 +187,13 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
       {/* Footer Contact */}
       <footer className="mt-auto pt-8 border-t border-gray-200 text-center">
-         <div className="mb-6 space-y-1">
-            <p className="text-[10px] font-bold">If you have any questions about this INVOICE, please contact,</p>
-            <p className="text-[10px] font-black uppercase">{workspace?.createdBy?.name || 'Samuel Luyo'}</p>
-            <p className="text-[10px] opacity-70">Nairobi, Kenya. Phone: {workspace?.phone || '0701694469'} Email: {workspace?.email || 'mateshtechltd@gmail.com'}</p>
-         </div>
-         <p className="text-sm font-black italic uppercase tracking-tighter text-blue-900">
+         <p className="text-sm font-black italic uppercase tracking-tighter text-blue-900 mb-4">
             Thank You for Your Business!
          </p>
-         <p className="text-[7px] text-gray-300 mt-4 uppercase tracking-[0.3em]">
-            Electronically Generated &bull; Secured Node Sync
-         </p>
+         <div className="space-y-1 text-[9px] font-bold uppercase tracking-wider text-gray-500">
+            {workspace?.website && <p>{workspace.website}</p>}
+            <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
+         </div>
       </footer>
     </div>
   );

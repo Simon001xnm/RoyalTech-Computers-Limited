@@ -307,7 +307,7 @@ export default function DashboardPage() {
       
       <div className="text-center pt-8 opacity-40">
           <p className="text-[9px] text-muted-foreground tracking-[0.5em] uppercase leading-relaxed">
-             Node-Sync: STRICT DAILY FILTER ACTIVE &bull; v3.0.0
+             v3.0.0
           </p>
       </div>
     </div>

@@ -130,13 +130,11 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
         </div>
       </section>
 
-      <footer className="mt-auto pt-8 text-center">
-         <p className="text-[10px] font-medium text-black mb-4">
-            For further details, contact <span className="font-bold">{contactInfo}</span>
-         </p>
-         <p className="text-[8px] font-medium text-gray-400 uppercase tracking-widest">
-            Professional Quotation Node &bull; Secured Sync
-         </p>
+      <footer className="mt-auto pt-8 border-t border-gray-200 text-center">
+         <div className="space-y-1 text-[9px] font-bold uppercase tracking-wider text-gray-500">
+            {workspace?.website && <p>{workspace.website}</p>}
+            <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
+         </div>
       </footer>
     </div>
   );

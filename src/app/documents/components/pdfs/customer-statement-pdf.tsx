@@ -135,12 +135,13 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
 
       {/* Footer Contact */}
       <footer className="mt-auto pt-8 border-t border-gray-200 text-center">
-         <p className="text-sm font-black italic uppercase tracking-tighter text-blue-900">
+         <p className="text-sm font-black italic uppercase tracking-tighter text-blue-900 mb-4">
             Thank You for Your Business!
          </p>
-         <p className="text-[7px] text-gray-300 mt-4 uppercase tracking-[0.3em]">
-            Electronically Generated Account Statement &bull; Secured Node Sync
-         </p>
+         <div className="space-y-1 text-[9px] font-bold uppercase tracking-wider text-gray-500">
+            {workspace?.website && <p>{workspace.website}</p>}
+            <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
+         </div>
       </footer>
     </div>
   );
