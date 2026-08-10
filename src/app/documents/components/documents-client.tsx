@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Printer } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Printer, History } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem, Sale } from "@/types";
 import {
   Table,
@@ -47,7 +48,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useSaaS } from "@/components/saas/saas-provider";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const VAT_RATE = 0.16;
@@ -74,6 +75,7 @@ export function DocumentsClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
+  const [showAllHistory, setShowAllHistory] = useState(false);
   const [exportType, setExportType] = useState<'A4' | 'Thermal'>('A4');
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
@@ -120,8 +122,7 @@ export function DocumentsClient() {
           where('customerId', '==', selectedCustomerId)
         );
         const snap = await getDocs(q);
-        const sales = snap.docs.map(d => d.data() as Sale);
-        const totalBalance = sales.reduce((acc, sale) => acc + (sale.balance || 0), 0);
+        const totalBalance = snap.docs.reduce((acc, doc) => acc + (doc.data().balance || 0), 0);
         setCustomerBalance(totalBalance);
       } catch (e) {
         console.error("Balance fetch error:", e);
@@ -131,18 +132,22 @@ export function DocumentsClient() {
     fetchBalance();
   }, [selectedCustomerId, tenant, firestore]);
 
-  const todayDocuments = useMemo(() => {
+  const filteredDocuments = useMemo(() => {
       if (!rawDocuments) return [];
       const todayStr = format(new Date(), 'yyyy-MM-dd');
 
       return [...rawDocuments].filter(d => {
-          try { return format(parseISO(d.generatedDate), 'yyyy-MM-dd') === todayStr; } catch { return false; }
+          if (showAllHistory) return true;
+          try { 
+              const date = parseISO(d.generatedDate);
+              return format(date, 'yyyy-MM-dd') === todayStr || isToday(date); 
+          } catch { return false; }
       }).sort((a, b) => {
           const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
           const dateB = b.generatedDate ? new Date(b.generatedDate).getTime() : 0;
           return dateB - dateA;
       });
-  }, [rawDocuments]);
+  }, [rawDocuments, showAllHistory]);
 
   const handleGenerateDocument = async (type: DocumentType) => {
     if (!tenant || !user) return;
@@ -292,7 +297,7 @@ export function DocumentsClient() {
   const customColumns = useMemo(() => getDocumentColumns(columnActions), [columnActions]);
 
   const table = useReactTable({
-    data: todayDocuments,
+    data: filteredDocuments,
     columns: customColumns,
     state: { pagination },
     onPaginationChange: setPagination,
@@ -326,7 +331,7 @@ export function DocumentsClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Document Node" description="Today's business paperwork synchronization active." />
+      <PageHeader title="Document Node" description="Professional paperwork synchronization." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
@@ -343,7 +348,18 @@ export function DocumentsClient() {
       </Tabs>
       
       <Card className="mt-8 shadow-2xl border-none overflow-hidden">
-          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Today's Registry</CardTitle></CardHeader>
+          <CardHeader className="bg-muted/50 py-4 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Archive Registry</CardTitle>
+                <div className="flex items-center gap-3 bg-white/50 p-1.5 px-3 rounded-lg border">
+                    <Switch checked={showAllHistory} onCheckedChange={setShowAllHistory} id="doc-history-toggle" />
+                    <Label htmlFor="doc-history-toggle" className="text-[10px] font-black uppercase flex items-center gap-1.5 cursor-pointer">
+                        <History className="h-3.5 w-3.5" />
+                        {showAllHistory ? "Show All Documents" : "Today Only"}
+                    </Label>
+                </div>
+              </div>
+          </CardHeader>
           <CardContent className="p-0 overflow-auto">
             <Table>
                 <TableHeader className="bg-muted/20">
@@ -359,7 +375,7 @@ export function DocumentsClient() {
                             <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
                         ))
                     ) : (
-                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No documents generated yet today.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={customColumns.length} className="h-32 text-center text-muted-foreground italic">No documents found for selected view.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -14,8 +15,10 @@ import { collection, query, where } from 'firebase/firestore';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 import { ThermalReceiptPdf } from '@/app/documents/components/pdfs/thermal-receipt-pdf';
 import { Input } from '@/components/ui/input';
-import { Search, Loader2 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { Search, Loader2, History } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { format, parseISO, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface RecentSalesProps {
@@ -34,6 +37,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const firestore = useFirestore();
 
     const [searchTerm, setSearchTerm] = useState("");
+    const [showAllHistory, setShowAllHistory] = useState(false);
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
     const [isExporting, setIsExporting] = useState(false);
     const [exportDoc, setExportDoc] = useState<AppDocument | null>(null);
@@ -55,9 +59,13 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         
         const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-        // FILTER: TODAY ONLY (Normalization Aware) + SEARCH
+        // Robust Filtering
         let results = rawDocs.filter(d => {
-            try { return format(parseISO(d.generatedDate), 'yyyy-MM-dd') === todayStr; } catch { return false; }
+            if (showAllHistory) return true;
+            try { 
+                const date = parseISO(d.generatedDate);
+                return format(date, 'yyyy-MM-dd') === todayStr || isToday(date); 
+            } catch { return false; }
         }).sort((a, b) => {
             const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
             const dateB = b.generatedDate ? new Date(b.generatedDate).getTime() : 0;
@@ -72,7 +80,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         }
 
         return results;
-    }, [rawDocs, searchTerm]);
+    }, [rawDocs, searchTerm, showAllHistory]);
     
     const handleDownloadPdf = async (docToDownload: AppDocument, type: 'A4' | 'Thermal' = 'A4') => {
         setIsExporting(true);
@@ -155,16 +163,23 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         <Card className="shadow-xl border-none overflow-hidden ring-1 ring-black/5 bg-white w-full">
             <CardHeader className="bg-muted/10 py-4 px-6 border-b">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <CardTitle className="text-sm font-black uppercase tracking-widest">Today's Transactions</CardTitle>
-                    <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-black uppercase tracking-widest">Sales Journal</CardTitle>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-2 bg-white p-1.5 px-3 rounded-lg border">
+                            <Switch checked={showAllHistory} onCheckedChange={setShowAllHistory} id="recent-history-toggle" />
+                            <Label htmlFor="recent-history-toggle" className="text-[9px] font-black uppercase flex items-center gap-1.5 cursor-pointer">
+                                <History className="h-3 w-3" />
+                                {showAllHistory ? "Show All" : "Today"}
+                            </Label>
+                        </div>
                         {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                         <div className="relative">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <Input 
-                                placeholder="Search today's client..." 
+                                placeholder="Search records..." 
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-8 h-9 text-xs w-48 bg-white"
+                                className="pl-8 h-9 text-xs w-40 bg-white"
                             />
                         </div>
                     </div>
@@ -201,7 +216,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                                 ) : (
                                     <TableRow>
                                         <TableCell colSpan={saleColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">
-                                            No transactions recorded yet today.
+                                            No transactions found for the selected view.
                                         </TableCell>
                                     </TableRow>
                                 )}
