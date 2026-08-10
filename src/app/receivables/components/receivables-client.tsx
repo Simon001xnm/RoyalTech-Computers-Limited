@@ -25,7 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { format, parseISO, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { CustomerStatementPdf } from '@/app/documents/components/pdfs/customer-statement-pdf';
 import { useToast } from '@/hooks/use-toast';
 import type { Sale, Customer } from '@/types';
@@ -69,14 +69,13 @@ export function ReceivablesClient() {
   const debtors = useMemo(() => {
     if (!sales || !customers) return [];
     
-    const now = new Date();
-    const todayInterval = { start: startOfDay(now), end: endOfDay(now) };
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     const debtorMap: Record<string, { customer: Customer; sales: Sale[]; totalBalance: number; totalPaid: number; totalInvoiced: number }> = {};
 
     // ONLY FILTER DEBT FROM TODAY'S TRANSACTIONS
     sales.filter(sale => {
-        try { return isWithinInterval(parseISO(sale.date), todayInterval); } catch { return false; }
+        try { return format(parseISO(sale.date), 'yyyy-MM-dd') === todayStr; } catch { return false; }
     }).forEach(sale => {
         if (!debtorMap[sale.customerId]) {
             const customer = customers.find(c => c.id === sale.customerId);
@@ -224,7 +223,7 @@ export function ReceivablesClient() {
                         <TableRow>
                             <TableHead className="text-[10px] font-black uppercase pl-6 py-4">Client Details</TableHead>
                             <TableHead className="text-[10px] font-black uppercase">Status</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase text-right">Today's Total</TableHead>
+                            <TableHead className="text-[10px) font-black uppercase text-right">Today's Total</TableHead>
                             <TableHead className="text-[10px] font-black uppercase text-right pr-6">Current Debt</TableHead>
                         </TableRow>
                     </TableHeader>

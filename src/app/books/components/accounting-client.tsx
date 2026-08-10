@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { TransactionForm } from './transaction-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { Badge } from '@/components/ui/badge';
@@ -20,15 +20,6 @@ export function AccountingClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
-
-  useEffect(() => {
-    const now = new Date();
-    setDateRange({
-      start: startOfDay(now).toISOString(),
-      end: endOfDay(now).toISOString(),
-    });
-  }, []);
 
   const expensesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -37,16 +28,16 @@ export function AccountingClient() {
 
   const { data: rawExpenses, isLoading: expensesLoading } = useCollection(expensesQuery);
   
-  const isLoading = isUserLoading || expensesLoading || !dateRange;
+  const isLoading = isUserLoading || expensesLoading;
 
   const todayExpenses = useMemo(() => {
-      if (!rawExpenses || !dateRange) return [];
-      const interval = { start: parseISO(dateRange.start), end: parseISO(dateRange.end) };
+      if (!rawExpenses) return [];
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
       
       return rawExpenses.filter(e => {
-          try { return isWithinInterval(parseISO(e.date), interval); } catch { return false; }
+          try { return format(parseISO(e.date), 'yyyy-MM-dd') === todayStr; } catch { return false; }
       }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [rawExpenses, dateRange]);
+  }, [rawExpenses]);
 
   const { totalExpenses, categoryCount } = useMemo(() => {
     const total = todayExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);

@@ -25,7 +25,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
     format, 
-    isSameDay, 
     parseISO
 } from 'date-fns';
 import Link from 'next/link';
@@ -35,7 +34,6 @@ import { cn } from '@/lib/utils';
 /**
  * @fileOverview Business Command Center - Today's Intelligence Node
  * Strictly filtered to show only today's transactions and documents.
- * Historical data is ignored per user request.
  */
 export default function DashboardPage() {
   const { tenant } = useSaaS();
@@ -69,19 +67,20 @@ export default function DashboardPage() {
   const stats = useMemo(() => {
     if (!sales || !assets || !documents || !expenses) return null;
 
-    const now = new Date();
+    // Normalize "Today" to local date string for robust matching
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     // STRICT FILTER: Only Today's Data (Calendar Day Aware)
     const todaySales = sales.filter(s => {
-        try { return isSameDay(parseISO(s.date), now); } catch { return false; }
+        try { return format(parseISO(s.date), 'yyyy-MM-dd') === todayStr; } catch { return false; }
     });
 
     const todayDocs = documents.filter(d => {
-        try { return isSameDay(parseISO(d.generatedDate), now); } catch { return false; }
+        try { return format(parseISO(d.generatedDate), 'yyyy-MM-dd') === todayStr; } catch { return false; }
     });
 
     const todayExp = expenses.filter(e => {
-        try { return isSameDay(parseISO(e.date), now); } catch { return false; }
+        try { return format(parseISO(e.date), 'yyyy-MM-dd') === todayStr; } catch { return false; }
     });
 
     // Calculations
@@ -134,9 +133,9 @@ export default function DashboardPage() {
         unpaidInvoicesCount: unpaidInvoices.length,
         lowStockCount: lowStock.length,
         outOfStockCount: outOfStock.length,
-        recent: todaySales.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).slice(0, 8),
+        recent: todaySales.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).slice(0, 10),
         topSelling,
-        todayName: format(now, 'PPPP')
+        todayName: format(new Date(), 'PPPP')
     };
   }, [sales, assets, documents, expenses]);
 
@@ -157,7 +156,6 @@ export default function DashboardPage() {
         description={`Today's performance node: ${stats.todayName}`}
       />
 
-      {/* ACTIONABLE ALERTS - STRICTLY UNPAID & INVENTORY */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(stats.lowStockCount > 0 || stats.outOfStockCount > 0) && (
             <Link href="/stock">

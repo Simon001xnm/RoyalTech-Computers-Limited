@@ -47,7 +47,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useSaaS } from "@/components/saas/saas-provider";
-import { startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const VAT_RATE = 0.16;
@@ -104,7 +104,7 @@ export function DocumentsClient() {
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [isExporting, setIsExporting] = useState(false);
 
-  // Fetch Customer Balance (Historical debt still counts for Balance Brought Forward logic)
+  // Fetch Customer Balance
   useEffect(() => {
     if (!selectedCustomerId || !tenant) {
       setCustomerBalance(0);
@@ -133,11 +133,10 @@ export function DocumentsClient() {
 
   const todayDocuments = useMemo(() => {
       if (!rawDocuments) return [];
-      const now = new Date();
-      const todayInterval = { start: startOfDay(now), end: endOfDay(now) };
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
 
       return [...rawDocuments].filter(d => {
-          try { return isWithinInterval(parseISO(d.generatedDate), todayInterval); } catch { return false; }
+          try { return format(parseISO(d.generatedDate), 'yyyy-MM-dd') === todayStr; } catch { return false; }
       }).sort((a, b) => {
           const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
           const dateB = b.generatedDate ? new Date(b.generatedDate).getTime() : 0;
