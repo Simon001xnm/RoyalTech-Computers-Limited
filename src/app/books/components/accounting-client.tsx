@@ -9,12 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { format, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { TransactionForm } from './transaction-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { Badge } from '@/components/ui/badge';
 import { useSaaS } from '@/components/saas/saas-provider';
-import { cn } from '@/lib/utils';
 
 export function AccountingClient() {
   const { user, isUserLoading } = useUser();
@@ -26,12 +25,11 @@ export function AccountingClient() {
   useEffect(() => {
     const now = new Date();
     setDateRange({
-      start: startOfMonth(now).toISOString(),
-      end: endOfMonth(now).toISOString(),
+      start: startOfDay(now).toISOString(),
+      end: endOfDay(now).toISOString(),
     });
   }, []);
 
-  // FIRESTORE QUERY: Fetch only expenses for the current workspace
   const expensesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'expenses'), where('tenantId', '==', tenant.id));
@@ -41,7 +39,7 @@ export function AccountingClient() {
   
   const isLoading = isUserLoading || expensesLoading || !dateRange;
 
-  const filteredExpenses = useMemo(() => {
+  const todayExpenses = useMemo(() => {
       if (!rawExpenses || !dateRange) return [];
       const interval = { start: parseISO(dateRange.start), end: parseISO(dateRange.end) };
       
@@ -51,10 +49,10 @@ export function AccountingClient() {
   }, [rawExpenses, dateRange]);
 
   const { totalExpenses, categoryCount } = useMemo(() => {
-    const total = filteredExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-    const categories = new Set(filteredExpenses.map(e => e.category)).size;
+    const total = todayExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const categories = new Set(todayExpenses.map(e => e.category)).size;
     return { totalExpenses: total, categoryCount: categories };
-  }, [filteredExpenses]);
+  }, [todayExpenses]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
@@ -77,8 +75,8 @@ export function AccountingClient() {
   return (
     <div className="space-y-6 pb-20">
       <PageHeader
-        title="Expense Feed (Cloud)"
-        description={`Outgoings tracking for ${format(new Date(), 'MMMM yyyy')}`}
+        title="Today's Expense Feed"
+        description={`Tracking outgoings for ${format(new Date(), 'PPPP')}`}
         actionLabel="Record Expense"
         onAction={() => setIsFormOpen(true)}
         ActionIcon={PlusCircle}
@@ -86,7 +84,7 @@ export function AccountingClient() {
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
         <SummaryCard 
-            title="Total Monthly Spend" 
+            title="Today's Total Spend" 
             value={formatCurrency(totalExpenses)} 
             icon={TrendingDown} 
             className="border-l-4 border-l-red-500"
@@ -95,13 +93,13 @@ export function AccountingClient() {
             title="Active Categories" 
             value={categoryCount} 
             icon={Wallet} 
-            description="Unique expense types tracked" 
+            description="Expense types tracked today" 
         />
         <SummaryCard 
-            title="Reporting Period" 
-            value={format(new Date(), 'MMM yyyy')} 
+            title="Reporting Window" 
+            value="Today" 
             icon={CalendarIcon} 
-            description="Current business cycle" 
+            description="Strict daily reporting cycle" 
         />
       </div>
 
@@ -109,7 +107,7 @@ export function AccountingClient() {
         <CardHeader className="bg-muted/10 border-b py-4">
             <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-red-600">
                 <ReceiptText className="h-4 w-4" />
-                Operational Expense Ledger
+                Operational Expense Ledger (Daily)
             </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -117,20 +115,20 @@ export function AccountingClient() {
             <TableHeader className="bg-muted/30">
                 <TableRow>
                     <TableHead className="text-[10px] font-black uppercase pl-6 py-4">Status</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase">Date</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase">Time</TableHead>
                     <TableHead className="text-[10px] font-black uppercase">Category</TableHead>
                     <TableHead className="text-[10px] font-black uppercase">Notes</TableHead>
                     <TableHead className="text-[10px] font-black uppercase text-right pr-6">Amount</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredExpenses.map(e => (
+              {todayExpenses.map(e => (
                 <TableRow key={e.id} className="hover:bg-muted/5 transition-colors h-14 border-b last:border-0">
                   <TableCell className="pl-6">
                     <Badge variant="destructive" className="text-[8px] font-black uppercase h-4 px-2">Expense</Badge>
                   </TableCell>
                   <TableCell className="text-xs font-bold text-muted-foreground">
-                    {format(parseISO(e.date), 'MMM d, yyyy')}
+                    {format(parseISO(e.date), 'p')}
                   </TableCell>
                   <TableCell className="font-black uppercase text-[10px] tracking-tight">
                     {e.category}
@@ -143,12 +141,12 @@ export function AccountingClient() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredExpenses.length === 0 && (
+              {todayExpenses.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="h-40 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground opacity-30">
                         <ReceiptText className="h-12 w-12" />
-                        <p className="text-xs font-black uppercase tracking-widest">No expense records found in this cycle.</p>
+                        <p className="text-xs font-black uppercase tracking-widest">No expense records found for today.</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -161,7 +159,7 @@ export function AccountingClient() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-xl border-none shadow-2xl">
           <DialogHeader className="pb-4 border-b">
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Log Cloud Expense</DialogTitle>
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Log Expense</DialogTitle>
           </DialogHeader>
           <TransactionForm user={user} onFinished={() => setIsFormOpen(false)} />
         </DialogContent>

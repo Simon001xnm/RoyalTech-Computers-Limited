@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { PageHeader } from '@/components/layout/page-header';
@@ -13,43 +13,36 @@ import {
     Package, 
     Users, 
     FileWarning, 
-    Clock, 
-    ArrowRight,
     TrendingUp,
     Wallet,
     CreditCard,
     Landmark,
     Banknote,
-    CalendarDays
+    ArrowRight
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
     format, 
-    startOfWeek, 
-    startOfMonth, 
-    endOfMonth,
     isWithinInterval, 
     parseISO, 
-    subDays,
-    subMonths,
-    startOfDay
+    startOfDay,
+    endOfDay
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
 /**
- * @fileOverview High-Density Business Dashboard
- * Shifted from Daily to Monthly Intelligence for better strategic oversight.
- * Enhanced with Revenue Velocity (Daily/Weekly) and visual performance fixes.
+ * @fileOverview Business Command Center - Today's Intelligence Node
+ * Strictly filtered to show only today's transactions and documents.
+ * Historical data is ignored per user request.
  */
 export default function DashboardPage() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
 
-  // 1. DATA QUERIES (Filtered by Tenancy)
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
@@ -75,55 +68,37 @@ export default function DashboardPage() {
   const { data: documents, isLoading: docsLoading } = useCollection(docsQuery);
   const { data: expenses, isLoading: expLoading } = useCollection(expensesQuery);
 
-  // 2. INTELLIGENCE CALCULATIONS
   const stats = useMemo(() => {
     if (!sales || !assets || !documents || !expenses) return null;
 
     const now = new Date();
-    const todayStart = startOfDay(now);
-    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-    const monthStart = startOfMonth(now);
-    
-    const lastMonthDate = subMonths(now, 1);
-    const lastMonthStart = startOfMonth(lastMonthDate);
-    const lastMonthEnd = endOfMonth(lastMonthDate);
+    const todayInterval = { start: startOfDay(now), end: endOfDay(now) };
 
-    // Filter Sets
+    // STRICT FILTER: Only Today's Data
     const todaySales = sales.filter(s => {
-        try { return isWithinInterval(parseISO(s.date), { start: todayStart, end: now }); } catch { return false; }
+        try { return isWithinInterval(parseISO(s.date), todayInterval); } catch { return false; }
     });
 
-    const weekSales = sales.filter(s => {
-        try { return isWithinInterval(parseISO(s.date), { start: weekStart, end: now }); } catch { return false; }
+    const todayDocs = documents.filter(d => {
+        try { return isWithinInterval(parseISO(d.generatedDate), todayInterval); } catch { return false; }
     });
 
-    const monthSales = sales.filter(s => {
-        try { return isWithinInterval(parseISO(s.date), { start: monthStart, end: now }); } catch { return false; }
+    const todayExp = expenses.filter(e => {
+        try { return isWithinInterval(parseISO(e.date), todayInterval); } catch { return false; }
     });
 
-    const lastMonthSales = sales.filter(s => {
-        try { return isWithinInterval(parseISO(s.date), { start: lastMonthStart, end: lastMonthEnd }); } catch { return false; }
-    });
+    // Calculations
+    const totalTodaySales = todaySales.reduce((acc, s) => acc + (Number(s.total) || Number(s.amount) || 0), 0);
+    const totalTodayProfit = todaySales.reduce((acc, s) => acc + (Number(s.totalProfit) || 0), 0);
+    const totalTodayExp = todayExp.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
 
-    const totalTodaySales = todaySales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0);
-    const totalWeekSales = weekSales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0);
-    const totalMonthSales = monthSales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0);
-    const totalMonthProfit = monthSales.reduce((acc, s) => acc + (Number(s.totalProfit) || 0), 0);
-    const totalLastMonthSales = lastMonthSales.reduce((acc, s) => acc + (Number(s.amount) || Number(s.total) || 0), 0);
-
-    const monthExp = expenses.filter(e => {
-        try { return isWithinInterval(parseISO(e.date), { start: monthStart, end: now }); } catch { return false; }
-    }).reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
-
-    // Monthly Settlements Breakdown
+    // Today's Settlements
     const calculateModeTotal = (mode: string) => {
-        return monthSales.reduce((acc, s) => {
+        return todaySales.reduce((acc, s) => {
             const modeAmt = (s.payments || [])
                 .filter((p: any) => p.method === mode)
                 .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
-            
             const legacyAmt = s.paymentMethod === mode ? (Number(s.amount) || Number(s.total) || 0) : 0;
-            
             return acc + (modeAmt || legacyAmt);
         }, 0);
     };
@@ -132,89 +107,61 @@ export default function DashboardPage() {
     const cashSales = calculateModeTotal('Cash');
     const bankSales = calculateModeTotal('Bank');
     const cardSales = calculateModeTotal('Card');
-    const creditSales = monthSales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
+    const creditSales = todaySales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
 
-    // Debts & Overdue
-    const invoicesWithDebt = sales.filter(s => (Number(s.balance) || 0) > 0);
-    const unpaidInvoicesCount = invoicesWithDebt.length;
-    const uniqueDebtorsCount = new Set(invoicesWithDebt.map(s => s.customerId)).size;
-    const totalOutstandingDebt = invoicesWithDebt.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
+    // Unpaid Invoices ALERT (Today only)
+    const unpaidInvoices = todaySales.filter(s => (Number(s.balance) || 0) > 0);
+    const totalTodayDebt = unpaidInvoices.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
 
     // Inventory Alerts
-    const lowStock = assets.filter(a => Number(a.currentStock) > 0 && Number(a.currentStock) <= (Number(a.minStock) || 5));
-    const outOfStock = assets.filter(a => Number(a.currentStock) <= 0);
+    const lowStock = assets.filter(a => Number(a.quantity) > 0 && Number(a.quantity) <= (Number(a.minStock) || 5));
+    const outOfStock = assets.filter(a => Number(a.quantity) <= 0);
 
-    // Document Alerts
-    const pendingQuotes = documents.filter(d => d.type === 'Quotation');
-    const overdueInvoices = documents.filter(d => {
-        if (d.type !== 'Invoice' || d.data?.status === 'Paid') return false;
-        try { return parseISO(d.generatedDate) < subDays(now, 7); } catch { return false; }
-    });
-
-    // Top Selling
+    // Top Selling (Today)
     const productMap: Record<string, number> = {};
-    sales.forEach(s => s.items?.forEach((i: any) => {
+    todaySales.forEach(s => s.items?.forEach((i: any) => {
         productMap[i.name] = (productMap[i.name] || 0) + (Number(i.quantity) || 1);
     }));
     const topSelling = Object.entries(productMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
 
-    // Trend Calculation
-    const revenueTrend = totalLastMonthSales > 0 ? ((totalMonthSales - totalLastMonthSales) / totalLastMonthSales) * 100 : 0;
-    const trendLabel = revenueTrend >= 0 ? `+${revenueTrend.toFixed(1)}% vs last month` : `${revenueTrend.toFixed(1)}% vs last month`;
-
     return {
         totalTodaySales,
-        totalWeekSales,
-        totalMonthSales, 
-        totalMonthProfit, 
-        monthExp,
-        mpesaSales, 
+        totalTodayProfit,
+        totalTodayExp,
+        mpesaSales,
         cashSales,
         bankSales,
         cardSales,
         creditSales,
-        totalOutstandingDebt, 
-        unpaidInvoicesCount,
-        uniqueDebtorsCount,
+        totalTodayDebt,
+        unpaidInvoicesCount: unpaidInvoices.length,
         lowStockCount: lowStock.length,
         outOfStockCount: outOfStock.length,
-        pendingQuotesCount: pendingQuotes.length,
-        overdueInvoicesCount: overdueInvoices.length,
-        recent: sales.sort((a,b) => {
-            try { return parseISO(b.date).getTime() - parseISO(a.date).getTime(); } catch { return 0; }
-        }).slice(0, 8),
+        recent: todaySales.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).slice(0, 8),
         topSelling,
-        lastMonthTotal: totalLastMonthSales,
-        trendLabel,
-        monthName: format(now, 'MMMM yyyy')
+        todayName: format(now, 'PPPP')
     };
   }, [sales, assets, documents, expenses]);
 
   const formatKes = (val: number) => {
-      const safeVal = Number(val) || 0;
-      return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(safeVal);
+      return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
   };
 
   if (salesLoading || stockLoading || docsLoading || expLoading) {
-      return <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Synchronizing Node Data...</div>;
+      return <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Synchronizing Today's Node Data...</div>;
   }
 
-  if (!stats) return (
-    <div className="p-20 text-center space-y-4">
-        <div className="bg-muted p-6 rounded-full w-fit mx-auto opacity-20"><DollarSign className="h-12 w-12" /></div>
-        <p className="font-black uppercase text-xs tracking-widest text-muted-foreground">Node data awaiting initialization...</p>
-    </div>
-  );
+  if (!stats) return null;
 
   return (
     <div className="space-y-6 pb-20 selection:bg-primary selection:text-white">
       <PageHeader 
         title="Business Command Center" 
-        description={`Monthly performance intelligence for ${stats.monthName}`}
+        description={`Today's performance node: ${stats.todayName}`}
       />
 
-      {/* 1. ACTIONABLE CRITICAL ALERTS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ACTIONABLE ALERTS - STRICTLY UNPAID & INVENTORY */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(stats.lowStockCount > 0 || stats.outOfStockCount > 0) && (
             <Link href="/stock">
                 <Card className="border-l-4 border-l-orange-500 hover:bg-orange-50 transition-colors cursor-pointer group">
@@ -222,7 +169,7 @@ export default function DashboardPage() {
                         <div className="bg-orange-100 p-2.5 rounded-xl"><Package className="h-5 w-5 text-orange-600" /></div>
                         <div>
                             <p className="text-[10px] font-black uppercase text-orange-600 tracking-widest">Inventory Alert</p>
-                            <p className="text-sm font-bold">{stats.lowStockCount + stats.outOfStockCount} items low or out</p>
+                            <p className="text-sm font-bold">{stats.lowStockCount + stats.outOfStockCount} items low or out of stock</p>
                         </div>
                         <ArrowUpRight className="ml-auto h-4 w-4 text-orange-300 group-hover:text-orange-500 transition-colors" />
                     </CardContent>
@@ -234,223 +181,110 @@ export default function DashboardPage() {
             <Link href="/receivables">
                 <Card className="border-l-4 border-l-red-500 hover:bg-red-50 transition-colors cursor-pointer group">
                     <CardContent className="p-4 flex items-center gap-4">
-                        <div className="bg-red-100 p-2.5 rounded-xl"><Users className="h-5 w-5 text-red-600" /></div>
+                        <div className="bg-red-100 p-2.5 rounded-xl"><FileWarning className="h-5 w-5 text-red-600" /></div>
                         <div>
-                            <p className="text-[10px] font-black uppercase text-red-600 tracking-widest">Debt Warning</p>
-                            <p className="text-xs font-bold leading-tight">
-                                {stats.unpaidInvoicesCount} unpaid bills from {stats.uniqueDebtorsCount} clients
-                            </p>
+                            <p className="text-[10px] font-black uppercase text-red-600 tracking-widest">Unpaid Invoices</p>
+                            <p className="text-sm font-bold">{stats.unpaidInvoicesCount} invoices pending today ({formatKes(stats.totalTodayDebt)})</p>
                         </div>
                         <ArrowUpRight className="ml-auto h-4 w-4 text-red-300 group-hover:text-red-50 transition-colors" />
                     </CardContent>
                 </Card>
             </Link>
           )}
-
-          {stats.overdueInvoicesCount > 0 && (
-            <Link href="/documents">
-                <Card className="border-l-4 border-l-destructive hover:bg-destructive/5 transition-colors cursor-pointer group">
-                    <CardContent className="p-4 flex items-center gap-4">
-                        <div className="bg-destructive/10 p-2.5 rounded-xl"><FileWarning className="h-5 w-5 text-destructive" /></div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-destructive tracking-widest">Billing Overdue</p>
-                            <p className="text-sm font-bold">{stats.overdueInvoicesCount} invoices are past due</p>
-                        </div>
-                        <ArrowUpRight className="ml-auto h-4 w-4 text-destructive/30 group-hover:text-destructive transition-colors" />
-                    </CardContent>
-                </Card>
-            </Link>
-          )}
-
-          {stats.pendingQuotesCount > 0 && (
-            <Link href="/documents">
-                <Card className="border-l-4 border-l-primary hover:bg-primary/5 transition-colors cursor-pointer group">
-                    <CardContent className="p-4 flex items-center gap-4">
-                        <div className="bg-primary/10 p-2.5 rounded-xl"><Clock className="h-5 w-5 text-primary" /></div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-primary tracking-widest">Sales Pipeline</p>
-                            <p className="text-sm font-bold">{stats.pendingQuotesCount} pending quotations</p>
-                        </div>
-                        <ArrowUpRight className="ml-auto h-4 w-4 text-primary/30 group-hover:text-primary transition-colors" />
-                    </CardContent>
-                </Card>
-            </Link>
-          )}
       </div>
 
-      {/* 2. PRIMARY FINANCIAL KPI CARDS - Monthly Focus */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <SummaryCard 
-            title="Monthly Revenue" 
-            value={formatKes(stats.totalMonthSales)} 
-            icon={DollarSign} 
-            trend={stats.trendLabel} 
-            description={`Aggregated for ${stats.monthName}`}
-          />
-          <SummaryCard 
-            title="Monthly Net Profit" 
-            value={formatKes(stats.totalMonthProfit)} 
-            icon={TrendingUp} 
-            description="Revenue minus historical COGS" 
-          />
-          <SummaryCard 
-            title="Operational Exp" 
-            value={formatKes(stats.monthExp)} 
-            icon={Wallet} 
-            className="border-l-4 border-l-red-500"
-            description={`Expenses recorded in ${format(new Date(), 'MMM')}`} 
-          />
-          <SummaryCard 
-            title="Outstanding Receivables" 
-            value={formatKes(stats.totalOutstandingDebt)} 
-            icon={CreditCard} 
-            description="Total aggregate client debt" 
-          />
+          <SummaryCard title="Today's Revenue" value={formatKes(stats.totalTodaySales)} icon={DollarSign} description="Gross sales since midnight" />
+          <SummaryCard title="Today's Net Profit" value={formatKes(stats.totalTodayProfit)} icon={TrendingUp} description="Revenue minus item costs" />
+          <SummaryCard title="Today's Expenses" value={formatKes(stats.totalTodayExp)} icon={Wallet} className="border-l-4 border-l-red-500" description="Outgoings recorded today" />
+          <SummaryCard title="Today's Unpaid Debt" value={formatKes(stats.totalTodayDebt)} icon={CreditCard} description="New receivables today" />
       </div>
 
-      {/* 3. CASH FLOW & COMPARISONS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full">
+          <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full bg-white">
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest">Monthly Settlements</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest">Today's Settlements</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4 flex-grow">
-                {/* M-Pesa Row */}
                 <div className="flex justify-between items-end border-b pb-3">
                     <div className="flex items-center gap-3">
                         <div className="bg-green-100 p-1.5 rounded-lg"><Wallet className="h-3.5 w-3.5 text-green-700" /></div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-green-600">M-Pesa / Mobile</p>
-                            <p className="text-xl font-black">{formatKes(stats.mpesaSales)}</p>
-                        </div>
+                        <div><p className="text-[10px] font-black uppercase text-green-600">M-Pesa</p><p className="text-xl font-black">{formatKes(stats.mpesaSales)}</p></div>
                     </div>
                     <Badge className="bg-green-50 text-green-700 border-green-200 uppercase text-[7px] font-black h-4">Verified</Badge>
                 </div>
-
-                {/* Bank Row */}
                 <div className="flex justify-between items-end border-b pb-3">
                     <div className="flex items-center gap-3">
                         <div className="bg-blue-100 p-1.5 rounded-lg"><Landmark className="h-3.5 w-3.5 text-blue-700" /></div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-blue-600">Bank Transfers</p>
-                            <p className="text-xl font-black">{formatKes(stats.bankSales)}</p>
-                        </div>
+                        <div><p className="text-[10px] font-black uppercase text-blue-600">Bank</p><p className="text-xl font-black">{formatKes(stats.bankSales)}</p></div>
                     </div>
-                    <Badge variant="outline" className="uppercase text-[7px] font-black h-4 border-blue-200 text-blue-600">Account</Badge>
                 </div>
-
-                {/* Card Row */}
                 <div className="flex justify-between items-end border-b pb-3">
                     <div className="flex items-center gap-3">
                         <div className="bg-primary/5 p-1.5 rounded-lg"><CreditCard className="h-3.5 w-3.5 text-primary" /></div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-primary">Card Terminal</p>
-                            <p className="text-xl font-black">{formatKes(stats.cardSales)}</p>
-                        </div>
+                        <div><p className="text-[10px] font-black uppercase text-primary">Card</p><p className="text-xl font-black">{formatKes(stats.cardSales)}</p></div>
                     </div>
-                    <Badge variant="outline" className="uppercase text-[7px] font-black h-4">Electronic</Badge>
                 </div>
-
-                {/* Cash Row */}
                 <div className="flex justify-between items-end border-b pb-3">
                     <div className="flex items-center gap-3">
                         <div className="bg-muted p-1.5 rounded-lg"><Banknote className="h-3.5 w-3.5 text-muted-foreground" /></div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-muted-foreground">Cash Settlement</p>
-                            <p className="text-xl font-black">{formatKes(stats.cashSales)}</p>
-                        </div>
+                        <div><p className="text-[10px] font-black uppercase text-muted-foreground">Cash</p><p className="text-xl font-black">{formatKes(stats.cashSales)}</p></div>
                     </div>
-                    <Badge variant="outline" className="uppercase text-[7px] font-black h-4 opacity-50">Physical</Badge>
                 </div>
-
-                {/* Credit/Debt Row */}
                 <div className="flex justify-between items-end">
                     <div className="flex items-center gap-3">
-                        <div className="bg-red-100 p-1.5 rounded-lg"><Clock className="h-3.5 w-3.5 text-red-600" /></div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-red-500">Unpaid Balances</p>
-                            <p className="text-xl font-black">{formatKes(stats.creditSales)}</p>
-                        </div>
+                        <div className="bg-red-100 p-1.5 rounded-lg"><AlertTriangle className="h-3.5 w-3.5 text-red-600" /></div>
+                        <div><p className="text-[10px] font-black uppercase text-red-500">Unpaid Today</p><p className="text-xl font-black">{formatKes(stats.creditSales)}</p></div>
                     </div>
-                    <Badge variant="destructive" className="uppercase text-[7px] font-black h-4">Invoiced</Badge>
+                    <Badge variant="destructive" className="uppercase text-[7px] font-black h-4">Credit</Badge>
                 </div>
             </CardContent>
           </Card>
 
-          <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full">
+          <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full bg-white">
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest">Revenue Velocity</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6 flex-grow">
-                <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>Today</span><span>{formatKes(stats.totalTodaySales)}</span></div>
-                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-green-500" style={{ width: `${Math.min(100, (stats.totalTodaySales / (stats.totalMonthSales || 1)) * 100)}%` }} />
-                    </div>
-                </div>
-                <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>This Week</span><span>{formatKes(stats.totalWeekSales)}</span></div>
-                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500" style={{ width: `${Math.min(100, (stats.totalWeekSales / (stats.totalMonthSales || 1)) * 100)}%` }} />
-                    </div>
-                </div>
-                <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>This Month</span><span>{formatKes(stats.totalMonthSales)}</span></div>
-                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '100%' }} />
-                    </div>
-                </div>
-                <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-black uppercase opacity-40"><span>Last Month</span><span>{formatKes(stats.lastMonthTotal)}</span></div>
-                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden opacity-50">
-                        <div className="h-full bg-slate-400" style={{ width: `${Math.min(100, (stats.lastMonthTotal / (stats.totalMonthSales || 1)) * 100)}%` }} />
-                    </div>
-                </div>
-            </CardContent>
-            <CardFooter className="mt-auto border-t bg-muted/5 p-4 text-center">
-                <Link href="/reports" className="w-full">
-                    <Button variant="ghost" className="w-full text-[10px] font-black uppercase tracking-widest">View Detailed P&L <ArrowRight className="ml-2 h-3 w-3"/></Button>
-                </Link>
-            </CardFooter>
-          </Card>
-
-          <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full">
-            <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest">Top Selling Products</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest">Today's Top Sellers</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
                 <div className="divide-y">
                     {stats.topSelling.map(([name, qty]) => (
                         <div key={name} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
                             <p className="text-[10px] font-bold uppercase truncate max-w-[150px]">{name}</p>
-                            <Badge variant="secondary" className="font-black text-[10px] px-3 h-6 bg-black text-white border-none">
-                                {qty} UNITS
-                            </Badge>
+                            <Badge className="font-black text-[10px] px-3 h-6 bg-black text-white border-none">{qty} UNITS</Badge>
                         </div>
                     ))}
                     {stats.topSelling.length === 0 && (
-                        <div className="p-12 text-center text-[10px] font-bold text-muted-foreground italic uppercase opacity-30">No transaction data recorded</div>
+                        <div className="p-12 text-center text-[10px] font-bold text-muted-foreground italic uppercase opacity-30">No sales recorded yet today.</div>
                     )}
+                </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full bg-white">
+            <CardHeader className="bg-muted/10 border-b py-3 px-5">
+                <CardTitle className="text-xs font-black uppercase tracking-widest">Node Health</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center space-y-4 flex-grow">
+                <div className="bg-green-50 p-4 rounded-full"><TrendingUp className="h-10 w-10 text-green-600" /></div>
+                <div>
+                    <p className="text-sm font-black uppercase">Sync Operational</p>
+                    <p className="text-[10px] text-muted-foreground">Today's transactions are being written to the cloud in real-time.</p>
                 </div>
             </CardContent>
           </Card>
       </div>
 
-      {/* 4. RECENT TRANSACTIONS FEED */}
       <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
         <CardHeader className="bg-muted/30 border-b py-4 px-6 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-black uppercase tracking-widest">Cloud Transaction Feed</CardTitle>
-            <Link href="/pos">
-                <Button variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest border-2">Open POS Node</Button>
-            </Link>
+            <CardTitle className="text-sm font-black uppercase tracking-widest">Today's Transaction Feed</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
             <Table>
                 <TableHeader className="bg-muted/20">
                     <TableRow className="h-10">
-                        <TableHead className="text-[10px] font-black uppercase pl-6">Timestamp</TableHead>
-                        <TableHead className="text-[10px] font-black uppercase">Client Node</TableHead>
-                        <TableHead className="text-[10px] font-black uppercase">Ledger Status</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase pl-6">Time</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase">Client</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase">Status</TableHead>
                         <TableHead className="text-[10px] font-black uppercase">Method</TableHead>
                         <TableHead className="text-[10px] font-black uppercase text-right pr-6">Value</TableHead>
                     </TableRow>
@@ -458,36 +292,17 @@ export default function DashboardPage() {
                 <TableBody>
                     {stats.recent.map(sale => (
                         <TableRow key={sale.id} className="h-12 hover:bg-muted/5 transition-colors border-b last:border-0">
-                            <TableCell className="pl-6">
-                                <span className="text-[10px] font-mono text-muted-foreground">
-                                    {sale.date ? format(parseISO(sale.date), 'dd/MM HH:mm') : 'Recently'}
-                                </span>
-                            </TableCell>
-                            <TableCell><span className="text-[10px] font-black uppercase tracking-tighter">{sale.customerName || 'Walk-in Client'}</span></TableCell>
-                            <TableCell>
-                                <Badge 
-                                    variant={sale.status === 'Paid' ? 'default' : 'destructive'} 
-                                    className={cn(
-                                        "text-[8px] font-black h-4 px-2 uppercase border-none",
-                                        sale.status === 'Partial' && "bg-red-600 text-white"
-                                    )}
-                                >
-                                    {sale.status}
-                                </Badge>
-                            </TableCell>
+                            <TableCell className="pl-6"><span className="text-[10px] font-mono text-muted-foreground">{format(parseISO(sale.date), 'HH:mm')}</span></TableCell>
+                            <TableCell><span className="text-[10px] font-black uppercase tracking-tighter">{sale.customerName || 'Walk-in'}</span></TableCell>
+                            <TableCell><Badge variant={sale.status === 'Paid' ? 'default' : 'destructive'} className="text-[8px] font-black h-4 px-2 uppercase border-none">{sale.status}</Badge></TableCell>
                             <TableCell><span className="text-[10px] font-bold text-muted-foreground uppercase">{sale.paymentMethod}</span></TableCell>
-                            <TableCell className={cn(
-                                "text-right pr-6 font-black text-sm",
-                                (sale.status === 'Partial' || sale.status === 'Credit') ? "text-red-600" : "text-primary"
-                            )}>
+                            <TableCell className={cn("text-right pr-6 font-black text-sm", sale.status !== 'Paid' ? "text-red-600" : "text-primary")}>
                                 {formatKes(Number(sale.total) || Number(sale.amount) || 0)}
                             </TableCell>
                         </TableRow>
                     ))}
                     {stats.recent.length === 0 && (
-                        <TableRow>
-                            <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic text-[10px] font-bold uppercase opacity-30">Waiting for first cloud transaction...</TableCell>
-                        </TableRow>
+                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic text-[10px] font-bold uppercase opacity-30">No activity recorded today.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>
@@ -496,7 +311,7 @@ export default function DashboardPage() {
       
       <div className="text-center pt-8 opacity-40">
           <p className="text-[9px] text-muted-foreground tracking-[0.5em] uppercase leading-relaxed">
-             Branded Node Sync Active &bull; Financial Integrity Guard &bull; Shop Manager v2.6.1
+             Node-Sync: TODAY ONLY MODE &bull; Financial Integrity Guard &bull; v2.7.0
           </p>
       </div>
     </div>

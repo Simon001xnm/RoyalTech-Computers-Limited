@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Info, Wallet, Printer } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Printer } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem, Sale } from "@/types";
 import {
   Table,
@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, addDoc, doc, getDocs, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, addDoc, doc, getDocs } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -47,8 +47,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useSaaS } from "@/components/saas/saas-provider";
-import { addDays, addWeeks, addMonths, addYears } from "date-fns";
-import { Badge } from "@/components/ui/badge";
+import { startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const VAT_RATE = 0.16;
@@ -99,16 +98,13 @@ export function DocumentsClient() {
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [customerBalance, setCustomerBalance] = useState(0);
-  const [isBalanceLoading, setIsBalanceLoading] = useState(false);
-  const [details, setDetails] = useState('');
-  const [amount, setAmount] = useState<string>('');
   const [applyVat, setApplyVat] = useState(false);
   
   const [lineItems, setLineItems] = useState<DocumentLineItem[]>([{ description: '', quantity: 1, unitPrice: 0 }]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [isExporting, setIsExporting] = useState(false);
 
-  // Fetch Customer Balance
+  // Fetch Customer Balance (Historical debt still counts for Balance Brought Forward logic)
   useEffect(() => {
     if (!selectedCustomerId || !tenant) {
       setCustomerBalance(0);
@@ -116,7 +112,6 @@ export function DocumentsClient() {
     }
 
     const fetchBalance = async () => {
-      setIsBalanceLoading(true);
       try {
         const salesRef = collection(firestore, 'sales_transactions');
         const q = query(
@@ -130,17 +125,20 @@ export function DocumentsClient() {
         setCustomerBalance(totalBalance);
       } catch (e) {
         console.error("Balance fetch error:", e);
-      } finally {
-        setIsBalanceLoading(false);
       }
     };
 
     fetchBalance();
   }, [selectedCustomerId, tenant, firestore]);
 
-  const sortedDocuments = useMemo(() => {
+  const todayDocuments = useMemo(() => {
       if (!rawDocuments) return [];
-      return [...rawDocuments].sort((a, b) => {
+      const now = new Date();
+      const todayInterval = { start: startOfDay(now), end: endOfDay(now) };
+
+      return [...rawDocuments].filter(d => {
+          try { return isWithinInterval(parseISO(d.generatedDate), todayInterval); } catch { return false; }
+      }).sort((a, b) => {
           const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
           const dateB = b.generatedDate ? new Date(b.generatedDate).getTime() : 0;
           return dateB - dateA;
@@ -152,12 +150,10 @@ export function DocumentsClient() {
 
     const typeCount = rawDocuments?.filter(d => d.type === type).length || 0;
     const seq = typeCount + 1;
-    const initials = TYPE_INITIALS[type] || 'DOC';
-    let title = `${type} #${String(seq).padStart(3, '0')}`;
+    const docTitle = `${type} #${String(seq).padStart(3, '0')}`;
     let relatedTo = "N/A";
     
     const documentData: any = { 
-        details: details || '', 
         applyVat,
         previousBalance: customerBalance, 
         workspace: workspaceProfile ? {
@@ -187,46 +183,19 @@ export function DocumentsClient() {
         relatedTo = selectedCustomer.alias ? `${selectedCustomer.alias} (${selectedCustomer.name})` : selectedCustomer.name;
     }
 
-    if (type === 'Receipt') {
-        const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
-        
-        if (validLineItems.length > 0) {
-            documentData.items = validLineItems.map(i => ({
-                id: `manual_${Date.now()}`,
-                name: i.description,
-                price: i.unitPrice,
-                quantity: i.quantity,
-                type: 'custom'
-            }));
-            const subtotal = validLineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-            const vat = applyVat ? subtotal * VAT_RATE : 0;
-            documentData.amount = subtotal + vat;
-            documentData.subtotal = subtotal;
-            documentData.vat = vat;
-        } else {
-            const parsedAmount = parseFloat(amount);
-            if (isNaN(parsedAmount) || parsedAmount <= 0) {
-                toast({ variant: 'destructive', title: 'Check the price or items' });
-                return;
-            }
-            documentData.amount = parsedAmount;
-        }
-    } else if (['Quotation', 'Invoice', 'Proforma', 'LeaseAgreement'].includes(type)) {
-        const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
-        documentData.items = validLineItems;
-        
-        const subtotal = validLineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-        const vat = applyVat ? subtotal * VAT_RATE : 0;
-        documentData.subtotal = subtotal;
-        documentData.vat = vat;
-        documentData.total = subtotal + vat;
-    }
+    const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
+    documentData.items = validLineItems;
+    const subtotal = validLineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+    const vat = applyVat ? subtotal * VAT_RATE : 0;
+    documentData.subtotal = subtotal;
+    documentData.vat = vat;
+    documentData.total = subtotal + vat;
 
     try {
         await addDoc(collection(firestore, 'documents'), {
             tenantId: tenant.id,
             type: type,
-            title: title,
+            title: docTitle,
             generatedDate: new Date().toISOString(),
             relatedTo: relatedTo,
             data: documentData,
@@ -235,8 +204,6 @@ export function DocumentsClient() {
         });
         toast({ title: "Document Created Successfully" });
         setSelectedCustomerId('');
-        setDetails('');
-        setAmount('');
         setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Action Failed', description: error.message });
@@ -326,7 +293,7 @@ export function DocumentsClient() {
   const customColumns = useMemo(() => getDocumentColumns(columnActions), [columnActions]);
 
   const table = useReactTable({
-    data: sortedDocuments,
+    data: todayDocuments,
     columns: customColumns,
     state: { pagination },
     onPaginationChange: setPagination,
@@ -360,7 +327,7 @@ export function DocumentsClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Document Node" description="High-fidelity business paperwork synchronized with your cloud ledger." />
+      <PageHeader title="Document Node" description="Today's business paperwork synchronization active." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
@@ -376,9 +343,8 @@ export function DocumentsClient() {
         <TabsContent value="Receipt">{renderForm("Receipt")}</TabsContent>
       </Tabs>
       
-      {/* Table and Dialogs below omitted for brevity but preserved in context */}
       <Card className="mt-8 shadow-2xl border-none overflow-hidden">
-          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Archive Registry</CardTitle></CardHeader>
+          <CardHeader className="bg-muted/50 py-4"><CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Today's Registry</CardTitle></CardHeader>
           <CardContent className="p-0 overflow-auto">
             <Table>
                 <TableHeader className="bg-muted/20">
@@ -394,7 +360,7 @@ export function DocumentsClient() {
                             <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
                         ))
                     ) : (
-                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No document records found in this node.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No documents generated yet today.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>

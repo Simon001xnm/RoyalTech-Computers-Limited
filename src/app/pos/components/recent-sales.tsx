@@ -7,16 +7,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef, getPaginationRowModel, type PaginationState } from "@tanstack/react-table";
 import { getSaleColumns, type SaleColumnActions } from './sale-columns';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
-import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 import { ThermalReceiptPdf } from '@/app/documents/components/pdfs/thermal-receipt-pdf';
 import { Input } from '@/components/ui/input';
-import { Search, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { Search, Loader2 } from 'lucide-react';
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface RecentSalesProps {
@@ -35,7 +34,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const firestore = useFirestore();
 
     const [searchTerm, setSearchTerm] = useState("");
-    const [dateFilter, setDateFilter] = useState("");
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
     const [isExporting, setIsExporting] = useState(false);
     const [exportDoc, setExportDoc] = useState<AppDocument | null>(null);
@@ -55,7 +53,13 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const filteredDocs = useMemo(() => {
         if (!rawDocs) return [];
         
-        let results = [...rawDocs].sort((a, b) => {
+        const now = new Date();
+        const todayInterval = { start: startOfDay(now), end: endOfDay(now) };
+
+        // FILTER: TODAY ONLY + SEARCH
+        let results = rawDocs.filter(d => {
+            try { return isWithinInterval(parseISO(d.generatedDate), todayInterval); } catch { return false; }
+        }).sort((a, b) => {
             const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
             const dateB = b.generatedDate ? new Date(b.generatedDate).getTime() : 0;
             return dateB - dateA;
@@ -68,14 +72,8 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             );
         }
 
-        if (dateFilter) {
-            results = results.filter(d => 
-                d.generatedDate.startsWith(dateFilter)
-            );
-        }
-
         return results;
-    }, [rawDocs, searchTerm, dateFilter]);
+    }, [rawDocs, searchTerm]);
     
     const handleDownloadPdf = async (docToDownload: AppDocument, type: 'A4' | 'Thermal' = 'A4') => {
         setIsExporting(true);
@@ -85,7 +83,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
 
         try {
             setExportDoc(docToDownload);
-            await new Promise(r => setTimeout(r, 800)); // Increased delay for branding assets
+            await new Promise(r => setTimeout(r, 800));
 
             const element = document.getElementById('recent-sale-export-target');
             if (!element) throw new Error("Export target not found");
@@ -97,8 +95,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                 backgroundColor: "#ffffff",
                 width: isThermal ? 302 : 794,
                 y: 0,
-                scrollY: 0,
-                logging: false
+                scrollY: 0
             });
             
             const pdf = new jsPDF({ 
@@ -159,25 +156,16 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         <Card className="shadow-xl border-none overflow-hidden ring-1 ring-black/5 bg-white w-full">
             <CardHeader className="bg-muted/10 py-4 px-6 border-b">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <CardTitle className="text-sm font-black uppercase tracking-widest">Transaction History</CardTitle>
+                    <CardTitle className="text-sm font-black uppercase tracking-widest">Today's Transactions</CardTitle>
                     <div className="flex items-center gap-2">
                         {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                         <div className="relative">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <Input 
-                                placeholder="Filter by client..." 
+                                placeholder="Search today's client..." 
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 className="pl-8 h-9 text-xs w-48 bg-white"
-                            />
-                        </div>
-                        <div className="relative">
-                            <CalendarIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                            <Input 
-                                type="date"
-                                value={dateFilter}
-                                onChange={e => setDateFilter(e.target.value)}
-                                className="pl-8 h-9 text-xs w-40 bg-white"
                             />
                         </div>
                     </div>
@@ -214,7 +202,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                                 ) : (
                                     <TableRow>
                                         <TableCell colSpan={saleColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">
-                                            No matching records found.
+                                            No transactions recorded yet today.
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -224,7 +212,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                     </div>
                 )}
                 
-                {/* PDF Generation Mirror - Fixed hidden container */}
                 <div className="fixed left-[-9999px] top-0 pointer-events-none overflow-visible">
                     <div id="recent-sale-export-target" className="bg-white inline-block h-fit" style={{ width: exportType === 'Thermal' ? '80mm' : '210mm' }}>
                         {exportDoc && (
