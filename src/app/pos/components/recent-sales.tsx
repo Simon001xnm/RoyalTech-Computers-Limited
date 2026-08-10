@@ -10,7 +10,7 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { useToast } from '@/hooks/use-toast';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 import { ThermalReceiptPdf } from '@/app/documents/components/pdfs/thermal-receipt-pdf';
 import { Input } from '@/components/ui/input';
@@ -32,7 +32,7 @@ const TYPE_INITIALS: Record<string, string> = {
 
 /**
  * @fileOverview Sales Journal for POS
- * Hardcoded to Today's transactions for strict operational focus.
+ * Strictly isolates Today's transactions.
  */
 export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const { toast } = useToast();
@@ -40,7 +40,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const { user } = useUser();
     const firestore = useFirestore();
 
-    // AUTH Profile check for Admin permissions
     const profileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: profile } = useDoc<AppUser>(profileRef);
     const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';

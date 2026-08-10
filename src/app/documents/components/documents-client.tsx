@@ -72,7 +72,7 @@ const TYPE_INITIALS: Record<string, string> = {
 /**
  * @fileOverview Document Generation Client
  * Unified module for generating professional business paperwork.
- * Hardcoded to "Today Only" visibility for Archive registry.
+ * Strictly filters for Today's registry only.
  */
 export function DocumentsClient() {
   const [activeTab, setActiveTab] = useState<DocumentType>("Invoice");
@@ -80,9 +80,6 @@ export function DocumentsClient() {
   const { user } = useUser();
   const { tenant } = useSaaS();
   const firestore = useFirestore();
-  
-  // Hardcoded to false - Archive now strictly shows today's documents only
-  const showAllHistory = false;
   
   const [exportType, setExportType] = useState<'A4' | 'Thermal'>('A4');
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
