@@ -6,12 +6,12 @@ import {
     Users, 
     FileText, 
     BookOpen, 
-    History,
     Settings,
-    ShieldCheck,
     LineChart,
     UserCog,
-    Wallet
+    Wallet,
+    Laptop,
+    Component
 } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
@@ -48,7 +48,8 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'documents', href: '/documents', label: 'Documents', icon: FileText },
   
   // INVENTORY & CRM
-  { id: 'stock', href: '/inventory', label: 'Inventory', icon: Package },
+  { id: 'stock', href: '/stock', label: 'Laptops / Assets', icon: Laptop },
+  { id: 'accessories', href: '/accessories', label: 'Accessories', icon: Component },
   { id: 'customers', href: '/customers', label: 'Client Directory', icon: Users },
   { id: 'receivables', href: '/receivables', label: 'Debt Ledger', icon: Wallet },
   
