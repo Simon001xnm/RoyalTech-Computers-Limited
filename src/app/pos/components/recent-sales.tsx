@@ -15,7 +15,7 @@ import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 import { ThermalReceiptPdf } from '@/app/documents/components/pdfs/thermal-receipt-pdf';
 import { Input } from '@/components/ui/input';
 import { Search, Loader2 } from 'lucide-react';
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface RecentSalesProps {
@@ -54,11 +54,10 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         if (!rawDocs) return [];
         
         const now = new Date();
-        const todayInterval = { start: startOfDay(now), end: endOfDay(now) };
 
-        // FILTER: TODAY ONLY + SEARCH
+        // FILTER: TODAY ONLY (Calendar Day Aware) + SEARCH
         let results = rawDocs.filter(d => {
-            try { return isWithinInterval(parseISO(d.generatedDate), todayInterval); } catch { return false; }
+            try { return isSameDay(parseISO(d.generatedDate), now); } catch { return false; }
         }).sort((a, b) => {
             const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
             const dateB = b.generatedDate ? new Date(b.generatedDate).getTime() : 0;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { PageHeader } from '@/components/layout/page-header';
@@ -25,10 +25,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
     format, 
-    isWithinInterval, 
-    parseISO, 
-    startOfDay,
-    endOfDay
+    isSameDay, 
+    parseISO
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -72,19 +70,18 @@ export default function DashboardPage() {
     if (!sales || !assets || !documents || !expenses) return null;
 
     const now = new Date();
-    const todayInterval = { start: startOfDay(now), end: endOfDay(now) };
 
-    // STRICT FILTER: Only Today's Data
+    // STRICT FILTER: Only Today's Data (Calendar Day Aware)
     const todaySales = sales.filter(s => {
-        try { return isWithinInterval(parseISO(s.date), todayInterval); } catch { return false; }
+        try { return isSameDay(parseISO(s.date), now); } catch { return false; }
     });
 
     const todayDocs = documents.filter(d => {
-        try { return isWithinInterval(parseISO(d.generatedDate), todayInterval); } catch { return false; }
+        try { return isSameDay(parseISO(d.generatedDate), now); } catch { return false; }
     });
 
     const todayExp = expenses.filter(e => {
-        try { return isWithinInterval(parseISO(e.date), todayInterval); } catch { return false; }
+        try { return isSameDay(parseISO(e.date), now); } catch { return false; }
     });
 
     // Calculations
