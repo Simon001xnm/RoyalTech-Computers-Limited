@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Printer, History } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Printer } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem, User as AppUser } from "@/types";
 import {
   Table,
@@ -49,7 +49,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useSaaS } from "@/components/saas/saas-provider";
-import { format, parseISO, isToday } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const VAT_RATE = 0.16;
@@ -69,6 +69,11 @@ const TYPE_INITIALS: Record<string, string> = {
     'CustomerStatement': 'STM'
 };
 
+/**
+ * @fileOverview Document Generation Client
+ * Unified module for generating professional business paperwork.
+ * Hardcoded to "Today Only" visibility for Archive registry.
+ */
 export function DocumentsClient() {
   const [activeTab, setActiveTab] = useState<DocumentType>("Invoice");
   const { toast } = useToast();
@@ -76,14 +81,15 @@ export function DocumentsClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
-  const [showAllHistory, setShowAllHistory] = useState(false);
+  // Hardcoded to false - Archive now strictly shows today's documents only
+  const showAllHistory = false;
+  
   const [exportType, setExportType] = useState<'A4' | 'Thermal'>('A4');
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [docToDelete, setDocToDelete] = useState<AppDocument | null>(null);
 
-  // AUTH Profile check for Admin permissions
   const profileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile } = useDoc<AppUser>(profileRef);
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
@@ -114,7 +120,6 @@ export function DocumentsClient() {
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [isExporting, setIsExporting] = useState(false);
 
-  // Fetch Customer Balance
   useEffect(() => {
     if (!selectedCustomerId || !tenant) {
       setCustomerBalance(0);
@@ -142,18 +147,19 @@ export function DocumentsClient() {
 
   const filteredDocuments = useMemo(() => {
       if (!rawDocuments) return [];
+      
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
 
       return [...rawDocuments].filter(d => {
-          if (showAllHistory) return true;
           try { 
-              return isToday(parseISO(d.generatedDate)); 
+              return format(parseISO(d.generatedDate), 'yyyy-MM-dd') === todayStr;
           } catch { return false; }
       }).sort((a, b) => {
           const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
           const dateB = b.generatedDate ? new Date(b.generatedDate).getTime() : 0;
           return dateB - dateA;
       });
-  }, [rawDocuments, showAllHistory]);
+  }, [rawDocuments]);
 
   const handleGenerateDocument = async (type: DocumentType) => {
     if (!tenant || !user) return;
@@ -226,11 +232,8 @@ export function DocumentsClient() {
 
     try {
         const batch = writeBatch(firestore);
-        
-        // 1. Delete the document record
         batch.delete(doc(firestore, 'documents', docToDelete.id));
 
-        // 2. Find and delete corresponding sale transaction
         const salesRef = collection(firestore, 'sales_transactions');
         const q = query(salesRef, where('tenantId', '==', tenant.id), where('documentId', '==', docToDelete.id));
         const salesSnap = await getDocs(q);
@@ -240,7 +243,7 @@ export function DocumentsClient() {
         });
 
         await batch.commit();
-        toast({ title: "Document & Transaction Deleted Permanently" });
+        toast({ title: "Document & Transaction Purged" });
         setDocToDelete(null);
     } catch (e: any) {
         toast({ variant: 'destructive', title: "Deletion Failed", description: e.message });
@@ -317,7 +320,7 @@ export function DocumentsClient() {
   const columnActions: DocumentColumnActions = { 
     onView: (d) => { setExportType('A4'); setSelectedDocument(d); setIsPdfPreviewOpen(true); }, 
     onDownload: handleDownloadPdf,
-    onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined, // Only pass if admin
+    onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined,
     onPrint: (d) => { 
         setSelectedDocument(d); 
         setIsPdfPreviewOpen(true); 
@@ -367,7 +370,7 @@ export function DocumentsClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Document Node" description="Professional paperwork synchronization." />
+      <PageHeader title="Document Node" description="Today's professional paperwork synchronization." />
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
@@ -386,14 +389,7 @@ export function DocumentsClient() {
       <Card className="mt-8 shadow-2xl border-none overflow-hidden">
           <CardHeader className="bg-muted/50 py-4 border-b">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Archive Registry</CardTitle>
-                <div className="flex items-center gap-3 bg-white/50 p-1.5 px-3 rounded-lg border">
-                    <Switch checked={showAllHistory} onCheckedChange={setShowAllHistory} id="doc-history-toggle" />
-                    <Label htmlFor="doc-history-toggle" className="text-[10px] font-black uppercase flex items-center gap-1.5 cursor-pointer">
-                        <History className="h-3.5 w-3.5" />
-                        {showAllHistory ? "Show All Documents" : "Today Only"}
-                    </Label>
-                </div>
+                <CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Today's Archive Registry</CardTitle>
               </div>
           </CardHeader>
           <CardContent className="p-0 overflow-auto">
@@ -411,7 +407,7 @@ export function DocumentsClient() {
                             <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
                         ))
                     ) : (
-                        <TableRow><TableCell colSpan={customColumns.length} className="h-32 text-center text-muted-foreground italic">No documents found for selected view.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={customColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">No documents generated today.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>

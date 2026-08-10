@@ -14,10 +14,8 @@ import { collection, query, where, doc, deleteDoc, writeBatch, getDocs } from 'f
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 import { ThermalReceiptPdf } from '@/app/documents/components/pdfs/thermal-receipt-pdf';
 import { Input } from '@/components/ui/input';
-import { Search, Loader2, History } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { format, parseISO, isToday } from 'date-fns';
+import { Search, Loader2 } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -32,6 +30,10 @@ const TYPE_INITIALS: Record<string, string> = {
     'Quotation': 'QTN'
 };
 
+/**
+ * @fileOverview Sales Journal for POS
+ * Hardcoded to Today's transactions for strict operational focus.
+ */
 export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const { toast } = useToast();
     const { tenant } = useSaaS();
@@ -44,7 +46,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
 
     const [searchTerm, setSearchTerm] = useState("");
-    const [showAllHistory, setShowAllHistory] = useState(false);
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
     const [isExporting, setIsExporting] = useState(false);
     const [exportDoc, setExportDoc] = useState<AppDocument | null>(null);
@@ -66,10 +67,11 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const filteredDocs = useMemo(() => {
         if (!rawDocs) return [];
         
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+
         let results = rawDocs.filter(d => {
-            if (showAllHistory) return true;
             try { 
-                return isToday(parseISO(d.generatedDate)); 
+                return format(parseISO(d.generatedDate), 'yyyy-MM-dd') === todayStr; 
             } catch { return false; }
         }).sort((a, b) => {
             const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
@@ -85,7 +87,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         }
 
         return results;
-    }, [rawDocs, searchTerm, showAllHistory]);
+    }, [rawDocs, searchTerm]);
     
     const handleDownloadPdf = async (docToDownload: AppDocument, type: 'A4' | 'Thermal' = 'A4') => {
         setIsExporting(true);
@@ -175,7 +177,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         onView: onViewReceipt,
         onWhatsApp: handleShareWhatsApp,
         onDownload: handleDownloadPdf,
-        onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined // Only pass if admin
+        onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined 
     };
     const saleColumns = useMemo<ColumnDef<AppDocument>[]>(() => getSaleColumns(saleColumnActions), [saleColumnActions]);
     
@@ -192,15 +194,8 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         <Card className="shadow-xl border-none overflow-hidden ring-1 ring-black/5 bg-white w-full">
             <CardHeader className="bg-muted/10 py-4 px-6 border-b">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <CardTitle className="text-sm font-black uppercase tracking-widest">Sales Journal</CardTitle>
+                    <CardTitle className="text-sm font-black uppercase tracking-widest">Today's Sales Journal</CardTitle>
                     <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-2 bg-white p-1.5 px-3 rounded-lg border">
-                            <Switch checked={showAllHistory} onCheckedChange={setShowAllHistory} id="recent-history-toggle" />
-                            <Label htmlFor="recent-history-toggle" className="text-[9px] font-black uppercase flex items-center gap-1.5 cursor-pointer">
-                                <History className="h-3 w-3" />
-                                {showAllHistory ? "Show All" : "Today"}
-                            </Label>
-                        </div>
                         {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                         <div className="relative">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -216,7 +211,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             </CardHeader>
             <CardContent className="p-0">
                 {isLoading ? (
-                    <div className="p-12 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Syncing Cloud Ledger...</div>
+                    <div className="p-12 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Syncing Today's Ledger...</div>
                 ) : (
                     <div className="w-full">
                         <Table>
@@ -245,7 +240,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                                 ) : (
                                     <TableRow>
                                         <TableCell colSpan={saleColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">
-                                            No transactions found for today.
+                                            No transactions processed today.
                                         </TableCell>
                                     </TableRow>
                                 )}

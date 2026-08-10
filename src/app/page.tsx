@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -25,8 +24,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { 
     format, 
     parseISO,
@@ -38,12 +35,14 @@ import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview Business Command Center - Dashboard
- * Includes a strict toggle to switch between "Today Only" and "Historical" data views.
+ * Hardcoded to "Today Only" mode to maintain strict daily operational focus.
  */
 export default function DashboardPage() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
-  const [showAllHistory, setShowAllHistory] = useState(false);
+  
+  // Hardcoded to false - User requested removal of history switching buttons
+  const showAllHistory = false;
 
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -73,17 +72,15 @@ export default function DashboardPage() {
   const stats = useMemo(() => {
     if (!sales || !assets || !documents || !expenses) return null;
 
-    // Strict Filtering Logic
-    const filteredSales = showAllHistory ? sales : sales.filter(s => {
-        try { 
-            return isToday(parseISO(s.date)); 
-        } catch { return false; }
+    // Strict Filtering Logic: Localized Date Match
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+    const filteredSales = sales.filter(s => {
+        try { return format(parseISO(s.date), 'yyyy-MM-dd') === todayStr; } catch { return false; }
     });
 
-    const filteredExp = showAllHistory ? expenses : expenses.filter(e => {
-        try { 
-            return isToday(parseISO(e.date)); 
-        } catch { return false; }
+    const filteredExp = expenses.filter(e => {
+        try { return format(parseISO(e.date), 'yyyy-MM-dd') === todayStr; } catch { return false; }
     });
 
     // Calculations
@@ -108,7 +105,7 @@ export default function DashboardPage() {
     const cardTotal = calculateModeTotal('Card');
     const creditTotal = filteredSales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
 
-    // Alerts (Always show low stock, but filter unpaid by time view)
+    // Alerts
     const unpaidInvoices = filteredSales.filter(s => (Number(s.balance) || 0) > 0);
     const totalDebt = unpaidInvoices.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
     const lowStock = assets.filter(a => Number(a.quantity) > 0 && Number(a.quantity) <= (Number(a.minStock) || 5));
@@ -134,9 +131,9 @@ export default function DashboardPage() {
         lowStockCount: lowStock.length,
         recent: [...filteredSales].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).slice(0, 10),
         topSelling,
-        viewLabel: showAllHistory ? "All-Time History" : `Today: ${format(new Date(), 'PPPP')}`
+        viewLabel: `Today: ${format(new Date(), 'PPPP')}`
     };
-  }, [sales, assets, documents, expenses, showAllHistory]);
+  }, [sales, assets, documents, expenses]);
 
   const formatKes = (val: number) => {
       return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
@@ -153,15 +150,6 @@ export default function DashboardPage() {
       <PageHeader 
         title="Business Command Center" 
         description={stats.viewLabel}
-        actions={
-            <div className="flex items-center gap-3 bg-muted/50 p-2 px-4 rounded-xl border">
-                <Switch checked={showAllHistory} onCheckedChange={setShowAllHistory} id="history-toggle" />
-                <Label htmlFor="history-toggle" className="text-[10px] font-black uppercase cursor-pointer flex items-center gap-2">
-                    <History className="h-3 w-3" />
-                    {showAllHistory ? "Showing All Records" : "Today Only"}
-                </Label>
-            </div>
-        }
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -197,10 +185,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <SummaryCard title="Gross Revenue" value={formatKes(stats.totalRevenue)} icon={DollarSign} description="Total sales in view" />
-          <SummaryCard title="Net Profit" value={formatKes(stats.totalProfit)} icon={TrendingUp} description="Revenue minus COGS" />
-          <SummaryCard title="Operational Spend" value={formatKes(stats.totalExpenses)} icon={Wallet} className="border-l-4 border-l-red-500" description="Expenses recorded" />
-          <SummaryCard title="Unpaid Debt" value={formatKes(stats.totalDebt)} icon={CreditCard} description="Total pending receivables" />
+          <SummaryCard title="Gross Revenue" value={formatKes(stats.totalRevenue)} icon={DollarSign} description="Total sales today" />
+          <SummaryCard title="Net Profit" value={formatKes(stats.totalProfit)} icon={TrendingUp} description="Daily profit estimate" />
+          <SummaryCard title="Operational Spend" value={formatKes(stats.totalExpenses)} icon={Wallet} className="border-l-4 border-l-red-500" description="Today's expenses" />
+          <SummaryCard title="Unpaid Debt" value={formatKes(stats.totalDebt)} icon={CreditCard} description="New debt today" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -257,7 +245,7 @@ export default function DashboardPage() {
                         </div>
                     ))}
                     {stats.topSelling.length === 0 && (
-                        <div className="p-12 text-center text-[10px] font-bold text-muted-foreground italic uppercase opacity-30">No inventory movements in this view.</div>
+                        <div className="p-12 text-center text-[10px] font-bold text-muted-foreground italic uppercase opacity-30">No inventory movements today.</div>
                     )}
                 </div>
             </CardContent>
@@ -279,7 +267,7 @@ export default function DashboardPage() {
 
       <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
         <CardHeader className="bg-muted/30 border-b py-4 px-6 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-black uppercase tracking-widest">Transaction Feed</CardTitle>
+            <CardTitle className="text-sm font-black uppercase tracking-widest">Daily Transaction Feed</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
             <Table>
@@ -295,7 +283,7 @@ export default function DashboardPage() {
                 <TableBody>
                     {stats.recent.map(sale => (
                         <TableRow key={sale.id} className="h-12 hover:bg-muted/5 transition-colors border-b last:border-0">
-                            <TableCell className="pl-6"><span className="text-[10px] font-mono text-muted-foreground">{format(parseISO(sale.date), 'dd/MM HH:mm')}</span></TableCell>
+                            <TableCell className="pl-6"><span className="text-[10px] font-mono text-muted-foreground">{format(parseISO(sale.date), 'HH:mm')}</span></TableCell>
                             <TableCell><span className="text-[10px] font-black uppercase tracking-tighter">{sale.customerName || 'Walk-in'}</span></TableCell>
                             <TableCell><Badge variant={sale.status === 'Paid' ? 'default' : 'destructive'} className="text-[8px] font-black h-4 px-2 uppercase border-none">{sale.status}</Badge></TableCell>
                             <TableCell><span className="text-[10px] font-bold text-muted-foreground uppercase">{sale.paymentMethod}</span></TableCell>
@@ -305,7 +293,7 @@ export default function DashboardPage() {
                         </TableRow>
                     ))}
                     {stats.recent.length === 0 && (
-                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic text-[10px] font-bold uppercase opacity-30">No records found for selected period.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic text-[10px] font-bold uppercase opacity-30">No records found for today.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>
@@ -314,7 +302,7 @@ export default function DashboardPage() {
       
       <div className="text-center pt-8 opacity-40">
           <p className="text-[9px] text-muted-foreground tracking-[0.5em] uppercase leading-relaxed">
-             Node-Sync: {showAllHistory ? "FULL LEDGER MODE" : "STRICT DAILY FILTER ACTIVE"} &bull; v2.8.0
+             Node-Sync: STRICT DAILY FILTER ACTIVE &bull; v2.9.0
           </p>
       </div>
     </div>
