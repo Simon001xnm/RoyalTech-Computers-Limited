@@ -359,6 +359,12 @@ export function ReceivablesClient() {
             </div>
         </DialogContent>
       </Dialog>
+
+      <div className="fixed left-[-9999px] top-0 pointer-events-none">
+        <div id="statement-export-target" className="bg-white">
+             {selectedAccount && <CustomerStatementPdf customer={selectedAccount.customer} sales={selectedAccount.sales} workspace={company} />}
+        </div>
+      </div>
     </div>
   );
 }
