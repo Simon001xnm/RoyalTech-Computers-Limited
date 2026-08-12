@@ -29,7 +29,8 @@ import {
     startOfMonth,
     isWithinInterval,
     endOfDay,
-    isSameDay
+    isSameDay,
+    isToday
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -38,7 +39,7 @@ import { Progress } from '@/components/ui/progress';
 
 /**
  * @fileOverview Business Command Center - Dashboard
- * Shifted to Monthly Analytics with Triple-Tier Velocity Tracking.
+ * Monthly Analytics with specific Profit Formula: Revenue - (Expenses + Cost).
  */
 export default function DashboardPage() {
   const { tenant } = useSaaS();
@@ -67,7 +68,6 @@ export default function DashboardPage() {
     if (!sales || !assets || !expenses) return null;
 
     const now = new Date();
-    const todayStr = format(now, 'yyyy-MM-dd');
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const monthStart = startOfMonth(now);
     
@@ -76,7 +76,10 @@ export default function DashboardPage() {
 
     // FILTERS
     const dailySales = sales.filter(s => {
-        try { return format(parseISO(s.date), 'yyyy-MM-dd') === todayStr; } catch { return false; }
+        try { 
+            // Use timezone-robust local date comparison
+            return format(parseISO(s.date), 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd'); 
+        } catch { return false; }
     });
 
     const weeklySales = sales.filter(s => {
@@ -93,8 +96,13 @@ export default function DashboardPage() {
 
     // TOTALS (Monthly Focus)
     const totalRevenue = monthlySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-    const totalProfit = monthlySales.reduce((acc, s) => acc + (Number(s.totalProfit) || 0), 0);
+    const totalCost = monthlySales.reduce((acc, s) => acc + (Number(s.cogs) || 0), 0);
     const totalExpenses = monthlyExp.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+    
+    /**
+     * PROFIT FORMULA: Revenue - (Expenses + Cost)
+     */
+    const totalProfit = totalRevenue - (totalExpenses + totalCost);
 
     // VELOCITY DATA
     const dailyRevenue = dailySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
@@ -113,9 +121,8 @@ export default function DashboardPage() {
     const mpesaTotal = calculateModeTotal('M-Pesa');
     const cashTotal = calculateModeTotal('Cash');
     const bankTotal = calculateModeTotal('Bank');
-    const cardTotal = calculateModeTotal('Card');
     
-    // DEBT (Monthly accumulated)
+    // DEBT (Monthly accumulated - Only Unpaid Invoices)
     const unpaidInvoices = monthlySales.filter(s => (Number(s.balance) || 0) > 0);
     const totalDebt = unpaidInvoices.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
     
@@ -125,7 +132,8 @@ export default function DashboardPage() {
     // TOP SELLING (Monthly)
     const productMap: Record<string, number> = {};
     monthlySales.forEach(s => s.items?.forEach((i: any) => {
-        productMap[i.name] = (productMap[i.name] || 0) + (Number(i.quantity) || 1);
+        const productName = i.name || 'Unknown Item';
+        productMap[productName] = (productMap[productName] || 0) + (Number(i.quantity) || 1);
     }));
     const topSelling = Object.entries(productMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
 
@@ -139,7 +147,6 @@ export default function DashboardPage() {
         mpesaTotal,
         cashTotal,
         bankTotal,
-        cardTotal,
         unpaidCount: unpaidInvoices.length,
         lowStockCount: lowStock.length,
         recent: [...dailySales].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).slice(0, 10),
@@ -187,10 +194,10 @@ export default function DashboardPage() {
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-red-100 p-2.5 rounded-xl"><FileWarning className="h-5 w-5 text-red-600" /></div>
                         <div>
-                            <p className="text-[10px] font-black uppercase text-red-600 tracking-widest">Pending Receivables</p>
+                            <p className="text-[10px] font-black uppercase text-red-600 tracking-widest">Unpaid Invoices</p>
                             <p className="text-sm font-bold">{stats.unpaidCount} monthly invoices unpaid ({formatKes(stats.totalDebt)})</p>
                         </div>
-                        <ArrowUpRight className="ml-auto h-4 w-4 text-red-300 group-hover:text-red-50 transition-colors" />
+                        <ArrowUpRight className="ml-auto h-4 w-4 text-red-300 group-hover:text-red-500 transition-colors" />
                     </CardContent>
                 </Card>
             </Link>
@@ -199,7 +206,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <SummaryCard title="Monthly Revenue" value={formatKes(stats.totalRevenue)} icon={DollarSign} description="Gross sales this month" />
-          <SummaryCard title="Gross Profit" value={formatKes(stats.totalProfit)} icon={TrendingUp} description="Monthly profit estimate" />
+          <SummaryCard title="Gross Profit" value={formatKes(stats.totalProfit)} icon={TrendingUp} description="Rev - (Exp + Cost)" />
           <SummaryCard title="Monthly Spend" value={formatKes(stats.totalExpenses)} icon={Wallet} className="border-l-4 border-l-red-500" description="Expenses this month" />
           <SummaryCard title="Unpaid Balance" value={formatKes(stats.totalDebt)} icon={CreditCard} description="Outstanding for this month" />
       </div>
@@ -209,11 +216,10 @@ export default function DashboardPage() {
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
                 <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
                     <Zap className="h-3 w-3 text-primary" />
-                    Revenue Velocity (Triple Tier)
+                    Revenue Velocity
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6 flex-grow">
-                {/* DAILY BAR */}
                 <div className="space-y-2">
                     <div className="flex justify-between text-[9px] font-black uppercase">
                         <span className="text-muted-foreground">Today's Node</span>
@@ -222,7 +228,6 @@ export default function DashboardPage() {
                     <Progress value={Math.min(100, (stats.dailyRevenue / (stats.weeklyRevenue / 7 || 1)) * 50)} className="h-2" />
                 </div>
                 
-                {/* WEEKLY BAR */}
                 <div className="space-y-2">
                     <div className="flex justify-between text-[9px] font-black uppercase">
                         <span className="text-muted-foreground">Weekly Aggregate</span>
@@ -231,7 +236,6 @@ export default function DashboardPage() {
                     <Progress value={Math.min(100, (stats.weeklyRevenue / (stats.totalRevenue / 4 || 1)) * 50)} className="h-2 bg-blue-100" />
                 </div>
 
-                {/* MONTHLY BAR */}
                 <div className="space-y-2">
                     <div className="flex justify-between text-[9px] font-black uppercase">
                         <span className="text-muted-foreground">Monthly Milestone</span>
@@ -239,18 +243,12 @@ export default function DashboardPage() {
                     </div>
                     <Progress value={100} className="h-2 bg-green-100" />
                 </div>
-
-                <div className="pt-4 border-t">
-                    <p className="text-[10px] font-medium text-muted-foreground leading-relaxed italic">
-                        "Your node is currently tracking {formatKes(stats.totalRevenue)} for the current reporting cycle."
-                    </p>
-                </div>
             </CardContent>
           </Card>
 
           <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full bg-white">
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest">Top Selling Units (Monthly)</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest">Top Selling (Monthly)</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
                 <div className="divide-y">
@@ -263,7 +261,7 @@ export default function DashboardPage() {
                         </div>
                     ))}
                     {stats.topSelling.length === 0 && (
-                        <div className="p-12 text-center text-[10px] font-bold text-muted-foreground italic uppercase opacity-30">No inventory movements this month.</div>
+                        <div className="p-12 text-center text-[10px] font-bold text-muted-foreground italic uppercase opacity-30">No movements this month.</div>
                     )}
                 </div>
             </CardContent>
@@ -297,14 +295,14 @@ export default function DashboardPage() {
       </div>
 
       <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
-        <CardHeader className="bg-muted/30 border-b py-4 px-6 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-black uppercase tracking-widest">Daily Transaction Feed</CardTitle>
+        <CardHeader className="bg-muted/30 border-b py-4 px-6">
+            <CardTitle className="text-sm font-black uppercase tracking-widest">Today's Transaction Feed</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
             <Table>
                 <TableHeader className="bg-muted/20">
                     <TableRow className="h-10">
-                        <TableHead className="text-[10px] font-black uppercase pl-6">Timestamp</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase pl-6">Time</TableHead>
                         <TableHead className="text-[10px] font-black uppercase">Client</TableHead>
                         <TableHead className="text-[10px] font-black uppercase">Status</TableHead>
                         <TableHead className="text-[10px] font-black uppercase">Method</TableHead>
