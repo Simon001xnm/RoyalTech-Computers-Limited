@@ -26,8 +26,10 @@ import {
     format, 
     parseISO,
     startOfWeek,
+    startOfMonth,
     isWithinInterval,
-    endOfDay
+    endOfDay,
+    isSameDay
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -36,7 +38,7 @@ import { Progress } from '@/components/ui/progress';
 
 /**
  * @fileOverview Business Command Center - Dashboard
- * Strictly focused on Today's operational performance.
+ * Shifted to Monthly Analytics with Triple-Tier Velocity Tracking.
  */
 export default function DashboardPage() {
   const { tenant } = useSaaS();
@@ -64,12 +66,15 @@ export default function DashboardPage() {
   const stats = useMemo(() => {
     if (!sales || !assets || !expenses) return null;
 
-    const today = new Date();
-    const todayStr = format(today, 'yyyy-MM-dd');
-    const weekStart = startOfWeek(today, { weekStartsOn: 1 });
-    const weekInterval = { start: weekStart, end: endOfDay(today) };
+    const now = new Date();
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const monthStart = startOfMonth(now);
+    
+    const weekInterval = { start: weekStart, end: endOfDay(now) };
+    const monthInterval = { start: monthStart, end: endOfDay(now) };
 
-    // FILTERING
+    // FILTERS
     const dailySales = sales.filter(s => {
         try { return format(parseISO(s.date), 'yyyy-MM-dd') === todayStr; } catch { return false; }
     });
@@ -78,19 +83,26 @@ export default function DashboardPage() {
         try { return isWithinInterval(parseISO(s.date), weekInterval); } catch { return false; }
     });
 
-    const dailyExp = expenses.filter(e => {
-        try { return format(parseISO(e.date), 'yyyy-MM-dd') === todayStr; } catch { return false; }
+    const monthlySales = sales.filter(s => {
+        try { return isWithinInterval(parseISO(s.date), monthInterval); } catch { return false; }
     });
 
-    // TOTALS
-    const totalRevenue = dailySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-    const weeklyRevenue = weeklySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-    const totalProfit = dailySales.reduce((acc, s) => acc + (Number(s.totalProfit) || 0), 0);
-    const totalExpenses = dailyExp.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+    const monthlyExp = expenses.filter(e => {
+        try { return isWithinInterval(parseISO(e.date), monthInterval); } catch { return false; }
+    });
 
-    // SETTLEMENTS
+    // TOTALS (Monthly Focus)
+    const totalRevenue = monthlySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
+    const totalProfit = monthlySales.reduce((acc, s) => acc + (Number(s.totalProfit) || 0), 0);
+    const totalExpenses = monthlyExp.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+
+    // VELOCITY DATA
+    const dailyRevenue = dailySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
+    const weeklyRevenue = weeklySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
+
+    // SETTLEMENTS (Monthly)
     const calculateModeTotal = (mode: string) => {
-        return dailySales.reduce((acc, s) => {
+        return monthlySales.reduce((acc, s) => {
             const modeAmt = (s.payments || [])
                 .filter((p: any) => p.method === mode)
                 .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
@@ -102,36 +114,37 @@ export default function DashboardPage() {
     const cashTotal = calculateModeTotal('Cash');
     const bankTotal = calculateModeTotal('Bank');
     const cardTotal = calculateModeTotal('Card');
-    const creditTotal = dailySales.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
-
-    // ALERTS
-    const unpaidInvoices = dailySales.filter(s => (Number(s.balance) || 0) > 0);
+    
+    // DEBT (Monthly accumulated)
+    const unpaidInvoices = monthlySales.filter(s => (Number(s.balance) || 0) > 0);
     const totalDebt = unpaidInvoices.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
+    
+    // INVENTORY (Current Status)
     const lowStock = assets.filter(a => Number(a.quantity) <= (Number(a.minStock) || 5));
 
-    // TOP SELLING (Today)
+    // TOP SELLING (Monthly)
     const productMap: Record<string, number> = {};
-    dailySales.forEach(s => s.items?.forEach((i: any) => {
+    monthlySales.forEach(s => s.items?.forEach((i: any) => {
         productMap[i.name] = (productMap[i.name] || 0) + (Number(i.quantity) || 1);
     }));
     const topSelling = Object.entries(productMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
 
     return {
         totalRevenue,
-        weeklyRevenue,
         totalProfit,
         totalExpenses,
+        totalDebt,
+        dailyRevenue,
+        weeklyRevenue,
         mpesaTotal,
         cashTotal,
         bankTotal,
         cardTotal,
-        creditTotal,
-        totalDebt,
         unpaidCount: unpaidInvoices.length,
         lowStockCount: lowStock.length,
         recent: [...dailySales].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).slice(0, 10),
         topSelling,
-        viewLabel: `Reporting Cycle: ${format(today, 'PPPP')}`
+        viewLabel: `Reporting Month: ${format(now, 'MMMM yyyy')}`
     };
   }, [sales, assets, expenses]);
 
@@ -174,8 +187,8 @@ export default function DashboardPage() {
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-red-100 p-2.5 rounded-xl"><FileWarning className="h-5 w-5 text-red-600" /></div>
                         <div>
-                            <p className="text-[10px] font-black uppercase text-red-600 tracking-widest">Unpaid Invoices</p>
-                            <p className="text-sm font-bold">{stats.unpaidCount} invoices pending ({formatKes(stats.totalDebt)})</p>
+                            <p className="text-[10px] font-black uppercase text-red-600 tracking-widest">Pending Receivables</p>
+                            <p className="text-sm font-bold">{stats.unpaidCount} monthly invoices unpaid ({formatKes(stats.totalDebt)})</p>
                         </div>
                         <ArrowUpRight className="ml-auto h-4 w-4 text-red-300 group-hover:text-red-50 transition-colors" />
                     </CardContent>
@@ -185,10 +198,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <SummaryCard title="Gross Revenue" value={formatKes(stats.totalRevenue)} icon={DollarSign} description="Total sales today" />
-          <SummaryCard title="Net Profit" value={formatKes(stats.totalProfit)} icon={TrendingUp} description="Daily profit estimate" />
-          <SummaryCard title="Operational Spend" value={formatKes(stats.totalExpenses)} icon={Wallet} className="border-l-4 border-l-red-500" description="Today's expenses" />
-          <SummaryCard title="Unpaid Debt" value={formatKes(stats.totalDebt)} icon={CreditCard} description="New debt today" />
+          <SummaryCard title="Monthly Revenue" value={formatKes(stats.totalRevenue)} icon={DollarSign} description="Gross sales this month" />
+          <SummaryCard title="Gross Profit" value={formatKes(stats.totalProfit)} icon={TrendingUp} description="Monthly profit estimate" />
+          <SummaryCard title="Monthly Spend" value={formatKes(stats.totalExpenses)} icon={Wallet} className="border-l-4 border-l-red-500" description="Expenses this month" />
+          <SummaryCard title="Unpaid Balance" value={formatKes(stats.totalDebt)} icon={CreditCard} description="Outstanding for this month" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -196,27 +209,40 @@ export default function DashboardPage() {
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
                 <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
                     <Zap className="h-3 w-3 text-primary" />
-                    Revenue Velocity
+                    Revenue Velocity (Triple Tier)
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6 flex-grow">
+                {/* DAILY BAR */}
                 <div className="space-y-2">
-                    <div className="flex justify-between text-[10px] font-black uppercase">
-                        <span className="text-muted-foreground">Today's Sales</span>
-                        <span className="text-primary">{formatKes(stats.totalRevenue)}</span>
+                    <div className="flex justify-between text-[9px] font-black uppercase">
+                        <span className="text-muted-foreground">Today's Node</span>
+                        <span className="text-primary">{formatKes(stats.dailyRevenue)}</span>
                     </div>
-                    <Progress value={Math.min(100, (stats.totalRevenue / (stats.weeklyRevenue / 7 || 1)) * 50)} className="h-2" />
+                    <Progress value={Math.min(100, (stats.dailyRevenue / (stats.weeklyRevenue / 7 || 1)) * 50)} className="h-2" />
                 </div>
+                
+                {/* WEEKLY BAR */}
                 <div className="space-y-2">
-                    <div className="flex justify-between text-[10px] font-black uppercase">
+                    <div className="flex justify-between text-[9px] font-black uppercase">
                         <span className="text-muted-foreground">Weekly Aggregate</span>
-                        <span className="text-primary">{formatKes(stats.weeklyRevenue)}</span>
+                        <span className="text-blue-600">{formatKes(stats.weeklyRevenue)}</span>
                     </div>
-                    <Progress value={100} className="h-2 bg-muted opacity-30" />
+                    <Progress value={Math.min(100, (stats.weeklyRevenue / (stats.totalRevenue / 4 || 1)) * 50)} className="h-2 bg-blue-100" />
                 </div>
+
+                {/* MONTHLY BAR */}
+                <div className="space-y-2">
+                    <div className="flex justify-between text-[9px] font-black uppercase">
+                        <span className="text-muted-foreground">Monthly Milestone</span>
+                        <span className="text-green-600">{formatKes(stats.totalRevenue)}</span>
+                    </div>
+                    <Progress value={100} className="h-2 bg-green-100" />
+                </div>
+
                 <div className="pt-4 border-t">
                     <p className="text-[10px] font-medium text-muted-foreground leading-relaxed italic">
-                        "Your current daily velocity is contributing to a weekly run-rate of {formatKes(stats.weeklyRevenue)}."
+                        "Your node is currently tracking {formatKes(stats.totalRevenue)} for the current reporting cycle."
                     </p>
                 </div>
             </CardContent>
@@ -224,7 +250,7 @@ export default function DashboardPage() {
 
           <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full bg-white">
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest">Performance Units (Today)</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest">Top Selling Units (Monthly)</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
                 <div className="divide-y">
@@ -237,7 +263,7 @@ export default function DashboardPage() {
                         </div>
                     ))}
                     {stats.topSelling.length === 0 && (
-                        <div className="p-12 text-center text-[10px] font-bold text-muted-foreground italic uppercase opacity-30">No inventory movements today.</div>
+                        <div className="p-12 text-center text-[10px] font-bold text-muted-foreground italic uppercase opacity-30">No inventory movements this month.</div>
                     )}
                 </div>
             </CardContent>
@@ -245,7 +271,7 @@ export default function DashboardPage() {
           
           <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden flex flex-col h-full bg-white">
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-green-700">Settlement Verified</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest text-green-700">Monthly Settlements</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4 flex-grow">
                 <div className="flex justify-between items-end border-b pb-3">
