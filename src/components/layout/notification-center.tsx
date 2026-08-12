@@ -30,7 +30,7 @@ import { useSaaS } from '@/components/saas/saas-provider';
 
 /**
  * @fileOverview Notification Center
- * Optimized to avoid composite index requirements for instant cloud integration.
+ * Optimized to avoid technical jargon for simple English understanding.
  */
 export function NotificationCenter() {
   const { user } = useUser();
@@ -39,8 +39,6 @@ export function NotificationCenter() {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
-  // OPTIMIZED QUERY: We filter by tenantId in the cloud, but sort in memory 
-  // to avoid requiring a composite index during prototyping.
   const notificationsQuery = useMemoFirebase(() => {
     if (!user || !tenant) return null;
     return query(
@@ -53,7 +51,6 @@ export function NotificationCenter() {
 
   const notifications = useMemo(() => {
     if (!rawNotifications) return [];
-    // Filter by user and sort by creation date in memory
     return rawNotifications
         .filter(n => !n.userId || n.userId === user?.uid)
         .sort((a, b) => {
@@ -119,7 +116,7 @@ export function NotificationCenter() {
           <div className="flex items-center justify-between">
             <SheetTitle className="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" />
-                Platform Alerts
+                Shop Alerts
             </SheetTitle>
             {notifications.length > 0 && (
                 <Button variant="ghost" size="icon" onClick={handleClearAll} className="h-8 w-8 text-muted-foreground hover:text-destructive">
@@ -128,13 +125,13 @@ export function NotificationCenter() {
             )}
           </div>
           <SheetDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Official communications from Platform Admin
+            Messages from the shop manager
           </SheetDescription>
         </SheetHeader>
         
         <ScrollArea className="flex-grow">
           {isLoading ? (
-             <div className="p-12 text-center text-muted-foreground animate-pulse">Syncing alerts...</div>
+             <div className="p-12 text-center text-muted-foreground animate-pulse">Checking messages...</div>
           ) : notifications.length > 0 ? (
             <div className="divide-y divide-muted/40">
                 {notifications.map(notif => (
@@ -182,7 +179,7 @@ export function NotificationCenter() {
                 </div>
                 <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Inbox Empty</p>
                 <p className="text-xs text-muted-foreground mt-2 max-w-[200px] mx-auto">
-                    You have no active notifications from the platform provider at this time.
+                    You have no new messages at this time.
                 </p>
             </div>
           )}
@@ -190,7 +187,7 @@ export function NotificationCenter() {
         
         <div className="p-4 border-t bg-muted/30 text-center">
             <p className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter opacity-50">
-                secured endpoint node &bull; realtime cloud sync active
+                saved to internet &bull; shop is connected
             </p>
         </div>
       </SheetContent>

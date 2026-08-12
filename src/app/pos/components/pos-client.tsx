@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -133,7 +132,7 @@ export function PosClient() {
 
   const handleSelectProduct = (product: any) => {
     if (!selectedCustomer) {
-        toast({ variant: 'destructive', title: 'Action Required', description: 'Please select a client first.' });
+        toast({ variant: 'destructive', title: 'Pick a client', description: 'Please select a name from the list first.' });
         return;
     }
     setSelectedProduct(product);
@@ -270,7 +269,7 @@ export function PosClient() {
         setDiscount(0);
         setApplyVat(false);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: `Process Failed`, description: e.message });
+        toast({ variant: 'destructive', title: `Saving failed`, description: e.message });
     } finally {
         setIsProcessing(false);
     }
@@ -281,14 +280,14 @@ export function PosClient() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
         
         <div className="space-y-6">
-            <Card className="shadow-sm border-none ring-1 ring-black/5 overflow-hidden">
+            <Card className="shadow-sm border-none ring-1 ring-black/5 overflow-hidden bg-white">
                 <CardHeader className="bg-muted/10 p-4 border-b">
                     <div className="flex items-center justify-between gap-4">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Popover open={searchOpen} onOpenChange={(open) => {
                                 if (open && !selectedCustomer) {
-                                    toast({ variant: 'destructive', title: 'Wait!', description: 'Select a client before adding products.' });
+                                    toast({ variant: 'destructive', title: 'Wait!', description: 'Select a client before adding items.' });
                                     return;
                                 }
                                 setSearchOpen(open);
@@ -302,15 +301,15 @@ export function PosClient() {
                                         )}
                                         disabled={!selectedCustomer}
                                     >
-                                        {selectedCustomer ? 'Search inventory...' : 'Please select a client first...'}
+                                        {selectedCustomer ? 'Search items in shop...' : 'Please pick a client name first...'}
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[600px] p-0" align="start">
                                     <Command>
-                                        <CommandInput placeholder="Type Product Name..." />
+                                        <CommandInput placeholder="Type Item Name..." />
                                         <CommandList>
                                             <CommandEmpty>No items found.</CommandEmpty>
-                                            <CommandGroup heading="Cloud Inventory">
+                                            <CommandGroup heading="Items in Shop">
                                                 {products?.filter(p => (p.quantity || 0) > 0).map(p => (
                                                     <CommandItem key={p.id} onSelect={() => handleSelectProduct(p)} className="p-3">
                                                         <div className="flex justify-between w-full items-center">
@@ -320,7 +319,7 @@ export function PosClient() {
                                                             </div>
                                                             <div className="text-right">
                                                                 <p className="font-black text-primary text-xs">KES {p.sellingPrice?.toLocaleString()}</p>
-                                                                <Badge variant="secondary" className="text-[8px] h-4">{p.quantity} in stock</Badge>
+                                                                <Badge variant="secondary" className="text-[8px] h-4">{p.quantity} left</Badge>
                                                             </div>
                                                         </div>
                                                     </CommandItem>
@@ -337,17 +336,17 @@ export function PosClient() {
                                     variant={selectedCustomer ? "default" : "outline"} 
                                     className={cn(
                                         "h-12 px-6 font-black uppercase tracking-widest transition-all",
-                                        selectedCustomer ? "shadow-lg bg-primary text-white scale-105" : "border-primary ring-2 ring-primary/20"
+                                        selectedCustomer ? "shadow-lg bg-primary text-white" : "border-primary"
                                     )}
                                 >
-                                    {selectedCustomer ? selectedCustomer.name : 'Select Client...'}
+                                    {selectedCustomer ? selectedCustomer.name : 'Pick Client...'}
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-80 p-0">
                                 <Command>
-                                    <CommandInput placeholder="Search client..." />
+                                    <CommandInput placeholder="Search client name..." />
                                     <CommandList>
-                                        <CommandGroup heading="CRM Directory">
+                                        <CommandGroup heading="Client List">
                                             {customers?.map(c => (
                                                 <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({id: c.id, name: c.name}); setCustSearchOpen(false); }}>{c.name}</CommandItem>
                                             ))}
@@ -363,7 +362,7 @@ export function PosClient() {
                         <Table>
                             <TableHeader className="bg-muted/50">
                                 <TableRow>
-                                    <TableHead className="text-[10px] font-black uppercase">Product</TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase">Item</TableHead>
                                     <TableHead className="w-24 text-center text-[10px] font-black uppercase">Qty</TableHead>
                                     <TableHead className="w-32 text-right text-[10px] font-black uppercase">Price</TableHead>
                                     <TableHead className="w-32 text-right text-[10px] font-black uppercase">Total</TableHead>
@@ -416,7 +415,7 @@ export function PosClient() {
                         </CardTitle>
                         <div className="flex items-center gap-2">
                             <Switch checked={applyVat} onCheckedChange={setApplyVat} id="vat-mode" />
-                            <Label htmlFor="vat-mode" className="text-[10px] font-black uppercase cursor-pointer">Apply 16% VAT</Label>
+                            <Label htmlFor="vat-mode" className="text-[10px] font-black uppercase cursor-pointer">Apply 16% Tax</Label>
                         </div>
                     </div>
                 </CardHeader>
@@ -434,12 +433,12 @@ export function PosClient() {
                         </div>
                         {applyVat && (
                             <div className="flex justify-between text-xs font-bold text-primary">
-                                <span>VAT (16%)</span>
+                                <span>Tax (16%)</span>
                                 <span>KES {vatAmount.toLocaleString()}</span>
                             </div>
                         )}
                         <div className="pt-3 border-t-2 border-black flex justify-between items-end">
-                            <span className="text-sm font-black uppercase">Payable Total</span>
+                            <span className="text-sm font-black uppercase">Grand Total</span>
                             <span className="text-3xl font-black tracking-tighter">KES {total.toLocaleString()}</span>
                         </div>
                     </div>
@@ -447,7 +446,7 @@ export function PosClient() {
                     <Separator />
 
                     <div className="space-y-4">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Payment Methods</p>
+                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">How to Pay</p>
                         
                         <div className="grid grid-cols-3 gap-2">
                             {(['Cash', 'M-Pesa', 'Bank', 'Card', 'Credit'] as const).map(m => (
@@ -481,13 +480,13 @@ export function PosClient() {
                                 />
                                 {['M-Pesa', 'Bank', 'Card'].includes(activePaymentMethod) && (
                                     <Input 
-                                        placeholder="Reference / Transaction ID" 
+                                        placeholder="Reference Number" 
                                         value={currentPaymentRef} 
                                         onChange={e => setCurrentPaymentRef(e.target.value)}
                                         className="h-10 font-mono text-[10px] bg-white"
                                     />
                                 )}
-                                <Button className="w-full h-10 font-black uppercase text-[10px]" onClick={handleAddPayment}>Apply Payment</Button>
+                                <Button className="w-full h-10 font-black uppercase text-[10px]" onClick={handleAddPayment}>Apply Money</Button>
                             </div>
                         )}
 
@@ -525,7 +524,7 @@ export function PosClient() {
                                     "text-[9px] font-black uppercase px-2 h-5 border-none",
                                     remainingBalance <= 0 ? "bg-green-500" : (amountPaid > 0 ? "bg-orange-500" : "bg-red-500")
                                 )}>
-                                    {remainingBalance <= 0 ? 'Full Settlement' : (amountPaid > 0 ? 'Partial Payment' : 'Unpaid Credit')}
+                                    {remainingBalance <= 0 ? 'Fully Paid' : (amountPaid > 0 ? 'Part Paid' : 'On Credit')}
                                 </Badge>
                             </div>
                         </div>
@@ -536,7 +535,7 @@ export function PosClient() {
                                 className="w-full h-16 text-lg font-black uppercase tracking-widest shadow-2xl transition-all active:scale-95" 
                                 disabled={isProcessing || cart.length === 0}
                             >
-                                {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Finalize & Pay'}
+                                {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Finish & Save'}
                             </Button>
                             
                             <div className="grid grid-cols-2 gap-3">
@@ -546,7 +545,7 @@ export function PosClient() {
                                     disabled={isProcessing || cart.length === 0}
                                     className="h-12 font-black uppercase text-[10px] tracking-widest border-2"
                                 >
-                                    <FileText className="h-3 w-3 mr-2" /> Save as Invoice
+                                    <FileText className="h-3 w-3 mr-2" /> Save Invoice
                                 </Button>
                                 <Button 
                                     variant="outline"
@@ -554,7 +553,7 @@ export function PosClient() {
                                     disabled={isProcessing || cart.length === 0}
                                     className="h-12 font-black uppercase text-[10px] tracking-widest border-2"
                                 >
-                                    <FilePlus2 className="h-3 w-3 mr-2" /> Save Quotation
+                                    <FilePlus2 className="h-3 w-3 mr-2" /> Save Quote
                                 </Button>
                             </div>
                         </div>
@@ -565,7 +564,7 @@ export function PosClient() {
       </div>
 
       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md border-none shadow-2xl">
             <DialogHeader>
                 <DialogTitle className="text-xl font-black uppercase tracking-tight">Add to Basket</DialogTitle>
                 <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">{selectedProduct?.model}</DialogDescription>
@@ -573,11 +572,11 @@ export function PosClient() {
             <div className="space-y-6 pt-4">
                 <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex justify-between items-center">
                     <div>
-                        <p className="text-[10px] font-black uppercase opacity-40">Unit Price</p>
+                        <p className="text-[10px] font-black uppercase opacity-40">Shop Price</p>
                         <p className="text-lg font-black text-primary">KES {selectedProduct?.sellingPrice?.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-[10px] font-black uppercase opacity-40">Available</p>
+                        <p className="text-[10px] font-black uppercase opacity-40">In Shop</p>
                         <p className="text-lg font-black">{selectedProduct?.quantity} Units</p>
                     </div>
                 </div>
@@ -598,7 +597,7 @@ export function PosClient() {
                             type="number" 
                             value={selectionPrice} 
                             onChange={e => setSelectionPrice(e.target.value)} 
-                            className="h-12 text-lg font-black border-primary ring-1 ring-primary/20"
+                            className="h-12 text-lg font-black border-primary"
                             placeholder="Enter Price"
                             autoFocus
                         />
@@ -623,10 +622,10 @@ export function PosClient() {
             </div>
             <DialogHeader>
                 <DialogTitle className="text-3xl font-black uppercase tracking-tighter">
-                    {successType === 'Receipt' ? 'Sale Recorded' : `${successType} Saved`}
+                    {successType === 'Receipt' ? 'Sale Saved' : `${successType} Saved`}
                 </DialogTitle>
                 <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">
-                    Cloud Ledger Sync Successful.
+                    Saved to internet.
                 </DialogDescription>
             </DialogHeader>
             <div className="pt-10 space-y-3">

@@ -24,7 +24,6 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     const auth = useAuth();
     const firestore = useFirestore();
 
-    // Fetch the company based on the user's tenantId to ensure all users see the same logo
     const companyRef = useMemoFirebase(() => 
       userProfile?.tenantId ? doc(firestore, 'companies', userProfile.tenantId) : null,
       [firestore, userProfile?.tenantId]
@@ -33,9 +32,9 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
 
     const handleLogout = () => {
         if (auth) {
-            logger.business('Identity', 'Account Session Ended', { 
+            logger.business('Identity', 'Shop Session Ended', { 
                 email: user?.email, 
-                company: company?.name || 'STANDALONE',
+                company: company?.name || 'SHOP',
                 uid: user?.uid 
             });
             auth.signOut();
@@ -67,10 +66,10 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
         <SidebarSeparator />
         <SidebarFooter className="p-4">
             <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
-                <Button onClick={handleLogout} variant="ghost" size="icon" className="text-sidebar-foreground/70 hover:text-sidebar-foreground" aria-label="Log Out">
+                <Button onClick={handleLogout} variant="ghost" size="icon" className="text-sidebar-foreground/70 hover:text-sidebar-foreground" aria-label="Exit Shop">
                     <LogOut className="h-5 w-5"/>
                 </Button>
-                <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Logout</span>
+                <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Exit Shop</span>
             </div>
         </SidebarFooter>
       </Sidebar>
@@ -93,10 +92,9 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm bg-white">
-                      {/* SHARED IDENTITY: Prioritize Company Logo for all users in same company */}
                       <AvatarImage 
                         src={company?.logoUrl || userProfile?.avatarUrl || user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`} 
-                        alt="Workspace Identity" 
+                        alt="Shop Profile" 
                         className="object-contain p-0.5"
                       />
                       <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-black uppercase">
@@ -108,9 +106,9 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 <DropdownMenuContent className="w-64" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-xs font-black uppercase tracking-widest text-primary">Active Workspace</p>
+                      <p className="text-xs font-black uppercase tracking-widest text-primary">Current Shop</p>
                       <p className="text-sm font-black uppercase tracking-tight leading-none truncate">
-                        {company?.name || 'Your Company'}
+                        {company?.name || 'My Shop'}
                       </p>
                       <Separator className="my-2" />
                       <p className="text-[10px] font-bold text-muted-foreground truncate flex items-center gap-2">
@@ -132,7 +130,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                   )}
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer font-bold">
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out from node</span>
+                    <span>Exit Shop Area</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -192,9 +190,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
                     <Lock className="h-16 w-16 text-destructive" />
                 </div>
                 <div className="max-w-md space-y-2">
-                    <h1 className="text-3xl font-black uppercase tracking-tighter">Terminated</h1>
+                    <h1 className="text-3xl font-black uppercase tracking-tighter">Shop Access Denied</h1>
                     <p className="text-muted-foreground">
-                        Your account has been suspended.
+                        Your account is currently locked.
                     </p>
                 </div>
                 <Button onClick={() => window.location.reload()} variant="outline" className="font-bold">Retry</Button>

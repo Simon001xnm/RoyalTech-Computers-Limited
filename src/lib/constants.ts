@@ -9,9 +9,7 @@ import {
     Settings,
     LineChart,
     UserCog,
-    Wallet,
-    Laptop,
-    Component
+    Wallet
 } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
@@ -37,27 +35,27 @@ export interface NavItem {
 }
 
 /**
- * STANDALONE NAVIGATION
- * Full business suite restored for a complete operating node.
+ * SIMPLE NAVIGATION
+ * Using basic English for all users.
  */
 export const NAV_ITEMS: NavItem[] = [
-  { id: 'dashboard', href: '/', label: 'Command Center', icon: LayoutDashboard },
+  { id: 'dashboard', href: '/', label: 'Main Dashboard', icon: LayoutDashboard },
   
-  // SALES & COMMERCE
-  { id: 'pos', href: '/pos', label: 'Point of Sale', icon: ShoppingCart },
-  { id: 'documents', href: '/documents', label: 'Documents', icon: FileText },
+  // SALES
+  { id: 'pos', href: '/pos', label: 'Sell Items', icon: ShoppingCart },
+  { id: 'documents', href: '/documents', label: 'Paperwork', icon: FileText },
   
-  // INVENTORY & CRM
-  { id: 'stock', href: '/stock', label: 'Inventory', icon: Package },
-  { id: 'customers', href: '/customers', label: 'Client Directory', icon: Users },
-  { id: 'receivables', href: '/receivables', label: 'Debt Ledger', icon: Wallet },
+  // STOCK & CLIENTS
+  { id: 'stock', href: '/stock', label: 'Items in Shop', icon: Package },
+  { id: 'customers', href: '/customers', label: 'Client List', icon: Users },
+  { id: 'receivables', href: '/receivables', label: 'Money Owed', icon: Wallet },
   
-  // FINANCE
-  { id: 'books', href: '/books', label: 'Expense Feed', icon: BookOpen },
-  { id: 'reports', href: '/reports', label: 'P&L Reports', icon: LineChart },
+  // MONEY
+  { id: 'books', href: '/books', label: 'Money Spent', icon: BookOpen },
+  { id: 'reports', href: '/reports', label: 'Profit Reports', icon: LineChart },
   
-  // SYSTEM
-  { id: 'users', href: '/users', label: 'Staff Management', icon: UserCog },
+  // TOOLS
+  { id: 'users', href: '/users', label: 'Staff Members', icon: UserCog },
   { id: 'settings', href: '/profile', label: 'Shop Settings', icon: Settings },
 ];
 

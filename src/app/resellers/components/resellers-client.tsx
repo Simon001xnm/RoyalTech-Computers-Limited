@@ -21,9 +21,6 @@ import { ResellerForm } from "./reseller-form";
 import { IssueItemForm } from "./issue-item-form";
 import { MarkSoldForm } from "./mark-sold-form";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { exportToCsv } from "@/lib/utils";
-import { format } from "date-fns";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { collection, query, where, addDoc, updateDoc, doc, deleteDoc, writeBatch } from "firebase/firestore";
 
@@ -65,8 +62,8 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
     const firestore = useFirestore();
     
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 5 });
-    const [isIssueFormOpen, setIsIssueFormOpen] = useState(false);
-    const [isSellFormOpen, setIsSellFormOpen] = useState(false);
+    const [isIssueOpen, setIsIssueOpen] = useState(false);
+    const [isSellOpen, setIsSellOpen] = useState(false);
     const [isReturnConfirmOpen, setIsReturnConfirmOpen] = useState(false);
     const [selectedIssuance, setSelectedIssuance] = useState<ItemIssuance | null>(null);
 
@@ -111,7 +108,6 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
                 
                 batch.set(issuanceRef, issuanceData);
                 
-                // Update source collection
                 const collectionName = item.type === 'asset' ? 'assets' : 'accessories';
                 batch.update(doc(firestore, collectionName, item.id), { 
                     status: 'With Reseller', 
@@ -119,10 +115,10 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
                 });
             }
             await batch.commit();
-            toast({ title: `Items Issued to ${reseller.name}` });
-            setIsIssueFormOpen(false);
+            toast({ title: `Items Sent to ${reseller.name}` });
+            setIsIssueOpen(false);
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Issuance Failed', description: error.message });
+            toast({ variant: 'destructive', title: 'Action Failed', description: error.message });
         }
     };
     
@@ -132,7 +128,6 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
         try {
             batch.update(doc(firestore, 'item_issuances', selectedIssuance.id), { status: 'Sold', dateSold: new Date().toISOString() });
             
-            // Update the actual item status to Sold
             const collectionName = selectedIssuance.itemType === 'asset' ? 'assets' : 'accessories';
             batch.update(doc(firestore, collectionName, selectedIssuance.itemId), { status: 'Sold', updatedAt: new Date().toISOString() });
             
@@ -143,7 +138,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
                 amount: data.sellingPrice,
                 paymentMethod: data.paymentMethod,
                 cogs: selectedIssuance.costPrice,
-                notes: data.notes || `Issued Sale via Reseller: ${reseller.name}`,
+                notes: data.notes || `Issued Sale via Partner: ${reseller.name}`,
                 items: [{ 
                     id: selectedIssuance.itemId, 
                     name: selectedIssuance.itemName, 
@@ -159,8 +154,8 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
             });
 
             await batch.commit();
-            toast({ title: 'Sale Recorded Successfully' });
-            setIsSellFormOpen(false);
+            toast({ title: 'Sale Saved Successfully' });
+            setIsSellOpen(false);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
         }
@@ -172,7 +167,6 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
         try {
             batch.update(doc(firestore, 'item_issuances', selectedIssuance.id), { status: 'Returned', dateReturned: new Date().toISOString() });
             
-            // Restore item status to Available
             const collectionName = selectedIssuance.itemType === 'asset' ? 'assets' : 'accessories';
             batch.update(doc(firestore, collectionName, selectedIssuance.itemId), { 
                 status: 'Available', 
@@ -180,7 +174,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
             });
             
             await batch.commit();
-            toast({ title: 'Item Restored to Inventory' });
+            toast({ title: 'Item Returned to Shop' });
             setIsReturnConfirmOpen(false);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Return Failed', description: error.message });
@@ -188,7 +182,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
     };
 
     const columnActions: IssuanceColumnActions = {
-        onMarkAsSold: (issuance) => { setSelectedIssuance(issuance); setIsSellFormOpen(true); },
+        onMarkAsSold: (issuance) => { setSelectedIssuance(issuance); setIsSellOpen(true); },
         onMarkAsReturned: (issuance) => { setSelectedIssuance(issuance); setIsReturnConfirmOpen(true); },
     };
     
@@ -203,23 +197,23 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
             <SheetHeader className="p-8 border-b bg-muted/10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <SheetTitle className="text-2xl font-black uppercase tracking-tighter">{reseller.name}'s Dashboard</SheetTitle>
-                        <SheetDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground mt-1">Partner Inventory Control Node</SheetDescription>
+                        <SheetTitle className="text-2xl font-black uppercase tracking-tighter">{reseller.name}'s Records</SheetTitle>
+                        <SheetDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground mt-1">Partner Information</SheetDescription>
                     </div>
-                    <Button onClick={() => setIsIssueFormOpen(true)} className="h-11 px-6 font-black uppercase tracking-widest shadow-lg">
-                        <PlusCircle className="mr-2 h-4 w-4"/>Issue Stock
+                    <Button onClick={() => setIsIssueOpen(true)} className="h-11 px-6 font-black uppercase tracking-widest shadow-lg">
+                        <PlusCircle className="mr-2 h-4 w-4"/>Send Stock
                     </Button>
                 </div>
             </SheetHeader>
             <div className="flex-grow overflow-y-auto p-8 space-y-8 bg-card/50">
                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-                    <SummaryCard title="Current Stock" value={summaryStats.issued} icon={Briefcase} description="Items with reseller" />
-                    <SummaryCard title="Sold to Date" value={summaryStats.sold} icon={TrendingUp} description="Converted sales" />
-                    <SummaryCard title="Returned Units" value={summaryStats.returned} icon={CornerDownLeft} description="Re-stocked items" />
+                    <SummaryCard title="Current Stock" value={summaryStats.issued} icon={Briefcase} description="Items with partner" />
+                    <SummaryCard title="Sold to Date" value={summaryStats.sold} icon={TrendingUp} description="Finished sales" />
+                    <SummaryCard title="Returned Items" value={summaryStats.returned} icon={CornerDownLeft} description="Back in shop" />
                 </div>
                  <Card className="border-none ring-1 ring-black/5 shadow-xl overflow-hidden">
                     <CardHeader className="bg-muted/20 py-4 px-6 border-b">
-                        <CardTitle className="text-sm font-black uppercase tracking-widest">Transaction History</CardTitle>
+                        <CardTitle className="text-sm font-black uppercase tracking-widest">History</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         <Table>
@@ -239,7 +233,7 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic text-xs">No records found for this partner.</TableCell>
+                                        <TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic text-xs">No items sent to this partner yet.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -248,36 +242,36 @@ const ResellerDashboardSheet = ({ reseller, allIssuances, allAvailableItems }: {
                     </CardContent>
                 </Card>
             </div>
-             <Dialog open={isIssueFormOpen} onOpenChange={setIsIssueFormOpen}>
+             <Dialog open={isIssueOpen} onOpenChange={setIsIssueOpen}>
                 <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-black uppercase flex items-center gap-2">
                             <PlusCircle className="h-5 w-5 text-primary" />
-                            Issue Stock to Partner
+                            Send Stock to Partner
                         </DialogTitle>
                     </DialogHeader>
-                    <IssueItemForm availableItems={allAvailableItems} onSubmit={handleIssueItems} onCancel={() => setIsIssueFormOpen(false)} />
+                    <IssueItemForm availableItems={allAvailableItems} onSubmit={handleIssueItems} onCancel={() => setIsIssueOpen(false)} />
                 </DialogContent>
             </Dialog>
-            <Dialog open={isSellFormOpen} onOpenChange={setIsSellFormOpen}>
+            <Dialog open={isSellOpen} onOpenChange={setIsSellOpen}>
                 <DialogContent className="border-none shadow-2xl">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-black uppercase">Finalize Partner Sale</DialogTitle>
+                        <DialogTitle className="text-xl font-black uppercase">Finish Partner Sale</DialogTitle>
                     </DialogHeader>
-                    <MarkSoldForm issuance={selectedIssuance} onSubmit={handleMarkAsSold} onCancel={() => setIsSellFormOpen(false)} />
+                    <MarkSoldForm issuance={selectedIssuance} onSubmit={handleMarkAsSold} onCancel={() => setIsSellOpen(false)} />
                 </DialogContent>
             </Dialog>
             <AlertDialog open={isReturnConfirmOpen} onOpenChange={setIsReturnConfirmOpen}>
                 <AlertDialogContent className="border-none shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-black uppercase">Confirm Inventory Return</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-black uppercase">Confirm Item Return</AlertDialogTitle>
                         <AlertDialogDescription className="font-medium text-base pt-2">
-                            This will move <strong>{selectedIssuance?.itemName}</strong> back to your central available inventory.
+                            This will move <strong>{selectedIssuance?.itemName}</strong> back to your main shop inventory.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6 gap-2">
                         <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmReturn} className="font-black uppercase bg-destructive text-white hover:bg-destructive/90">Execute Return</AlertDialogAction>
+                        <AlertDialogAction onClick={confirmReturn} className="font-black uppercase bg-destructive text-white hover:bg-destructive/90">Confirm Return</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -323,19 +317,8 @@ export function ResellersClient() {
 
   const allAvailableItems = useMemo<IssueableItem[]>(() => {
     const list: IssueableItem[] = [];
-    
-    if (rawAssets) {
-        rawAssets.filter(a => a.status === 'Available').forEach(a => {
-            list.push({ ...a, type: 'asset' });
-        });
-    }
-    
-    if (rawAccessories) {
-        rawAccessories.filter(a => a.status === 'Available').forEach(a => {
-            list.push({ ...a, type: 'accessory' });
-        });
-    }
-    
+    if (rawAssets) { rawAssets.filter(a => a.status === 'Available').forEach(a => list.push({ ...a, type: 'asset' })); }
+    if (rawAccessories) { rawAccessories.filter(a => a.status === 'Available').forEach(a => list.push({ ...a, type: 'accessory' })); }
     return list;
   }, [rawAccessories, rawAssets]);
 
@@ -349,83 +332,41 @@ export function ResellersClient() {
     try {
         if (editingReseller) {
             await updateDoc(doc(firestore, 'resellers', editingReseller.id), { ...data, updatedAt: new Date().toISOString() });
-            toast({ title: "Profile Updated" });
+            toast({ title: "Updated" });
         } else {
             await addDoc(collection(firestore, 'resellers'), { ...data, tenantId: tenant.id, registrationDate: new Date().toISOString(), createdAt: new Date().toISOString() });
-            toast({ title: "Partner Registered" });
+            toast({ title: "Partner Added" });
         }
         setIsFormOpen(false); setEditingReseller(null);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Update Failed' });
+        toast({ variant: 'destructive', title: 'Error' });
     }
   };
 
   return (
     <div className="space-y-6 md:space-y-10">
-      <PageHeader 
-        title="Partner Network (Resellers)" 
-        description="Oversee inventory distribution and track sales conversion through partners." 
-        actionLabel="Register New Partner" 
-        onAction={() => setIsFormOpen(true)} 
-        ActionIcon={PlusCircle} 
-      />
-
-      <div className="mb-4">
-        <Input 
-            placeholder="Search partners by name..." 
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)} 
-            className="max-w-sm bg-card h-11 font-bold"
-        />
-      </div>
-
+      <PageHeader title="Partner Network (Resellers)" description="Manage stock given to partners and track their sales." actionLabel="Add Partner" onAction={() => setIsFormOpen(true)} ActionIcon={PlusCircle} />
+      <div className="mb-4"><Input placeholder="Search partners by name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm bg-card h-11 font-bold" /></div>
       {isLoading ? (
-        <div className="flex items-center gap-2 text-muted-foreground animate-pulse font-bold uppercase text-[10px] tracking-widest">
-            <DownloadCloud className="h-4 w-4" /> Syncing partner nodes...
-        </div>
+        <div className="flex items-center gap-2 text-muted-foreground animate-pulse font-bold uppercase text-[10px] tracking-widest"><DownloadCloud className="h-4 w-4" /> Checking partners...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredResellers.map(reseller => (
                 <ResellerCard key={reseller.id} reseller={reseller} onViewDashboard={() => setSelectedReseller(reseller)} onEdit={() => { setEditingReseller(reseller); setIsFormOpen(true); }} onDelete={() => { setEditingReseller(reseller); setIsDeleteConfirmOpen(true); }} />
             ))}
-            {filteredResellers.length === 0 && (
-                <div className="col-span-full py-20 text-center border-2 border-dashed rounded-3xl opacity-30">
-                    <Briefcase className="h-12 w-12 mx-auto mb-4" />
-                    <p className="font-black uppercase tracking-widest text-xs">No partners registered in this node</p>
-                </div>
-            )}
         </div>
       )}
-
       <Sheet open={!!selectedReseller} onOpenChange={(o) => !o && setSelectedReseller(null)}>
         <SheetContent className="w-full sm:max-w-4xl lg:max-w-5xl flex flex-col p-0 border-none shadow-2xl">
             {selectedReseller && <ResellerDashboardSheet reseller={selectedReseller} allIssuances={allIssuances || []} allAvailableItems={allAvailableItems} />}
         </SheetContent>
       </Sheet>
-
       <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingReseller(null); }}}>
         <DialogContent className="border-none shadow-2xl">
-            <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingReseller ? "Update Partner" : "Initialize Partner Node"}</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle className="text-xl font-black uppercase tracking-tight">{editingReseller ? "Update Partner" : "Add New Partner"}</DialogTitle></DialogHeader>
             <ResellerForm reseller={editingReseller} onSubmit={handleSaveReseller} onCancel={() => setIsFormOpen(false)} />
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <AlertDialogContent className="border-none shadow-2xl">
-            <AlertDialogHeader>
-                <AlertDialogTitle className="text-xl font-black uppercase">Revoke Partner Node?</AlertDialogTitle>
-                <AlertDialogDescription className="font-medium text-base pt-2">
-                    This will remove the reseller from your active directory. Historical records of issuances will be preserved.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="mt-6 gap-2">
-                <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={async () => { if (editingReseller) await deleteDoc(doc(firestore, 'resellers', editingReseller.id)); setIsDeleteConfirmOpen(false); }} className="bg-destructive text-white hover:bg-destructive/90 font-black uppercase tracking-widest">Confirm Revocation</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

@@ -19,8 +19,8 @@ export default function HospitalityModule() {
   return (
     <div className="space-y-6 md:space-y-10">
       <PageHeader 
-        title="Hospitality Hub" 
-        description="Unified table management, live kitchen order tracking, and mobile waiter ordering node."
+        title="Hospitality Area" 
+        description="Table management and kitchen order tracking for your shop."
       />
 
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
@@ -61,7 +61,7 @@ export default function HospitalityModule() {
                         <ChefHat className="h-4 w-4 text-white" />
                     </div>
                     <CardTitle className="text-sm font-black uppercase tracking-widest">
-                        Kitchen Display (KDS)
+                        Kitchen Display
                     </CardTitle>
                 </div>
                 <Badge className="bg-primary text-white font-black text-[9px] px-2 h-5">4 ACTIVE TICKETS</Badge>
@@ -88,9 +88,6 @@ export default function HospitalityModule() {
                     </div>
                 </div>
             </CardContent>
-            <CardFooter className="bg-muted/10 border-t py-3 justify-center">
-                <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest h-8">Switch to Full Display Mode <ArrowUpRight className="ml-1.5 h-3 w-3" /></Button>
-            </CardFooter>
          </Card>
 
          <Card className="border-none shadow-2xl ring-1 ring-black/5 overflow-hidden">
@@ -99,7 +96,7 @@ export default function HospitalityModule() {
                     <div className="bg-black p-2 rounded-lg shadow-sm">
                         <ShoppingCart className="h-4 w-4 text-white" />
                     </div>
-                    <CardTitle className="text-sm font-black uppercase tracking-widest">Floor Intelligence</CardTitle>
+                    <CardTitle className="text-sm font-black uppercase tracking-widest">Shop Info</CardTitle>
                 </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -130,11 +127,6 @@ export default function HospitalityModule() {
                     </div>
                 </div>
             </CardContent>
-            <CardFooter className="bg-muted/10 border-t py-8 text-center flex flex-col gap-4">
-                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Need more power?</h4>
-                 <p className="text-[10px] text-muted-foreground font-medium max-w-xs mx-auto">Enable the **Advanced Inventory Integration** to automatically deduct ingredients like coffee beans and milk from your stock as orders are completed.</p>
-                 <Button variant="outline" className="h-9 px-6 font-black uppercase text-[9px] tracking-widest border-2">Link Inventory</Button>
-            </CardFooter>
          </Card>
       </div>
     </div>

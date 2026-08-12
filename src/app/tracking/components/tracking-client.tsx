@@ -7,7 +7,7 @@ import type { Asset } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { LocateFixed, Package } from "lucide-react";
+import { Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
@@ -20,7 +20,6 @@ export function TrackingClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
 
-  // CLOUD QUERY: Leased assets for tracking
   const trackableQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(
@@ -50,37 +49,37 @@ export function TrackingClient() {
   if (isLoading) {
     return (
         <div className="space-y-6">
-            <PageHeader title="Asset Tracking" description="Acquiring GPS data from the cloud..." />
-            <p className="text-center py-12 text-muted-foreground animate-pulse">Syncing location coordinates...</p>
+            <PageHeader title="Item Tracking" description="Checking location info..." />
+            <p className="text-center py-12 text-muted-foreground animate-pulse">Checking location records...</p>
         </div>
     )
   }
 
   return (
     <SubscriptionGuard requiredTier="pro" feature="Live GPS Tracking">
-      <PageHeader title="Cloud Asset Tracking" description="Visualizing the current location of leased and in-repair units." />
+      <PageHeader title="Item Tracking" description="See where your leased and in-repair items are right now." />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
             <MapComponent assets={trackableAssets || []} selectedAssetId={selectedAssetId} />
         </div>
         <div className="space-y-6">
             <Card className="shadow-lg">
-                <CardHeader><CardTitle>Select Unit</CardTitle><CardDescription>Monitor a specific device.</CardDescription></CardHeader>
+                <CardHeader><CardTitle>Select Item</CardTitle><CardDescription>Follow a specific item.</CardDescription></CardHeader>
                 <CardContent>
                     {assetsWithLocation.length > 0 ? (
                         <Select onValueChange={setSelectedAssetId} value={selectedAssetId || undefined}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="Search trackable units..." /></SelectTrigger>
+                            <SelectTrigger className="w-full"><SelectValue placeholder="Search items..." /></SelectTrigger>
                             <SelectContent>{assetsWithLocation.map((asset) => (<SelectItem key={asset.id} value={asset.id}>{asset.model} ({asset.serialNumber})</SelectItem>))}</SelectContent>
                         </Select>
                     ) : (
-                        <Alert><Package className="h-4 w-4" /><AlertTitle>No Data</AlertTitle><AlertDescription>No units in this node have active GPS data.</AlertDescription></Alert>
+                        <Alert><Package className="h-4 w-4" /><AlertTitle>No Data</AlertTitle><AlertDescription>No items in this shop have active tracking info.</AlertDescription></Alert>
                     )}
                 </CardContent>
             </Card>
 
             {selectedAssetDetails && selectedAssetDetails.location && (
                  <Card className="shadow-lg">
-                    <CardHeader><CardTitle>Unit Metadata</CardTitle></CardHeader>
+                    <CardHeader><CardTitle>Item Details</CardTitle></CardHeader>
                     <CardContent className="space-y-3">
                         <div><h3 className="text-lg font-bold">{selectedAssetDetails.model}</h3><p className="text-xs font-mono opacity-60">S/N: {selectedAssetDetails.serialNumber}</p></div>
                         <div className="text-sm"><span className="font-medium">Status: </span><Badge variant={selectedAssetDetails.status === 'Leased' ? 'default' : 'destructive'}>{selectedAssetDetails.status}</Badge></div>

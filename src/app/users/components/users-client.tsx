@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from "react";
@@ -52,9 +51,6 @@ export function UsersClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   const { user: authUser, isUserLoading: isAuthUserLoading } = useUser();
-
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
   const userProfileRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
   const { data: currentUserProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
@@ -137,7 +133,7 @@ export function UsersClient() {
                 permissions: data.permissions || [],
                 updatedAt: new Date().toISOString()
             });
-            toast({ title: "Updated staff permissions." });
+            toast({ title: "Updated staff access." });
         } else {
             const inviteId = `invited_${crypto.randomUUID()}`;
             await setDoc(doc(firestore, 'users', inviteId), {
@@ -160,7 +156,7 @@ export function UsersClient() {
         setIsFormOpen(false);
         setEditingUser(null);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Cloud Sync Failed', description: e.message });
+        toast({ variant: 'destructive', title: 'Saving failed', description: e.message });
     } finally {
         setIsProcessing(false);
     }
@@ -228,14 +224,14 @@ export function UsersClient() {
       />
 
        {!isAdmin && !isLoading && (
-        <div className="flex h-[60vh] flex-col items-center justify-center p-8 text-center space-y-6">
+        <div className="flex h-[60vh] flex-col items-center justify-center p-8 text-center space-y-6 bg-background">
             <div className="bg-destructive/10 p-6 rounded-full">
                 <Lock className="h-12 w-12 text-destructive" />
             </div>
             <div className="max-w-md space-y-2">
                 <h2 className="text-2xl font-black uppercase tracking-tight">Access Restricted</h2>
                 <p className="text-muted-foreground">
-                    Only the shop owner can add or change staff permissions.
+                    Only the shop owner can add or change staff access.
                 </p>
             </div>
         </div>
@@ -255,7 +251,7 @@ export function UsersClient() {
             {isLoading ? (
                 <p className="text-muted-foreground animate-pulse font-bold uppercase text-[10px] tracking-widest flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading staff list...
+                    Checking staff list...
                 </p>
             ) : (
                 <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
@@ -284,7 +280,7 @@ export function UsersClient() {
                             ))
                         ) : (
                             <TableRow>
-                            <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No staff members added yet.</TableCell>
+                            <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No staff members found.</TableCell>
                             </TableRow>
                         )}
                         </TableBody>

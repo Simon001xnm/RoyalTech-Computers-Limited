@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Printer, Calendar as CalendarIcon, Filter } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Printer, Filter } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem, User as AppUser } from "@/types";
 import {
   Table,
@@ -49,7 +49,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useSaaS } from "@/components/saas/saas-provider";
-import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const VAT_RATE = 0.16;
@@ -149,7 +149,6 @@ export function DocumentsClient() {
             monthsSet.add(format(parseISO(d.generatedDate), 'yyyy-MM'));
         } catch (e) {}
     });
-    // Ensure current month is always there
     monthsSet.add(format(new Date(), 'yyyy-MM'));
     return Array.from(monthsSet).sort().reverse();
   }, [rawDocuments]);
@@ -231,11 +230,11 @@ export function DocumentsClient() {
             createdAt: new Date().toISOString(),
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         });
-        toast({ title: "Document Created Successfully" });
+        toast({ title: "Paperwork Saved" });
         setSelectedCustomerId('');
         setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Action Failed', description: error.message });
+        toast({ variant: 'destructive', title: 'Error Saving' });
     }
   };
 
@@ -253,7 +252,7 @@ export function DocumentsClient() {
             sourceDocumentId: sourceDoc.id,
             sourceTitle: sourceDoc.title,
             generatedDate: new Date().toISOString(),
-            details: `Automated dispatch for ${sourceDoc.title}`
+            details: `Delivery for ${sourceDoc.title}`
         };
 
         await addDoc(collection(firestore, 'documents'), {
@@ -267,9 +266,9 @@ export function DocumentsClient() {
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         });
 
-        toast({ title: "Delivery Note Generated", description: "Details synced to cloud." });
+        toast({ title: "Delivery Note Created" });
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Dispatch Failed', description: e.message });
+        toast({ variant: 'destructive', title: 'Error' });
     } finally {
         setIsGeneratingDelivery(false);
     }
@@ -292,10 +291,10 @@ export function DocumentsClient() {
         });
 
         await batch.commit();
-        toast({ title: "Document & Transaction Purged" });
+        toast({ title: "Record Deleted" });
         setDocToDelete(null);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: "Deletion Failed", description: e.message });
+        toast({ variant: 'destructive', title: "Delete Failed" });
     } finally {
         setIsDeleting(false);
     }
@@ -326,7 +325,7 @@ export function DocumentsClient() {
     try {
         const isThermal = type === 'Thermal';
         const canvas = await html2canvas(element, { 
-            scale: 3.5, 
+            scale: 3.0, 
             useCORS: true,
             backgroundColor: "#ffffff",
             width: isThermal ? 302 : 794, 
@@ -337,12 +336,12 @@ export function DocumentsClient() {
         const pdf = new jsPDF({
             orientation: 'p',
             unit: 'mm',
-            format: isThermal ? [80, canvas.height * 0.264583 / 3.5] : 'a4',
+            format: isThermal ? [80, canvas.height * 0.264583 / 3.0] : 'a4',
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
         if (isThermal) {
-            pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.5, undefined, 'FAST');
+            pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.0, undefined, 'FAST');
         } else {
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
         }
@@ -350,11 +349,7 @@ export function DocumentsClient() {
         const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
         const custPrefix = (docToDownload.relatedTo || 'VAL').slice(0, 3).toUpperCase();
         const now = new Date(docToDownload.generatedDate);
-        const year = now.getFullYear();
-        const day = now.getDate().toString().padStart(2, '0');
-        const month = (now.getMonth() + 1).toString().padStart(2, '0');
-        const suffix = isThermal ? '_TH' : '';
-        const filename = `${initials} ${custPrefix}-${year}${day}${month}${suffix}.pdf`;
+        const filename = `${initials}_${custPrefix}_${format(now, 'yyyyMMdd')}.pdf`;
         
         pdf.save(filename);
     } catch (err) {
@@ -420,10 +415,10 @@ export function DocumentsClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Document Node" description="Professional paperwork synchronization and archive." />
+      <PageHeader title="Shop Paperwork" description="View and create documents for your clients." />
       
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
+        <TabsList className="grid w-full grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
           <TabsTrigger value="Invoice" className="font-black uppercase text-[8px] md:text-[9px] py-3">Invoice</TabsTrigger>
           <TabsTrigger value="LeaseAgreement" className="font-black uppercase text-[8px] md:text-[9px] py-3">Lease Hire</TabsTrigger>
@@ -440,16 +435,16 @@ export function DocumentsClient() {
       <Card className="mt-8 shadow-2xl border-none overflow-hidden">
           <CardHeader className="bg-muted/50 py-4 border-b">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Archive Registry</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Past Paperwork</CardTitle>
                 <div className="flex items-center gap-3">
-                    <Label className="text-[10px] font-black uppercase whitespace-nowrap opacity-40">Filter Range:</Label>
+                    <Label className="text-[10px] font-black uppercase opacity-40">Choose Month:</Label>
                     <Select value={monthFilter} onValueChange={setMonthFilter}>
                         <SelectTrigger className="h-9 w-40 bg-white font-bold text-[10px] uppercase">
                             <Filter className="h-3 w-3 mr-2 text-primary" />
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">All History</SelectItem>
+                            <SelectItem value="all">All Records</SelectItem>
                             {availableMonths.map(m => (
                                 <SelectItem key={m} value={m}>{format(parseISO(m + '-01'), 'MMMM yyyy')}</SelectItem>
                             ))}
@@ -462,7 +457,7 @@ export function DocumentsClient() {
             {docsLoading || isGeneratingDelivery ? (
                 <div className="p-12 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground flex items-center justify-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Syncing Registry...
+                    Checking Records...
                 </div>
             ) : (
                 <>
@@ -480,7 +475,7 @@ export function DocumentsClient() {
                                     <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
                                 ))
                             ) : (
-                                <TableRow><TableCell colSpan={customColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">No records found for the selected period.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={customColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">No records for this month.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>
@@ -494,10 +489,10 @@ export function DocumentsClient() {
         <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
           <DialogHeader className="p-6 bg-white border-b no-print">
             <div className="flex items-center justify-between">
-                <DialogTitle className="text-xl font-black uppercase tracking-tight">Paper Preview</DialogTitle>
+                <DialogTitle className="text-xl font-black uppercase tracking-tight">View Paper</DialogTitle>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'A4')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download A4</Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'Thermal')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download Thermal</Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'Thermal')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download Small</Button>
                 </div>
             </div>
           </DialogHeader>
@@ -511,8 +506,8 @@ export function DocumentsClient() {
           </div>
           <div className="p-4 border-t flex flex-col sm:flex-row justify-end gap-3 bg-white no-print">
             {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold w-full sm:w-auto">Close Preview</Button>
-            <Button onClick={() => window.print()} className="font-black uppercase w-full sm:w-auto"><Printer className="mr-2 h-4 w-4" />Execute Print</Button>
+            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold w-full sm:w-auto">Close</Button>
+            <Button onClick={() => window.print()} className="font-black uppercase w-full sm:w-auto"><Printer className="mr-2 h-4 w-4" />Print Paper</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -520,15 +515,15 @@ export function DocumentsClient() {
       <Dialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase tracking-tight text-destructive">Confirm Permanent Deletion</DialogTitle>
+                <DialogTitle className="text-xl font-black uppercase tracking-tight text-destructive">Delete for Good?</DialogTitle>
                 <DialogDescription className="font-medium text-base pt-2">
-                    Deleting <strong>{docToDelete?.title}</strong> will also remove the transaction data from your sales reports, dashboard, and customer ledger. This action cannot be undone.
+                    This will remove <strong>{docToDelete?.title}</strong> and all its money details from the shop records. This cannot be undone.
                 </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2 mt-4">
                 <Button variant="outline" onClick={() => setDocToDelete(null)} disabled={isDeleting} className="font-bold">Cancel</Button>
                 <Button variant="destructive" onClick={handleDeleteDocument} disabled={isDeleting} className="font-black uppercase tracking-widest">
-                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Purge Document & Sale"}
+                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Forever"}
                 </Button>
             </DialogFooter>
         </DialogContent>
@@ -541,15 +536,15 @@ export function DocumentsClient() {
     return (
       <Card className="shadow-lg border-primary/10">
         <CardHeader className="bg-primary/5 border-b">
-            <CardTitle className="text-lg font-black uppercase">Create a {type.replace(/([A-Z])/g, ' $1').trim()}</CardTitle>
-            <CardDescription>Fill in the info below to make your document.</CardDescription>
+            <CardTitle className="text-lg font-black uppercase">Create {type.replace(/([A-Z])/g, ' $1').trim()}</CardTitle>
+            <CardDescription>Enter details below to create your paper.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <Label className="text-[10px] font-black uppercase opacity-60">Select Client</Label>
+                <Label className="text-[10px] font-black uppercase opacity-60">Pick Client</Label>
                 <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId}>
-                  <SelectTrigger className="h-11"><SelectValue placeholder="Pick a client..." /></SelectTrigger>
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Pick a name..." /></SelectTrigger>
                   <SelectContent>
                     {customers?.map(c => (
                       <SelectItem key={c.id} value={c.id}>
@@ -567,7 +562,7 @@ export function DocumentsClient() {
 
           {showsItemEntry && (
             <div className="space-y-4">
-                <Label className="text-[10px] font-black uppercase opacity-60">List Items Below</Label>
+                <Label className="text-[10px] font-black uppercase opacity-60">Item Details</Label>
                 <div className="border rounded-xl overflow-hidden overflow-x-auto">
                     <Table>
                         <TableHeader className="bg-muted/50">
@@ -596,7 +591,7 @@ export function DocumentsClient() {
         </CardContent>
         <CardFooter className="bg-muted/10 border-t py-4">
             <Button onClick={() => handleGenerateDocument(type)} className="w-full sm:w-auto ml-auto font-black uppercase" disabled={docsLoading}>
-                Generate and Sync to Cloud
+                Save and Save to Internet
             </Button>
         </CardFooter>
       </Card>

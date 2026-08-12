@@ -30,7 +30,7 @@ export default function LoginPage() {
 
   const handleSignIn = async () => {
     if (!email || !password) {
-        toast({ variant: 'destructive', title: 'Enter info', description: 'Enter email and password.' });
+        toast({ variant: 'destructive', title: 'Need Information', description: 'Please enter your email and password.' });
         return;
     }
     
@@ -40,9 +40,9 @@ export default function LoginPage() {
     } catch (e: any) {
         setIsProcessing(false);
         const message = e.code === 'auth/invalid-credential' 
-          ? "Account not found or wrong password." 
+          ? "Wrong email or password." 
           : e.message;
-        toast({ variant: 'destructive', title: 'Failed to sign in', description: message });
+        toast({ variant: 'destructive', title: 'Login Error', description: message });
     }
   };
 
@@ -52,21 +52,21 @@ export default function LoginPage() {
         await initiateGoogleSignIn(auth);
     } catch (e: any) {
         setIsProcessing(false);
-        toast({ variant: 'destructive', title: 'Google error', description: e.message });
+        toast({ variant: 'destructive', title: 'Login Error', description: "Could not log in with Google." });
     }
   };
 
   const handleForgotPassword = async () => {
     if (!email) {
-      toast({ variant: 'destructive', title: 'Need email', description: 'Enter your email for reset link.' });
+      toast({ variant: 'destructive', title: 'Enter Email', description: 'Tell us your email to get a reset link.' });
       return;
     }
     setIsResetting(true);
     try {
       await initiatePasswordReset(auth, email.toLowerCase().trim());
-      toast({ title: 'Email sent', description: 'Check your inbox for reset steps.' });
+      toast({ title: 'Email Sent', description: 'Check your inbox for a link to change your password.' });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Reset error', description: e.message });
+      toast({ variant: 'destructive', title: 'Reset Error', description: "Could not send reset link." });
     } finally {
       setIsResetting(false);
     }
@@ -88,8 +88,8 @@ export default function LoginPage() {
             <div className="w-14 h-14 bg-white rounded-2xl shadow-md flex items-center justify-center p-3 mb-6 border border-black/5">
                 <Zap className="w-full h-full text-primary fill-primary" />
             </div>
-            <h1 className="text-2xl font-black uppercase tracking-tighter text-foreground leading-none">Business Login</h1>
-            <p className="text-xs text-muted-foreground font-bold mt-2 uppercase tracking-widest">Standalone Management Suite</p>
+            <h1 className="text-2xl font-black uppercase tracking-tighter text-foreground leading-none">Shop Login</h1>
+            <p className="text-xs text-muted-foreground font-bold mt-2 uppercase tracking-widest">Business Management Suite</p>
         </div>
 
         <div className="bg-white rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-black/5 p-8 md:p-10 space-y-8">
@@ -106,17 +106,17 @@ export default function LoginPage() {
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.16H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.84l3.66-2.75z" fill="#FBBC05" />
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.16l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
-            <span>Continue with Google</span>
+            <span>Login with Google</span>
           </Button>
 
           <div className="relative text-center">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-black/5" /></div>
-            <span className="relative bg-white px-4 text-[10px] font-black uppercase text-muted-foreground tracking-widest">Or credentials</span>
+            <span className="relative bg-white px-4 text-[10px] font-black uppercase text-muted-foreground tracking-widest">Or use email</span>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Email</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Work Email</Label>
                 <Input 
                     type="email" 
                     placeholder="name@company.com" 
@@ -147,7 +147,7 @@ export default function LoginPage() {
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                     >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -155,14 +155,14 @@ export default function LoginPage() {
             </div>
 
             <Button onClick={handleSignIn} className="w-full h-12 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 bg-primary text-primary-foreground" disabled={isProcessing}>
-                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log in to Node'}
+                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enter Shop'}
             </Button>
           </div>
         </div>
 
-        <div className="mt-8 text-center space-y-4">
-            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
-                Need to initialize a workspace? <button onClick={() => router.push('/signup')} className="text-accent font-black uppercase tracking-widest hover:underline">Register New Admin</button>
+        <div className="mt-8 text-center">
+            <p className="text-[10px] font-medium text-muted-foreground">
+                New here? <button onClick={() => router.push('/signup')} className="text-accent font-black uppercase tracking-widest hover:underline">Create a new Shop account</button>
             </p>
         </div>
       </div>

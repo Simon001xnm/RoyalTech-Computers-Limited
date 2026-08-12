@@ -19,7 +19,6 @@ export function AuditClient() {
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Siloed Logs: Index-free query (sort in memory)
   const logsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(
@@ -34,14 +33,12 @@ export function AuditClient() {
   const logs = useMemo(() => {
     if (!rawLogs) return [];
     
-    // 1. In-memory sort by timestamp
     const sorted = [...rawLogs].sort((a, b) => {
         const dateA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
         const dateB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
         return dateB - dateA;
     });
 
-    // 2. Filters
     return sorted.filter(log => {
         const matchesLevel = levelFilter === 'all' || log.level === levelFilter;
         const matchesSearch = !searchTerm || 
@@ -70,8 +67,8 @@ export function AuditClient() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Internal Audit Trail" 
-        description="Private activity logs and business event history synced from the cloud."
+        title="History Log" 
+        description="Private activity logs and business event history saved to internet."
       />
 
       <div className="grid gap-6 md:grid-cols-[1fr_300px]">
@@ -81,7 +78,7 @@ export function AuditClient() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
                             <History className="h-5 w-5 text-primary" />
-                            <CardTitle className="text-lg">Workspace Activity Feed</CardTitle>
+                            <CardTitle className="text-lg">Shop Activity Feed</CardTitle>
                         </div>
                         <div className="flex gap-2">
                             <div className="relative w-full sm:w-64">
@@ -96,7 +93,7 @@ export function AuditClient() {
                             <Select value={levelFilter} onValueChange={setLevelFilter}>
                                 <SelectTrigger className="h-9 w-32 text-xs bg-background">
                                     <Filter className="h-3 w-3 mr-2" />
-                                    <SelectValue placeholder="Severity" />
+                                    <SelectValue placeholder="Type" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Events</SelectItem>
@@ -111,13 +108,13 @@ export function AuditClient() {
                 <CardContent className="p-0">
                     <ScrollArea className="h-[600px]">
                         {isLoading ? (
-                            <div className="p-8 text-center text-muted-foreground animate-pulse">Syncing cloud logs...</div>
+                            <div className="p-8 text-center text-muted-foreground animate-pulse">Checking records...</div>
                         ) : logs.length === 0 ? (
                             <div className="p-20 text-center space-y-3">
                                 <div className="bg-muted p-4 rounded-full w-fit mx-auto">
                                     <ShieldCheck className="h-10 w-10 text-muted-foreground opacity-20" />
                                 </div>
-                                <p className="text-sm font-medium text-muted-foreground">No matching audit records found.</p>
+                                <p className="text-sm font-medium text-muted-foreground">No records found.</p>
                             </div>
                         ) : (
                             <div className="divide-y divide-muted/40">
@@ -139,11 +136,6 @@ export function AuditClient() {
                                                     </p>
                                                 </div>
                                             </div>
-                                            {log.id && (
-                                                <div className="hidden lg:block">
-                                                    <Badge variant="outline" className="text-[8px] font-mono opacity-60">ID: {log.id.slice(0,8)}</Badge>
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -157,19 +149,19 @@ export function AuditClient() {
         <div className="space-y-6">
             <Card className="bg-primary/5 border-primary/20 shadow-sm">
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-black uppercase tracking-widest text-primary">Compliance Note</CardTitle>
+                    <CardTitle className="text-xs font-black uppercase tracking-widest text-primary">Rules Note</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <p className="text-xs text-primary/80 leading-relaxed italic">
-                        "Audit logs are immutable and cryptographically bound to your business workspace. These records ensure internal accountability and are synced across your team's cloud session."
+                        "Activity logs cannot be changed. These records show who did what in your shop and are saved to the internet for your team."
                     </p>
                     <div className="p-3 bg-background rounded-lg border border-primary/10 space-y-2">
                         <div className="flex items-center justify-between text-[10px] font-bold">
                             <span className="text-muted-foreground">Log Retention</span>
-                            <span className="text-green-600">CLOUD PERMANENT</span>
+                            <span className="text-green-600">PERMANENT</span>
                         </div>
                         <div className="flex items-center justify-between text-[10px] font-bold">
-                            <span className="text-muted-foreground">Silo Isolation</span>
+                            <span className="text-muted-foreground">Records Status</span>
                             <span className="text-green-600">VERIFIED</span>
                         </div>
                     </div>

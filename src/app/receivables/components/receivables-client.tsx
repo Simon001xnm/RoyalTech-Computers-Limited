@@ -25,7 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isToday } from 'date-fns';
 import { CustomerStatementPdf } from '@/app/documents/components/pdfs/customer-statement-pdf';
 import { useToast } from '@/hooks/use-toast';
 import type { Sale, Customer } from '@/types';
@@ -69,13 +69,10 @@ export function ReceivablesClient() {
   const debtors = useMemo(() => {
     if (!sales || !customers) return [];
     
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-
     const debtorMap: Record<string, { customer: Customer; sales: Sale[]; totalBalance: number; totalPaid: number; totalInvoiced: number }> = {};
 
-    // ONLY FILTER DEBT FROM TODAY'S TRANSACTIONS
     sales.filter(sale => {
-        try { return format(parseISO(sale.date), 'yyyy-MM-dd') === todayStr; } catch { return false; }
+        try { return isToday(parseISO(sale.date)); } catch { return false; }
     }).forEach(sale => {
         if (!debtorMap[sale.customerId]) {
             const customer = customers.find(c => c.id === sale.customerId);
@@ -190,12 +187,12 @@ export function ReceivablesClient() {
     <div className="space-y-6 pb-20">
       <PageHeader 
         title="Today's Debt Ledger" 
-        description="Monitoring outstanding balances generated within the current cycle."
+        description="Monitoring outstanding balances for today's sales."
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <SummaryCard title="Today's Outstanding" value={formatKes(totalOutstanding)} icon={Wallet} trend={`${debtors.filter(d => d.totalBalance > 0).length} active debtors`} />
-          <SummaryCard title="Settled Today" value={formatKes(debtors.reduce((acc,d) => acc + d.totalPaid, 0))} icon={TrendingDown} description="Lifetime payments ignored" />
+          <SummaryCard title="Settled Today" value={formatKes(debtors.reduce((acc,d) => acc + d.totalPaid, 0))} icon={TrendingDown} description="Payments received today" />
           <SummaryCard title="Today's Client Count" value={debtors.length} icon={User} description="Active today" />
       </div>
 
@@ -216,14 +213,14 @@ export function ReceivablesClient() {
         </CardHeader>
         <CardContent className="p-0">
             {salesLoading ? (
-                <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest">Syncing Cloud Ledger...</div>
+                <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest">Checking records...</div>
             ) : (
                 <Table>
                     <TableHeader className="bg-muted/30">
                         <TableRow>
                             <TableHead className="text-[10px] font-black uppercase pl-6 py-4">Client Details</TableHead>
                             <TableHead className="text-[10px] font-black uppercase">Status</TableHead>
-                            <TableHead className="text-[10px) font-black uppercase text-right">Today's Total</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase text-right">Today's Total</TableHead>
                             <TableHead className="text-[10px] font-black uppercase text-right pr-6">Current Debt</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -278,7 +275,7 @@ export function ReceivablesClient() {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
                                 <SheetTitle className="text-2xl font-black uppercase tracking-tighter">{selectedAccount.customer.name}</SheetTitle>
-                                <SheetDescription className="font-bold text-[10px] uppercase tracking-widest text-primary mt-1">Today's Financial Node</SheetDescription>
+                                <SheetDescription className="font-bold text-[10px] uppercase tracking-widest text-primary mt-1">Today's Financial Records</SheetDescription>
                             </div>
                             <div className="flex gap-2">
                                 <Button variant="outline" onClick={() => handleDownloadStatement(selectedAccount)} disabled={isExporting} className="h-12 px-6 font-black uppercase text-[10px] tracking-widest border-2">
@@ -340,24 +337,6 @@ export function ReceivablesClient() {
             )}
         </SheetContent>
       </Sheet>
-
-      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-md border-none shadow-2xl">
-            <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase tracking-tight">Log Payment</DialogTitle>
-                <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">Apply payment to today's pending invoices for {selectedAccount?.customer.name}.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-6 pt-6">
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase">Settlement Amount (KES)</Label>
-                    <Input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0.00" className="h-14 text-2xl font-black border-primary ring-1 ring-primary/20" autoFocus />
-                </div>
-                <Button className="w-full h-14 font-black uppercase tracking-widest shadow-xl" onClick={handleLogPayment} disabled={isSubmittingPayment || !paymentAmount}>
-                    {isSubmittingPayment ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Check className="h-5 w-5 mr-2" /> Confirm Receipt</>}
-                </Button>
-            </div>
-        </DialogContent>
-      </Dialog>
 
       <div className="fixed left-[-9999px] top-0 pointer-events-none">
         <div id="statement-export-target" className="bg-white">
