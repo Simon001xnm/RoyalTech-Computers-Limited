@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Printer } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Printer, Calendar as CalendarIcon, Filter } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem, User as AppUser } from "@/types";
 import {
   Table,
@@ -49,7 +49,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useSaaS } from "@/components/saas/saas-provider";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const VAT_RATE = 0.16;
@@ -69,11 +69,6 @@ const TYPE_INITIALS: Record<string, string> = {
     'CustomerStatement': 'STM'
 };
 
-/**
- * @fileOverview Document Generation Client
- * Unified module for generating professional business paperwork.
- * Strictly filters for Today's registry only.
- */
 export function DocumentsClient() {
   const [activeTab, setActiveTab] = useState<DocumentType>("Invoice");
   const { toast } = useToast();
@@ -81,6 +76,10 @@ export function DocumentsClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
+  // Filtering States
+  const [monthFilter, setMonthFilter] = useState<string>(format(new Date(), 'yyyy-MM'));
+  const [isGeneratingDelivery, setIsGeneratingDelivery] = useState(false);
+
   const [exportType, setExportType] = useState<'A4' | 'Thermal'>('A4');
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
@@ -142,21 +141,38 @@ export function DocumentsClient() {
     fetchBalance();
   }, [selectedCustomerId, tenant, firestore]);
 
+  const availableMonths = useMemo(() => {
+    if (!rawDocuments) return [];
+    const monthsSet = new Set<string>();
+    rawDocuments.forEach(d => {
+        try {
+            monthsSet.add(format(parseISO(d.generatedDate), 'yyyy-MM'));
+        } catch (e) {}
+    });
+    // Ensure current month is always there
+    monthsSet.add(format(new Date(), 'yyyy-MM'));
+    return Array.from(monthsSet).sort().reverse();
+  }, [rawDocuments]);
+
   const filteredDocuments = useMemo(() => {
       if (!rawDocuments) return [];
       
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      let results = [...rawDocuments];
 
-      return [...rawDocuments].filter(d => {
-          try { 
-              return format(parseISO(d.generatedDate), 'yyyy-MM-dd') === todayStr;
-          } catch { return false; }
-      }).sort((a, b) => {
+      if (monthFilter !== 'all') {
+          results = results.filter(d => {
+              try { 
+                  return format(parseISO(d.generatedDate), 'yyyy-MM') === monthFilter;
+              } catch { return false; }
+          });
+      }
+
+      return results.sort((a, b) => {
           const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
           const dateB = b.generatedDate ? new Date(b.generatedDate).getTime() : 0;
           return dateB - dateA;
       });
-  }, [rawDocuments]);
+  }, [rawDocuments, monthFilter]);
 
   const handleGenerateDocument = async (type: DocumentType) => {
     if (!tenant || !user) return;
@@ -220,6 +236,42 @@ export function DocumentsClient() {
         setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Action Failed', description: error.message });
+    }
+  };
+
+  const handleGenerateDeliveryNote = async (sourceDoc: AppDocument) => {
+    if (!tenant || !user) return;
+    setIsGeneratingDelivery(true);
+
+    try {
+        const typeCount = rawDocuments?.filter(d => d.type === 'DeliveryNote').length || 0;
+        const seq = typeCount + 1;
+        const docTitle = `Delivery Note #${String(seq).padStart(3, '0')}`;
+
+        const deliveryData = {
+            ...sourceDoc.data,
+            sourceDocumentId: sourceDoc.id,
+            sourceTitle: sourceDoc.title,
+            generatedDate: new Date().toISOString(),
+            details: `Automated dispatch for ${sourceDoc.title}`
+        };
+
+        await addDoc(collection(firestore, 'documents'), {
+            tenantId: tenant.id,
+            type: 'DeliveryNote',
+            title: docTitle,
+            generatedDate: new Date().toISOString(),
+            relatedTo: sourceDoc.relatedTo,
+            data: deliveryData,
+            createdAt: new Date().toISOString(),
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
+        });
+
+        toast({ title: "Delivery Note Generated", description: "Details synced to cloud." });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Dispatch Failed', description: e.message });
+    } finally {
+        setIsGeneratingDelivery(false);
     }
   };
 
@@ -318,6 +370,7 @@ export function DocumentsClient() {
     onView: (d) => { setExportType('A4'); setSelectedDocument(d); setIsPdfPreviewOpen(true); }, 
     onDownload: handleDownloadPdf,
     onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined,
+    onGenerateDelivery: handleGenerateDeliveryNote,
     onPrint: (d) => { 
         setSelectedDocument(d); 
         setIsPdfPreviewOpen(true); 
@@ -367,7 +420,8 @@ export function DocumentsClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Document Node" description="Today's professional paperwork synchronization." />
+      <PageHeader title="Document Node" description="Professional paperwork synchronization and archive." />
+      
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border shadow-inner">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
@@ -385,30 +439,54 @@ export function DocumentsClient() {
       
       <Card className="mt-8 shadow-2xl border-none overflow-hidden">
           <CardHeader className="bg-muted/50 py-4 border-b">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Today's Archive Registry</CardTitle>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Archive Registry</CardTitle>
+                <div className="flex items-center gap-3">
+                    <Label className="text-[10px] font-black uppercase whitespace-nowrap opacity-40">Filter Range:</Label>
+                    <Select value={monthFilter} onValueChange={setMonthFilter}>
+                        <SelectTrigger className="h-9 w-40 bg-white font-bold text-[10px] uppercase">
+                            <Filter className="h-3 w-3 mr-2 text-primary" />
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All History</SelectItem>
+                            {availableMonths.map(m => (
+                                <SelectItem key={m} value={m}>{format(parseISO(m + '-01'), 'MMMM yyyy')}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
               </div>
           </CardHeader>
           <CardContent className="p-0 overflow-auto">
-            <Table>
-                <TableHeader className="bg-muted/20">
-                    {table.getHeaderGroups().map(hg => (
-                        <TableRow key={hg.id}>
-                            {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
-                        </TableRow>
-                    ))}
-                </TableHeader>
-                <TableBody>
-                    {table.getRowModel().rows.length ? (
-                        table.getRowModel().rows.map(row => (
-                            <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
-                        ))
-                    ) : (
-                        <TableRow><TableCell colSpan={customColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">No documents generated today.</TableCell></TableRow>
-                    )}
-                </TableBody>
-            </Table>
-            <DataTablePagination table={table} />
+            {docsLoading || isGeneratingDelivery ? (
+                <div className="p-12 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Syncing Registry...
+                </div>
+            ) : (
+                <>
+                    <Table>
+                        <TableHeader className="bg-muted/20">
+                            {table.getHeaderGroups().map(hg => (
+                                <TableRow key={hg.id}>
+                                    {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
+                                </TableRow>
+                            ))}
+                        </TableHeader>
+                        <TableBody>
+                            {table.getRowModel().rows.length ? (
+                                table.getRowModel().rows.map(row => (
+                                    <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={customColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">No records found for the selected period.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                    <DataTablePagination table={table} />
+                </>
+            )}
           </CardContent>
       </Card>
 

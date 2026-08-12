@@ -11,13 +11,16 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
   const firestore = useFirestore();
   const companyRef = useMemoFirebase(() => tenant?.id ? doc(firestore, 'companies', tenant.id) : null, [firestore, tenant?.id]);
   const { data: cloudCompany } = useDoc(companyRef);
+  
   if (!docSnapshot?.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
+  
   const workspace = docSnapshot.data.workspace || cloudCompany;
   const { customer, items, details } = docSnapshot.data;
   const primaryIndigo = "#1d4ed8"; // Professional Blue
   const secondaryIndigo = "#f8fafc";
   
   const contactInfo = workspace?.phone || workspace?.email || 'Nairobi, Kenya';
+  const website = workspace?.website || "";
 
   const deliveryNo = (docSnapshot.title || '').includes('#') 
     ? docSnapshot.title.split('#').pop() 
@@ -101,9 +104,10 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
          <p className="text-[10px] font-bold text-black uppercase tracking-tight">
             Goods once sold cannot be returned
          </p>
-         <p className="text-[8px] font-medium text-gray-400 mt-2 italic">
-            Items received in good condition. Official Document &bull; {contactInfo}
-         </p>
+         <div className="space-y-1 text-[9px] font-bold uppercase tracking-wider text-gray-500 mt-4">
+            {website && <p>{website}</p>}
+            <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
+         </div>
       </footer>
     </div>
   );

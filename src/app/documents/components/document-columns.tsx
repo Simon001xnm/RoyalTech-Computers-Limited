@@ -77,6 +77,7 @@ export const getDocumentColumns = (actions: DocumentColumnActions): ColumnDef<Ap
         header: () => <div className="text-right">Actions</div>,
         cell: ({ row }) => {
             const doc = row.original;
+            // Delivery notes can be generated from sales docs
             const canGenerateDelivery = ['Invoice', 'Receipt', 'LeaseAgreement'].includes(doc.type);
 
             return (
@@ -89,7 +90,7 @@ export const getDocumentColumns = (actions: DocumentColumnActions): ColumnDef<Ap
                                         <Truck className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>Dispatch Delivery Note</TooltipContent>
+                                <TooltipContent>Generate Delivery Note</TooltipContent>
                             </Tooltip>
                         )}
                         <Tooltip>
