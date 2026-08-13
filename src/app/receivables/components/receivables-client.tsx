@@ -22,6 +22,14 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription, 
+  DialogFooter 
+} from '@/components/ui/dialog';
 import { format, parseISO } from 'date-fns';
 import { CustomerStatementPdf } from '@/app/documents/components/pdfs/customer-statement-pdf';
 import { useToast } from '@/hooks/use-toast';
@@ -42,7 +50,7 @@ export function ReceivablesClient() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
-  // FETCH ALL SALES - Removed daily/monthly filter to track all-time debt
+  // FETCH ALL SALES - Permanent history to track all-time debt
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
@@ -66,7 +74,7 @@ export function ReceivablesClient() {
     
     const debtorMap: Record<string, { customer: Customer; sales: Sale[]; totalBalance: number; totalPaid: number; totalInvoiced: number }> = {};
 
-    // Grouping all transactions by customer to get total account status
+    // Grouping all transactions by customer to get total account status across all time
     sales.forEach(sale => {
         if (!debtorMap[sale.customerId]) {
             const customer = customers.find(c => c.id === sale.customerId);
@@ -110,7 +118,7 @@ export function ReceivablesClient() {
     if (!selectedAccount || !tenant || !user) return;
     const amountToPay = parseFloat(paymentAmount);
     if (isNaN(amountToPay) || amountToPay <= 0) {
-        toast({ variant: 'destructive', title: "Enter valid amount" });
+        toast({ variant: 'destructive', title: "Enter amount first" });
         return;
     }
 
@@ -125,9 +133,10 @@ export function ReceivablesClient() {
             recordedBy: { uid: user.uid, name: user.displayName }
         });
 
+        // Deduct from oldest unpaid sales first
         const unpaidSales = [...selectedAccount.sales]
             .filter(s => (Number(s.balance) || 0) > 0)
-            .sort((a, b) => parseISO(a.date).getTime() - parseISO(a.date).getTime());
+            .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
         let remainingToDeduct = amountToPay;
         for (const sale of unpaidSales) {
@@ -145,7 +154,7 @@ export function ReceivablesClient() {
         }
 
         toast({ title: "Payment Recorded", description: `Updated customer balance.` });
-        setSelectedCustomerId(null);
+        setIsPaymentDialogOpen(false);
         setPaymentAmount("");
     } catch (e: any) {
         toast({ variant: 'destructive', title: "Payment Failed" });
@@ -181,20 +190,20 @@ export function ReceivablesClient() {
   return (
     <div className="space-y-6 pb-20">
       <PageHeader 
-        title="Money Owed (Debt List)" 
-        description="View all customers who still have pending payments for items bought."
+        title="Money Customers Owe" 
+        description="A list of everyone who has not finished paying for items, even from a long time ago."
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <SummaryCard title="Total Money Owed" value={formatKes(totalOutstanding)} icon={Wallet} trend={`${debtors.filter(d => d.totalBalance > 0).length} customers owe money`} />
-          <SummaryCard title="Total Money Collected" value={formatKes(totalMoneyCollected)} icon={TrendingDown} description="Total history of payments" />
-          <SummaryCard title="Registered Clients" value={debtors.length} icon={User} description="Total on your list" />
+          <SummaryCard title="Total Money Owed" value={formatKes(totalOutstanding)} icon={Wallet} trend={`${debtors.filter(d => d.totalBalance > 0).length} people owe money`} />
+          <SummaryCard title="Total Money Collected" value={formatKes(totalMoneyCollected)} icon={TrendingDown} description="Total payments received to date" />
+          <SummaryCard title="Registered Clients" value={debtors.length} icon={User} description="Total people on your list" />
       </div>
 
       <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
         <CardHeader className="bg-muted/10 py-4 px-6 border-b">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <CardTitle className="text-sm font-black uppercase tracking-widest">Customer Accounts List</CardTitle>
+                <CardTitle className="text-sm font-black uppercase tracking-widest">List of Money Owed</CardTitle>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -208,15 +217,15 @@ export function ReceivablesClient() {
         </CardHeader>
         <CardContent className="p-0">
             {salesLoading ? (
-                <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest">Checking records...</div>
+                <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground">Checking Records...</div>
             ) : (
                 <Table>
                     <TableHeader className="bg-muted/30">
                         <TableRow>
-                            <TableHead className="text-[10px] font-black uppercase pl-6 py-4">Customer Details</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase pl-6 py-4">Client Details</TableHead>
                             <TableHead className="text-[10px] font-black uppercase">Payment Status</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase text-right">Lifetime Total</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase text-right pr-6">Money Still Owed</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase text-right">Lifetime Sales</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase text-right pr-6">Money Owed</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -239,7 +248,7 @@ export function ReceivablesClient() {
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant={debtor.totalBalance > 0 ? "destructive" : "default"} className="text-[8px] font-black uppercase border-none px-2 h-4">
-                                        {debtor.totalBalance > 0 ? "Pending Payment" : "Fully Settled"}
+                                        {debtor.totalBalance > 0 ? "Pending" : "Fully Paid"}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right text-xs font-bold opacity-60">{formatKes(debtor.totalInvoiced)}</TableCell>
@@ -254,7 +263,7 @@ export function ReceivablesClient() {
                             </TableRow>
                         ))}
                         {filteredDebtors.length === 0 && (
-                             <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic text-xs">No records found matching your search.</TableCell></TableRow>
+                             <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic text-xs uppercase font-bold opacity-30">No records found</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>
@@ -301,7 +310,7 @@ export function ReceivablesClient() {
 
                         <div className="space-y-4">
                             <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                                <History className="h-4 w-4 text-primary" /> Payment & Sale History
+                                <History className="h-4 w-4 text-primary" /> Sale History
                             </h3>
                             <div className="space-y-4">
                                 {selectedAccount.sales.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).map(sale => {
@@ -318,7 +327,7 @@ export function ReceivablesClient() {
                                             </CardHeader>
                                             <CardContent className="p-4 bg-white">
                                                 <div className="flex justify-between items-center text-xs font-bold">
-                                                    <span>Order: {sale.items?.map(i => i.name).join(", ")}</span>
+                                                    <span className="truncate max-w-[200px]">Items: {sale.items?.map(i => i.name).join(", ")}</span>
                                                     <span className="text-green-600">Paid: {formatKes(Number(sale.amountPaid) || 0)}</span>
                                                 </div>
                                             </CardContent>
@@ -334,26 +343,27 @@ export function ReceivablesClient() {
       </Sheet>
 
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md border-none shadow-2xl">
               <DialogHeader>
                   <DialogTitle className="text-xl font-black uppercase">Record Payment</DialogTitle>
-                  <DialogDescription>Enter the amount the customer has paid to reduce their debt.</DialogDescription>
+                  <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">Update Customer Balance</DialogDescription>
               </DialogHeader>
-              <div className="py-4 space-y-4">
+              <div className="py-6 space-y-4">
                   <div className="space-y-2">
-                      <p className="text-[10px] font-black uppercase text-muted-foreground">Amount Paid (KES)</p>
+                      <p className="text-[10px] font-black uppercase text-muted-foreground">Amount Received (KES)</p>
                       <Input 
                         type="number" 
                         value={paymentAmount} 
                         onChange={e => setPaymentAmount(e.target.value)} 
                         placeholder="e.g. 5000" 
-                        className="h-12 text-lg font-black"
+                        className="h-14 text-2xl font-black border-2 border-primary"
+                        autoFocus
                       />
                   </div>
               </div>
-              <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handleLogPayment} disabled={isSubmittingPayment} className="font-black uppercase">
+              <DialogFooter className="gap-2">
+                  <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)} className="font-bold h-12">Cancel</Button>
+                  <Button onClick={handleLogPayment} disabled={isSubmittingPayment} className="font-black uppercase tracking-widest h-12 px-8 shadow-lg">
                       {isSubmittingPayment ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Payment"}
                   </Button>
               </DialogFooter>
