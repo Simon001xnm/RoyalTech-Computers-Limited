@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import type { Expense } from '@/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { PlusCircle, TrendingDown, ReceiptText, Wallet, Calendar as CalendarIcon } from 'lucide-react';
@@ -15,6 +15,10 @@ import { SummaryCard } from '@/components/dashboard/summary-card';
 import { Badge } from '@/components/ui/badge';
 import { useSaaS } from '@/components/saas/saas-provider';
 
+/**
+ * @fileOverview Monthly Expense Feed
+ * Shows all money spent by the shop for the current month.
+ */
 export function AccountingClient() {
   const { user, isUserLoading } = useUser();
   const { tenant } = useSaaS();
@@ -30,20 +34,22 @@ export function AccountingClient() {
   
   const isLoading = isUserLoading || expensesLoading;
 
-  const todayExpenses = useMemo(() => {
+  const currentMonthExpenses = useMemo(() => {
       if (!rawExpenses) return [];
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const currentMonthStr = format(new Date(), 'yyyy-MM');
       
       return rawExpenses.filter(e => {
-          try { return format(parseISO(e.date), 'yyyy-MM-dd') === todayStr; } catch { return false; }
+          try { 
+            return format(parseISO(e.date), 'yyyy-MM') === currentMonthStr; 
+          } catch { return false; }
       }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [rawExpenses]);
 
   const { totalExpenses, categoryCount } = useMemo(() => {
-    const total = todayExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-    const categories = new Set(todayExpenses.map(e => e.category)).size;
+    const total = currentMonthExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const categories = new Set(currentMonthExpenses.map(e => e.category)).size;
     return { totalExpenses: total, categoryCount: categories };
-  }, [todayExpenses]);
+  }, [currentMonthExpenses]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
@@ -55,9 +61,9 @@ export function AccountingClient() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Expense Feed" description="Syncing cloud ledger..." />
+        <PageHeader title="Money Spent" description="Checking records..." />
         <div className="flex items-center justify-center h-64">
-           <p className="text-muted-foreground animate-pulse font-black uppercase text-[10px] tracking-widest">Aggregating Transactions...</p>
+           <p className="text-muted-foreground animate-pulse font-black uppercase text-[10px] tracking-widest">Checking list...</p>
         </div>
       </div>
     );
@@ -66,31 +72,31 @@ export function AccountingClient() {
   return (
     <div className="space-y-6 pb-20">
       <PageHeader
-        title="Today's Expense Feed"
-        description={`Tracking outgoings for ${format(new Date(), 'PPPP')}`}
-        actionLabel="Record Expense"
+        title="Money Spent (This Month)"
+        description={`List of money spent for ${format(new Date(), 'MMMM yyyy')}`}
+        actionLabel="Record New Spend"
         onAction={() => setIsFormOpen(true)}
         ActionIcon={PlusCircle}
       />
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
         <SummaryCard 
-            title="Today's Total Spend" 
+            title="Total Spend (Month)" 
             value={formatCurrency(totalExpenses)} 
             icon={TrendingDown} 
             className="border-l-4 border-l-red-500"
         />
         <SummaryCard 
-            title="Active Categories" 
+            title="Categories" 
             value={categoryCount} 
             icon={Wallet} 
-            description="Expense types tracked today" 
+            description="Different types of spending" 
         />
         <SummaryCard 
-            title="Reporting Window" 
-            value="Today" 
+            title="Current Month" 
+            value={format(new Date(), 'MMMM')} 
             icon={CalendarIcon} 
-            description="Strict daily reporting cycle" 
+            description="Records for this month" 
         />
       </div>
 
@@ -98,33 +104,29 @@ export function AccountingClient() {
         <CardHeader className="bg-muted/10 border-b py-4">
             <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-red-600">
                 <ReceiptText className="h-4 w-4" />
-                Operational Expense Ledger (Daily)
+                Monthly Spending List
             </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader className="bg-muted/30">
                 <TableRow>
-                    <TableHead className="text-[10px] font-black uppercase pl-6 py-4">Status</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase">Time</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase pl-6 py-4">Date</TableHead>
                     <TableHead className="text-[10px] font-black uppercase">Category</TableHead>
                     <TableHead className="text-[10px] font-black uppercase">Notes</TableHead>
                     <TableHead className="text-[10px] font-black uppercase text-right pr-6">Amount</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
-              {todayExpenses.map(e => (
+              {currentMonthExpenses.map(e => (
                 <TableRow key={e.id} className="hover:bg-muted/5 transition-colors h-14 border-b last:border-0">
-                  <TableCell className="pl-6">
-                    <Badge variant="destructive" className="text-[8px] font-black uppercase h-4 px-2">Expense</Badge>
-                  </TableCell>
-                  <TableCell className="text-xs font-bold text-muted-foreground">
-                    {format(parseISO(e.date), 'p')}
+                  <TableCell className="pl-6 text-[10px] font-bold text-muted-foreground">
+                    {format(parseISO(e.date), 'dd MMM, HH:mm')}
                   </TableCell>
                   <TableCell className="font-black uppercase text-[10px] tracking-tight">
                     {e.category}
                   </TableCell>
-                  <TableCell className="text-[10px] text-muted-foreground max-w-[200px] truncate">
+                  <TableCell className="text-[10px] text-muted-foreground max-w-[250px] truncate">
                     {e.notes || '—'}
                   </TableCell>
                   <TableCell className="text-right pr-6 font-black text-red-600">
@@ -132,12 +134,12 @@ export function AccountingClient() {
                   </TableCell>
                 </TableRow>
               ))}
-              {todayExpenses.length === 0 && (
+              {currentMonthExpenses.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-40 text-center">
+                  <TableCell colSpan={4} className="h-40 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground opacity-30">
                         <ReceiptText className="h-12 w-12" />
-                        <p className="text-xs font-black uppercase tracking-widest">No expense records found for today.</p>
+                        <p className="text-xs font-black uppercase tracking-widest">No spending records found for this month.</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -150,7 +152,7 @@ export function AccountingClient() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-xl border-none shadow-2xl">
           <DialogHeader className="pb-4 border-b">
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Log Expense</DialogTitle>
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Record Spending</DialogTitle>
           </DialogHeader>
           <TransactionForm user={user} onFinished={() => setIsFormOpen(false)} />
         </DialogContent>
