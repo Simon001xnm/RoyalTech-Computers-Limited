@@ -22,82 +22,42 @@ interface TutorialContent {
 
 const TUTORIAL_DATA: Record<string, TutorialContent> = {
   "/": {
-    title: "Executive Dashboard",
-    description: "Your business at a glance. This command center provides real-time analytics and activity logs for your workspace.",
+    title: "Main Dashboard",
+    description: "Your shop at a glance. See your monthly sales, profit, and money owed by clients.",
     features: [
-      "Revenue Analytics: Track your sales trends over the last 7 days.",
-      "KPI Cards: Monitor inventory availability, client growth, and monthly volume.",
-      "Recent Activity: A live feed of every transaction recorded in the system."
+      "Monthly Metrics: View your total money in and net profit for this month.",
+      "Sales Progress: Track how well you are selling today compared to the week.",
+      "Daily Feed: A list of every activity recorded in the shop today."
     ],
     tips: [
-      "Hover over the chart points to see exact revenue figures.",
-      "Use the summary cards to quickly identify stock shortages."
+      "Watch the 'Money Owed' card to see if clients are paying on time.",
+      "Profit is calculated by subtracting costs and expenses from your sales."
     ]
   },
   "/pos": {
-    title: "Point of Sale (POS)",
-    description: "The heartbeat of your retail operations. Process sales for inventory items and accessories instantly.",
+    title: "Sell Items",
+    description: "Process sales for items in your shop instantly.",
     features: [
-      "Smart Basket: Add inventory items and accessories to a unified cart.",
-      "M-Pesa Integration: Initiate STK Pushes directly to customer phones.",
-      "Automatic Inventory Update: Items are marked as 'Sold' the moment you finalize.",
-      "Custom VAT: Toggle 16% VAT on or off depending on the transaction type."
+      "Basket: Add items to a list to calculate the total price.",
+      "Payments: Record if the client paid cash, M-Pesa, or took it on credit.",
+      "Instant Updates: Stock levels are updated the moment you save a sale."
     ],
     tips: [
-      "Use the 'Reference Code' field for Bank or Till payments to simplify reconciliation.",
-      "You can generate a Delivery Note directly from the sales history log below the basket."
+      "Always select a client first to ensure their debt history is updated.",
+      "You can print a small thermal receipt or a big A4 invoice after saving."
     ]
   },
-  "/stock": {
-    title: "Inventory Management",
-    description: "Manage your high-value stock items with serial-number precision.",
+  "/receivables": {
+    title: "Money Owed",
+    description: "A permanent list of everyone who owes the shop money, no matter how old the debt is.",
     features: [
-      "Item Tracking: Monitor if an item is Available, Sold, Under Repair, or with a Partner.",
-      "Specifications: Store technical details and descriptions for every unit.",
-      "Financial Valuation: Set standard purchase prices and acquisition dates.",
-      "Search: Find items by Serial Number or Name instantly."
+      "Account History: See every sale a customer has ever made.",
+      "Debt Tracking: Balances stay on the list even if they are 1 year old.",
+      "Payment Logging: Add payments to reduce a customer's total debt."
     ],
     tips: [
-      "Keep your status updated to ensure accurate availability in the POS module.",
-      "Ensure acquisition dates are accurate for better financial reporting."
-    ]
-  },
-  "/accessories": {
-    title: "Accessory Inventory",
-    description: "Track non-serialized items like chargers, protective cases, and cables.",
-    features: [
-      "Quantity Management: Keep track of stock levels for generic components.",
-      "Status Badges: Quickly see what is available for sale.",
-      "Pricing: Set selling prices for retail components."
-    ],
-    tips: [
-      "Update quantities regularly after manual sales not processed through the POS."
-    ]
-  },
-  "/customers": {
-    title: "Customer Management (CRM)",
-    description: "Your database of individual clients and corporate accounts.",
-    features: [
-      "Customer Profiles: Store contact details, addresses, and avatars.",
-      "Registration Tracking: See when each client joined your ecosystem.",
-      "Centralized Data: These profiles power your POS and Documents."
-    ],
-    tips: [
-      "Ensure emails are accurate, as they are used for generating professional invoices."
-    ]
-  },
-  "/documents": {
-    title: "Document Generation",
-    description: "Professional, branded paperwork for every business stage.",
-    features: [
-      "Multiple Types: Invoices, Quotations, Proformas, LPOs, and Delivery Notes.",
-      "Dynamic Branding: Documents automatically use your uploaded logo and brand colors.",
-      "Smart Conversion: Turn a Quotation into an Invoice with a single click.",
-      "Print & PDF: Export high-resolution A4 documents for your clients."
-    ],
-    tips: [
-      "The 'powered by simonstyless' footer is mandatory for professional verification.",
-      "Use the 'Proforma' option to provide billing details before final payment is received."
+      "Records remain even after payment is finished for your future reference.",
+      "Download a Statement to show a customer exactly what they bought and paid for."
     ]
   }
 };
@@ -111,7 +71,7 @@ export function ModuleTutorial() {
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" className="h-8 gap-2 text-primary hover:text-primary hover:bg-primary/10">
           <HelpCircle className="h-4 w-4" />
-          <span className="hidden sm:inline">Module Guide</span>
+          <span className="hidden sm:inline">Guide</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0 border-none shadow-2xl">
@@ -132,7 +92,7 @@ export function ModuleTutorial() {
             <section>
               <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
-                What this module offers
+                Features
               </h4>
               <ul className="grid grid-cols-1 gap-3">
                 {tutorial.features.map((feature, idx) => (
@@ -147,7 +107,7 @@ export function ModuleTutorial() {
             <section className="bg-primary/5 p-4 rounded-xl border border-primary/10">
               <h4 className="text-sm font-bold uppercase tracking-widest text-primary mb-3 flex items-center gap-2">
                 <Lightbulb className="h-4 w-4" />
-                Professional Tips
+                Tips
               </h4>
               <ul className="space-y-2">
                 {tutorial.tips.map((tip, idx) => (
@@ -162,7 +122,7 @@ export function ModuleTutorial() {
         
         <div className="p-6 border-t bg-muted/20 text-center">
             <p className="text-[10px] text-muted-foreground tracking-widest lowercase">
-                &copy; 2026 shopmanager suite &bull; powered by simonstyless technologies limited
+                &copy; 2026 shopmanager &bull; simple English version
             </p>
         </div>
       </DialogContent>

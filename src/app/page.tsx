@@ -24,17 +24,14 @@ import {
     isWithinInterval,
     endOfDay,
     startOfMonth,
-    startOfWeek
+    startOfWeek,
+    isToday
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 
-/**
- * @fileOverview Main Shop Dashboard
- * Simplified language for easy understanding.
- */
 export default function DashboardPage() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
@@ -63,17 +60,16 @@ export default function DashboardPage() {
 
     const now = new Date();
     const monthStart = startOfMonth(now);
+    const weekStart = startOfWeek(now);
     const monthInterval = { start: monthStart, end: endOfDay(now) };
-
-    const todayStr = format(now, 'yyyy-MM-dd');
 
     // FILTERS
     const todaysSales = sales.filter(s => {
-        try { return format(parseISO(s.date), 'yyyy-MM-dd') === todayStr; } catch { return false; }
+        try { return isToday(parseISO(s.date)); } catch { return false; }
     });
 
     const weeklySales = sales.filter(s => {
-        try { return isWithinInterval(parseISO(s.date), { start: startOfWeek(now), end: endOfDay(now) }); } catch { return false; }
+        try { return isWithinInterval(parseISO(s.date), { start: weekStart, end: endOfDay(now) }); } catch { return false; }
     });
 
     const monthlySales = sales.filter(s => {
@@ -86,24 +82,27 @@ export default function DashboardPage() {
 
     // TOTALS (Monthly)
     const totalRevenue = monthlySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-    const totalCost = monthlySales.reduce((acc, s) => acc + (Number(s.cogs) || 0), 0);
+    const totalCost = monthlySales.reduce((acc, s) => {
+        const cogs = s.items?.reduce((c: number, i: any) => c + (Number(i.buyingPrice || 0) * (Number(i.quantity) || 1)), 0) || 0;
+        return acc + cogs;
+    }, 0);
     const totalExpenses = monthlyExp.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
     
     // PROFIT: Revenue - (Expenses + Cost)
     const totalProfit = totalRevenue - (totalExpenses + totalCost);
 
     // VELOCITY
-    const dailyRevenue = todaysSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-    const weeklyRevenue = weeklySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
+    const dailyRevenueValue = todaysSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
+    const weeklyRevenueValue = weeklySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
 
-    // DEBT
-    const unpaidInvoices = monthlySales.filter(s => (Number(s.balance) || 0) > 0);
+    // DEBT - UPDATED TO ALL-TIME (USER REQUEST)
+    const unpaidInvoices = sales.filter(s => (Number(s.balance) || 0) > 0);
     const totalDebt = unpaidInvoices.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
     
     // LOW STOCK
     const lowStock = assets.filter(a => Number(a.quantity) <= (Number(a.minStock) || 5));
 
-    // TOP PRODUCTS
+    // TOP PRODUCTS (Monthly)
     const productMap: Record<string, number> = {};
     monthlySales.forEach(s => s.items?.forEach((i: any) => {
         const name = i.name || 'Other';
@@ -116,8 +115,8 @@ export default function DashboardPage() {
         totalProfit,
         totalExpenses,
         totalDebt,
-        dailyRevenue,
-        weeklyRevenue,
+        dailyRevenue: dailyRevenueValue,
+        weeklyRevenue: weeklyRevenueValue,
         lowStockCount: lowStock.length,
         unpaidCount: unpaidInvoices.length,
         recent: [...todaysSales].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).slice(0, 10),
@@ -131,7 +130,7 @@ export default function DashboardPage() {
   };
 
   if (salesLoading || stockLoading || expLoading) {
-      return <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-widest">Checking Shop Data...</div>;
+      return <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-widest">Checking Shop Records...</div>;
   }
 
   if (!stats) return null;
@@ -140,7 +139,7 @@ export default function DashboardPage() {
     <div className="space-y-6 pb-20">
       <PageHeader 
         title="Main Shop Dashboard" 
-        description={`Performance for ${stats.viewLabel}`}
+        description={`Records for ${stats.viewLabel}`}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -165,8 +164,8 @@ export default function DashboardPage() {
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-red-100 p-2.5 rounded-xl"><FileWarning className="h-5 w-5 text-red-600" /></div>
                         <div>
-                            <p className="text-[10px] font-black uppercase text-red-600">Money Owed</p>
-                            <p className="text-sm font-bold">{stats.unpaidCount} bills not paid yet ({formatKes(stats.totalDebt)})</p>
+                            <p className="text-[10px] font-black uppercase text-red-600">Total Money Owed</p>
+                            <p className="text-sm font-bold">{stats.unpaidCount} people owe money ({formatKes(stats.totalDebt)})</p>
                         </div>
                         <ArrowUpRight className="ml-auto h-4 w-4 text-red-300" />
                     </CardContent>
@@ -176,10 +175,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <SummaryCard title="Monthly Sales" value={formatKes(stats.totalRevenue)} icon={DollarSign} description="Total money in" />
-          <SummaryCard title="Actual Profit" value={formatKes(stats.totalProfit)} icon={TrendingUp} description="Money left after costs" />
-          <SummaryCard title="Money Spent" value={formatKes(stats.totalExpenses)} icon={Wallet} className="border-l-4 border-l-red-500" description="Shop expenses" />
-          <SummaryCard title="Still Owed" value={formatKes(stats.totalDebt)} icon={FileWarning} description="Customers yet to pay" />
+          <SummaryCard title="Monthly Sales" value={formatKes(stats.totalRevenue)} icon={DollarSign} description="Total money in this month" />
+          <SummaryCard title="Monthly Profit" value={formatKes(stats.totalProfit)} icon={TrendingUp} description="Money left after expenses and costs" />
+          <SummaryCard title="Monthly Expenses" value={formatKes(stats.totalExpenses)} icon={Wallet} className="border-l-4 border-l-red-500" description="Shop spend this month" />
+          <SummaryCard title="Total Money Owed" value={formatKes(stats.totalDebt)} icon={FileWarning} description="All money pending from clients" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -267,7 +266,7 @@ export default function DashboardPage() {
       </Card>
       
       <div className="text-center pt-8 opacity-40">
-          <p className="text-[11px] font-black tracking-widest uppercase">v3.0.0</p>
+          <p className="text-[11px] font-black tracking-widest uppercase">v3</p>
       </div>
     </div>
   );
