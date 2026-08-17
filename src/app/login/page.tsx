@@ -8,7 +8,9 @@ import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignIn, initiatePasswordReset } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Eye, EyeOff, Circle, Zap } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Zap } from 'lucide-react';
+import Image from 'next/image';
+import placeholderImages from '@/app/lib/placeholder-images.json';
 
 /**
  * @fileOverview Landscape Login Page
@@ -77,6 +79,8 @@ export default function LoginPage() {
     );
   }
 
+  const loginBg = placeholderImages.branding.login_bg;
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#f0f2f5] p-4 font-sans">
       {/* 
@@ -90,11 +94,15 @@ export default function LoginPage() {
         
         {/* Left Side: Decorative Branding */}
         <div className="w-full sm:w-[40%] bg-primary p-8 text-primary-foreground flex flex-col justify-between relative overflow-hidden shrink-0">
-             {/* Decorative Background Elements */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-                <div className="absolute top-[-10%] left-[-10%] w-[150px] h-[150px] rounded-full bg-white/10 blur-2xl" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[200px] h-[200px] rounded-full bg-orange-500/10 blur-3xl" />
-            </div>
+             {/* Background Image Overlay */}
+            <Image 
+                src={loginBg.url} 
+                alt="Technology" 
+                fill 
+                className="object-cover opacity-40 mix-blend-overlay z-0" 
+                data-ai-hint={loginBg.hint}
+                priority
+            />
 
             <div className="relative z-10">
                 <div className="bg-white/20 p-2 rounded-xl w-fit mb-4">
