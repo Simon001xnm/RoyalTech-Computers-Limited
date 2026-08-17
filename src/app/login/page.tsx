@@ -8,8 +8,12 @@ import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignIn, initiatePasswordReset } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Eye, EyeOff, Zap, Circle } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Circle } from 'lucide-react';
 
+/**
+ * @fileOverview Modern Login Page
+ * Redesigned with a compact split-pane layout and geometric decorative elements.
+ */
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -71,73 +75,80 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#1a1c23] p-4 font-sans">
-      <div className="w-full max-w-5xl h-[600px] flex rounded-[40px] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.5)] animate-in fade-in zoom-in-95 duration-700">
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#f0f2f5] p-4 font-sans">
+      <div className="w-full max-w-4xl h-[580px] flex rounded-[40px] border-none shadow-[0_30px_100px_rgba(0,0,0,0.15)] overflow-hidden animate-in fade-in zoom-in-95 duration-700 bg-white">
         
         {/* LEFT DECORATIVE PANE */}
         <div className="hidden md:flex flex-1 relative overflow-hidden bg-gradient-to-br from-[#3b41c5] via-[#7c3aed] to-[#d946ef]">
             {/* Geometric Shapes */}
-            <div className="absolute top-[15%] left-[-10%] w-[300px] h-[300px] rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] rounded-full bg-orange-500/20 blur-3xl" />
+            <div className="absolute top-[15%] left-[-10%] w-[250px] h-[250px] rounded-full bg-white/10 blur-3xl" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[350px] h-[350px] rounded-full bg-orange-500/10 blur-3xl" />
             
             {/* Decorative Spheres */}
-            <div className="absolute top-[10%] right-[15%] w-32 h-32 rounded-full bg-gradient-to-br from-white/40 to-transparent shadow-2xl backdrop-blur-sm" />
-            <div className="absolute bottom-[20%] left-[10%] w-48 h-48 rounded-full bg-gradient-to-br from-white/30 to-transparent shadow-2xl backdrop-blur-sm" />
+            <div className="absolute top-[10%] right-[15%] w-24 h-24 rounded-full bg-gradient-to-br from-white/40 to-transparent shadow-2xl backdrop-blur-sm" />
+            <div className="absolute bottom-[20%] left-[10%] w-36 h-36 rounded-full bg-gradient-to-br from-white/30 to-transparent shadow-2xl backdrop-blur-sm" />
             
             {/* Rounded Bars */}
-            <div className="absolute top-[40%] left-[10%] w-[250px] h-20 bg-gradient-to-r from-orange-400/40 to-purple-400/20 rounded-full rotate-[-45deg]" />
-            <div className="absolute top-[20%] left-[-5%] w-[300px] h-20 bg-gradient-to-r from-white/20 to-transparent rounded-full rotate-[-45deg]" />
-            <div className="absolute bottom-[10%] right-[5%] w-[300px] h-20 bg-gradient-to-r from-purple-400/20 to-transparent rounded-full rotate-[-45deg]" />
+            <div className="absolute top-[40%] left-[10%] w-[200px] h-16 bg-gradient-to-r from-orange-400/40 to-purple-400/20 rounded-full rotate-[-45deg]" />
+            <div className="absolute top-[20%] left-[-5%] w-[250px] h-16 bg-gradient-to-r from-white/20 to-transparent rounded-full rotate-[-45deg]" />
+            <div className="absolute bottom-[10%] right-[5%] w-[250px] h-16 bg-gradient-to-r from-purple-400/20 to-transparent rounded-full rotate-[-45deg]" />
 
-            {/* Logo Placeholder */}
-            <div className="absolute top-10 left-10 flex items-center gap-2 text-white z-20">
-                <div className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center p-1">
+            {/* Company Branding */}
+            <div className="absolute top-10 left-10 flex items-center gap-3 text-white z-20 pr-8">
+                <div className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center p-1.5 shrink-0">
                     <Circle className="w-full h-full fill-white" />
                 </div>
-                <span className="font-black text-lg tracking-tight uppercase">Logo Here</span>
+                <span className="font-black text-xs md:text-sm tracking-tight uppercase leading-tight">
+                  MATESH TECHNOLOGIES LIMITED
+                </span>
             </div>
         </div>
 
         {/* RIGHT LOGIN FORM PANE */}
-        <div className="flex-1 bg-white relative flex flex-col items-center justify-center p-8 md:p-16">
+        <div className="flex-1 bg-white relative flex flex-col items-center justify-center p-8 md:p-12">
             {/* Decorative dots in corner */}
-            <div className="absolute top-10 right-10 flex gap-1.5 opacity-20">
-                <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+            <div className="absolute top-8 right-8 flex gap-1.5 opacity-20">
+                <div className="w-2 h-2 rounded-full bg-primary" />
+                <div className="w-2 h-2 rounded-full bg-primary" />
+                <div className="w-2 h-2 rounded-full bg-primary" />
             </div>
 
-            <div className="w-full max-w-[320px] space-y-10">
-                <div className="text-center space-y-2">
+            <div className="w-full max-w-[300px] space-y-8">
+                <div className="text-center space-y-1">
                     <h1 className="text-4xl font-black tracking-tight text-black">LOGIN</h1>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Sign in to your shop</p>
                 </div>
 
                 <div className="space-y-6">
                     <div className="space-y-4">
-                        <div className="relative">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground ml-4">Work Email</Label>
                             <Input 
                                 type="email" 
-                                placeholder="Work Email" 
+                                placeholder="name@company.com" 
                                 value={email} 
                                 onChange={(e) => setEmail(e.target.value)} 
-                                className="h-12 rounded-full bg-[#eef6ff] border-none px-6 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/50" 
+                                className="h-12 rounded-full bg-[#f4f7fe] border-none px-6 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/30 shadow-inner" 
                             />
                         </div>
-                        <div className="relative">
-                            <Input 
-                                type={showPassword ? "text" : "password"} 
-                                placeholder="Password"
-                                value={password} 
-                                onChange={(e) => setPassword(e.target.value)} 
-                                className="h-12 rounded-full bg-[#eef6ff] border-none px-6 pr-12 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/50" 
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-primary transition-colors"
-                            >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground ml-4">Password</Label>
+                            <div className="relative">
+                                <Input 
+                                    type={showPassword ? "text" : "password"} 
+                                    placeholder="••••••••"
+                                    value={password} 
+                                    onChange={(e) => setPassword(e.target.value)} 
+                                    className="h-12 rounded-full bg-[#f4f7fe] border-none px-6 pr-12 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/30 shadow-inner" 
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-primary transition-colors"
+                                >
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -146,7 +157,7 @@ export default function LoginPage() {
                             type="button" 
                             onClick={handleForgotPassword}
                             disabled={isResetting}
-                            className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:text-primary transition-colors"
+                            className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-widest hover:text-primary transition-colors"
                         >
                             Forgot Password?
                         </button>
@@ -154,7 +165,7 @@ export default function LoginPage() {
 
                     <Button 
                         onClick={handleSignIn} 
-                        className="w-full h-12 text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg transition-all active:scale-95 bg-[#7c3aed] text-white hover:bg-[#6d28d9] border-none" 
+                        className="w-full h-12 text-[10px] font-black uppercase tracking-[0.25em] rounded-full shadow-xl transition-all active:scale-95 bg-[#7c3aed] text-white hover:bg-[#6d28d9] border-none" 
                         disabled={isProcessing}
                     >
                         {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : 'LOGIN'}
@@ -163,8 +174,8 @@ export default function LoginPage() {
             </div>
             
             <div className="absolute bottom-10 text-center">
-                <p className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-[0.3em]">
-                    V3.0 SECURE
+                <p className="text-[8px] font-black text-muted-foreground/20 uppercase tracking-[0.4em]">
+                    V3 SECURED SYSTEM
                 </p>
             </div>
         </div>
