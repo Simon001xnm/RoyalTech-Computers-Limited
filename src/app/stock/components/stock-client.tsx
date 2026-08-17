@@ -112,8 +112,8 @@ export function StockClient() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Inventory" 
-        description="Unified tracking for all your serialized assets and stock items."
+        title="Items in Shop" 
+        description="Unified tracking for all your serialized items and stock."
         actionLabel="Add New Item"
         onAction={() => { setEditingAsset(null); setIsFormOpen(true); }}
         ActionIcon={PlusCircle}
@@ -129,7 +129,7 @@ export function StockClient() {
       </div>
       
       {isLoading ? (
-        <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-widest">Syncing Cloud Node...</div>
+        <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground">Checking Shop Records...</div>
       ) : (
         <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
             <Table>
@@ -155,7 +155,7 @@ export function StockClient() {
                     ))
                 ) : (
                     <TableRow>
-                    <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No items found in this node.</TableCell>
+                    <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No items found in this shop.</TableCell>
                     </TableRow>
                 )}
                 </TableBody>
@@ -168,7 +168,7 @@ export function StockClient() {
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Modify Item" : "Register Item"}</DialogTitle>
-            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Manage your cloud inventory items.</DialogDescription>
+            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Manage your shop inventory items.</DialogDescription>
           </DialogHeader>
           <LaptopForm laptop={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isSubmitting} />
         </DialogContent>

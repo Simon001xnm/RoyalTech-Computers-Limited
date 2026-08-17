@@ -31,7 +31,7 @@ const TYPE_INITIALS: Record<string, string> = {
 };
 
 /**
- * @fileOverview Sales Journal for POS
+ * @fileOverview List of Sales for POS
  * Strictly isolates Today's transactions.
  */
 export function RecentSales({ onViewReceipt }: RecentSalesProps) {
@@ -193,7 +193,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
         <Card className="shadow-xl border-none overflow-hidden ring-1 ring-black/5 bg-white w-full">
             <CardHeader className="bg-muted/10 py-4 px-6 border-b">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <CardTitle className="text-sm font-black uppercase tracking-widest">Today's Sales Journal</CardTitle>
+                    <CardTitle className="text-sm font-black uppercase tracking-widest">Today's Sales List</CardTitle>
                     <div className="flex flex-wrap items-center gap-3">
                         {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                         <div className="relative">
@@ -210,7 +210,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             </CardHeader>
             <CardContent className="p-0">
                 {isLoading ? (
-                    <div className="p-12 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Syncing Today's Ledger...</div>
+                    <div className="p-12 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Checking Today's List...</div>
                 ) : (
                     <div className="w-full">
                         <Table>
