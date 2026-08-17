@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Edit, Trash2, Package } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { format } from "date-fns";
 
 export interface LaptopColumnActions {
   onEdit: (laptop: Asset) => void;
@@ -66,9 +67,13 @@ export const getLaptopColumns = (actions: LaptopColumnActions) => [
     },
   },
   {
-    accessorKey: "quantity",
-    header: "Qty",
-    cell: ({ row }: any) => <span className="font-black">{row.original.quantity}</span>
+    accessorKey: "purchaseDate",
+    header: "Date Registered",
+    cell: ({ row }: any) => {
+        const date = row.getValue("purchaseDate") as string;
+        if (!date) return 'N/A';
+        return format(new Date(date), "MMM d, yyyy HH:mm");
+    }
   },
   {
     accessorKey: "sellingPrice",

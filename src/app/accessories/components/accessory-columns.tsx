@@ -4,8 +4,9 @@ import type { Accessory } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { format } from "date-fns";
 
 export interface AccessoryColumnActions {
   onEdit: (accessory: Accessory) => void;
@@ -79,10 +80,11 @@ export const getAccessoryColumns = (actions: AccessoryColumnActions) => [
   },
   {
     accessorKey: "purchaseDate",
-    header: "Purchase Date",
+    header: "Date Registered",
     cell: ({ row }: any) => {
       const date = row.getValue("purchaseDate") as string;
-      return new Date(date).toLocaleDateString();
+      if (!date) return 'N/A';
+      return format(new Date(date), "MMM d, yyyy HH:mm");
     },
   },
   {
