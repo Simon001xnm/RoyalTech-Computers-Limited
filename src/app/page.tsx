@@ -228,7 +228,7 @@ export default function DashboardPage() {
                             <Badge className="font-black text-[10px] bg-black text-white">{qty} SOLD</Badge>
                         </div>
                     ))}
-                    {stats.topSelling.length === 0 && <div className="p-12 text-center opacity-30 text-xs font-bold uppercase">No items sold yet</div>}
+                    {stats.topSelling.length === 0 && <div className="p-12 text-center opacity-30 text-xs font-bold uppercase italic">No items sold yet</div>}
                 </div>
             </CardContent>
           </Card>
@@ -266,7 +266,7 @@ export default function DashboardPage() {
       </Card>
       
       <div className="text-center pt-8 opacity-40">
-          <p className="text-[11px] font-black tracking-widest uppercase">v3</p>
+          <p className="text-[11px] font-black tracking-widest uppercase">Matesh Version 3.26</p>
       </div>
     </div>
   );

@@ -175,7 +175,7 @@ export default function LoginPage() {
             
             <div className="absolute bottom-10 text-center">
                 <p className="text-[8px] font-black text-muted-foreground/20 uppercase tracking-[0.4em]">
-                    V3 SECURED SYSTEM
+                    Matesh Version 3.26
                 </p>
             </div>
         </div>

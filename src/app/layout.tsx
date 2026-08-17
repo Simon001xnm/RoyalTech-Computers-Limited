@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-const VERSION = "2.2.5";
+const VERSION = "3.26";
 
 export const metadata: Metadata = {
   title: {
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   },
   other: {
     "system-version": VERSION,
-    "system-tier": "v2-pro"
+    "system-tier": "v3-pro"
   }
 };
 
