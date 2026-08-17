@@ -95,7 +95,7 @@ export default function DashboardPage() {
     const dailyRevenueValue = todaysSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
     const weeklyRevenueValue = weeklySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
 
-    // DEBT - UPDATED TO ALL-TIME (USER REQUEST)
+    // DEBT - ALL-TIME HISTORY
     const unpaidInvoices = sales.filter(s => (Number(s.balance) || 0) > 0);
     const totalDebt = unpaidInvoices.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
     
