@@ -11,8 +11,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff, Circle } from 'lucide-react';
 
 /**
- * @fileOverview Modern Login Page
- * Redesigned with a compact split-pane layout and geometric decorative elements.
+ * @fileOverview Login Page with Fixed Dimensions
+ * Desktop: 400 x 500 px
+ * Compact: 360 x 450 px
+ * Very small: 320 x 400 px
  */
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -76,46 +78,34 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#f0f2f5] p-4 font-sans">
-      {/* COMPACT CONTAINER: max-w-3xl for big screens */}
-      <div className="w-full max-w-3xl h-[560px] flex rounded-[40px] border-none shadow-[0_30px_100px_rgba(0,0,0,0.15)] overflow-hidden animate-in fade-in zoom-in-95 duration-700 bg-white">
+      {/* 
+          CONTAINER DIMENSIONS:
+          Default/Very Small: 320x400
+          Small/Compact: 360x450
+          Medium+/Desktop: 400x500
+      */}
+      <div className="w-full max-w-[320px] h-[400px] sm:max-w-[360px] sm:h-[450px] md:max-w-[400px] md:h-[500px] flex rounded-[40px] border-none shadow-[0_30px_100px_rgba(0,0,0,0.15)] overflow-hidden animate-in fade-in zoom-in-95 duration-700 bg-white relative transition-all">
         
-        {/* LEFT DECORATIVE PANE */}
-        <div className="hidden md:flex flex-1 relative overflow-hidden bg-gradient-to-br from-[#3b41c5] via-[#7c3aed] to-[#d946ef]">
-            {/* Geometric Shapes */}
-            <div className="absolute top-[15%] left-[-10%] w-[250px] h-[250px] rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[350px] h-[350px] rounded-full bg-orange-500/10 blur-3xl" />
-            
-            {/* Decorative Spheres */}
-            <div className="absolute top-[10%] right-[15%] w-20 h-20 rounded-full bg-gradient-to-br from-white/40 to-transparent shadow-2xl backdrop-blur-sm" />
-            <div className="absolute bottom-[20%] left-[10%] w-32 h-32 rounded-full bg-gradient-to-br from-white/30 to-transparent shadow-2xl backdrop-blur-sm" />
-            
-            {/* Rounded Bars */}
-            <div className="absolute top-[40%] left-[10%] w-[180px] h-14 bg-gradient-to-r from-orange-400/40 to-purple-400/20 rounded-full rotate-[-45deg]" />
-            <div className="absolute top-[20%] left-[-5%] w-[220px] h-14 bg-gradient-to-r from-white/20 to-transparent rounded-full rotate-[-45deg]" />
-            <div className="absolute bottom-[10%] right-[5%] w-[220px] h-14 bg-gradient-to-r from-purple-400/20 to-transparent rounded-full rotate-[-45deg]" />
+        {/* Decorative Background Elements */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+            <div className="absolute top-[-20%] left-[-20%] w-[300px] h-[300px] rounded-full bg-primary/5 blur-3xl" />
+            <div className="absolute bottom-[-20%] right-[-20%] w-[400px] h-[400px] rounded-full bg-orange-500/5 blur-3xl" />
+        </div>
 
+        {/* LOGIN FORM AREA */}
+        <div className="flex-1 bg-white/40 backdrop-blur-sm relative flex flex-col items-center justify-center p-8 z-10">
             {/* Company Branding */}
-            <div className="absolute top-10 left-10 flex items-center gap-3 text-white z-20 pr-8">
-                <div className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center p-1.5 shrink-0">
-                    <Circle className="w-full h-full fill-white" />
+            <div className="absolute top-8 left-8 flex items-center gap-2 text-primary">
+                <div className="w-6 h-6 rounded-full border-2 border-primary flex items-center justify-center p-1 shrink-0">
+                    <Circle className="w-full h-full fill-primary" />
                 </div>
-                <span className="font-black text-[10px] sm:text-xs tracking-tight uppercase leading-tight">
+                <span className="font-black text-[9px] tracking-tight uppercase leading-tight">
                   MATESH TECHNOLOGIES LIMITED
                 </span>
             </div>
-        </div>
 
-        {/* RIGHT LOGIN FORM PANE */}
-        <div className="flex-1 bg-white relative flex flex-col items-center justify-center p-8">
-            {/* Decorative dots in corner */}
-            <div className="absolute top-8 right-8 flex gap-1.5 opacity-20">
-                <div className="w-2 h-2 rounded-full bg-primary" />
-                <div className="w-2 h-2 rounded-full bg-primary" />
-                <div className="w-2 h-2 rounded-full bg-primary" />
-            </div>
-
-            {/* COMPACT FORM WIDTH: 280px to 300px */}
-            <div className="w-full max-w-[280px] space-y-8">
+            {/* COMPACT FORM */}
+            <div className="w-full max-w-[240px] sm:max-w-[280px] space-y-8">
                 <div className="text-center space-y-1">
                     <h1 className="text-3xl font-black tracking-tight text-black">LOGIN</h1>
                     <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Sign in to your shop</p>
@@ -130,7 +120,7 @@ export default function LoginPage() {
                                 placeholder="name@company.com" 
                                 value={email} 
                                 onChange={(e) => setEmail(e.target.value)} 
-                                className="h-11 rounded-full bg-[#f4f7fe] border-none px-6 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/30 shadow-inner text-sm" 
+                                className="h-11 rounded-full bg-[#f4f7fe] border-none px-6 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/30 shadow-inner text-xs" 
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -141,7 +131,7 @@ export default function LoginPage() {
                                     placeholder="••••••••"
                                     value={password} 
                                     onChange={(e) => setPassword(e.target.value)} 
-                                    className="h-11 rounded-full bg-[#f4f7fe] border-none px-6 pr-12 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/30 shadow-inner text-sm" 
+                                    className="h-11 rounded-full bg-[#f4f7fe] border-none px-6 pr-12 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/30 shadow-inner text-xs" 
                                 />
                                 <button
                                     type="button"
@@ -167,7 +157,7 @@ export default function LoginPage() {
 
                     <Button 
                         onClick={handleSignIn} 
-                        className="w-full h-11 text-[9px] font-black uppercase tracking-[0.25em] rounded-full shadow-xl transition-all active:scale-95 bg-[#7c3aed] text-white hover:bg-[#6d28d9] border-none" 
+                        className="w-full h-11 text-[9px] font-black uppercase tracking-[0.25em] rounded-full shadow-xl transition-all active:scale-95 bg-primary text-white hover:bg-primary/90 border-none" 
                         disabled={isProcessing}
                     >
                         {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'LOGIN'}

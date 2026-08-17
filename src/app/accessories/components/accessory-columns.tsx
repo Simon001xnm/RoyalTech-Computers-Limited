@@ -84,6 +84,7 @@ export const getAccessoryColumns = (actions: AccessoryColumnActions) => [
     cell: ({ row }: any) => {
       const date = row.getValue("purchaseDate") as string;
       if (!date) return 'N/A';
+      // Updated to show Date and Time
       return format(new Date(date), "MMM d, yyyy HH:mm");
     },
   },
