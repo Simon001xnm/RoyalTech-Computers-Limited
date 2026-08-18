@@ -8,7 +8,7 @@ import { useSaaS } from "@/components/saas/saas-provider";
 
 /**
  * @fileOverview Professional Thermal Receipt (80mm)
- * Enhanced with Account Balance tracking.
+ * Enhanced with item pricing and Account Balance tracking.
  */
 export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -32,7 +32,7 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
   const vat = Number(data.vatAmount || data.vat || 0);
   const todayTotal = Number(data.total || (subtotal + vat));
   
-  // FIX: Ensure 0 is handled correctly
+  // Ensure 0 is handled correctly
   const amountPaidToday = data.amountPaid !== undefined ? Number(data.amountPaid) : todayTotal;
   const balanceToday = Math.max(0, todayTotal - amountPaidToday);
   const previousBalance = Number(data.previousBalance || 0);
@@ -80,18 +80,32 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
 
         <div className="w-full border-t border-black my-1" />
 
-        {/* ITEMS */}
+        {/* ITEMS HEADER */}
+        <div className="w-full flex justify-between py-1 text-[8px] font-black uppercase opacity-60">
+          <span className="w-1/2">Item</span>
+          <span className="w-1/4 text-center">Qty</span>
+          <span className="w-1/4 text-right">Price</span>
+        </div>
+        <div className="w-full border-t border-black border-dotted mb-1" />
+
+        {/* ITEMS LIST */}
         <div className="w-full space-y-3 mb-6">
-          {items.map((item: any, i: number) => (
-            <div key={i} className="flex justify-between items-start border-b border-gray-100 border-dotted pb-2 last:border-0">
-              <div className="w-1/2 flex flex-col">
-                <span className="uppercase font-bold text-[9px]">{item.name || item.description}</span>
-                {item.serialNumber && <span className="text-[7px] opacity-70 font-mono">S/N: {item.serialNumber}</span>}
+          {items.map((item: any, i: number) => {
+            const unitPrice = item.sellingPrice || item.price || item.unitPrice || 0;
+            const quantity = item.quantity || 1;
+            const lineTotal = unitPrice * quantity;
+
+            return (
+              <div key={i} className="flex justify-between items-start border-b border-gray-100 border-dotted pb-2 last:border-0">
+                <div className="w-1/2 flex flex-col">
+                  <span className="uppercase font-bold text-[9px]">{item.name || item.description}</span>
+                  {item.serialNumber && <span className="text-[7px] opacity-70 font-mono">S/N: {item.serialNumber}</span>}
+                </div>
+                <span className="w-1/4 text-center">{quantity}</span>
+                <span className="w-1/4 text-right font-bold">{formatCurrency(lineTotal)}</span>
               </div>
-              <span className="w-1/4 text-center">{item.quantity}</span>
-              <span className="w-1/4 text-right font-bold">{formatCurrency((item.sellingPrice || item.price || 0) * item.quantity)}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* TOTALS */}
