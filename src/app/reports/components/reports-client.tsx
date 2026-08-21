@@ -203,7 +203,7 @@ export function ReportsClient() {
     <div className="space-y-6">
       <PageHeader title="Shop Profit Reports" description="Check how much money your shop is making." />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-8">
           <div className="space-y-6 min-w-0">
             <Card className="no-print shadow-sm border-none ring-1 ring-black/5">
                 <CardHeader className="bg-muted/10 py-4 px-6 border-b">

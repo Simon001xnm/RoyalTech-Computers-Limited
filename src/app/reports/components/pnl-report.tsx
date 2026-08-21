@@ -1,4 +1,3 @@
-
 'use client';
 
 import { format } from 'date-fns';
@@ -190,9 +189,6 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
          </p>
          <p className="text-[8px] font-medium text-gray-400">
             © 2026 ShopManager Suite • Powered by simonstyless technologies limited
-         </p>
-         <p className="text-[7px] font-bold text-gray-300 mt-2 uppercase tracking-[0.2em]">
-            Electronically Verified SaaS Node Sync
          </p>
       </footer>
     </div>
