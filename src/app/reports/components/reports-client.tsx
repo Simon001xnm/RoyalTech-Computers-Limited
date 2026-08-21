@@ -203,8 +203,8 @@ export function ReportsClient() {
     <div className="space-y-6">
       <PageHeader title="Shop Profit Reports" description="Check how much money your shop is making." />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-6">
-          <div className="space-y-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-8">
+          <div className="space-y-6 min-w-0">
             <Card className="no-print shadow-sm border-none ring-1 ring-black/5">
                 <CardHeader className="bg-muted/10 py-4 px-6 border-b">
                     <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
@@ -217,7 +217,7 @@ export function ReportsClient() {
                         <Label className="text-[10px] font-black uppercase opacity-60">Pick Dates</Label>
                         <Popover>
                             <PopoverTrigger asChild>
-                            <Button variant={'outline'} className={cn('w-[280px] justify-start text-left font-normal h-11 bg-white', !date && 'text-muted-foreground')}>
+                            <Button variant={'outline'} className={cn('w-full sm:w-[280px] justify-start text-left font-normal h-11 bg-white', !date && 'text-muted-foreground')}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {date?.from ? (date.to ? <>{format(date.from, 'LLL dd, y')} - {format(date.to, 'LLL dd, y')}</> : format(date.from, 'LLL dd, y')) : <span>Pick a date range</span>}
                             </Button>
@@ -226,8 +226,8 @@ export function ReportsClient() {
                         </Popover>
                     </div>
 
-                    <div className="flex gap-3 mt-auto">
-                        <Button onClick={handleDownloadPdf} disabled={isLoading} className="h-11 px-6 font-black uppercase text-[10px] tracking-widest shadow-lg">
+                    <div className="flex gap-3 mt-auto w-full sm:w-auto">
+                        <Button onClick={handleDownloadPdf} disabled={isLoading} className="flex-1 sm:flex-none h-11 px-6 font-black uppercase text-[10px] tracking-widest shadow-lg">
                             <Download className="mr-2 h-4 w-4" /> Save PDF Report
                         </Button>
                     </div>
@@ -240,9 +240,11 @@ export function ReportsClient() {
                     <p className="font-black uppercase tracking-widest text-[10px]">Calculating Profit...</p>
                 </div>
             ) : (
-                <div className="flex justify-center bg-muted/20 p-4 md:p-8 rounded-2xl border-2 border-dashed overflow-auto">
-                    <div id="pnl-report" className="a4-document shadow-2xl relative scale-[0.6] sm:scale-100 origin-top">
-                        <PnlReport data={pnlData} dateRange={date} />
+                <div className="flex justify-center bg-muted/20 p-4 md:p-8 rounded-2xl border-2 border-dashed overflow-x-auto">
+                    <div className="shrink-0 origin-top transform scale-[0.45] sm:scale-[0.7] lg:scale-[0.85] xl:scale-100">
+                        <div id="pnl-report" className="a4-document shadow-2xl relative">
+                            <PnlReport data={pnlData} dateRange={date} />
+                        </div>
                     </div>
                 </div>
             )}
@@ -250,19 +252,25 @@ export function ReportsClient() {
 
           <div className="space-y-6">
             <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden">
-                <CardHeader className="bg-primary text-white">
-                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                        <FileSpreadsheet className="h-4 w-4" />
-                        Detailed Analysis
-                    </CardTitle>
-                    <CardDescription className="text-white/70 text-[10px] uppercase font-bold">Download specific record lists</CardDescription>
+                <CardHeader className="bg-primary text-white p-6">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white/10 p-2 rounded-lg">
+                            <FileSpreadsheet className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-sm font-black uppercase tracking-widest">
+                                Detailed Analysis
+                            </CardTitle>
+                            <CardDescription className="text-white/70 text-[10px] uppercase font-bold mt-1">Download specific record lists</CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase">Document Type</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Document Type</Label>
                             <Select value={docTypeFilter} onValueChange={(v: any) => setDocTypeFilter(v)}>
-                                <SelectTrigger className="h-10 font-bold bg-muted/30 border-none"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-11 font-bold bg-muted/30 border-none"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Paperwork</SelectItem>
                                     <SelectItem value="Receipt">Receipts Only</SelectItem>
@@ -272,9 +280,9 @@ export function ReportsClient() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase">VAT Status</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">VAT Status</Label>
                             <Select value={vatFilter} onValueChange={(v: any) => setVatFilter(v)}>
-                                <SelectTrigger className="h-10 font-bold bg-muted/30 border-none"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-11 font-bold bg-muted/30 border-none"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Combined (VAT + No VAT)</SelectItem>
                                     <SelectItem value="with-vat">With VAT Only</SelectItem>
@@ -288,12 +296,12 @@ export function ReportsClient() {
                         onClick={handleDownloadDetailedCsv} 
                         disabled={isLoading}
                         variant="outline"
-                        className="w-full h-12 border-2 border-primary text-primary font-black uppercase text-[10px] tracking-widest hover:bg-primary hover:text-white transition-all"
+                        className="w-full h-14 border-2 border-primary text-primary font-black uppercase text-[10px] tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm"
                     >
                         <Download className="mr-2 h-4 w-4" /> Download Detailed CSV
                     </Button>
 
-                    <div className="p-4 bg-muted/50 rounded-xl border border-dashed text-center">
+                    <div className="p-5 bg-primary/5 rounded-2xl border border-dashed border-primary/20 text-center">
                         <p className="text-[10px] text-muted-foreground font-medium italic leading-relaxed">
                             "Use this tool to download raw data for your KRA tax returns or internal office audits."
                         </p>
@@ -301,12 +309,12 @@ export function ReportsClient() {
                 </CardContent>
             </Card>
 
-            <Card className="border-none ring-1 ring-black/5 shadow-sm bg-primary/5">
+            <Card className="border-none ring-1 ring-black/5 shadow-sm bg-muted/30">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-[10px] font-black uppercase text-primary tracking-widest">Reporting Tip</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-[11px] font-medium leading-relaxed">
+                    <p className="text-[11px] font-medium leading-relaxed text-muted-foreground">
                         To see a full year analysis, pick "Jan 1st" to today. For tax filings, use the "With VAT Only" filter in the CSV tool.
                     </p>
                 </CardContent>
