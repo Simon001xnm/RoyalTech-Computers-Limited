@@ -102,7 +102,7 @@ export function RepairNotePdf({ document: docSnapshot }: { document: AppDocument
       </section>
 
       <footer className="mt-auto pt-6 text-center border-t border-gray-100">
-         <p className="text-[10px] font-bold text-black uppercase">
+         <p className="text-[10px] font-bold text-black">
             Goods once sold cannot be returned &bull; {contactInfo}
          </p>
       </footer>

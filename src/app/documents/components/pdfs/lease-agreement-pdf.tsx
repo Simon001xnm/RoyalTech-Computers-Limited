@@ -142,7 +142,7 @@ export function LeaseAgreementPdf({ document: docSnapshot }: { document: AppDocu
       </section>
 
       <footer className="mt-auto pt-6 text-center border-t border-gray-100">
-         <p className="text-[10px] font-bold text-black uppercase">Official Lease Documentation &bull; {contactInfo}</p>
+         <p className="text-[10px] font-bold text-black">Official Lease Documentation &bull; {contactInfo}</p>
       </footer>
     </div>
   );

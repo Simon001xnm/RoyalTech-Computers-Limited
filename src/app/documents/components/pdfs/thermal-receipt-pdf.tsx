@@ -53,9 +53,9 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
             {bizName}
           </h1>
           <p className="text-[11px] font-black">*** OFFICIAL RECEIPT ***</p>
-          <div className="text-[9px] uppercase space-y-1 opacity-90 pb-2">
+          <div className="text-[9px] space-y-1 opacity-90 pb-2">
               {workspace?.address && <p>{workspace.address}</p>}
-              {workspace?.phone && <p>TEL: {workspace.phone}</p>}
+              {workspace?.phone && <p>Tel: {workspace.phone}</p>}
               {workspace?.taxPin && <p className="font-black pt-1">KRA PIN: {workspace.taxPin}</p>}
           </div>
         </div>
@@ -141,10 +141,10 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
 
         {/* FOOTER */}
         <div className="text-center space-y-3 mb-2 w-full">
-          <p className="text-[9px] font-black">*** THANK YOU ***</p>
-          <div className="text-[8px] uppercase space-y-1 opacity-80">
+          <p className="text-[9px] font-black">*** Thank you ***</p>
+          <div className="text-[8px] space-y-1 opacity-80">
             {workspace?.website && <p>{workspace.website}</p>}
-            <p>TEL: {workspace?.phone || 'N/A'}</p>
+            <p>Tel: {workspace?.phone || 'N/A'}</p>
           </div>
         </div>
 

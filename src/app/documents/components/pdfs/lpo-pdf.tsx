@@ -111,7 +111,7 @@ export function LpoPdf({ document: docSnapshot }: { document: AppDocument }) {
             </div>
             <div className="text-right space-y-2">
                 <p className="text-[9px] font-medium text-black">Authorized Signature for <span className="font-bold">{workspace?.name}</span></p>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">{contactInfo}</p>
+                <p className="text-[8px] font-bold text-muted-foreground">{contactInfo}</p>
             </div>
       </footer>
     </div>

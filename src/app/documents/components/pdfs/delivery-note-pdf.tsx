@@ -101,10 +101,10 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
       </section>
 
       <footer className="mt-auto pt-6 text-center border-t border-gray-100">
-         <p className="text-[10px] font-bold text-black uppercase tracking-tight">
+         <p className="text-[10px] font-bold text-black tracking-tight">
             Goods once sold cannot be returned
          </p>
-         <div className="space-y-1 text-[9px] font-bold uppercase tracking-wider text-gray-500 mt-4">
+         <div className="space-y-1 text-[9px] font-bold text-gray-500 mt-4">
             {website && <p>{website}</p>}
             <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
          </div>

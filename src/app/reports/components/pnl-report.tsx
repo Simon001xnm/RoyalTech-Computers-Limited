@@ -181,11 +181,11 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
       </section>
 
       <footer className="mt-auto pt-8 text-center">
-         <p className="text-[10px] font-black uppercase text-black tracking-tight mb-2">
+         <p className="text-[10px] font-bold text-black tracking-tight mb-2">
             Official Financial Intelligence Document
          </p>
          <p className="text-[9px] font-medium text-black mb-4">
-            For any enquiry, reach out via <span className="font-bold">{company?.phone || company?.email}</span>
+            For any enquiry, reach out via {company?.phone || company?.email}
          </p>
          <p className="text-[8px] font-medium text-gray-400">
             © 2026 ShopManager Suite • Powered by simonstyless technologies limited

@@ -187,10 +187,10 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
       {/* Footer Contact */}
       <footer className="mt-auto pt-8 border-t border-gray-200 text-center">
-         <p className="text-sm font-black italic uppercase tracking-tighter text-blue-900 mb-4">
-            Thank You for Your Business!
+         <p className="text-sm font-black italic text-blue-900 mb-4">
+            Thank you for your business!
          </p>
-         <div className="space-y-1 text-[9px] font-bold uppercase tracking-wider text-gray-500">
+         <div className="space-y-1 text-[9px] font-bold text-gray-500">
             {workspace?.website && <p>{workspace.website}</p>}
             <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
          </div>

@@ -124,7 +124,7 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
       </section>
 
       <footer className="mt-auto pt-6 text-center border-t border-gray-100">
-         <div className="space-y-1 text-[9px] font-bold uppercase tracking-wider text-gray-500">
+         <div className="space-y-1 text-[9px] font-bold text-gray-500">
             {workspace?.website && <p>{workspace.website}</p>}
             <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
          </div>
