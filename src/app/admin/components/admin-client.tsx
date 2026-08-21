@@ -202,7 +202,7 @@ export function AdminClient() {
                   <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={stats.dailyTrend}>
                           <defs>
-                              <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                              <linearGradient id="colorAmount" x1="0" x1="0" x2="0" y2="1">
                                   <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
                                   <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                               </linearGradient>
@@ -255,7 +255,7 @@ export function AdminClient() {
                         <TrendingUp className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                        <CardTitle className="text-sm font-black uppercase tracking-widest">Financial Balance</CardTitle>
+                        <CardTitle className="text-sm font-black uppercase tracking-widest">Financial Analysis</CardTitle>
                         <CardDescription>Revenue vs Total Costs comparison</CardDescription>
                     </div>
                   </div>
