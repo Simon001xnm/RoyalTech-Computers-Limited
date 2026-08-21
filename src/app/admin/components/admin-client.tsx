@@ -10,11 +10,11 @@ import {
     TrendingUp, 
     DollarSign, 
     AlertTriangle, 
-    BarChart3,
     Activity,
     ShieldCheck,
     Loader2,
-    PieChart as PieChartIcon
+    PieChart as PieChartIcon,
+    BarChart3
 } from 'lucide-react';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { 
@@ -24,8 +24,6 @@ import {
     subMonths, 
     isWithinInterval,
     eachDayOfInterval,
-    startOfDay,
-    endOfDay,
     isSameDay
 } from 'date-fns';
 import {
@@ -36,8 +34,8 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    LineChart,
-    Line,
+    AreaChart,
+    Area,
     Cell,
     PieChart,
     Pie,
@@ -96,7 +94,7 @@ export function AdminClient() {
     const netProfit = totalRevenue - (totalCogs + totalExp);
     const margin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
-    // Chart 1: Daily Revenue Trend (Simulated candlesticks/Line)
+    // Chart 1: Daily Revenue Trend (Area with Gradient)
     const daysInMonth = eachDayOfInterval({ start: currentMonthStart, end: now });
     const dailyTrend = daysInMonth.map(day => {
         const daySales = monthlySales.filter(s => isSameDay(parseISO(s.date), day));
@@ -107,7 +105,7 @@ export function AdminClient() {
         };
     });
 
-    // Chart 2: Revenue vs Expenses (Bar)
+    // Chart 2: Revenue vs Expenses (Modern Bar)
     const performanceData = [
         { name: 'Revenue', value: totalRevenue, color: 'hsl(var(--primary))' },
         { name: 'Expenses', value: totalExp + totalCogs, color: 'hsl(var(--destructive))' }
@@ -139,16 +137,18 @@ export function AdminClient() {
   };
 
   if (salesLoading || expLoading) {
-      return <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          Preparing Shop Analysis...
-      </div>;
+      return (
+        <div className="flex h-[60vh] flex-col items-center justify-center space-y-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Initializing Analysis...</p>
+        </div>
+      );
   }
 
   if (!stats) return null;
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-20 max-w-7xl mx-auto">
       <PageHeader 
         title="Shop Analysis Hub" 
         description="Visual intelligence and data-driven insights for your business."
@@ -184,15 +184,28 @@ export function AdminClient() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* DAILY REVENUE TREND - CANDLESTICK STYLE LINE */}
-          <Card className="shadow-sm border-none ring-1 ring-black/5">
-              <CardHeader className="bg-muted/10 border-b">
-                  <CardTitle className="text-sm font-black uppercase tracking-widest">Daily Performance Trend</CardTitle>
-                  <CardDescription>Sales velocity for the current month</CardDescription>
+          {/* DAILY REVENUE TREND - AREA CHART WITH GRADIENT */}
+          <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden">
+              <CardHeader className="bg-muted/10 border-b p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-primary/10 p-2 rounded-lg">
+                        <BarChart3 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-sm font-black uppercase tracking-widest">Sales Velocity Trend</CardTitle>
+                        <CardDescription>Daily performance for the current month</CardDescription>
+                    </div>
+                  </div>
               </CardHeader>
-              <CardContent className="p-6 h-[300px]">
+              <CardContent className="p-6 h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={stats.dailyTrend}>
+                      <AreaChart data={stats.dailyTrend}>
+                          <defs>
+                              <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                              </linearGradient>
+                          </defs>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
                           <XAxis 
                             dataKey="date" 
@@ -200,6 +213,7 @@ export function AdminClient() {
                             fontFamily="monospace" 
                             axisLine={false} 
                             tickLine={false}
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
                           />
                           <YAxis 
                             fontSize={9} 
@@ -207,38 +221,52 @@ export function AdminClient() {
                             axisLine={false} 
                             tickLine={false}
                             tickFormatter={(v) => `KES ${v/1000}k`}
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
                           />
                           <Tooltip 
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
-                            labelStyle={{ fontWeight: '900', color: 'hsl(var(--primary))' }}
+                            contentStyle={{ 
+                                borderRadius: '16px', 
+                                border: 'none', 
+                                boxShadow: '0 20px 50px rgba(0,0,0,0.1)',
+                                fontSize: '10px',
+                                fontWeight: 'bold',
+                                textTransform: 'uppercase'
+                            }}
                           />
-                          <Line 
+                          <Area 
                             type="monotone" 
                             dataKey="amount" 
                             stroke="hsl(var(--primary))" 
                             strokeWidth={3} 
-                            dot={{ r: 4, fill: 'hsl(var(--primary))', strokeWidth: 2, stroke: '#fff' }}
-                            activeDot={{ r: 6, strokeWidth: 0 }}
+                            fillOpacity={1} 
+                            fill="url(#colorAmount)" 
                           />
-                      </LineChart>
+                      </AreaChart>
                   </ResponsiveContainer>
               </CardContent>
           </Card>
 
-          {/* REVENUE VS EXPENSE - BARS */}
-          <Card className="shadow-sm border-none ring-1 ring-black/5">
-              <CardHeader className="bg-muted/10 border-b">
-                  <CardTitle className="text-sm font-black uppercase tracking-widest">Financial Balance</CardTitle>
-                  <CardDescription>Revenue vs Costs comparison</CardDescription>
+          {/* REVENUE VS EXPENSE - MODERN BARS */}
+          <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden">
+              <CardHeader className="bg-muted/10 border-b p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-primary/10 p-2 rounded-lg">
+                        <TrendingUp className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-sm font-black uppercase tracking-widest">Financial Balance</CardTitle>
+                        <CardDescription>Revenue vs Total Costs comparison</CardDescription>
+                    </div>
+                  </div>
               </CardHeader>
-              <CardContent className="p-6 h-[300px]">
+              <CardContent className="p-6 h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={stats.performanceData}>
+                      <BarChart data={stats.performanceData} barGap={20}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
                           <XAxis dataKey="name" fontSize={10} fontStyle="bold" axisLine={false} tickLine={false} />
                           <YAxis fontSize={9} axisLine={false} tickLine={false} tickFormatter={(v) => `KES ${v/1000}k`} />
                           <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
-                          <Bar dataKey="value" radius={[10, 10, 0, 0]} barSize={60}>
+                          <Bar dataKey="value" radius={[12, 12, 0, 0]} barSize={80}>
                               {stats.performanceData.map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={entry.color} />
                               ))}
@@ -249,65 +277,72 @@ export function AdminClient() {
           </Card>
 
           {/* EXPENSE CATEGORIES - PIE */}
-          <Card className="shadow-sm border-none ring-1 ring-black/5">
-              <CardHeader className="bg-muted/10 border-b">
+          <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden">
+              <CardHeader className="bg-muted/10 border-b p-6">
                   <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                     <PieChartIcon className="h-4 w-4 text-primary" />
                     Spend Breakdown
                   </CardTitle>
+                  <CardDescription>Where your money is being spent</CardDescription>
               </CardHeader>
-              <CardContent className="p-6 h-[350px]">
+              <CardContent className="p-6 h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                           <Pie
                             data={stats.pieData}
                             cx="50%"
                             cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
+                            innerRadius={70}
+                            outerRadius={100}
+                            paddingAngle={8}
                             dataKey="value"
+                            stroke="none"
                           >
                              {stats.pieData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={`hsl(var(--primary) / ${1 - (index * 0.2)})`} />
+                                <Cell key={`cell-${index}`} fill={`hsl(var(--primary) / ${1 - (index * 0.15)})`} />
                              ))}
                           </Pie>
                           <Tooltip />
-                          <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
+                          <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', paddingTop: '20px' }} />
                       </PieChart>
                   </ResponsiveContainer>
               </CardContent>
           </Card>
 
-          {/* SECURITY AUDIT - REMAINING */}
-          <Card className="shadow-sm border-none ring-1 ring-black/5 bg-primary/5">
-                <CardHeader className="border-b border-primary/10">
+          {/* SYSTEM INTEGRITY AUDIT */}
+          <Card className="shadow-xl border-none ring-1 ring-black/5 bg-primary/5">
+                <CardHeader className="border-b border-primary/10 p-6">
                     <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2 text-primary">
                         <ShieldCheck className="h-4 w-4" />
-                        System Integrity
+                        System Integrity Status
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-primary/10 shadow-sm">
-                            <span className="text-[10px] font-black uppercase">Staff Members Verified</span>
-                            <span className="font-black text-green-600">SECURE</span>
+                        <div className="flex items-center justify-between p-5 bg-white rounded-2xl border border-primary/10 shadow-sm">
+                            <span className="text-[10px] font-black uppercase text-muted-foreground">Staff Access Audit</span>
+                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none font-black text-[8px] h-5">VERIFIED</Badge>
                         </div>
-                        <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-primary/10 shadow-sm">
-                            <span className="text-[10px] font-black uppercase">Cloud Synchronization</span>
-                            <span className="font-black text-primary">SYNCED</span>
+                        <div className="flex items-center justify-between p-5 bg-white rounded-2xl border border-primary/10 shadow-sm">
+                            <span className="text-[10px] font-black uppercase text-muted-foreground">Real-time Cloud Sync</span>
+                            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none font-black text-[8px] h-5">ACTIVE</Badge>
                         </div>
-                        <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-primary/10 shadow-sm">
-                            <span className="text-[10px] font-black uppercase">Multi-Tenant Isolation</span>
-                            <span className="font-black">ENFORCED</span>
+                        <div className="flex items-center justify-between p-5 bg-white rounded-2xl border border-primary/10 shadow-sm">
+                            <span className="text-[10px] font-black uppercase text-muted-foreground">Multi-Tenant Isolation</span>
+                            <Badge className="bg-black text-white hover:bg-black border-none font-black text-[8px] h-5">ENFORCED</Badge>
                         </div>
+                    </div>
+                    <div className="pt-4 text-center">
+                        <p className="text-[10px] text-muted-foreground font-medium italic">
+                            "Intelligence node is synchronized with your shop data. Records are immutable and saved to the cloud."
+                        </p>
                     </div>
                 </CardContent>
           </Card>
       </div>
 
-      <div className="text-center pt-8 opacity-20">
-          <p className="text-[11px] font-black tracking-widest uppercase">Analysis node synchronization active &bull; Matesh Version 3.26</p>
+      <div className="text-center pt-12 opacity-20">
+          <p className="text-[11px] font-black tracking-[0.3em] uppercase">Matesh Version 3.26 &bull; Intelligence Area Secured</p>
       </div>
     </div>
   );
