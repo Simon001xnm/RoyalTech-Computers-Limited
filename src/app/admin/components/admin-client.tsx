@@ -17,6 +17,7 @@ import {
     BarChart3
 } from 'lucide-react';
 import { SummaryCard } from '@/components/dashboard/summary-card';
+import { Badge } from '@/components/ui/badge';
 import { 
     format, 
     parseISO, 
