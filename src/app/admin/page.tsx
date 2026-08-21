@@ -1,5 +1,7 @@
 'use client';
 
-export default function AdminRetired() {
-  return null; // Layout handles the message
+import { AdminClient } from './components/admin-client';
+
+export default function AdminPage() {
+  return <AdminClient />;
 }

@@ -9,7 +9,8 @@ import {
     Settings,
     LineChart,
     UserCog,
-    Wallet
+    Wallet,
+    ShieldCheck
 } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
@@ -54,7 +55,8 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'books', href: '/books', label: 'Money Spent', icon: BookOpen },
   { id: 'reports', href: '/reports', label: 'Profit Reports', icon: LineChart },
   
-  // TOOLS
+  // ADMIN & TOOLS
+  { id: 'admin', href: '/admin', label: 'Shop Analysis', icon: ShieldCheck },
   { id: 'users', href: '/users', label: 'Staff Members', icon: UserCog },
   { id: 'settings', href: '/profile', label: 'Shop Settings', icon: Settings },
 ];
