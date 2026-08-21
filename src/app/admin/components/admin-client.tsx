@@ -106,7 +106,7 @@ export function AdminClient() {
         };
     });
 
-    // Chart 2: Revenue vs Expenses (Modern Bar)
+    // Chart 2: Financial Analysis (Modern Bar)
     const performanceData = [
         { name: 'Revenue', value: totalRevenue, color: 'hsl(var(--primary))' },
         { name: 'Expenses', value: totalExp + totalCogs, color: 'hsl(var(--destructive))' }
@@ -247,7 +247,7 @@ export function AdminClient() {
               </CardContent>
           </Card>
 
-          {/* REVENUE VS EXPENSE - MODERN BARS */}
+          {/* FINANCIAL ANALYSIS - MODERN BARS */}
           <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden">
               <CardHeader className="bg-muted/10 border-b p-6">
                   <div className="flex items-center gap-3">
@@ -338,7 +338,7 @@ export function AdminClient() {
       </div>
 
       <div className="text-center pt-12 opacity-20">
-          <p className="text-[11px] font-black tracking-[0.3em] uppercase">Matesh Version 3.26 &bull; Intelligence Area Secured</p>
+          <p className="text-[11px] font-black tracking-[0.3em] uppercase">Matesh Version 3.26</p>
       </div>
     </div>
   );
