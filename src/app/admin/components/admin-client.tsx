@@ -333,11 +333,6 @@ export function AdminClient() {
                             <Badge className="bg-black text-white hover:bg-black border-none font-black text-[8px] h-5">ENFORCED</Badge>
                         </div>
                     </div>
-                    <div className="pt-4 text-center">
-                        <p className="text-[10px] text-muted-foreground font-medium italic">
-                            "Intelligence node is synchronized with your shop data. Records are immutable and saved to the cloud."
-                        </p>
-                    </div>
                 </CardContent>
           </Card>
       </div>
