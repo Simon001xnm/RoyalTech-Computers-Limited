@@ -47,6 +47,13 @@ export function UsersClient() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // Table states
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  
   const { toast } = useToast();
   const { tenant } = useSaaS();
   const firestore = useFirestore();
