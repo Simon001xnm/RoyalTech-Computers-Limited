@@ -1,11 +1,18 @@
-import type { Metadata } from "next";
-import { LeasesClient } from "./components/leases-client";
+import { ShieldAlert } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
-export const metadata: Metadata = {
-  title: "Lease Tracking",
-  description: "Enterprise lifecycle management for hardware lease agreements.",
-};
-
-export default function LeasesPage() {
-  return <LeasesClient />;
+export default function LeasesRetiredPage() {
+  return (
+    <div className="flex h-[80vh] w-full flex-col items-center justify-center p-8 text-center bg-background">
+      <div className="bg-muted p-6 rounded-full mb-6">
+          <ShieldAlert className="h-12 w-12 text-muted-foreground opacity-20" />
+      </div>
+      <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">Module Decommissioned</h2>
+      <p className="text-muted-foreground max-w-md">The Lease Agreement module has been removed from this node per system configuration updates.</p>
+      <Button asChild className="mt-8" variant="outline">
+          <Link href="/">Return to Main Dashboard</Link>
+      </Button>
+    </div>
+  );
 }

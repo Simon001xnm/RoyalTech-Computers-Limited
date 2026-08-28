@@ -151,7 +151,7 @@ export interface Document extends Auditable {
   data: any; 
 }
 
-export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | 'DeliveryNote' | 'Quotation' | 'LPO' | 'LeaseAgreement' | 'PurchaseOrder' | 'CreditNote' | 'DebitNote' | 'CustomerStatement';
+export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | 'DeliveryNote' | 'Quotation' | 'LPO' | 'PurchaseOrder' | 'CreditNote' | 'DebitNote' | 'CustomerStatement';
 
 export interface DocumentLineItem {
   description: string;

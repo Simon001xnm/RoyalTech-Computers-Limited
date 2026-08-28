@@ -36,7 +36,6 @@ import { RepairNotePdf } from "./pdfs/repair-note-pdf";
 import { DeliveryNotePdf } from "./pdfs/delivery-note-pdf";
 import { QuotationPdf } from "./pdfs/quotation-pdf";
 import { LpoPdf } from "./pdfs/lpo-pdf";
-import { LeaseAgreementPdf } from "./pdfs/lease-agreement-pdf";
 import {
   useReactTable,
   getCoreRowModel,
@@ -62,7 +61,6 @@ const TYPE_INITIALS: Record<string, string> = {
     'RepairNote': 'RPN',
     'DeliveryNote': 'DLV',
     'LPO': 'LPO',
-    'LeaseAgreement': 'LSE',
     'PurchaseOrder': 'LPO',
     'CreditNote': 'CRN',
     'DebitNote': 'DBN',
@@ -402,7 +400,6 @@ export function DocumentsClient() {
       case 'DeliveryNote': return <DeliveryNotePdf document={selectedDocument} />;
       case 'Quotation': return <QuotationPdf document={selectedDocument} />;
       case 'LPO': return <LpoPdf document={selectedDocument} />;
-      case 'LeaseAgreement': return <LeaseAgreementPdf document={selectedDocument} />;
       default: return null;
     }
   };
@@ -418,16 +415,14 @@ export function DocumentsClient() {
       <PageHeader title="Shop Paperwork" description="View and create documents for your clients." />
       
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-8 h-auto p-1 bg-muted/50 border">
+        <TabsList className="grid w-full grid-cols-4 mb-8 h-auto p-1 bg-muted/50 border">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
           <TabsTrigger value="Invoice" className="font-black uppercase text-[8px] md:text-[9px] py-3">Invoice</TabsTrigger>
-          <TabsTrigger value="LeaseAgreement" className="font-black uppercase text-[8px] md:text-[9px] py-3">Lease Hire</TabsTrigger>
           <TabsTrigger value="Proforma" className="font-black uppercase text-[8px] md:text-[9px] py-3">Proforma</TabsTrigger>
           <TabsTrigger value="Receipt" className="font-black uppercase text-[8px] md:text-[9px] py-3">Receipt</TabsTrigger>
         </TabsList>
         <TabsContent value="Quotation">{renderForm("Quotation")}</TabsContent>
         <TabsContent value="Invoice">{renderForm("Invoice")}</TabsContent>
-        <TabsContent value="LeaseAgreement">{renderForm("LeaseAgreement")}</TabsContent>
         <TabsContent value="Proforma">{renderForm("Proforma")}</TabsContent>
         <TabsContent value="Receipt">{renderForm("Receipt")}</TabsContent>
       </Tabs>
@@ -492,7 +487,9 @@ export function DocumentsClient() {
                 <DialogTitle className="text-xl font-black uppercase tracking-tight">View Paper</DialogTitle>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'A4')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download A4</Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'Thermal')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download Small</Button>
+                    {selectedDocument?.type !== 'Quotation' && (
+                        <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'Thermal')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download Small</Button>
+                    )}
                 </div>
             </div>
           </DialogHeader>
@@ -532,7 +529,7 @@ export function DocumentsClient() {
   );
 
   function renderForm(type: DocumentType) {
-    const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'LPO', 'LeaseAgreement', 'Receipt'].includes(type);
+    const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'LPO', 'Receipt'].includes(type);
     return (
       <Card className="shadow-lg border-primary/10">
         <CardHeader className="bg-primary/5 border-b">

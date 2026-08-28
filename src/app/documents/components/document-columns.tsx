@@ -26,7 +26,6 @@ const documentIcons: Record<DocumentType, React.ElementType> = {
     DeliveryNote: Truck,
     Quotation: FilePlus2,
     LPO: ShoppingCart,
-    LeaseAgreement: FileText,
     PurchaseOrder: ShoppingCart,
     CreditNote: FileText,
     DebitNote: FileText,
@@ -78,7 +77,7 @@ export const getDocumentColumns = (actions: DocumentColumnActions): ColumnDef<Ap
         cell: ({ row }) => {
             const doc = row.original;
             // Delivery notes can be generated from sales docs
-            const canGenerateDelivery = ['Invoice', 'Receipt', 'LeaseAgreement'].includes(doc.type);
+            const canGenerateDelivery = ['Invoice', 'Receipt'].includes(doc.type);
 
             return (
                 <div className="text-right flex items-center justify-end gap-2">
