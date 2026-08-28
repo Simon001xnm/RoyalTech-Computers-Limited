@@ -153,8 +153,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                     </div>
                 </div>
                 <div className="relative z-10 text-center">
-                    <p className="text-[10px] text-primary-foreground/50 tracking-widest lowercase">
-                        &copy; 2026 shopmanager &bull; simple shop area
+                    <p className="text-[10px] text-primary-foreground/50 tracking-[0.2em] uppercase">
+                        Workspace Deployment
                     </p>
                 </div>
               </div>

@@ -121,8 +121,8 @@ export function ModuleTutorial() {
         </ScrollArea>
         
         <div className="p-6 border-t bg-muted/20 text-center">
-            <p className="text-[10px] text-muted-foreground tracking-widest lowercase">
-                &copy; 2026 shopmanager &bull; simple English version
+            <p className="text-[10px] text-muted-foreground tracking-[0.3em] uppercase opacity-40">
+                Connected Shop Node
             </p>
         </div>
       </DialogContent>

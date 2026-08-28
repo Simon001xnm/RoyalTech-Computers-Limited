@@ -187,9 +187,6 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
          <p className="text-[9px] font-medium text-black mb-4">
             For any enquiry, reach out via {company?.phone || company?.email}
          </p>
-         <p className="text-[8px] font-medium text-gray-400">
-            © 2026 ShopManager Suite • Powered by simonstyless technologies limited
-         </p>
       </footer>
     </div>
   );
