@@ -42,6 +42,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import type { DateRange } from 'react-day-picker';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type PaginationState,
+} from "@tanstack/react-table";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 type TimeFilter = 'today' | 'week' | 'month' | 'year' | 'custom';
 
@@ -53,6 +62,11 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: new Date()
+  });
+
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
   });
 
   // Client-side clock state to avoid hydration mismatch
@@ -166,6 +180,52 @@ export default function DashboardPage() {
         viewLabel: filter === 'custom' && dateRange?.from ? `${format(dateRange.from, 'dd MMM')} - ${format(dateRange.to || now, 'dd MMM')}` : filter.toUpperCase()
     };
   }, [sales, assets, expenses, filter, dateRange]);
+
+  const columns = useMemo<ColumnDef<any>[]>(() => [
+    {
+      accessorKey: "date",
+      header: "Date & Time",
+      cell: ({ row }) => {
+        const date = parseISO(row.original.date);
+        return (
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold">{format(date, 'dd MMM yyyy')}</span>
+            <span className="text-[9px] font-mono opacity-50">{format(date, 'hh:mm:ss a')}</span>
+          </div>
+        );
+      }
+    },
+    {
+      accessorKey: "customerName",
+      header: "Client",
+      cell: ({ row }) => <span className="text-[10px] font-black uppercase">{row.original.customerName || 'Walk-in'}</span>
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => <Badge variant={row.original.status === 'Paid' ? 'default' : 'destructive'} className="text-[8px] font-black uppercase h-4 px-2">{row.original.status}</Badge>
+    },
+    {
+      accessorKey: "total",
+      header: () => <div className="text-right pr-6">Amount</div>,
+      cell: ({ row }) => (
+        <div className={cn("text-right pr-6 font-black", row.original.status !== 'Paid' ? "text-red-600" : "text-primary")}>
+          {new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(Number(row.original.total) || 0)}
+        </div>
+      )
+    }
+  ], []);
+
+  const table = useReactTable({
+    data: stats?.transactions || [],
+    columns,
+    state: {
+      pagination,
+    },
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
 
   const formatKes = (val: number) => {
       return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
@@ -327,37 +387,37 @@ export default function DashboardPage() {
         <CardContent className="p-0">
             <Table>
                 <TableHeader className="bg-muted/20">
-                    <TableRow>
-                        <TableHead className="text-[10px] font-black uppercase pl-6">Date & Time</TableHead>
-                        <TableHead className="text-[10px] font-black uppercase">Client</TableHead>
-                        <TableHead className="text-[10px] font-black uppercase">Status</TableHead>
-                        <TableHead className="text-[10px] font-black uppercase text-right pr-6">Amount</TableHead>
-                    </TableRow>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <TableHead key={header.id} className="text-[10px] font-black uppercase py-4">
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    ))}
                 </TableHeader>
                 <TableBody>
-                    {stats.transactions.slice(0, 50).map(sale => (
-                        <TableRow key={sale.id} className="h-12 border-b last:border-0 hover:bg-muted/5">
-                            <TableCell className="pl-6">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold">{format(parseISO(sale.date), 'dd MMM yyyy')}</span>
-                                    <span className="text-[9px] font-mono opacity-50">{format(parseISO(sale.date), 'HH:mm')}</span>
-                                </div>
-                            </TableCell>
-                            <TableCell><span className="text-[10px] font-black uppercase">{sale.customerName || 'Walk-in'}</span></TableCell>
-                            <TableCell><Badge variant={sale.status === 'Paid' ? 'default' : 'destructive'} className="text-[8px] font-black uppercase h-4 px-2">{sale.status}</Badge></TableCell>
-                            <TableCell className={cn("text-right pr-6 font-black", sale.status !== 'Paid' ? "text-red-600" : "text-primary")}>
-                                {formatKes(Number(sale.total) || 0)}
-                            </TableCell>
+                    {table.getRowModel().rows.length ? (
+                        table.getRowModel().rows.map((row) => (
+                          <TableRow key={row.id} className="h-12 border-b last:border-0 hover:bg-muted/5">
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell key={cell.id} className="py-2">
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                          <TableCell colSpan={columns.length} className="h-32 text-center opacity-30 text-xs font-bold uppercase italic">
+                            No transactions found for this period
+                          </TableCell>
                         </TableRow>
-                    ))}
-                    {stats.transactions.length === 0 && <TableRow><TableCell colSpan={4} className="h-32 text-center opacity-30 text-xs font-bold uppercase italic">No transactions found for this period</TableCell></TableRow>}
+                    )}
                 </TableBody>
             </Table>
-            {stats.transactions.length > 50 && (
-                <div className="p-4 text-center border-t">
-                    <p className="text-[10px] font-bold text-muted-foreground italic">Showing first 50 results. Use the reports module for full data.</p>
-                </div>
-            )}
+            <DataTablePagination table={table} />
         </CardContent>
       </Card>
       
