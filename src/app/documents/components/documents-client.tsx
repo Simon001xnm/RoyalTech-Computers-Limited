@@ -341,19 +341,20 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    await new Promise(r => setTimeout(r, 1000)); 
+    // Wait for the components to render and hydration to settle
+    await new Promise(r => setTimeout(r, 1200)); 
 
     const isThermal = type === 'Thermal';
     const pages = document.querySelectorAll('.a4-pdf-page');
 
     try {
         if (isThermal || pages.length === 0) {
-            // SINGLE PAGE LOGIC (Thermal or simple doc)
+            // SINGLE PAGE LOGIC (Thermal or simple doc without pagination)
             const element = document.getElementById('pdf-preview-target');
             if (!element) throw new Error("Element not found");
 
             const canvas = await html2canvas(element, { 
-                scale: 3.0, 
+                scale: 3.5, 
                 useCORS: true,
                 backgroundColor: "#ffffff",
                 width: isThermal ? 302 : 794, 
@@ -364,12 +365,12 @@ export function DocumentsClient() {
             const pdf = new jsPDF({
                 orientation: 'p',
                 unit: 'mm',
-                format: isThermal ? [80, canvas.height * 0.264583 / 3.0] : 'a4',
+                format: isThermal ? [80, canvas.height * 0.264583 / 3.5] : 'a4',
             });
 
             const imgData = canvas.toDataURL('image/png', 1.0);
             if (isThermal) {
-                pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.0, undefined, 'FAST');
+                pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.5, undefined, 'FAST');
             } else {
                 pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
             }
@@ -378,7 +379,7 @@ export function DocumentsClient() {
             const filename = `${initials}_${(docToDownload.relatedTo || 'CLIENT').slice(0,3).toUpperCase()}.pdf`;
             pdf.save(filename);
         } else {
-            // MULTI-PAGE LOGIC (A4 Document)
+            // MULTI-PAGE LOGIC (Capturing each separate A4 page)
             const pdf = new jsPDF({
                 orientation: 'p',
                 unit: 'mm',
@@ -387,15 +388,17 @@ export function DocumentsClient() {
 
             for (let i = 0; i < pages.length; i++) {
                 if (i > 0) pdf.addPage();
+                
                 const canvas = await html2canvas(pages[i] as HTMLElement, {
-                    scale: 3.0,
+                    scale: 3.5,
                     useCORS: true,
                     backgroundColor: "#ffffff",
-                    width: 794,
-                    height: 1123,
+                    width: 794, // Fixed A4 width in px at 96 DPI * scale is handled by html2canvas
+                    height: 1123, // Fixed A4 height in px at 96 DPI
                     y: 0,
                     scrollY: 0
                 });
+                
                 const imgData = canvas.toDataURL('image/png', 1.0);
                 pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
             }
@@ -405,6 +408,7 @@ export function DocumentsClient() {
             pdf.save(filename);
         }
     } catch (err) {
+        console.error("PDF Export error:", err);
         toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
         setIsPdfPreviewOpen(false);
@@ -536,7 +540,7 @@ export function DocumentsClient() {
                 <DialogTitle className="text-xl font-black uppercase tracking-tight">View Paper</DialogTitle>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'A4')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download A4</Button>
-                    {selectedDocument?.type !== 'Quotation' && (
+                    {(selectedDocument?.type === 'Receipt' || selectedDocument?.type === 'Invoice') && (
                         <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'Thermal')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download Small</Button>
                     )}
                 </div>
@@ -545,7 +549,7 @@ export function DocumentsClient() {
           <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-4 md:p-8">
             <div id="pdf-preview-target" className={cn(
                 "shrink-0 relative overflow-visible origin-top scale-[0.4] sm:scale-[0.6] md:scale-100",
-                exportType === 'Thermal' ? "w-[80mm] h-fit bg-white" : "w-[210mm] min-h-[297mm]"
+                exportType === 'Thermal' ? "w-[80mm] h-fit bg-white" : "" // A4 container is inside templates
             )}>
                 {renderPdfPreview()}
             </div>
