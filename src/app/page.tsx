@@ -499,7 +499,7 @@ export default function DashboardPage() {
       <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
         <CardHeader className="bg-muted/30 border-b py-4 px-6">
             <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-black uppercase tracking-widest">History & Paperwork</CardTitle>
+                <CardTitle className="text-sm font-black uppercase tracking-widest">Documents</CardTitle>
                 {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
             </div>
         </CardHeader>
@@ -553,4 +553,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
