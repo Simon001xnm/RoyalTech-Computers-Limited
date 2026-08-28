@@ -4,7 +4,7 @@ import type { Sale, Document as AppDocument } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, FileText, Truck, Download, Printer, Trash2 } from "lucide-react";
+import { MoreHorizontal, FileText, Truck, Download, Trash2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 
@@ -85,7 +85,7 @@ export const getSaleColumns = (actions: SaleColumnActions): ColumnDef<AppDocumen
               </DropdownMenuItem>
               {docObj.type === 'Receipt' && (
                   <DropdownMenuItem onClick={() => actions.onDownload?.(docObj, 'Thermal')} className="text-[9px] font-black text-primary h-7 rounded-sm">
-                    <Printer className="mr-2 h-3 w-3" /> Download Thermal
+                    <Download className="mr-2 h-3 w-3" /> Download Thermal
                   </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -7,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Printer, Filter } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Download, Filter } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem, User as AppUser } from "@/types";
 import {
   Table,
@@ -397,11 +396,6 @@ export function DocumentsClient() {
     onDownload: handleDownloadPdf,
     onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined,
     onGenerateDelivery: handleGenerateDeliveryNote,
-    onPrint: (d) => { 
-        setSelectedDocument(d); 
-        setIsPdfPreviewOpen(true); 
-        setTimeout(() => window.print(), 300); 
-    },
     onWhatsApp: (d) => {
         const phone = d.data?.customer?.phone || "";
         const msg = `Hello! Your ${d.type} (${d.title}) is ready. Thank you!`;
@@ -537,7 +531,7 @@ export function DocumentsClient() {
           <div className="p-4 border-t flex flex-col sm:flex-row justify-end gap-3 bg-white no-print">
             {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
             <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold w-full sm:w-auto">Close</Button>
-            <Button onClick={() => window.print()} className="font-black uppercase w-full sm:w-auto"><Printer className="mr-2 h-4 w-4" />Print Paper</Button>
+            <Button onClick={() => handleDownloadPdf(selectedDocument!, 'A4')} className="font-black uppercase w-full sm:w-auto"><Download className="mr-2 h-4 w-4" />Download PDF</Button>
           </div>
         </DialogContent>
       </Dialog>

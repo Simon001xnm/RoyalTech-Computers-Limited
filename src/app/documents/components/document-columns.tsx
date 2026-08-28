@@ -4,7 +4,7 @@ import type { Document as AppDocument, DocumentType } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Download, FileText, ListChecks, Receipt, FileWarning, Truck, FilePlus2, ShoppingCart, Printer, MessageCircle, Trash2 } from "lucide-react";
+import { Download, FileText, ListChecks, Receipt, FileWarning, Truck, FilePlus2, ShoppingCart, MessageCircle, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -13,7 +13,6 @@ export interface DocumentColumnActions {
   onView: (doc: AppDocument) => void;
   onDownload: (doc: AppDocument) => void;
   onDelete?: (doc: AppDocument) => void;
-  onPrint?: (doc: AppDocument) => void;
   onWhatsApp?: (doc: AppDocument) => void;
   onGenerateDelivery?: (doc: AppDocument) => void;
 }
@@ -99,14 +98,6 @@ export const getDocumentColumns = (actions: DocumentColumnActions): ColumnDef<Ap
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent>Share to WhatsApp</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" className="h-8 w-8 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => actions.onPrint?.(doc)}>
-                                    <Printer className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Print Document</TooltipContent>
                         </Tooltip>
                          <Tooltip>
                             <TooltipTrigger asChild>
