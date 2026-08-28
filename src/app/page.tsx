@@ -2,8 +2,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { PageHeader } from '@/components/layout/page-header';
 import { SummaryCard } from '@/components/dashboard/summary-card';
@@ -18,7 +18,10 @@ import {
     Zap,
     Calendar as CalendarIcon,
     Filter,
-    Clock
+    Clock,
+    Download,
+    Eye,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,8 +33,7 @@ import {
     startOfMonth,
     startOfWeek,
     isToday,
-    startOfYear,
-    subDays
+    startOfYear
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -51,12 +53,27 @@ import {
   type PaginationState,
 } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { InvoicePdf } from "./documents/components/pdfs/invoice-pdf";
+import { ReceiptPdf } from "./documents/components/pdfs/receipt-pdf";
+import { ProformaInvoicePdf } from "./documents/components/pdfs/proforma-pdf";
+import { QuotationPdf } from "./documents/components/pdfs/quotation-pdf";
+import { useToast } from "@/hooks/use-toast";
+import type { Document as AppDocument } from "@/types";
 
 type TimeFilter = 'today' | 'week' | 'month' | 'year' | 'custom';
+
+const TYPE_INITIALS: Record<string, string> = {
+    'Invoice': 'INV',
+    'Receipt': 'RCT',
+    'Quotation': 'QTN',
+    'Proforma': 'PRO'
+};
 
 export default function DashboardPage() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
+  const { toast } = useToast();
   
   const [filter, setFilter] = useState<TimeFilter>('month');
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -69,7 +86,12 @@ export default function DashboardPage() {
     pageSize: 10,
   });
 
-  // Client-side clock state to avoid hydration mismatch
+  // PDF Export States
+  const [isExporting, setIsExporting] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
+  const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
+
+  // Client-side clock state
   const [currentTime, setCurrentTime] = useState<string>('');
 
   useEffect(() => {
@@ -89,6 +111,7 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Data Fetching
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
@@ -104,12 +127,18 @@ export default function DashboardPage() {
     return query(collection(firestore, 'expenses'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
 
+  const docsQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'documents'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+
   const { data: sales, isLoading: salesLoading } = useCollection(salesQuery);
   const { data: assets, isLoading: stockLoading } = useCollection(stockQuery);
   const { data: expenses, isLoading: expLoading } = useCollection(expensesQuery);
+  const { data: documents, isLoading: docsLoading } = useCollection<AppDocument>(docsQuery);
 
   const stats = useMemo(() => {
-    if (!sales || !assets || !expenses) return null;
+    if (!sales || !assets || !expenses || !documents) return null;
 
     const now = new Date();
     let interval: { start: Date; end: Date };
@@ -140,6 +169,10 @@ export default function DashboardPage() {
 
     const filteredExp = expenses.filter(e => {
         try { return isWithinInterval(parseISO(e.date), interval); } catch { return false; }
+    });
+
+    const filteredDocs = documents.filter(d => {
+        try { return isWithinInterval(parseISO(d.generatedDate), interval); } catch { return false; }
     });
 
     // TOTALS
@@ -175,49 +208,121 @@ export default function DashboardPage() {
         totalDebt,
         lowStockCount: lowStock.length,
         unpaidCount: unpaidInvoices.length,
-        transactions: [...filteredSales].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()),
+        items: [...filteredDocs].sort((a,b) => parseISO(b.generatedDate).getTime() - parseISO(a.generatedDate).getTime()),
         topSelling,
         viewLabel: filter === 'custom' && dateRange?.from ? `${format(dateRange.from, 'dd MMM')} - ${format(dateRange.to || now, 'dd MMM')}` : filter.toUpperCase()
     };
-  }, [sales, assets, expenses, filter, dateRange]);
+  }, [sales, assets, expenses, documents, filter, dateRange]);
+
+  const handleDownloadPdf = async (docObj: AppDocument) => {
+    setIsExporting(true);
+    const { default: html2canvas } = await import('html2canvas');
+    const { default: jsPDF } = await import('jspdf');
+    
+    setSelectedDocument(docObj);
+    setIsPdfPreviewOpen(true);
+
+    // Small delay to allow react to render the PDF component in the hidden container
+    await new Promise(r => setTimeout(r, 800));
+
+    const element = document.getElementById('dashboard-export-target');
+    if (!element) {
+        setIsExporting(false);
+        return;
+    }
+
+    try {
+        const canvas = await html2canvas(element, { 
+            scale: 3.0, 
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            width: 794,
+            y: 0,
+            scrollY: 0
+        });
+        
+        const pdf = new jsPDF({
+            orientation: 'p',
+            unit: 'mm',
+            format: 'a4',
+        });
+
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        
+        const initials = TYPE_INITIALS[docObj.type] || 'DOC';
+        const custPrefix = (docObj.relatedTo || 'CLIENT').slice(0, 3).toUpperCase();
+        const filename = `${initials}_${custPrefix}_${format(new Date(docObj.generatedDate), 'yyyyMMdd')}.pdf`;
+        
+        pdf.save(filename);
+        toast({ title: "Document Saved" });
+    } catch (err) {
+        toast({ variant: 'destructive', title: 'Export Failed' });
+    } finally {
+        setIsPdfPreviewOpen(false);
+        setIsExporting(false);
+        setSelectedDocument(null);
+    }
+  };
 
   const columns = useMemo<ColumnDef<any>[]>(() => [
     {
-      accessorKey: "date",
+      accessorKey: "generatedDate",
       header: "Date & Time",
       cell: ({ row }) => {
-        const date = parseISO(row.original.date);
+        const date = parseISO(row.original.generatedDate);
         return (
           <div className="flex flex-col">
             <span className="text-[10px] font-bold">{format(date, 'dd MMM yyyy')}</span>
-            <span className="text-[9px] font-mono opacity-50">{format(date, 'hh:mm:ss a')}</span>
+            <span className="text-[9px] font-mono opacity-50">{format(date, 'hh:mm a')}</span>
           </div>
         );
       }
     },
     {
-      accessorKey: "customerName",
+      accessorKey: "relatedTo",
       header: "Client",
-      cell: ({ row }) => <span className="text-[10px] font-black uppercase">{row.original.customerName || 'Walk-in'}</span>
+      cell: ({ row }) => <span className="text-[10px] font-black uppercase truncate block max-w-[150px]">{row.original.relatedTo || 'Walk-in'}</span>
     },
     {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => <Badge variant={row.original.status === 'Paid' ? 'default' : 'destructive'} className="text-[8px] font-black uppercase h-4 px-2">{row.original.status}</Badge>
+      accessorKey: "type",
+      header: "Type",
+      cell: ({ row }) => {
+          const type = row.original.type;
+          return (
+            <Badge className={cn(
+                "text-[8px] font-black uppercase h-4 px-2 border-none",
+                type === 'Receipt' ? "bg-green-100 text-green-700" : (type === 'Invoice' ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700")
+            )}>
+                {type}
+            </Badge>
+          );
+      }
     },
     {
       accessorKey: "total",
-      header: () => <div className="text-right pr-6">Amount</div>,
+      header: () => <div className="text-right">Amount</div>,
       cell: ({ row }) => (
-        <div className={cn("text-right pr-6 font-black", row.original.status !== 'Paid' ? "text-red-600" : "text-primary")}>
-          {new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(Number(row.original.total) || 0)}
+        <div className="text-right font-black text-xs">
+          {new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(Number(row.original.data?.total || 0))}
         </div>
       )
+    },
+    {
+        id: "actions",
+        header: () => <div className="text-right pr-6">Action</div>,
+        cell: ({ row }) => (
+            <div className="flex justify-end pr-6 gap-2">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownloadPdf(row.original)} disabled={isExporting}>
+                    <Download className="h-3.5 w-3.5" />
+                </Button>
+            </div>
+        )
     }
-  ], []);
+  ], [isExporting]);
 
   const table = useReactTable({
-    data: stats?.transactions || [],
+    data: stats?.items || [],
     columns,
     state: {
       pagination,
@@ -231,11 +336,22 @@ export default function DashboardPage() {
       return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
   };
 
-  if (salesLoading || stockLoading || expLoading) {
+  if (salesLoading || stockLoading || expLoading || docsLoading) {
       return <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-widest">Checking Shop Records...</div>;
   }
 
   if (!stats) return null;
+
+  const renderPdfPreview = () => {
+    if (!selectedDocument) return null;
+    switch(selectedDocument.type) {
+      case 'Invoice': return <InvoicePdf document={selectedDocument} />;
+      case 'Receipt': return <ReceiptPdf document={selectedDocument} />;
+      case 'Proforma': return <ProformaInvoicePdf document={selectedDocument} />;
+      case 'Quotation': return <QuotationPdf document={selectedDocument} />;
+      default: return null;
+    }
+  };
 
   return (
     <div className="space-y-6 pb-20">
@@ -291,7 +407,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {stats.lowStockCount > 0 && (
             <Link href="/stock">
-                <Card className="border-l-4 border-l-orange-500 hover:bg-orange-50 cursor-pointer">
+                <Card className="border-l-4 border-l-orange-500 hover:bg-orange-50 cursor-pointer transition-colors">
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-orange-100 p-2.5 rounded-xl"><Package className="h-5 w-5 text-orange-600" /></div>
                         <div>
@@ -306,7 +422,7 @@ export default function DashboardPage() {
 
           {stats.unpaidCount > 0 && (
             <Link href="/receivables">
-                <Card className="border-l-4 border-l-red-500 hover:bg-red-50 cursor-pointer">
+                <Card className="border-l-4 border-l-red-500 hover:bg-red-50 cursor-pointer transition-colors">
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-red-100 p-2.5 rounded-xl"><FileWarning className="h-5 w-5 text-red-600" /></div>
                         <div>
@@ -369,7 +485,7 @@ export default function DashboardPage() {
             <CardContent className="p-0">
                 <div className="divide-y">
                     {stats.topSelling.map(([name, qty]) => (
-                        <div key={name} className="p-4 flex items-center justify-between hover:bg-muted/10">
+                        <div key={name} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
                             <p className="text-[10px] font-bold uppercase truncate max-w-[180px]">{name}</p>
                             <Badge className="font-black text-[10px] bg-black text-white">{qty} SOLD</Badge>
                         </div>
@@ -382,7 +498,10 @@ export default function DashboardPage() {
 
       <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
         <CardHeader className="bg-muted/30 border-b py-4 px-6">
-            <CardTitle className="text-sm font-black uppercase tracking-widest">Transactions History</CardTitle>
+            <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-black uppercase tracking-widest">History & Paperwork</CardTitle>
+                {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+            </div>
         </CardHeader>
         <CardContent className="p-0">
             <Table>
@@ -400,7 +519,7 @@ export default function DashboardPage() {
                 <TableBody>
                     {table.getRowModel().rows.length ? (
                         table.getRowModel().rows.map((row) => (
-                          <TableRow key={row.id} className="h-12 border-b last:border-0 hover:bg-muted/5">
+                          <TableRow key={row.id} className="h-12 border-b last:border-0 hover:bg-muted/5 transition-colors">
                             {row.getVisibleCells().map((cell) => (
                               <TableCell key={cell.id} className="py-2">
                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -411,7 +530,7 @@ export default function DashboardPage() {
                     ) : (
                         <TableRow>
                           <TableCell colSpan={columns.length} className="h-32 text-center opacity-30 text-xs font-bold uppercase italic">
-                            No transactions found for this period
+                            No documents found for this period
                           </TableCell>
                         </TableRow>
                     )}
@@ -421,9 +540,17 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
       
+      {/* Hidden PDF Render Container */}
+      <div className="fixed left-[-9999px] top-0 pointer-events-none">
+        <div id="dashboard-export-target" className="bg-white">
+             {selectedDocument && renderPdfPreview()}
+        </div>
+      </div>
+
       <div className="text-center pt-8 opacity-40">
           <p className="text-[11px] font-black tracking-widest uppercase">Matesh Version 3.26</p>
       </div>
     </div>
   );
 }
+
