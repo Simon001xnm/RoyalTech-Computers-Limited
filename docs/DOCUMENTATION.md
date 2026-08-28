@@ -34,5 +34,17 @@ To ensure the app remains fast and never "crushes" under heavy load, the followi
 3. **Edge Performance**: The app uses client-side caching. If your internet flickers, the app remains responsive and synchronizes data in the background once the connection is restored.
 4. **Serverless Architecture**: The system has no fixed server limits. It automatically allocates more computing power during busy sales periods.
 
+## Costs & Business Continuity
+
+### Is my data safe if Firestore "closes"?
+Firestore is a major Google product and is not scheduled for closure. However, the system includes **CSV Export Tools** in the Settings module. This allows you to download your entire database at any time, ensuring you are never "locked in" to one provider.
+
+### Will I be billed?
+The system operates within the **Firebase Free Tier**:
+- **50,000 Free Reads per day**: Enough for most shops.
+- **20,000 Free Writes per day**: Enough for thousands of daily sales.
+- **1GB Free Storage**: Enough for roughly 200,000+ text documents.
+Charges only apply if you manually upgrade your account and your business volume grows to an enterprise level.
+
 ## Document Generation Logic
 The `handleDownloadPdf` function takes a document object, renders the appropriate component in a hidden container, and uses `html2canvas` and `jspdf` to compile a professional A4 or Thermal file.
