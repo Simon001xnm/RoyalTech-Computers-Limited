@@ -74,7 +74,6 @@ export function DocumentsClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   
-  // Filtering States
   const [monthFilter, setMonthFilter] = useState<string>(format(new Date(), 'yyyy-MM'));
   const [isGeneratingDelivery, setIsGeneratingDelivery] = useState(false);
 
@@ -234,7 +233,6 @@ export function DocumentsClient() {
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         });
 
-        // SYNC WITH SALES TRANSACTIONS if Invoice or Receipt
         if (type === 'Invoice' || type === 'Receipt') {
             const saleRef = doc(collection(firestore, 'sales_transactions'));
             const saleStatus = type === 'Receipt' ? 'Paid' : 'Credit';
@@ -343,45 +341,69 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    await new Promise(r => setTimeout(r, 600)); 
+    await new Promise(r => setTimeout(r, 1000)); 
 
-    const element = document.getElementById('pdf-preview-target');
-    if (!element) {
-        window.scrollTo({ top: originalScrollY, behavior: 'instant' });
-        setIsExporting(false);
-        return;
-    }
+    const isThermal = type === 'Thermal';
+    const pages = document.querySelectorAll('.a4-pdf-page');
 
     try {
-        const isThermal = type === 'Thermal';
-        const canvas = await html2canvas(element, { 
-            scale: 3.0, 
-            useCORS: true,
-            backgroundColor: "#ffffff",
-            width: isThermal ? 302 : 794, 
-            y: 0,
-            scrollY: 0
-        });
-        
-        const pdf = new jsPDF({
-            orientation: 'p',
-            unit: 'mm',
-            format: isThermal ? [80, canvas.height * 0.264583 / 3.0] : 'a4',
-        });
+        if (isThermal || pages.length === 0) {
+            // SINGLE PAGE LOGIC (Thermal or simple doc)
+            const element = document.getElementById('pdf-preview-target');
+            if (!element) throw new Error("Element not found");
 
-        const imgData = canvas.toDataURL('image/png', 1.0);
-        if (isThermal) {
-            pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.0, undefined, 'FAST');
+            const canvas = await html2canvas(element, { 
+                scale: 3.0, 
+                useCORS: true,
+                backgroundColor: "#ffffff",
+                width: isThermal ? 302 : 794, 
+                y: 0,
+                scrollY: 0
+            });
+            
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'mm',
+                format: isThermal ? [80, canvas.height * 0.264583 / 3.0] : 'a4',
+            });
+
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            if (isThermal) {
+                pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.0, undefined, 'FAST');
+            } else {
+                pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+            }
+            
+            const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
+            const filename = `${initials}_${(docToDownload.relatedTo || 'CLIENT').slice(0,3).toUpperCase()}.pdf`;
+            pdf.save(filename);
         } else {
-            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+            // MULTI-PAGE LOGIC (A4 Document)
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'mm',
+                format: 'a4',
+            });
+
+            for (let i = 0; i < pages.length; i++) {
+                if (i > 0) pdf.addPage();
+                const canvas = await html2canvas(pages[i] as HTMLElement, {
+                    scale: 3.0,
+                    useCORS: true,
+                    backgroundColor: "#ffffff",
+                    width: 794,
+                    height: 1123,
+                    y: 0,
+                    scrollY: 0
+                });
+                const imgData = canvas.toDataURL('image/png', 1.0);
+                pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+            }
+
+            const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
+            const filename = `${initials}_${(docToDownload.relatedTo || 'CLIENT').slice(0,3).toUpperCase()}.pdf`;
+            pdf.save(filename);
         }
-        
-        const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
-        const custPrefix = (docToDownload.relatedTo || 'VAL').slice(0, 3).toUpperCase();
-        const now = new Date(docToDownload.generatedDate);
-        const filename = `${initials}_${custPrefix}_${format(now, 'yyyyMMdd')}.pdf`;
-        
-        pdf.save(filename);
     } catch (err) {
         toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
@@ -522,8 +544,8 @@ export function DocumentsClient() {
           </DialogHeader>
           <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-4 md:p-8">
             <div id="pdf-preview-target" className={cn(
-                "shrink-0 shadow-2xl relative bg-white overflow-hidden origin-top scale-[0.4] sm:scale-[0.6] md:scale-100",
-                exportType === 'Thermal' ? "w-[80mm] h-fit" : "w-[210mm] min-h-[297mm]"
+                "shrink-0 relative overflow-visible origin-top scale-[0.4] sm:scale-[0.6] md:scale-100",
+                exportType === 'Thermal' ? "w-[80mm] h-fit bg-white" : "w-[210mm] min-h-[297mm]"
             )}>
                 {renderPdfPreview()}
             </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -222,39 +221,49 @@ export default function DashboardPage() {
     setSelectedDocument(docObj);
     setIsPdfPreviewOpen(true);
 
-    // Small delay to allow react to render the PDF component in the hidden container
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 1200));
 
-    const element = document.getElementById('dashboard-export-target');
-    if (!element) {
-        setIsExporting(false);
-        return;
-    }
+    const pages = document.querySelectorAll('.a4-pdf-page');
 
     try {
-        const canvas = await html2canvas(element, { 
-            scale: 3.0, 
-            useCORS: true,
-            backgroundColor: "#ffffff",
-            width: 794,
-            y: 0,
-            scrollY: 0
-        });
-        
-        const pdf = new jsPDF({
-            orientation: 'p',
-            unit: 'mm',
-            format: 'a4',
-        });
+        if (pages.length === 0) {
+            const element = document.getElementById('dashboard-export-target');
+            if (!element) throw new Error("Element not found");
 
-        const imgData = canvas.toDataURL('image/png', 1.0);
-        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-        
-        const initials = TYPE_INITIALS[docObj.type] || 'DOC';
-        const custPrefix = (docObj.relatedTo || 'CLIENT').slice(0, 3).toUpperCase();
-        const filename = `${initials}_${custPrefix}_${format(new Date(docObj.generatedDate), 'yyyyMMdd')}.pdf`;
-        
-        pdf.save(filename);
+            const canvas = await html2canvas(element, { 
+                scale: 3.0, 
+                useCORS: true,
+                backgroundColor: "#ffffff",
+                width: 794,
+                y: 0,
+                scrollY: 0
+            });
+            
+            const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+            
+            const initials = TYPE_INITIALS[docObj.type] || 'DOC';
+            pdf.save(`${initials}_${(docObj.relatedTo || 'VAL').slice(0,3).toUpperCase()}.pdf`);
+        } else {
+            const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+            for (let i = 0; i < pages.length; i++) {
+                if (i > 0) pdf.addPage();
+                const canvas = await html2canvas(pages[i] as HTMLElement, {
+                    scale: 3.0,
+                    useCORS: true,
+                    backgroundColor: "#ffffff",
+                    width: 794,
+                    height: 1123,
+                    y: 0,
+                    scrollY: 0
+                });
+                const imgData = canvas.toDataURL('image/png', 1.0);
+                pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+            }
+            const initials = TYPE_INITIALS[docObj.type] || 'DOC';
+            pdf.save(`${initials}_${(docObj.relatedTo || 'VAL').slice(0,3).toUpperCase()}.pdf`);
+        }
         toast({ title: "Document Saved" });
     } catch (err) {
         toast({ variant: 'destructive', title: 'Export Failed' });
@@ -541,7 +550,7 @@ export default function DashboardPage() {
       </Card>
       
       {/* Hidden PDF Render Container */}
-      <div className="fixed left-[-9999px] top-0 pointer-events-none">
+      <div className="fixed left-[-9999px] top-0 pointer-events-none overflow-visible">
         <div id="dashboard-export-target" className="bg-white">
              {selectedDocument && renderPdfPreview()}
         </div>
