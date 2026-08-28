@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
@@ -14,7 +15,9 @@ import {
     FileWarning, 
     TrendingUp,
     Wallet,
-    Zap
+    Zap,
+    Calendar as CalendarIcon,
+    Filter
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,16 +28,31 @@ import {
     endOfDay,
     startOfMonth,
     startOfWeek,
-    isToday
+    isToday,
+    startOfYear,
+    subDays
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Button } from '@/components/ui/button';
+import type { DateRange } from 'react-day-picker';
+
+type TimeFilter = 'today' | 'week' | 'month' | 'year' | 'custom';
 
 export default function DashboardPage() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
+  
+  const [filter, setFilter] = useState<TimeFilter>('month');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: new Date()
+  });
 
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -59,52 +77,57 @@ export default function DashboardPage() {
     if (!sales || !assets || !expenses) return null;
 
     const now = new Date();
-    const monthStart = startOfMonth(now);
-    const weekStart = startOfWeek(now);
-    const monthInterval = { start: monthStart, end: endOfDay(now) };
+    let interval: { start: Date; end: Date };
 
-    // FILTERS
-    const todaysSales = sales.filter(s => {
-        try { return isToday(parseISO(s.date)); } catch { return false; }
+    switch (filter) {
+        case 'today':
+            interval = { start: new Date().setHours(0,0,0,0) as any, end: endOfDay(now) };
+            break;
+        case 'week':
+            interval = { start: startOfWeek(now), end: endOfDay(now) };
+            break;
+        case 'month':
+            interval = { start: startOfMonth(now), end: endOfDay(now) };
+            break;
+        case 'year':
+            interval = { start: startOfYear(now), end: endOfDay(now) };
+            break;
+        case 'custom':
+            interval = { start: dateRange?.from || startOfMonth(now), end: endOfDay(dateRange?.to || now) };
+            break;
+        default:
+            interval = { start: startOfMonth(now), end: endOfDay(now) };
+    }
+
+    const filteredSales = sales.filter(s => {
+        try { return isWithinInterval(parseISO(s.date), interval); } catch { return false; }
     });
 
-    const weeklySales = sales.filter(s => {
-        try { return isWithinInterval(parseISO(s.date), { start: weekStart, end: endOfDay(now) }); } catch { return false; }
+    const filteredExp = expenses.filter(e => {
+        try { return isWithinInterval(parseISO(e.date), interval); } catch { return false; }
     });
 
-    const monthlySales = sales.filter(s => {
-        try { return isWithinInterval(parseISO(s.date), monthInterval); } catch { return false; }
-    });
-
-    const monthlyExp = expenses.filter(e => {
-        try { return isWithinInterval(parseISO(e.date), monthInterval); } catch { return false; }
-    });
-
-    // TOTALS (Monthly)
-    const totalRevenue = monthlySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-    const totalCost = monthlySales.reduce((acc, s) => {
+    // TOTALS
+    const totalRevenue = filteredSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
+    const totalCost = filteredSales.reduce((acc, s) => {
         const cogs = s.items?.reduce((c: number, i: any) => c + (Number(i.buyingPrice || 0) * (Number(i.quantity) || 1)), 0) || 0;
         return acc + cogs;
     }, 0);
-    const totalExpenses = monthlyExp.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+    const totalExpenses = filteredExp.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
     
-    // PROFIT: Revenue - (Expenses + Cost)
+    // PROFIT
     const totalProfit = totalRevenue - (totalExpenses + totalCost);
 
-    // VELOCITY
-    const dailyRevenueValue = todaysSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-    const weeklyRevenueValue = weeklySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-
-    // DEBT - ALL-TIME HISTORY
+    // DEBT
     const unpaidInvoices = sales.filter(s => (Number(s.balance) || 0) > 0);
     const totalDebt = unpaidInvoices.reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
     
     // LOW STOCK
     const lowStock = assets.filter(a => Number(a.quantity) <= (Number(a.minStock) || 5));
 
-    // TOP PRODUCTS (Monthly)
+    // TOP PRODUCTS
     const productMap: Record<string, number> = {};
-    monthlySales.forEach(s => s.items?.forEach((i: any) => {
+    filteredSales.forEach(s => s.items?.forEach((i: any) => {
         const name = i.name || 'Other';
         productMap[name] = (productMap[name] || 0) + (Number(i.quantity) || 1);
     }));
@@ -115,15 +138,13 @@ export default function DashboardPage() {
         totalProfit,
         totalExpenses,
         totalDebt,
-        dailyRevenue: dailyRevenueValue,
-        weeklyRevenue: weeklyRevenueValue,
         lowStockCount: lowStock.length,
         unpaidCount: unpaidInvoices.length,
-        recent: [...todaysSales].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).slice(0, 10),
+        transactions: [...filteredSales].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()),
         topSelling,
-        viewLabel: format(now, 'MMMM yyyy')
+        viewLabel: filter === 'custom' && dateRange?.from ? `${format(dateRange.from, 'dd MMM')} - ${format(dateRange.to || now, 'dd MMM')}` : filter.toUpperCase()
     };
-  }, [sales, assets, expenses]);
+  }, [sales, assets, expenses, filter, dateRange]);
 
   const formatKes = (val: number) => {
       return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
@@ -139,7 +160,43 @@ export default function DashboardPage() {
     <div className="space-y-6 pb-20">
       <PageHeader 
         title="Main Shop Dashboard" 
-        description={`Records for ${stats.viewLabel}`}
+        description={`Analyzing records for period: ${stats.viewLabel}`}
+        actions={
+            <div className="flex items-center gap-2">
+                <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
+                    <SelectTrigger className="h-9 w-32 font-bold text-[10px] uppercase">
+                        <Filter className="h-3 w-3 mr-2" />
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="week">This Week</SelectItem>
+                        <SelectItem value="month">This Month</SelectItem>
+                        <SelectItem value="year">This Year</SelectItem>
+                        <SelectItem value="custom">Date Range</SelectItem>
+                    </SelectContent>
+                </Select>
+                {filter === 'custom' && (
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold">
+                                <CalendarIcon className="h-3 w-3 mr-2" />
+                                Custom Range
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="end">
+                            <Calendar
+                                mode="range"
+                                selected={dateRange}
+                                onSelect={setDateRange}
+                                initialFocus
+                                numberOfMonths={2}
+                            />
+                        </PopoverContent>
+                    </Popover>
+                )}
+            </div>
+        }
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -175,10 +232,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <SummaryCard title="Monthly Sales" value={formatKes(stats.totalRevenue)} icon={DollarSign} description="Total money in this month" />
-          <SummaryCard title="Monthly Profit" value={formatKes(stats.totalProfit)} icon={TrendingUp} description="Money left after expenses and costs" />
-          <SummaryCard title="Monthly Expenses" value={formatKes(stats.totalExpenses)} icon={Wallet} className="border-l-4 border-l-red-500" description="Shop spend this month" />
-          <SummaryCard title="Total Money Owed" value={formatKes(stats.totalDebt)} icon={FileWarning} description="All money pending from clients" />
+          <SummaryCard title="Period Revenue" value={formatKes(stats.totalRevenue)} icon={DollarSign} description="Total money in" />
+          <SummaryCard title="Period Profit" value={formatKes(stats.totalProfit)} icon={TrendingUp} description="Money left after costs" />
+          <SummaryCard title="Period Expenses" value={formatKes(stats.totalExpenses)} icon={Wallet} className="border-l-4 border-l-red-500" description="Shop spend" />
+          <SummaryCard title="Total Money Owed" value={formatKes(stats.totalDebt)} icon={FileWarning} description="Historical pending payments" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -186,39 +243,39 @@ export default function DashboardPage() {
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
                 <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
                     <Zap className="h-3 w-3 text-primary" />
-                    Sales Progress
+                    Performance Breakdown
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
                 <div className="space-y-2">
                     <div className="flex justify-between text-[9px] font-black uppercase">
-                        <span>Today</span>
-                        <span className="text-primary">{formatKes(stats.dailyRevenue)}</span>
+                        <span>Revenue</span>
+                        <span className="text-primary">{formatKes(stats.totalRevenue)}</span>
                     </div>
-                    <Progress value={Math.min(100, (stats.dailyRevenue / (stats.weeklyRevenue / 7 || 1)) * 100)} className="h-2" />
+                    <Progress value={100} className="h-2" />
                 </div>
                 
                 <div className="space-y-2">
                     <div className="flex justify-between text-[9px] font-black uppercase">
-                        <span>This Week</span>
-                        <span className="text-blue-600">{formatKes(stats.weeklyRevenue)}</span>
+                        <span>Costs & Expenses</span>
+                        <span className="text-red-600">{formatKes(stats.totalRevenue - stats.totalProfit)}</span>
                     </div>
-                    <Progress value={Math.min(100, (stats.weeklyRevenue / (stats.totalRevenue / 4 || 1)) * 100)} className="h-2 bg-blue-50" />
+                    <Progress value={Math.min(100, ((stats.totalRevenue - stats.totalProfit) / (stats.totalRevenue || 1)) * 100)} className="h-2 bg-red-50" />
                 </div>
 
                 <div className="space-y-2">
                     <div className="flex justify-between text-[9px] font-black uppercase">
-                        <span>This Month</span>
-                        <span className="text-green-600">{formatKes(stats.totalRevenue)}</span>
+                        <span>Net Margin</span>
+                        <span className="text-green-600">{((stats.totalProfit / (stats.totalRevenue || 1)) * 100).toFixed(1)}%</span>
                     </div>
-                    <Progress value={100} className="h-2 bg-green-50" />
+                    <Progress value={Math.max(0, (stats.totalProfit / (stats.totalRevenue || 1)) * 100)} className="h-2 bg-green-50" />
                 </div>
             </CardContent>
           </Card>
 
           <Card className="shadow-md border-none ring-1 ring-black/5 bg-white">
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest">Popular Items (Monthly)</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest">Popular Items (Selected Period)</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
                 <div className="divide-y">
@@ -228,7 +285,7 @@ export default function DashboardPage() {
                             <Badge className="font-black text-[10px] bg-black text-white">{qty} SOLD</Badge>
                         </div>
                     ))}
-                    {stats.topSelling.length === 0 && <div className="p-12 text-center opacity-30 text-xs font-bold uppercase italic">No items sold yet</div>}
+                    {stats.topSelling.length === 0 && <div className="p-12 text-center opacity-30 text-xs font-bold uppercase italic">No items sold in this period</div>}
                 </div>
             </CardContent>
           </Card>
@@ -236,22 +293,27 @@ export default function DashboardPage() {
 
       <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
         <CardHeader className="bg-muted/30 border-b py-4 px-6">
-            <CardTitle className="text-sm font-black uppercase tracking-widest">Today's Transactions</CardTitle>
+            <CardTitle className="text-sm font-black uppercase tracking-widest">Transactions History</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
             <Table>
                 <TableHeader className="bg-muted/20">
                     <TableRow>
-                        <TableHead className="text-[10px] font-black uppercase pl-6">Time</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase pl-6">Date & Time</TableHead>
                         <TableHead className="text-[10px] font-black uppercase">Client</TableHead>
                         <TableHead className="text-[10px] font-black uppercase">Status</TableHead>
                         <TableHead className="text-[10px] font-black uppercase text-right pr-6">Amount</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {stats.recent.map(sale => (
+                    {stats.transactions.slice(0, 50).map(sale => (
                         <TableRow key={sale.id} className="h-12 border-b last:border-0 hover:bg-muted/5">
-                            <TableCell className="pl-6"><span className="text-[10px] font-mono opacity-50">{format(parseISO(sale.date), 'HH:mm')}</span></TableCell>
+                            <TableCell className="pl-6">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-bold">{format(parseISO(sale.date), 'dd MMM yyyy')}</span>
+                                    <span className="text-[9px] font-mono opacity-50">{format(parseISO(sale.date), 'HH:mm')}</span>
+                                </div>
+                            </TableCell>
                             <TableCell><span className="text-[10px] font-black uppercase">{sale.customerName || 'Walk-in'}</span></TableCell>
                             <TableCell><Badge variant={sale.status === 'Paid' ? 'default' : 'destructive'} className="text-[8px] font-black uppercase h-4 px-2">{sale.status}</Badge></TableCell>
                             <TableCell className={cn("text-right pr-6 font-black", sale.status !== 'Paid' ? "text-red-600" : "text-primary")}>
@@ -259,9 +321,14 @@ export default function DashboardPage() {
                             </TableCell>
                         </TableRow>
                     ))}
-                    {stats.recent.length === 0 && <TableRow><TableCell colSpan={4} className="h-32 text-center opacity-30 text-xs font-bold uppercase italic">No sales recorded today</TableCell></TableRow>}
+                    {stats.transactions.length === 0 && <TableRow><TableCell colSpan={4} className="h-32 text-center opacity-30 text-xs font-bold uppercase italic">No transactions found for this period</TableCell></TableRow>}
                 </TableBody>
             </Table>
+            {stats.transactions.length > 50 && (
+                <div className="p-4 text-center border-t">
+                    <p className="text-[10px] font-bold text-muted-foreground italic">Showing first 50 results. Use the reports module for full data.</p>
+                </div>
+            )}
         </CardContent>
       </Card>
       

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -17,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, addDoc, doc, getDocs, deleteDoc, writeBatch } from "firebase/firestore";
+import { collection, query, where, addDoc, doc, getDocs, deleteDoc, writeBatch, setDoc } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -217,18 +218,50 @@ export function DocumentsClient() {
     documentData.vat = vat;
     documentData.total = subtotal + vat;
 
+    const timestamp = new Date().toISOString();
+
     try {
-        await addDoc(collection(firestore, 'documents'), {
+        const batch = writeBatch(firestore);
+        const docRef = doc(collection(firestore, 'documents'));
+        
+        batch.set(docRef, {
             tenantId: tenant.id,
             type: type,
             title: docTitle,
-            generatedDate: new Date().toISOString(),
+            generatedDate: timestamp,
             relatedTo: relatedTo,
             data: documentData,
-            createdAt: new Date().toISOString(),
+            createdAt: timestamp,
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         });
-        toast({ title: "Paperwork Saved" });
+
+        // SYNC WITH SALES TRANSACTIONS if Invoice or Receipt
+        if (type === 'Invoice' || type === 'Receipt') {
+            const saleRef = doc(collection(firestore, 'sales_transactions'));
+            const saleStatus = type === 'Receipt' ? 'Paid' : 'Credit';
+            
+            batch.set(saleRef, {
+                id: saleRef.id,
+                documentId: docRef.id,
+                tenantId: tenant.id,
+                date: timestamp,
+                customerId: selectedCustomerId || 'walk-in',
+                customerName: relatedTo,
+                items: validLineItems.map(i => ({ ...i, type: 'custom', id: crypto.randomUUID(), productId: 'custom', total: i.quantity * i.unitPrice, sellingPrice: i.unitPrice })),
+                subtotal,
+                vatAmount: vat,
+                total: subtotal + vat,
+                amountPaid: type === 'Receipt' ? (subtotal + vat) : 0,
+                balance: type === 'Receipt' ? 0 : (subtotal + vat),
+                status: saleStatus,
+                paymentMethod: type === 'Receipt' ? 'Cash' : 'Credit',
+                createdAt: timestamp,
+                createdBy: { uid: user.uid, name: user.displayName || 'User' }
+            });
+        }
+
+        await batch.commit();
+        toast({ title: "Paperwork Saved & Synced" });
         setSelectedCustomerId('');
         setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
     } catch (error: any) {
@@ -588,7 +621,7 @@ export function DocumentsClient() {
         </CardContent>
         <CardFooter className="bg-muted/10 border-t py-4">
             <Button onClick={() => handleGenerateDocument(type)} className="w-full sm:w-auto ml-auto font-black uppercase" disabled={docsLoading}>
-                Save and Save to Internet
+                Save and Sync Dashboard
             </Button>
         </CardFooter>
       </Card>
