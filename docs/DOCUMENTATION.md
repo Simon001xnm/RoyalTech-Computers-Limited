@@ -36,6 +36,12 @@ To ensure the app remains fast and never "crushes" under heavy load, the followi
 
 ## Costs & Business Continuity
 
+### Why Cloud instead of Peer-to-Peer (P2P)?
+While P2P storage sounds attractive because it has no central server, it is highly risky for a business:
+- **Data Loss**: In P2P, if your device fails, your data is gone. In the Cloud, your data is backed up by Google.
+- **Availability**: Cloud data is available 24/7. P2P data is only available when your specific device is online.
+- **Cost**: The Cloud "Free Tier" covers up to 50,000 daily actions at $0 cost, making it as affordable as P2P but much safer.
+
 ### Is my data safe if Firestore "closes"?
 Firestore is a major Google product and is not scheduled for closure. However, the system includes **CSV Export Tools** in the Settings module. This allows you to download your entire database at any time, ensuring you are never "locked in" to one provider.
 
