@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
@@ -17,7 +17,8 @@ import {
     Wallet,
     Zap,
     Calendar as CalendarIcon,
-    Filter
+    Filter,
+    Clock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +54,24 @@ export default function DashboardPage() {
     from: startOfMonth(new Date()),
     to: new Date()
   });
+
+  // Client-side clock state to avoid hydration mismatch
+  const [currentTime, setCurrentTime] = useState<string>('');
+
+  useEffect(() => {
+    const updateTime = () => {
+        const now = new Date();
+        setCurrentTime(now.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit',
+            hour12: true 
+        }));
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -162,39 +181,47 @@ export default function DashboardPage() {
         title="Main Shop Dashboard" 
         description={`Analyzing records for period: ${stats.viewLabel}`}
         actions={
-            <div className="flex items-center gap-2">
-                <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
-                    <SelectTrigger className="h-9 w-32 font-bold text-[10px] uppercase">
-                        <Filter className="h-3 w-3 mr-2" />
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="today">Today</SelectItem>
-                        <SelectItem value="week">This Week</SelectItem>
-                        <SelectItem value="month">This Month</SelectItem>
-                        <SelectItem value="year">This Year</SelectItem>
-                        <SelectItem value="custom">Date Range</SelectItem>
-                    </SelectContent>
-                </Select>
-                {filter === 'custom' && (
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold">
-                                <CalendarIcon className="h-3 w-3 mr-2" />
-                                Custom Range
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="end">
-                            <Calendar
-                                mode="range"
-                                selected={dateRange}
-                                onSelect={setDateRange}
-                                initialFocus
-                                numberOfMonths={2}
-                            />
-                        </PopoverContent>
-                    </Popover>
+            <div className="flex items-center gap-3">
+                {currentTime && (
+                    <div className="hidden lg:flex items-center gap-2 px-4 py-1.5 bg-primary/5 rounded-xl border border-primary/20 font-mono text-[11px] font-black uppercase tracking-widest text-primary shadow-sm">
+                        <Clock className="h-3 w-3" />
+                        {currentTime}
+                    </div>
                 )}
+                <div className="flex items-center gap-2">
+                    <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
+                        <SelectTrigger className="h-9 w-32 font-bold text-[10px] uppercase">
+                            <Filter className="h-3 w-3 mr-2" />
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="today">Today</SelectItem>
+                            <SelectItem value="week">This Week</SelectItem>
+                            <SelectItem value="month">This Month</SelectItem>
+                            <SelectItem value="year">This Year</SelectItem>
+                            <SelectItem value="custom">Date Range</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    {filter === 'custom' && (
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold">
+                                    <CalendarIcon className="h-3 w-3 mr-2" />
+                                    Custom Range
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="end">
+                                <Calendar
+                                    mode="range"
+                                    selected={dateRange}
+                                    onSelect={setDateRange}
+                                    initialFocus
+                                    numberOfMonths={2}
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    )}
+                </div>
             </div>
         }
       />
