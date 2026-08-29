@@ -35,6 +35,15 @@ import { CustomerStatementPdf } from '@/app/documents/components/pdfs/customer-s
 import { useToast } from '@/hooks/use-toast';
 import type { Sale, Customer } from '@/types';
 import { SummaryCard } from '@/components/dashboard/summary-card';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type PaginationState,
+} from "@tanstack/react-table";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 export function ReceivablesClient() {
   const { tenant } = useSaaS();
@@ -50,7 +59,11 @@ export function ReceivablesClient() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
-  // FETCH ALL SALES - Permanent history to track all-time debt
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
@@ -69,12 +82,15 @@ export function ReceivablesClient() {
   );
   const { data: company } = useDoc(companyRef);
 
+  const formatKes = (val: number) => {
+    return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
+  };
+
   const debtors = useMemo(() => {
     if (!sales || !customers) return [];
     
     const debtorMap: Record<string, { customer: Customer; sales: Sale[]; totalBalance: number; totalPaid: number; totalInvoiced: number }> = {};
 
-    // Grouping all transactions by customer to get total account status across all time
     sales.forEach(sale => {
         if (!debtorMap[sale.customerId]) {
             const customer = customers.find(c => c.id === sale.customerId);
@@ -106,6 +122,59 @@ export function ReceivablesClient() {
     );
   }, [debtors, searchTerm]);
 
+  const columns = useMemo<ColumnDef<any>[]>(() => [
+    {
+        accessorKey: "customer.name",
+        header: "Client Details",
+        cell: ({ row }) => (
+            <div className="flex items-center gap-3">
+                <div className="bg-primary/5 p-2 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">
+                    <User className="h-4 w-4" />
+                </div>
+                <div>
+                    <p className="font-black uppercase text-xs tracking-tight">{row.original.customer.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{row.original.customer.alias || row.original.customer.email}</p>
+                </div>
+            </div>
+        )
+    },
+    {
+        id: "status",
+        header: "Status",
+        cell: ({ row }) => (
+            <Badge variant={row.original.totalBalance > 0 ? "destructive" : "default"} className="text-[8px] font-black uppercase border-none px-2 h-4">
+                {row.original.totalBalance > 0 ? "Pending" : "Fully Paid"}
+            </Badge>
+        )
+    },
+    {
+        accessorKey: "totalInvoiced",
+        header: () => <div className="text-right">Lifetime Sales</div>,
+        cell: ({ row }) => <div className="text-right text-xs font-bold opacity-60">{formatKes(row.original.totalInvoiced)}</div>
+    },
+    {
+        accessorKey: "totalBalance",
+        header: () => <div className="text-right pr-6">Money Owed</div>,
+        cell: ({ row }) => (
+            <div className="flex items-center justify-end gap-3">
+                <span className={row.original.totalBalance > 0 ? "font-black text-red-600" : "font-black text-green-600"}>
+                    {formatKes(row.original.totalBalance)}
+                </span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </div>
+        )
+    }
+  ], []);
+
+  const table = useReactTable({
+    data: filteredDebtors,
+    columns,
+    state: { pagination },
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
   const selectedAccount = useMemo(() => {
     if (!selectedCustomerId) return null;
     return debtors.find(d => d.customer.id === selectedCustomerId);
@@ -133,7 +202,6 @@ export function ReceivablesClient() {
             recordedBy: { uid: user.uid, name: user.displayName }
         });
 
-        // Deduct from oldest unpaid sales first
         const unpaidSales = [...selectedAccount.sales]
             .filter(s => (Number(s.balance) || 0) > 0)
             .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
@@ -153,7 +221,7 @@ export function ReceivablesClient() {
             remainingToDeduct -= deduct;
         }
 
-        toast({ title: "Payment Recorded", description: `Updated customer balance.` });
+        toast({ title: "Payment Recorded" });
         setIsPaymentDialogOpen(false);
         setPaymentAmount("");
     } catch (e: any) {
@@ -183,31 +251,27 @@ export function ReceivablesClient() {
     }
   };
 
-  const formatKes = (val: number) => {
-    return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
-  };
-
   return (
     <div className="space-y-6 pb-20">
       <PageHeader 
         title="Money Customers Owe" 
-        description="A list of everyone who has not finished paying for items, even from a long time ago."
+        description="Browse accounts with pending balances and track payments."
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <SummaryCard title="Total Money Owed" value={formatKes(totalOutstanding)} icon={Wallet} trend={`${debtors.filter(d => d.totalBalance > 0).length} people owe money`} />
-          <SummaryCard title="Total Money Collected" value={formatKes(totalMoneyCollected)} icon={TrendingDown} description="Total payments received to date" />
-          <SummaryCard title="Registered Clients" value={debtors.length} icon={User} description="Total people on your list" />
+          <SummaryCard title="Total Money Owed" value={formatKes(totalOutstanding)} icon={Wallet} trend={`${debtors.filter(d => d.totalBalance > 0).length} debtors active`} />
+          <SummaryCard title="Total Money Collected" value={formatKes(totalMoneyCollected)} icon={TrendingDown} description="Total lifetime collections" />
+          <SummaryCard title="Registered Clients" value={debtors.length} icon={User} description="Total shop accounts" />
       </div>
 
       <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
         <CardHeader className="bg-muted/10 py-4 px-6 border-b">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <CardTitle className="text-sm font-black uppercase tracking-widest">List of Money Owed</CardTitle>
+                <CardTitle className="text-sm font-black uppercase tracking-widest">Client Ledger</CardTitle>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                        placeholder="Search by name..." 
+                        placeholder="Filter list..." 
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                         className="pl-10 h-10 w-64 bg-white"
@@ -217,56 +281,47 @@ export function ReceivablesClient() {
         </CardHeader>
         <CardContent className="p-0">
             {salesLoading ? (
-                <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground">Checking Records...</div>
+                <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground">Checking records...</div>
             ) : (
-                <Table>
-                    <TableHeader className="bg-muted/30">
-                        <TableRow>
-                            <TableHead className="text-[10px] font-black uppercase pl-6 py-4">Client Details</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase">Payment Status</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase text-right">Lifetime Sales</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase text-right pr-6">Money Owed</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredDebtors.map(debtor => (
-                            <TableRow 
-                                key={debtor.customer.id} 
-                                className="hover:bg-muted/10 cursor-pointer group transition-colors"
-                                onClick={() => setSelectedCustomerId(debtor.customer.id)}
-                            >
-                                <TableCell className="pl-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-primary/5 p-2 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">
-                                            <User className="h-4 w-4" />
-                                        </div>
-                                        <div>
-                                            <p className="font-black uppercase text-xs tracking-tight">{debtor.customer.name}</p>
-                                            <p className="text-[10px] text-muted-foreground">{debtor.customer.alias || debtor.customer.email}</p>
-                                        </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant={debtor.totalBalance > 0 ? "destructive" : "default"} className="text-[8px] font-black uppercase border-none px-2 h-4">
-                                        {debtor.totalBalance > 0 ? "Pending" : "Fully Paid"}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell className="text-right text-xs font-bold opacity-60">{formatKes(debtor.totalInvoiced)}</TableCell>
-                                <TableCell className="text-right pr-6">
-                                    <div className="flex items-center justify-end gap-3">
-                                        <span className={debtor.totalBalance > 0 ? "font-black text-red-600" : "font-black text-green-600"}>
-                                            {formatKes(debtor.totalBalance)}
-                                        </span>
-                                        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                        {filteredDebtors.length === 0 && (
-                             <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic text-xs uppercase font-bold opacity-30">No records found</TableCell></TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                <>
+                    <Table>
+                        <TableHeader className="bg-muted/30">
+                            {table.getHeaderGroups().map(hg => (
+                                <TableRow key={hg.id}>
+                                    {hg.headers.map(h => (
+                                        <TableHead key={h.id} className="text-[10px] font-black uppercase py-4">
+                                            {flexRender(h.column.columnDef.header, h.getContext())}
+                                        </TableHead>
+                                    ))}
+                                </TableRow>
+                            ))}
+                        </TableHeader>
+                        <TableBody>
+                            {table.getRowModel().rows.length ? (
+                                table.getRowModel().rows.map(row => (
+                                    <TableRow 
+                                        key={row.id} 
+                                        className="hover:bg-muted/10 cursor-pointer group transition-colors"
+                                        onClick={() => setSelectedCustomerId(row.original.customer.id)}
+                                    >
+                                        {row.getVisibleCells().map(cell => (
+                                            <TableCell key={cell.id} className="py-4">
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic text-xs font-bold opacity-30 uppercase">
+                                        No records found
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                    <DataTablePagination table={table} />
+                </>
             )}
         </CardContent>
       </Card>
@@ -279,7 +334,7 @@ export function ReceivablesClient() {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
                                 <SheetTitle className="text-2xl font-black uppercase tracking-tighter">{selectedAccount.customer.name}</SheetTitle>
-                                <SheetDescription className="font-bold text-[10px] uppercase tracking-widest text-primary mt-1">Permanent Account Records</SheetDescription>
+                                <SheetDescription className="font-bold text-[10px] uppercase tracking-widest text-primary mt-1">Permanent Ledger history</SheetDescription>
                             </div>
                             <div className="flex gap-2">
                                 <Button variant="outline" onClick={() => handleDownloadStatement(selectedAccount)} disabled={isExporting} className="h-12 px-6 font-black uppercase text-[10px] tracking-widest border-2">
@@ -295,7 +350,7 @@ export function ReceivablesClient() {
                     <div className="flex-grow overflow-y-auto p-8 space-y-8 bg-card/50">
                         <div className="grid grid-cols-3 gap-4">
                             <div className="bg-white p-6 rounded-2xl ring-1 ring-black/5 shadow-sm text-center">
-                                <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Lifetime Total</p>
+                                <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Lifetime</p>
                                 <p className="text-xl font-black">{formatKes(selectedAccount.totalInvoiced)}</p>
                             </div>
                             <div className="bg-white p-6 rounded-2xl ring-1 ring-black/5 shadow-sm text-center">
@@ -303,14 +358,14 @@ export function ReceivablesClient() {
                                 <p className="text-xl font-black text-green-700">{formatKes(selectedAccount.totalPaid)}</p>
                             </div>
                             <div className="bg-red-50 p-6 rounded-2xl ring-1 ring-red-100 shadow-sm text-center border-b-4 border-red-500">
-                                <p className="text-[10px] font-black uppercase text-red-600 mb-1">Money Still Owed</p>
+                                <p className="text-[10px] font-black uppercase text-red-600 mb-1">Owed</p>
                                 <p className="text-xl font-black text-red-700">{formatKes(selectedAccount.totalBalance)}</p>
                             </div>
                         </div>
 
                         <div className="space-y-4">
                             <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                                <History className="h-4 w-4 text-primary" /> Sale History
+                                <History className="h-4 w-4 text-primary" /> Sales Archive
                             </h3>
                             <div className="space-y-4">
                                 {selectedAccount.sales.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).map(sale => {
@@ -319,16 +374,16 @@ export function ReceivablesClient() {
                                         <Card key={sale.id} className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
                                             <CardHeader className="bg-muted/20 py-3 px-5 border-b">
                                                 <div className="flex justify-between items-center">
-                                                    <Badge variant="outline" className="text-[8px] font-mono h-5 uppercase">DATE: {format(parseISO(sale.date), "dd MMM yyyy")}</Badge>
+                                                    <Badge variant="outline" className="text-[8px] font-mono h-5 uppercase">REF: {sale.id.slice(0,8)}</Badge>
                                                     <Badge className={bal > 0 ? "bg-red-100 text-red-700 border-none text-[8px] font-black uppercase h-5" : "bg-green-100 text-green-700 border-none text-[8px] font-black uppercase h-5"}>
-                                                        {bal > 0 ? `OWES: ${formatKes(bal)}` : "FULLY PAID"}
+                                                        {bal > 0 ? `BAL: ${formatKes(bal)}` : "PAID"}
                                                     </Badge>
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="p-4 bg-white">
                                                 <div className="flex justify-between items-center text-xs font-bold">
-                                                    <span className="truncate max-w-[200px]">Items: {sale.items?.map(i => i.name).join(", ")}</span>
-                                                    <span className="text-green-600">Paid: {formatKes(Number(sale.amountPaid) || 0)}</span>
+                                                    <span className="truncate max-w-[200px]">{format(parseISO(sale.date), "dd MMM yyyy")}</span>
+                                                    <span className="text-green-600">Collected: {formatKes(Number(sale.amountPaid) || 0)}</span>
                                                 </div>
                                             </CardContent>
                                         </Card>
@@ -346,16 +401,16 @@ export function ReceivablesClient() {
           <DialogContent className="sm:max-w-md border-none shadow-2xl">
               <DialogHeader>
                   <DialogTitle className="text-xl font-black uppercase">Record Payment</DialogTitle>
-                  <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">Update Customer Balance</DialogDescription>
+                  <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">Updating Ledger balance</DialogDescription>
               </DialogHeader>
               <div className="py-6 space-y-4">
                   <div className="space-y-2">
-                      <p className="text-[10px] font-black uppercase text-muted-foreground">Amount Received (KES)</p>
+                      <p className="text-[10px] font-black uppercase text-muted-foreground">Amount (KES)</p>
                       <Input 
                         type="number" 
                         value={paymentAmount} 
                         onChange={e => setPaymentAmount(e.target.value)} 
-                        placeholder="e.g. 5000" 
+                        placeholder="0.00" 
                         className="h-14 text-2xl font-black border-2 border-primary"
                         autoFocus
                       />

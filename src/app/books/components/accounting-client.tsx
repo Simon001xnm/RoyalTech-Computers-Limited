@@ -12,11 +12,19 @@ import { collection, query, where } from 'firebase/firestore';
 import { format, parseISO } from 'date-fns';
 import { TransactionForm } from './transaction-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
-import { Badge } from '@/components/ui/badge';
 import { useSaaS } from '@/components/saas/saas-provider';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type PaginationState,
+} from "@tanstack/react-table";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 /**
- * @fileOverview Monthly Expense Feed
+ * @fileOverview Monthly Expense Feed with Pagination
  * Shows all money spent by the shop for the current month.
  */
 export function AccountingClient() {
@@ -24,6 +32,10 @@ export function AccountingClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const expensesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -58,12 +70,48 @@ export function AccountingClient() {
     }).format(amount);
   };
 
+  const columns = useMemo<ColumnDef<any>[]>(() => [
+    {
+        accessorKey: "date",
+        header: "Date & Time",
+        cell: ({ row }) => (
+            <span className="text-[10px] font-bold text-muted-foreground">
+                {format(parseISO(row.original.date), 'dd MMM, HH:mm')}
+            </span>
+        )
+    },
+    {
+        accessorKey: "category",
+        header: "Category",
+        cell: ({ row }) => <span className="font-black uppercase text-[10px] tracking-tight">{row.original.category}</span>
+    },
+    {
+        accessorKey: "notes",
+        header: "Notes",
+        cell: ({ row }) => <span className="text-[10px] text-muted-foreground max-w-[250px] truncate">{row.original.notes || '—'}</span>
+    },
+    {
+        accessorKey: "amount",
+        header: () => <div className="text-right pr-6">Amount</div>,
+        cell: ({ row }) => <div className="text-right pr-6 font-black text-red-600">{formatCurrency(row.original.amount)}</div>
+    }
+  ], []);
+
+  const table = useReactTable({
+    data: currentMonthExpenses,
+    columns,
+    state: { pagination },
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-6">
         <PageHeader title="Money Spent" description="Checking records..." />
         <div className="flex items-center justify-center h-64">
-           <p className="text-muted-foreground animate-pulse font-black uppercase text-[10px] tracking-widest">Checking list...</p>
+           <p className="text-muted-foreground animate-pulse font-black uppercase text-[10px] tracking-widest">Syncing expense list...</p>
         </div>
       </div>
     );
@@ -73,7 +121,7 @@ export function AccountingClient() {
     <div className="space-y-6 pb-20">
       <PageHeader
         title="Money Spent (This Month)"
-        description={`List of money spent for ${format(new Date(), 'MMMM yyyy')}`}
+        description={`Analyzing spend for ${format(new Date(), 'MMMM yyyy')}`}
         actionLabel="Record New Spend"
         onAction={() => setIsFormOpen(true)}
         ActionIcon={PlusCircle}
@@ -90,13 +138,13 @@ export function AccountingClient() {
             title="Categories" 
             value={categoryCount} 
             icon={Wallet} 
-            description="Different types of spending" 
+            description="Active expense types" 
         />
         <SummaryCard 
-            title="Current Month" 
+            title="Period" 
             value={format(new Date(), 'MMMM')} 
             icon={CalendarIcon} 
-            description="Records for this month" 
+            description="Filtered by current month" 
         />
       </div>
 
@@ -104,48 +152,46 @@ export function AccountingClient() {
         <CardHeader className="bg-muted/10 border-b py-4">
             <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-red-600">
                 <ReceiptText className="h-4 w-4" />
-                Monthly Spending List
+                Expenditure Ledger
             </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader className="bg-muted/30">
-                <TableRow>
-                    <TableHead className="text-[10px] font-black uppercase pl-6 py-4">Date</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase">Category</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase">Notes</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-right pr-6">Amount</TableHead>
-                </TableRow>
+                {table.getHeaderGroups().map(hg => (
+                    <TableRow key={hg.id}>
+                        {hg.headers.map(h => (
+                            <TableHead key={h.id} className="text-[10px] font-black uppercase py-4">
+                                {flexRender(h.column.columnDef.header, h.getContext())}
+                            </TableHead>
+                        ))}
+                    </TableRow>
+                ))}
             </TableHeader>
             <TableBody>
-              {currentMonthExpenses.map(e => (
-                <TableRow key={e.id} className="hover:bg-muted/5 transition-colors h-14 border-b last:border-0">
-                  <TableCell className="pl-6 text-[10px] font-bold text-muted-foreground">
-                    {format(parseISO(e.date), 'dd MMM, HH:mm')}
-                  </TableCell>
-                  <TableCell className="font-black uppercase text-[10px] tracking-tight">
-                    {e.category}
-                  </TableCell>
-                  <TableCell className="text-[10px] text-muted-foreground max-w-[250px] truncate">
-                    {e.notes || '—'}
-                  </TableCell>
-                  <TableCell className="text-right pr-6 font-black text-red-600">
-                    {formatCurrency(e.amount)}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {currentMonthExpenses.length === 0 && (
+              {table.getRowModel().rows.length ? (
+                table.getRowModel().rows.map(row => (
+                  <TableRow key={row.id} className="hover:bg-muted/5 transition-colors h-14 border-b last:border-0">
+                    {row.getVisibleCells().map(cell => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="h-40 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground opacity-30">
                         <ReceiptText className="h-12 w-12" />
-                        <p className="text-xs font-black uppercase tracking-widest">No spending records found for this month.</p>
+                        <p className="text-xs font-black uppercase tracking-widest">No spending records found.</p>
                     </div>
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
+          <DataTablePagination table={table} />
         </CardContent>
       </Card>
 
