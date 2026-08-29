@@ -16,7 +16,8 @@ import {
     TrendingDown, 
     User,
     Loader2,
-    DollarSign
+    DollarSign,
+    ArrowUpDown
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -30,7 +31,7 @@ import {
   DialogDescription, 
   DialogFooter 
 } from '@/components/ui/dialog';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isAfter } from 'date-fns';
 import { CustomerStatementPdf } from '@/app/documents/components/pdfs/customer-statement-pdf';
 import { useToast } from '@/hooks/use-toast';
 import type { Sale, Customer } from '@/types';
@@ -39,9 +40,11 @@ import {
   useReactTable,
   getCoreRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
   flexRender,
   type ColumnDef,
   type PaginationState,
+  type SortingState,
 } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
@@ -63,6 +66,9 @@ export function ReceivablesClient() {
     pageIndex: 0,
     pageSize: 10,
   });
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "totalBalance", desc: true }
+  ]);
 
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -89,7 +95,14 @@ export function ReceivablesClient() {
   const debtors = useMemo(() => {
     if (!sales || !customers) return [];
     
-    const debtorMap: Record<string, { customer: Customer; sales: Sale[]; totalBalance: number; totalPaid: number; totalInvoiced: number }> = {};
+    const debtorMap: Record<string, { 
+        customer: Customer; 
+        sales: Sale[]; 
+        totalBalance: number; 
+        totalPaid: number; 
+        totalInvoiced: number;
+        lastModified: string;
+    }> = {};
 
     sales.forEach(sale => {
         if (!debtorMap[sale.customerId]) {
@@ -100,7 +113,8 @@ export function ReceivablesClient() {
                     sales: [],
                     totalBalance: 0,
                     totalPaid: 0,
-                    totalInvoiced: 0
+                    totalInvoiced: 0,
+                    lastModified: sale.updatedAt || sale.date || sale.createdAt || new Date().toISOString()
                 };
             }
         }
@@ -109,10 +123,15 @@ export function ReceivablesClient() {
             debtorMap[sale.customerId].totalBalance += (Number(sale.balance) || 0);
             debtorMap[sale.customerId].totalPaid += (Number(sale.amountPaid) || 0);
             debtorMap[sale.customerId].totalInvoiced += (Number(sale.total) || 0);
+            
+            const saleDate = sale.updatedAt || sale.date || sale.createdAt;
+            if (saleDate && isAfter(parseISO(saleDate), parseISO(debtorMap[sale.customerId].lastModified))) {
+                debtorMap[sale.customerId].lastModified = saleDate;
+            }
         }
     });
 
-    return Object.values(debtorMap).sort((a, b) => b.totalBalance - a.totalBalance);
+    return Object.values(debtorMap);
   }, [sales, customers]);
 
   const filteredDebtors = useMemo(() => {
@@ -125,7 +144,12 @@ export function ReceivablesClient() {
   const columns = useMemo<ColumnDef<any>[]>(() => [
     {
         accessorKey: "customer.name",
-        header: "Client Details",
+        header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:bg-transparent p-0 font-black uppercase text-[10px]">
+                Client Details
+                <ArrowUpDown className="ml-2 h-3 w-3" />
+            </Button>
+        ),
         cell: ({ row }) => (
             <div className="flex items-center gap-3">
                 <div className="bg-primary/5 p-2 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">
@@ -148,19 +172,36 @@ export function ReceivablesClient() {
         )
     },
     {
+        accessorKey: "lastModified",
+        header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:bg-transparent p-0 font-black uppercase text-[10px]">
+                Last Updated
+                <ArrowUpDown className="ml-2 h-3 w-3" />
+            </Button>
+        ),
+        cell: ({ row }) => <span className="text-[10px] font-bold text-muted-foreground">{format(parseISO(row.original.lastModified), "dd MMM yyyy")}</span>
+    },
+    {
         accessorKey: "totalInvoiced",
-        header: () => <div className="text-right">Lifetime Sales</div>,
+        header: () => <div className="text-right font-black uppercase text-[10px]">Lifetime Sales</div>,
         cell: ({ row }) => <div className="text-right text-xs font-bold opacity-60">{formatKes(row.original.totalInvoiced)}</div>
     },
     {
         accessorKey: "totalBalance",
-        header: () => <div className="text-right pr-6">Money Owed</div>,
+        header: ({ column }) => (
+            <div className="text-right">
+                <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:bg-transparent p-0 font-black uppercase text-[10px]">
+                    Money Owed
+                    <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+            </div>
+        ),
         cell: ({ row }) => (
             <div className="flex items-center justify-end gap-3">
-                <span className={row.original.totalBalance > 0 ? "font-black text-red-600" : "font-black text-green-600"}>
+                <span className={row.original.totalBalance > 0 ? "font-black text-red-600 text-sm" : "font-black text-green-600 text-sm"}>
                     {formatKes(row.original.totalBalance)}
                 </span>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-20" />
             </div>
         )
     }
@@ -169,10 +210,12 @@ export function ReceivablesClient() {
   const table = useReactTable({
     data: filteredDebtors,
     columns,
-    state: { pagination },
+    state: { pagination, sorting },
     onPaginationChange: setPagination,
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
   const selectedAccount = useMemo(() => {
@@ -271,7 +314,7 @@ export function ReceivablesClient() {
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                        placeholder="Filter list..." 
+                        placeholder="Search name or alias..." 
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                         className="pl-10 h-10 w-64 bg-white"
@@ -289,7 +332,7 @@ export function ReceivablesClient() {
                             {table.getHeaderGroups().map(hg => (
                                 <TableRow key={hg.id}>
                                     {hg.headers.map(h => (
-                                        <TableHead key={h.id} className="text-[10px] font-black uppercase py-4">
+                                        <TableHead key={h.id} className="p-0">
                                             {flexRender(h.column.columnDef.header, h.getContext())}
                                         </TableHead>
                                     ))}
