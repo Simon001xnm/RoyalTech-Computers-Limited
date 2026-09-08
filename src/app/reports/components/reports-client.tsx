@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -140,7 +139,10 @@ export function ReportsClient() {
     const { default: jsPDF } = await import('jspdf');
 
     const pages = document.querySelectorAll('.a4-pdf-page');
-    if (!pages.length) return;
+    if (!pages.length) {
+        toast({ variant: 'destructive', title: "No pages found to export." });
+        return;
+    }
 
     setIsExporting(true);
 
@@ -154,13 +156,14 @@ export function ReportsClient() {
         for (let i = 0; i < pages.length; i++) {
             if (i > 0) pdf.addPage();
             
-            // INDUSTRIAL ASPECT LOCK: strictly 794px width (A4 standard)
+            // INDUSTRIAL CAPTURE: STRICT A4 ASPECT LOCK (794px width)
             const canvas = await html2canvas(pages[i] as HTMLElement, {
                 scale: 3.5, 
                 useCORS: true,
                 backgroundColor: "#ffffff",
                 width: 794, 
                 height: 1123, 
+                x: 0,
                 y: 0,
                 scrollY: 0,
                 windowWidth: 794
@@ -170,10 +173,10 @@ export function ReportsClient() {
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
         }
 
-        pdf.save(`Profit_Loss_Statement_${format(new Date(), 'yyyyMMdd')}.pdf`);
-        toast({ title: "Report Saved" });
+        pdf.save(`Profit_Loss_Report_${format(new Date(), 'yyyyMMdd')}.pdf`);
+        toast({ title: "Report Saved Successfully" });
     } catch (error) {
-        console.error("PDF Capture Error:", error);
+        console.error("PDF Export Error:", error);
         toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
         setIsExporting(false);
@@ -220,7 +223,7 @@ export function ReportsClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Shop Profit Reports" description="Check how much money your shop is making." />
+      <PageHeader title="Shop Profit Reports" description="High-fidelity financial auditing for your workspace." />
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-8">
           <div className="space-y-6 min-w-0">
@@ -233,10 +236,10 @@ export function ReportsClient() {
                 </CardHeader>
                 <CardContent className="pt-6 flex flex-wrap items-center gap-6">
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase opacity-60">Pick Dates</Label>
+                        <Label className="text-[10px] font-black uppercase opacity-60">Reporting Interval</Label>
                         <Popover>
                             <PopoverTrigger asChild>
-                            <Button variant={'outline'} className={cn('w-full sm:w-[280px] justify-start text-left font-normal h-11 bg-white', !date && 'text-muted-foreground')}>
+                            <Button variant={'outline'} className={cn('w-full sm:w-[280px] justify-start text-left font-normal h-11 bg-white border-2', !date && 'text-muted-foreground')}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {date?.from ? (date.to ? <>{format(date.from, 'LLL dd, y')} - {format(date.to, 'LLL dd, y')}</> : format(date.from, 'LLL dd, y')) : <span>Pick a date range</span>}
                             </Button>
@@ -245,25 +248,23 @@ export function ReportsClient() {
                         </Popover>
                     </div>
 
-                    <div className="flex gap-3 mt-auto w-full sm:w-auto">
-                        <Button onClick={handleDownloadPdf} disabled={isLoading || isExportingInternal} className="flex-1 sm:flex-none h-11 px-6 font-black uppercase text-[10px] tracking-widest shadow-lg">
-                            {isExportingInternal ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />} Download PDF
+                    <div className="flex gap-3 mt-auto w-full sm:w-auto pt-4 md:pt-0">
+                        <Button onClick={handleDownloadPdf} disabled={isLoading || isExportingInternal} className="flex-1 sm:flex-none h-11 px-8 font-black uppercase text-[10px] tracking-widest shadow-xl">
+                            {isExportingInternal ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />} Download Auditor PDF
                         </Button>
                     </div>
                 </CardContent>
             </Card>
 
             {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                <div className="flex flex-col items-center justify-center py-24 opacity-20">
                     <Loader2 className="h-12 w-12 animate-spin mb-4 text-primary" />
-                    <p className="font-black uppercase tracking-widest text-[10px]">Calculating Profit...</p>
+                    <p className="font-black uppercase tracking-widest text-[10px]">Processing Transaction Ledger...</p>
                 </div>
             ) : (
-                <div className="flex justify-center bg-muted/20 p-4 md:p-8 rounded-2xl border-2 border-dashed overflow-x-auto">
-                    <div className="shrink-0 origin-top transform scale-[0.4] sm:scale-[0.6] lg:scale-[0.75] xl:scale-[0.85] 2xl:scale-100">
-                        <div id="pnl-report-container" className="relative flex flex-col gap-8">
-                            <PnlReport data={pnlData} dateRange={date} />
-                        </div>
+                <div className="flex justify-center bg-slate-100 rounded-3xl border-2 border-dashed p-4 md:p-12 overflow-x-auto no-scrollbar">
+                    <div className="shrink-0 origin-top transform scale-[0.4] sm:scale-[0.55] lg:scale-[0.7] xl:scale-[0.8] 2xl:scale-100">
+                        <PnlReport data={pnlData} dateRange={date} />
                     </div>
                 </div>
             )}
@@ -277,19 +278,19 @@ export function ReportsClient() {
                             <FileSpreadsheet className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                            <CardTitle className="text-sm font-black uppercase tracking-widest">Raw Data Backup</CardTitle>
-                            <CardDescription className="text-white/70 text-[10px] uppercase font-bold mt-1">Download specific record lists</CardDescription>
+                            <CardTitle className="text-sm font-black uppercase tracking-widest">Excel Export</CardTitle>
+                            <CardDescription className="text-white/70 text-[10px] uppercase font-bold mt-1">Download raw row-level data</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Document Type</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Source Module</Label>
                             <Select value={docTypeFilter} onValueChange={(v: any) => setDocTypeFilter(v)}>
                                 <SelectTrigger className="h-11 font-bold bg-muted/30 border-none"><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Paperwork</SelectItem>
+                                    <SelectItem value="all">All Documents</SelectItem>
                                     <SelectItem value="Receipt">Receipts Only</SelectItem>
                                     <SelectItem value="Invoice">Invoices Only</SelectItem>
                                 </SelectContent>
@@ -297,31 +298,31 @@ export function ReportsClient() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">VAT Status</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Tax Compliance</Label>
                             <Select value={vatFilter} onValueChange={(v: any) => setVatFilter(v)}>
                                 <SelectTrigger className="h-11 font-bold bg-muted/30 border-none"><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Combined (VAT + No VAT)</SelectItem>
-                                    <SelectItem value="with-vat">With VAT Only</SelectItem>
-                                    <SelectItem value="no-vat">Without VAT Only</SelectItem>
+                                    <SelectItem value="all">Mixed (VAT & Non-VAT)</SelectItem>
+                                    <SelectItem value="with-vat">VAT Registered Only</SelectItem>
+                                    <SelectItem value="no-vat">Non-VAT Records</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
 
                     <Button onClick={handleDownloadDetailedCsv} disabled={isLoading} variant="outline" className="w-full h-14 border-2 border-primary text-primary font-black uppercase text-[10px] tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm">
-                        <Download className="mr-2 h-4 w-4" /> Download Detailed CSV
+                        <Download className="mr-2 h-4 w-4" /> Download Raw CSV
                     </Button>
                 </CardContent>
             </Card>
 
             <Card className="border-none ring-1 ring-black/5 shadow-sm bg-muted/30">
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-[10px] font-black uppercase text-primary tracking-widest">Reporting Tip</CardTitle>
+                    <CardTitle className="text-[10px] font-black uppercase text-primary tracking-widest">Auditor Tip</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <p className="text-[11px] font-medium leading-relaxed text-muted-foreground">
-                        The summary page provides a bird's-eye view, while the audit statement pages track every single cent back to the original client record.
+                        The PDF report generated here is paginated to strict A4 standards. It includes a summarized summary on Page 1 and a complete audit ledger on Page 2 onwards for transparent verification.
                     </p>
                 </CardContent>
             </Card>
