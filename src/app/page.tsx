@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -196,16 +195,7 @@ export default function DashboardPage() {
         if (pages.length === 0) {
             const element = document.getElementById('dashboard-export-target');
             if (!element) throw new Error("Element not found");
-
-            // INDUSTRIAL ASPECT LOCK: 794px width fixed
-            const canvas = await html2canvas(element, { 
-                scale: 3.5, 
-                useCORS: true,
-                backgroundColor: "#ffffff",
-                width: 794,
-                y: 0, scrollY: 0, windowWidth: 794
-            });
-            
+            const canvas = await html2canvas(element, { scale: 3.5, useCORS: true, backgroundColor: "#ffffff", width: 794 });
             const imgData = canvas.toDataURL('image/png', 1.0);
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
         } else {

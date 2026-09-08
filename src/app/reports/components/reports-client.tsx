@@ -49,7 +49,7 @@ export function ReportsClient() {
 
   const [vatFilter, setVatFilter] = useState<'all' | 'with-vat' | 'no-vat'>('all');
   const [docTypeFilter, setDocTypeFilter] = useState<'all' | 'Receipt' | 'Invoice'>('all');
-  const [isExportingInternal, setIsExporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -156,14 +156,13 @@ export function ReportsClient() {
         for (let i = 0; i < pages.length; i++) {
             if (i > 0) pdf.addPage();
             
-            // INDUSTRIAL CAPTURE: STRICT A4 ASPECT LOCK (794px width)
+            // Capture each A4 page at 794px width (standard DPI-aware capture)
             const canvas = await html2canvas(pages[i] as HTMLElement, {
                 scale: 3.5, 
                 useCORS: true,
                 backgroundColor: "#ffffff",
                 width: 794, 
                 height: 1123, 
-                x: 0,
                 y: 0,
                 scrollY: 0,
                 windowWidth: 794
@@ -249,8 +248,8 @@ export function ReportsClient() {
                     </div>
 
                     <div className="flex gap-3 mt-auto w-full sm:w-auto pt-4 md:pt-0">
-                        <Button onClick={handleDownloadPdf} disabled={isLoading || isExportingInternal} className="flex-1 sm:flex-none h-11 px-8 font-black uppercase text-[10px] tracking-widest shadow-xl">
-                            {isExportingInternal ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />} Download Auditor PDF
+                        <Button onClick={handleDownloadPdf} disabled={isLoading || isExporting} className="flex-1 sm:flex-none h-11 px-8 font-black uppercase text-[10px] tracking-widest shadow-xl">
+                            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />} Download Auditor PDF
                         </Button>
                     </div>
                 </CardContent>

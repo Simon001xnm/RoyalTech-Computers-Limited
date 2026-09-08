@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, addDoc, doc, getDocs, deleteDoc, writeBatch, setDoc } from "firebase/firestore";
+import { collection, query, where, addDoc, doc, getDocs, deleteDoc, writeBatch } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -281,32 +281,38 @@ export function DocumentsClient() {
     const isThermal = type === 'Thermal';
 
     try {
-        const element = document.getElementById('pdf-preview-target');
-        if (!element) throw new Error("Element not found");
-
-        const canvas = await html2canvas(element, { 
-            scale: 3.5, 
-            useCORS: true,
-            backgroundColor: "#ffffff",
-            width: isThermal ? 302 : 794, 
-            height: isThermal ? element.offsetHeight * 3.5 : 1123,
-            y: 0,
-            scrollY: 0,
-            windowWidth: isThermal ? 302 : 794 
-        });
-        
+        const pages = document.querySelectorAll('.a4-pdf-page');
         const pdf = new jsPDF({
             orientation: 'p',
             unit: 'mm',
-            format: isThermal ? [80, canvas.height * 0.264583 / 3.5] : 'a4',
+            format: isThermal ? [80, 297] : 'a4',
         });
 
-        const imgData = canvas.toDataURL('image/png', 1.0);
-        if (isThermal) {
-            pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.5, undefined, 'FAST');
+        if (pages.length === 0) {
+            // Fallback if not paginated
+            const element = document.getElementById('pdf-preview-target');
+            if (!element) throw new Error("Element not found");
+            const canvas = await html2canvas(element, { scale: 3.5, useCORS: true, backgroundColor: "#ffffff", width: isThermal ? 302 : 794 });
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            if (isThermal) pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.5);
+            else pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
         } else {
-            // STRICT 1-PAGE FORCE: Add image to fill exactly one A4 page
-            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+            // Process every A4 page
+            for (let i = 0; i < pages.length; i++) {
+                if (i > 0) pdf.addPage();
+                const canvas = await html2canvas(pages[i] as HTMLElement, {
+                    scale: 3.5,
+                    useCORS: true,
+                    backgroundColor: "#ffffff",
+                    width: 794,
+                    height: 1123,
+                    y: 0,
+                    scrollY: 0,
+                    windowWidth: 794
+                });
+                const imgData = canvas.toDataURL('image/png', 1.0);
+                pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+            }
         }
         
         const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
@@ -324,7 +330,6 @@ export function DocumentsClient() {
     onView: (d) => { setExportType('A4'); setSelectedDocument(d); setIsPdfPreviewOpen(true); }, 
     onDownload: handleDownloadPdf,
     onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined,
-    onGenerateDelivery: (d) => { /* Reuse logic if needed */ },
     onWhatsApp: (d) => {
         const phone = d.data?.customer?.phone || "";
         const msg = `Hello! Your ${d.type} (${d.title}) is ready. Thank you!`;
