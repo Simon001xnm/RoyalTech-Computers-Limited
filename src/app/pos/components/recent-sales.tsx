@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -30,10 +31,6 @@ const TYPE_INITIALS: Record<string, string> = {
     'Quotation': 'QTN'
 };
 
-/**
- * @fileOverview List of Sales for POS
- * Strictly isolates Today's transactions.
- */
 export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const { toast } = useToast();
     const { tenant } = useSaaS();
@@ -65,13 +62,10 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
 
     const filteredDocs = useMemo(() => {
         if (!rawDocs) return [];
-        
         const todayStr = format(new Date(), 'yyyy-MM-dd');
 
         let results = rawDocs.filter(d => {
-            try { 
-                return format(parseISO(d.generatedDate), 'yyyy-MM-dd') === todayStr; 
-            } catch { return false; }
+            try { return format(parseISO(d.generatedDate), 'yyyy-MM-dd') === todayStr; } catch { return false; }
         }).sort((a, b) => {
             const dateA = a.generatedDate ? new Date(a.generatedDate).getTime() : 0;
             const dateB = b.generatedDate ? new Date(b.generatedDate).getTime() : 0;
@@ -84,7 +78,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
                 (d.title || '').toLowerCase().includes(searchTerm.toLowerCase())
             );
         }
-
         return results;
     }, [rawDocs, searchTerm]);
     
@@ -102,13 +95,13 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             if (!element) throw new Error("Export target not found");
 
             const isThermal = type === 'Thermal';
+            // INDUSTRIAL ASPECT LOCK: 794px width fixed
             const canvas = await html2canvas(element, { 
                 scale: 3.5, 
                 useCORS: true,
                 backgroundColor: "#ffffff",
                 width: isThermal ? 302 : 794,
-                y: 0,
-                scrollY: 0
+                y: 0, scrollY: 0, windowWidth: isThermal ? 302 : 794
             });
             
             const pdf = new jsPDF({ 
@@ -125,15 +118,7 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             }
             
             const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
-            const custPrefix = (docToDownload.relatedTo || 'VAL').slice(0, 3).toUpperCase();
-            const now = new Date(docToDownload.generatedDate);
-            const year = now.getFullYear();
-            const day = now.getDate().toString().padStart(2, '0');
-            const month = (now.getMonth() + 1).toString().padStart(2, '0');
-            const suffix = isThermal ? '_TH' : '';
-            const filename = `${initials} ${custPrefix}-${year}${day}${month}${suffix}.pdf`;
-
-            pdf.save(filename);
+            pdf.save(`${initials}_${(docToDownload.relatedTo || 'VAL').slice(0, 3).toUpperCase()}.pdf`);
             toast({ title: "Document Saved" });
         } catch (e) {
             toast({ variant: 'destructive', title: "Export Failed" });
@@ -152,130 +137,47 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
     const handleDeleteSale = async () => {
         if (!docToDelete || !tenant || !isAdmin) return;
         setIsDeleting(true);
-
         try {
             const batch = writeBatch(firestore);
             batch.delete(doc(firestore, 'documents', docToDelete.id));
-
             const salesRef = collection(firestore, 'sales_transactions');
             const q = query(salesRef, where('tenantId', '==', tenant.id), where('documentId', '==', docToDelete.id));
             const salesSnap = await getDocs(q);
             salesSnap.forEach(s => batch.delete(doc(firestore, 'sales_transactions', s.id)));
-
             await batch.commit();
             toast({ title: "Transaction Purged" });
             setDocToDelete(null);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: "Delete Failed", description: e.message });
+            toast({ variant: 'destructive', title: "Delete Failed" });
         } finally {
             setIsDeleting(false);
         }
     };
 
-    const saleColumnActions: SaleColumnActions = { 
-        onView: onViewReceipt,
-        onWhatsApp: handleShareWhatsApp,
-        onDownload: handleDownloadPdf,
-        onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined 
-    };
+    const saleColumnActions: SaleColumnActions = { onView: onViewReceipt, onWhatsApp: handleShareWhatsApp, onDownload: handleDownloadPdf, onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined };
     const saleColumns = useMemo<ColumnDef<AppDocument>[]>(() => getSaleColumns(saleColumnActions), [saleColumnActions]);
-    
-    const salesTable = useReactTable({
-        data: filteredDocs,
-        columns: saleColumns,
-        state: { pagination },
-        onPaginationChange: setPagination,
-        getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-    });
+    const salesTable = useReactTable({ data: filteredDocs, columns: saleColumns, state: { pagination }, onPaginationChange: setPagination, getCoreRowModel: getCoreRowModel(), getPaginationRowModel: getPaginationRowModel() });
 
     return (
         <Card className="shadow-xl border-none overflow-hidden ring-1 ring-black/5 bg-white w-full">
-            <CardHeader className="bg-muted/10 py-4 px-6 border-b">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <CardTitle className="text-sm font-black uppercase tracking-widest">Today's Sales List</CardTitle>
-                    <div className="flex flex-wrap items-center gap-3">
-                        {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-                        <div className="relative">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                            <Input 
-                                placeholder="Search records..." 
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-8 h-9 text-xs w-40 bg-white"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </CardHeader>
+            <CardHeader className="bg-muted/10 py-4 px-6 border-b"><div className="flex flex-col md:flex-row md:items-center justify-between gap-4"><CardTitle className="text-sm font-black uppercase tracking-widest">Today's Sales List</CardTitle><div className="flex flex-wrap items-center gap-3">{isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}<div className="relative"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" /><Input placeholder="Search records..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-8 h-9 text-xs w-40 bg-white" /></div></div></div></CardHeader>
             <CardContent className="p-0">
-                {isLoading ? (
-                    <div className="p-12 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Checking Today's List...</div>
-                ) : (
+                {isLoading ? (<div className="p-12 text-center text-muted-foreground animate-pulse text-[10px] font-black uppercase tracking-widest">Checking Today's List...</div>) : (
                     <div className="w-full">
                         <Table>
-                            <TableHeader className="bg-muted/50">
-                                {salesTable.getHeaderGroups().map(hg => (
-                                    <TableRow key={hg.id}>
-                                        {hg.headers.map(header => (
-                                            <TableHead key={header.id} className="text-[10px] font-black uppercase py-4">
-                                                {flexRender(header.column.columnDef.header, header.getContext())}
-                                            </TableHead>
-                                        ))}
-                                    </TableRow>
-                                ))}
-                            </TableHeader>
-                            <TableBody>
-                                {salesTable.getRowModel().rows.length ? (
-                                    salesTable.getRowModel().rows.map(row => (
-                                        <TableRow key={row.id} className="hover:bg-muted/10">
-                                            {row.getVisibleCells().map(cell => (
-                                                <TableCell key={cell.id} className="py-3">
-                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                </TableCell>
-                                            ))}
-                                        </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={saleColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">
-                                            No transactions processed today.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
+                            <TableHeader className="bg-muted/50">{salesTable.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(header => (<TableHead key={header.id} className="text-[10px] font-black uppercase py-4">{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
+                            <TableBody>{salesTable.getRowModel().rows.length ? (salesTable.getRowModel().rows.map(row => (<TableRow key={row.id} className="hover:bg-muted/10">{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-3">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))) : (<TableRow><TableCell colSpan={saleColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">No transactions processed today.</TableCell></TableRow>)}</TableBody>
                         </Table>
                         <DataTablePagination table={salesTable} />
                     </div>
                 )}
-                
                 <div className="fixed left-[-9999px] top-0 pointer-events-none overflow-visible">
                     <div id="recent-sale-export-target" className="bg-white inline-block h-fit" style={{ width: exportType === 'Thermal' ? '80mm' : '210mm' }}>
-                        {exportDoc && (
-                            exportType === 'Thermal' 
-                            ? <ThermalReceiptPdf document={exportDoc} /> 
-                            : <ReceiptPdf document={exportDoc} />
-                        )}
+                        {exportDoc && (exportType === 'Thermal' ? <ThermalReceiptPdf document={exportDoc} /> : <ReceiptPdf document={exportDoc} />)}
                     </div>
                 </div>
             </CardContent>
-
-            <Dialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-black uppercase tracking-tight text-destructive">Confirm Void Transaction</DialogTitle>
-                        <DialogDescription className="font-medium text-base pt-2">
-                            This will permanently remove <strong>{docToDelete?.title}</strong> and its financial record. Your dashboard metrics will be adjusted accordingly.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="gap-2 mt-4">
-                        <Button variant="outline" onClick={() => setDocToDelete(null)} disabled={isDeleting} className="font-bold">Cancel</Button>
-                        <Button variant="destructive" onClick={handleDeleteSale} disabled={isDeleting} className="font-black uppercase tracking-widest">
-                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Void Transaction"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <Dialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle className="text-xl font-black uppercase tracking-tight text-destructive">Confirm Void Transaction</DialogTitle><DialogDescription className="font-medium text-base pt-2">This will permanently remove <strong>{docToDelete?.title}</strong> and its financial record.</DialogDescription></DialogHeader><DialogFooter className="gap-2 mt-4"><Button variant="outline" onClick={() => setDocToDelete(null)} disabled={isDeleting} className="font-bold">Cancel</Button><Button variant="destructive" onClick={handleDeleteSale} disabled={isDeleting} className="font-black uppercase tracking-widest">{isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Void Transaction"}</Button></DialogFooter></DialogContent></Dialog>
         </Card>
     );
 }

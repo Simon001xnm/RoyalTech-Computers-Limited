@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -332,10 +333,6 @@ export function DocumentsClient() {
     setIsExporting(true);
     setExportType(type);
     
-    // Ensure capture starts from top to avoid offsets
-    const originalScrollY = window.scrollY;
-    window.scrollTo({ top: 0, behavior: 'instant' });
-
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
     
@@ -353,36 +350,34 @@ export function DocumentsClient() {
             const element = document.getElementById('pdf-preview-target');
             if (!element) throw new Error("Element not found");
 
-            // For single-page or thermal, preserve ratio based on element size
+            // INDUSTRIAL SCALING: Lock width to standard A4 (794px for 96dpi) to prevent stretching
             const canvas = await html2canvas(element, { 
-                scale: 3, 
+                scale: 3.5, 
                 useCORS: true,
                 backgroundColor: "#ffffff",
-                width: isThermal ? 302 : undefined, // 80mm
+                width: isThermal ? 302 : 794, 
                 y: 0,
                 scrollY: 0,
-                // Critical: Ignore browser scaling for consistent dimensions
-                windowWidth: isThermal ? 302 : undefined
+                windowWidth: isThermal ? 302 : 794 
             });
             
             const pdf = new jsPDF({
                 orientation: 'p',
                 unit: 'mm',
-                format: isThermal ? [80, canvas.height * 0.264583 / 3] : 'a4',
+                format: isThermal ? [80, canvas.height * 0.264583 / 3.5] : 'a4',
             });
 
             const imgData = canvas.toDataURL('image/png', 1.0);
             if (isThermal) {
-                pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3, undefined, 'FAST');
+                pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.5, undefined, 'FAST');
             } else {
-                // Perfect A4 fit to avoid stretching
                 pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
             }
             
             const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
             pdf.save(`${initials}_${(docToDownload.relatedTo || 'VAL').slice(0,3).toUpperCase()}.pdf`);
         } else {
-            // MULTI-PAGE LOGIC
+            // MULTI-PAGE HIGH FIDELITY LOGIC
             const pdf = new jsPDF({
                 orientation: 'p',
                 unit: 'mm',
@@ -393,13 +388,14 @@ export function DocumentsClient() {
                 if (i > 0) pdf.addPage();
                 
                 const canvas = await html2canvas(pages[i] as HTMLElement, {
-                    scale: 3,
+                    scale: 3.5,
                     useCORS: true,
                     backgroundColor: "#ffffff",
-                    width: 794, // Fixed A4 width at 96 DPI
-                    height: 1123, // Fixed A4 height at 96 DPI
+                    width: 794, 
+                    height: 1123, 
                     y: 0,
-                    scrollY: 0
+                    scrollY: 0,
+                    windowWidth: 794
                 });
                 
                 const imgData = canvas.toDataURL('image/png', 1.0);
@@ -415,7 +411,6 @@ export function DocumentsClient() {
     } finally {
         setIsPdfPreviewOpen(false);
         setIsExporting(false);
-        window.scrollTo({ top: originalScrollY, behavior: 'instant' });
     }
   };
 

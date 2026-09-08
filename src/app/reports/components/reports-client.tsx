@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -33,7 +34,6 @@ export interface PnlData {
   };
   grossProfit: number;
   netIncome: number;
-  // Detailed lists for the statement page
   sales: any[];
   expenses: any[];
 }
@@ -135,51 +135,6 @@ export function ReportsClient() {
     };
   }, [filteredData]);
 
-  const handleDownloadDetailedCsv = () => {
-    if (!rawDocs) return;
-
-    let itemsToExport = rawDocs.filter(d => {
-        if (!date?.from || !date?.to) return true;
-        try {
-            return isWithinInterval(parseISO(d.generatedDate), { start: date.from, end: date.to });
-        } catch { return false; }
-    });
-
-    if (docTypeFilter !== 'all') {
-        itemsToExport = itemsToExport.filter(d => d.type === docTypeFilter);
-    }
-
-    if (vatFilter !== 'all') {
-        itemsToExport = itemsToExport.filter(d => {
-            const hasVat = d.data?.applyVat === true || (Number(d.data?.vatAmount) || 0) > 0;
-            return vatFilter === 'with-vat' ? hasVat : !hasVat;
-        });
-    }
-
-    const mapping = {
-        generatedDate: 'Date',
-        title: 'Document Number',
-        type: 'Type',
-        relatedTo: 'Customer',
-        'data.total': 'Total Value',
-        'data.vatAmount': 'VAT Amount',
-        'data.subtotal': 'Subtotal',
-        'data.applyVat': 'Has VAT'
-    };
-
-    const flattened = itemsToExport.map(d => ({
-        ...d,
-        generatedDate: format(parseISO(d.generatedDate), 'yyyy-MM-dd HH:mm'),
-        'data.total': d.data?.total || 0,
-        'data.vatAmount': d.data?.vatAmount || 0,
-        'data.subtotal': d.data?.subtotal || 0,
-        'data.applyVat': d.data?.applyVat ? 'Yes' : 'No'
-    }));
-
-    exportToCsv(`Detailed_Analysis_${format(new Date(), 'yyyyMMdd')}.csv`, flattened, mapping);
-    toast({ title: "Analysis Downloaded" });
-  };
-
   const handleDownloadPdf = async () => {
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
@@ -199,14 +154,16 @@ export function ReportsClient() {
         for (let i = 0; i < pages.length; i++) {
             if (i > 0) pdf.addPage();
             
+            // INDUSTRIAL ASPECT LOCK: strictly 794px width (A4 standard)
             const canvas = await html2canvas(pages[i] as HTMLElement, {
-                scale: 3.5, // High resolution
+                scale: 3.5, 
                 useCORS: true,
                 backgroundColor: "#ffffff",
-                width: 794, // Fixed A4 width at 96 DPI
-                height: 1123, // Fixed A4 height at 96 DPI
+                width: 794, 
+                height: 1123, 
                 y: 0,
-                scrollY: 0
+                scrollY: 0,
+                windowWidth: 794
             });
             
             const imgData = canvas.toDataURL('image/png', 1.0);
@@ -221,6 +178,44 @@ export function ReportsClient() {
     } finally {
         setIsExporting(false);
     }
+  };
+
+  const handleDownloadDetailedCsv = () => {
+    if (!rawDocs) return;
+
+    let itemsToExport = rawDocs.filter(d => {
+        if (!date?.from || !date?.to) return true;
+        try {
+            return isWithinInterval(parseISO(d.generatedDate), { start: date.from, end: date.to });
+        } catch { return false; }
+    });
+
+    if (docTypeFilter !== 'all') itemsToExport = itemsToExport.filter(d => d.type === docTypeFilter);
+    if (vatFilter !== 'all') {
+        itemsToExport = itemsToExport.filter(d => {
+            const hasVat = d.data?.applyVat === true || (Number(d.data?.vatAmount) || 0) > 0;
+            return vatFilter === 'with-vat' ? hasVat : !hasVat;
+        });
+    }
+
+    const mapping = {
+        generatedDate: 'Date',
+        title: 'Document Number',
+        type: 'Type',
+        relatedTo: 'Customer',
+        'data.total': 'Total Value',
+        'data.vatAmount': 'VAT Amount'
+    };
+
+    const flattened = itemsToExport.map(d => ({
+        ...d,
+        generatedDate: format(parseISO(d.generatedDate), 'yyyy-MM-dd HH:mm'),
+        'data.total': d.data?.total || 0,
+        'data.vatAmount': d.data?.vatAmount || 0
+    }));
+
+    exportToCsv(`Detailed_Analysis_${format(new Date(), 'yyyyMMdd')}.csv`, flattened, mapping);
+    toast({ title: "Analysis Downloaded" });
   };
 
   return (
@@ -282,9 +277,7 @@ export function ReportsClient() {
                             <FileSpreadsheet className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                            <CardTitle className="text-sm font-black uppercase tracking-widest">
-                                Raw Data Backup
-                            </CardTitle>
+                            <CardTitle className="text-sm font-black uppercase tracking-widest">Raw Data Backup</CardTitle>
                             <CardDescription className="text-white/70 text-[10px] uppercase font-bold mt-1">Download specific record lists</CardDescription>
                         </div>
                     </div>
@@ -316,12 +309,7 @@ export function ReportsClient() {
                         </div>
                     </div>
 
-                    <Button 
-                        onClick={handleDownloadDetailedCsv} 
-                        disabled={isLoading}
-                        variant="outline"
-                        className="w-full h-14 border-2 border-primary text-primary font-black uppercase text-[10px] tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm"
-                    >
+                    <Button onClick={handleDownloadDetailedCsv} disabled={isLoading} variant="outline" className="w-full h-14 border-2 border-primary text-primary font-black uppercase text-[10px] tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm">
                         <Download className="mr-2 h-4 w-4" /> Download Detailed CSV
                     </Button>
                 </CardContent>
