@@ -33,6 +33,9 @@ export interface PnlData {
   };
   grossProfit: number;
   netIncome: number;
+  // Detailed lists for the statement page
+  sales: any[];
+  expenses: any[];
 }
 
 export function ReportsClient() {
@@ -74,11 +77,11 @@ export function ReportsClient() {
     
     const filteredSales = rawSales.filter(s => {
         try { return isWithinInterval(parseISO(s.date), interval); } catch { return false; }
-    });
+    }).sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
     
     const filteredExpenses = rawExpenses.filter(e => {
         try { return isWithinInterval(parseISO(e.date), interval); } catch { return false; }
-    });
+    }).sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
 
     return { filteredSales, filteredExpenses };
   }, [rawSales, rawExpenses, date]);
@@ -126,6 +129,8 @@ export function ReportsClient() {
       operatingExpenses: { totalExpenses, expenseByCategory },
       grossProfit,
       netIncome,
+      sales: filteredSales,
+      expenses: filteredExpenses
     };
   }, [filteredData]);
 
@@ -178,46 +183,46 @@ export function ReportsClient() {
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
 
-    const reportElement = document.getElementById('pnl-report');
-    if (!reportElement) return;
+    const pages = document.querySelectorAll('.a4-pdf-page');
+    if (!pages.length) return;
+
+    setIsExporting(true);
 
     try {
-        // Use a fixed width for A4 at 96 DPI to ensure perfect aspect ratio
-        const canvas = await html2canvas(reportElement, { 
-            scale: 2.5, 
-            useCORS: true, 
-            backgroundColor: '#ffffff',
-            width: 794 // 210mm at 96 DPI
+        const pdf = new jsPDF({
+            orientation: 'p',
+            unit: 'mm',
+            format: 'a4',
         });
 
-        const imgData = canvas.toDataURL('image/png', 1.0);
-        const imgWidth = 210;
-        const pageHeight = 297;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        let heightLeft = imgHeight;
-
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        let position = 0;
-
-        // Add the first page
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pageHeight;
-
-        // If content overflows, add subsequent pages (slicing)
-        while (heightLeft > 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-            heightLeft -= pageHeight;
+        for (let i = 0; i < pages.length; i++) {
+            if (i > 0) pdf.addPage();
+            
+            const canvas = await html2canvas(pages[i] as HTMLElement, {
+                scale: 3.0, // High quality
+                useCORS: true,
+                backgroundColor: "#ffffff",
+                width: 794, // Fixed A4 width at 96 DPI
+                height: 1123, // Fixed A4 height at 96 DPI
+                y: 0,
+                scrollY: 0
+            });
+            
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
         }
 
-        pdf.save(`Profit_Loss_Report_${format(new Date(), 'yyyyMMdd')}.pdf`);
-        toast({ title: "PDF Report Saved" });
+        pdf.save(`Profit_Loss_Statement_${format(new Date(), 'yyyyMMdd')}.pdf`);
+        toast({ title: "Combined PDF Saved" });
     } catch (error) {
         console.error("PDF Capture Error:", error);
         toast({ variant: 'destructive', title: 'Export Failed' });
+    } finally {
+        setIsExporting(false);
     }
   };
+
+  const [isExportingInternal, setIsExporting] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -247,8 +252,8 @@ export function ReportsClient() {
                     </div>
 
                     <div className="flex gap-3 mt-auto w-full sm:w-auto">
-                        <Button onClick={handleDownloadPdf} disabled={isLoading} className="flex-1 sm:flex-none h-11 px-6 font-black uppercase text-[10px] tracking-widest shadow-lg">
-                            <Download className="mr-2 h-4 w-4" /> Save PDF Report
+                        <Button onClick={handleDownloadPdf} disabled={isLoading || isExportingInternal} className="flex-1 sm:flex-none h-11 px-6 font-black uppercase text-[10px] tracking-widest shadow-lg">
+                            {isExportingInternal ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />} Save Combined PDF
                         </Button>
                     </div>
                 </CardContent>
@@ -262,7 +267,7 @@ export function ReportsClient() {
             ) : (
                 <div className="flex justify-center bg-muted/20 p-4 md:p-8 rounded-2xl border-2 border-dashed overflow-x-auto">
                     <div className="shrink-0 origin-top transform scale-[0.45] sm:scale-[0.7] lg:scale-[0.85] xl:scale-100">
-                        <div id="pnl-report" className="a4-document shadow-2xl relative">
+                        <div id="pnl-report-container" className="relative flex flex-col gap-8">
                             <PnlReport data={pnlData} dateRange={date} />
                         </div>
                     </div>
@@ -279,7 +284,7 @@ export function ReportsClient() {
                         </div>
                         <div>
                             <CardTitle className="text-sm font-black uppercase tracking-widest">
-                                Detailed Analysis
+                                Raw Data Backup
                             </CardTitle>
                             <CardDescription className="text-white/70 text-[10px] uppercase font-bold mt-1">Download specific record lists</CardDescription>
                         </div>
@@ -335,7 +340,7 @@ export function ReportsClient() {
                 </CardHeader>
                 <CardContent>
                     <p className="text-[11px] font-medium leading-relaxed text-muted-foreground">
-                        To see a full year analysis, pick "Jan 1st" to today. For tax filings, use the "With VAT Only" filter in the CSV tool.
+                        The PDF report now includes a detailed transaction statement on subsequent pages to provide full accountability for the P&L numbers.
                     </p>
                 </CardContent>
             </Card>
