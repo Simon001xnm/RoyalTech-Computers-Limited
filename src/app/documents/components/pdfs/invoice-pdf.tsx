@@ -7,8 +7,8 @@ import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 import { numberToWords } from "@/lib/utils";
 
-const ITEMS_PER_PAGE_FIRST = 10;
-const ITEMS_PER_PAGE_OTHER = 22;
+const ITEMS_PER_PAGE_FIRST = 8;
+const ITEMS_PER_PAGE_OTHER = 18;
 
 export function InvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -34,7 +34,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     address: data.customerAddress || 'Nairobi, Kenya'
   };
 
-  const { subtotal, total, amountPaid = 0, previousBalance = 0 } = data;
+  const { subtotal, total, previousBalance = 0 } = data;
   const currentTotal = total || subtotal || 0;
   const totalAmountDue = currentTotal + previousBalance;
 
@@ -74,30 +74,30 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
       {pages.map((pageItems, pageIdx) => (
         <div 
             key={pageIdx} 
-            className="a4-pdf-page p-[12mm] font-sans text-[11px] bg-white text-black w-[210mm] h-[297mm] flex flex-col box-border shadow-md"
+            className="a4-pdf-page p-[10mm] font-sans text-[12px] bg-white text-black w-[210mm] h-[297mm] flex flex-col box-border shadow-md"
         >
           {/* HEADER (Only on First Page) */}
           {pageIdx === 0 && (
-            <header className="flex justify-between items-start mb-8 pb-6 border-b-2 border-black">
-                <div className="flex items-center gap-6">
+            <header className="flex justify-between items-start mb-8 pb-8 border-b-4 border-black">
+                <div className="flex items-center gap-8">
                 {workspace?.logoUrl ? (
-                    <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain" crossOrigin="anonymous" />
+                    <img src={workspace.logoUrl} alt="Logo" className="h-32 w-auto object-contain" crossOrigin="anonymous" />
                 ) : (
-                    <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
+                    <div className="h-20 w-20 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
                 )}
-                <div className="space-y-0.5">
-                    <h1 className="text-2xl font-black uppercase tracking-tighter" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES LTD'}</h1>
-                    <p className="font-bold text-[10px] opacity-70">Official Tax Invoice / Statement</p>
+                <div className="space-y-1">
+                    <h1 className="text-3xl font-black uppercase tracking-tighter" style={{ color: primaryBlue }}>{workspace?.name || 'OFFICIAL BUSINESS'}</h1>
+                    <p className="font-bold text-[11px] uppercase tracking-widest opacity-60">Official Tax Invoice / Statement</p>
                 </div>
                 </div>
-                <div className="text-right space-y-1">
-                    <p className="font-black text-[10px] uppercase">Head Office</p>
-                    <p className="text-[9px] font-medium max-w-[200px] leading-tight">{workspace?.address || 'Nairobi, Kenya'}</p>
-                    <p className="text-[9px] font-bold">Tel: {workspace?.phone || '0701694469'}</p>
-                    <p className="text-[9px] font-bold">Email: {workspace?.email || 'mateshtechltd@gmail.com'}</p>
-                    <div className="pt-2">
-                        <p className="text-[10px] font-black uppercase text-blue-800">Invoice No: {invoiceNo}</p>
-                        <p className="text-[9px] font-bold">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
+                <div className="text-right space-y-1.5">
+                    <p className="font-black text-[12px] uppercase">Head Office</p>
+                    <p className="text-[10px] font-medium max-w-[220px] leading-tight">{workspace?.address || 'Nairobi, Kenya'}</p>
+                    <p className="text-[10px] font-bold">Tel: {workspace?.phone || 'N/A'}</p>
+                    <p className="text-[10px] font-bold">Email: {workspace?.email || 'N/A'}</p>
+                    <div className="pt-4">
+                        <p className="text-[14px] font-black uppercase text-blue-800">Invoice No: {invoiceNo}</p>
+                        <p className="text-[11px] font-bold">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
                     </div>
                 </div>
             </header>
@@ -106,31 +106,32 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
           {/* Account Summary (Only on First Page) */}
           {pageIdx === 0 && (
             <>
-                <div className="flex w-full mb-4 border border-black overflow-hidden rounded-sm">
-                    <div className="w-7/12 bg-gray-200 px-4 py-2 border-r border-black font-black uppercase text-[10px]">Remittance Advice</div>
-                    <div className="w-5/12 bg-blue-100 px-4 py-2 font-black uppercase text-[10px]">Account Summary</div>
+                <div className="flex w-full mb-6 border-2 border-black overflow-hidden rounded-sm">
+                    <div className="w-7/12 bg-gray-200 px-6 py-3 border-r-2 border-black font-black uppercase text-[11px]">Remittance Advice</div>
+                    <div className="w-5/12 bg-blue-100 px-6 py-3 font-black uppercase text-[11px]">Account Summary</div>
                 </div>
-                <div className="text-[10px] leading-relaxed mb-6 grid grid-cols-12 gap-4">
+                <div className="text-[11px] leading-relaxed mb-8 grid grid-cols-12 gap-6">
                     <div className="col-span-7">
-                        <p>To ensure proper credit, please enclose a copy of this statement with your payment and remit to: <span className="font-black uppercase">{workspace?.name || 'MATESH TECHNOLOGIES LTD'}</span></p>
-                        <p className="mt-2">Payment Due Date: <span className="font-black">{format(new Date(), "dd/MM/yyyy")}</span></p>
+                        <p className="font-medium">To ensure proper credit, please enclose a copy of this statement with your payment and remit to: <span className="font-black uppercase">{workspace?.name || 'THE BUSINESS'}</span></p>
+                        <p className="mt-3">Payment Due Date: <span className="font-black underline">{format(new Date(), "dd/MM/yyyy")}</span></p>
                     </div>
-                    <div className="col-span-5 border-l border-black/10 pl-4">
-                        <p className="font-black text-xs">Total Balance Due:</p>
-                        <p className="text-xl font-black text-blue-900">KES {formatCurrency(totalAmountDue)}</p>
+                    <div className="col-span-5 border-l-2 border-black/10 pl-6">
+                        <p className="font-black text-[12px] uppercase opacity-60">Total Balance Due:</p>
+                        <p className="text-3xl font-black text-blue-900 tracking-tighter">KES {formatCurrency(totalAmountDue)}</p>
                     </div>
                 </div>
-                <div className="grid grid-cols-2 gap-10 mb-8 px-2">
-                    <div className="space-y-1">
-                        <h3 className="text-[9px] font-black uppercase text-blue-900 mb-1">Billing From</h3>
-                        <p className="font-black uppercase text-xs">{workspace?.name || 'MATESH TECHNOLOGIES LTD'}</p>
-                        <p className="opacity-70 leading-tight">{workspace?.address || 'Nairobi, Kenya'}</p>
+                <div className="grid grid-cols-2 gap-12 mb-10 px-4">
+                    <div className="space-y-1.5">
+                        <h3 className="text-[11px] font-black uppercase text-blue-900 mb-2 underline decoration-2">Billing From</h3>
+                        <p className="font-black uppercase text-sm">{workspace?.name || 'OFFICIAL BUSINESS'}</p>
+                        <p className="opacity-80 leading-tight font-medium">{workspace?.address || 'Nairobi, Kenya'}</p>
+                        {workspace?.taxPin && <p className="font-black text-[10px]">PIN: {workspace.taxPin}</p>}
                     </div>
-                    <div className="space-y-1">
-                        <h3 className="text-[9px] font-black uppercase text-blue-900 mb-1">Billing To</h3>
-                        <p className="font-black uppercase text-xs">{customer.alias || customer.name}</p>
-                        <p className="opacity-70 leading-tight">{customer.address || 'Nairobi, Kenya'}</p>
-                        <p className="opacity-70 font-bold">{customer.phone}</p>
+                    <div className="space-y-1.5">
+                        <h3 className="text-[11px] font-black uppercase text-blue-900 mb-2 underline decoration-2">Billing To</h3>
+                        <p className="font-black uppercase text-sm">{customer.alias || customer.name}</p>
+                        <p className="opacity-80 leading-tight font-medium">{customer.address || 'Nairobi, Kenya'}</p>
+                        <p className="opacity-80 font-bold">{customer.phone}</p>
                     </div>
                 </div>
             </>
@@ -138,21 +139,21 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
           {/* TABLE HEADER (If subsequent page, start fresh) */}
           {pageIdx > 0 && (
-            <div className="mb-4">
-                <p className="text-[10px] font-black uppercase opacity-40">Invoice Continued: {invoiceNo} - Page {pageIdx + 1}</p>
+            <div className="mb-6">
+                <p className="text-[11px] font-black uppercase opacity-40 tracking-widest">Invoice Continued: {invoiceNo} - Page {pageIdx + 1}</p>
             </div>
           )}
 
           {/* ITEMS TABLE */}
           <div className="flex-grow">
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse border-2 border-black">
                 <thead>
                     <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>
-                        <th className="p-3 font-black text-[9px] border border-blue-900">ITEM NO</th>
-                        <th className="p-3 font-black text-[9px] border border-blue-900">DESCRIPTION</th>
-                        <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-20">UNITS</th>
-                        <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-28">UNIT PRICE</th>
-                        <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-32">TOTAL</th>
+                        <th className="p-4 font-black text-[11px] border-r border-blue-900 uppercase">Item No</th>
+                        <th className="p-4 font-black text-[11px] border-r border-blue-900 uppercase">Description</th>
+                        <th className="p-4 text-right font-black text-[11px] border-r border-blue-900 w-24 uppercase">Units</th>
+                        <th className="p-4 text-right font-black text-[11px] border-r border-blue-900 w-32 uppercase">Unit Price</th>
+                        <th className="p-4 text-right font-black text-[11px] w-36 uppercase">Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -163,14 +164,14 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                         const qty = item.quantity || 1;
                         return (
                             <tr key={idx} className="border-b border-gray-200">
-                                <td className="p-3 font-medium text-center">{globalIdx + 1}.</td>
-                                <td className="p-3">
-                                    <p className="font-bold uppercase leading-normal">{name}</p>
-                                    {item.serialNumber && <p className="text-[8px] font-mono opacity-50 mt-0.5">S/N: {item.serialNumber}</p>}
+                                <td className="p-4 font-medium text-center border-r border-gray-100">{globalIdx + 1}.</td>
+                                <td className="p-4 border-r border-gray-100">
+                                    <p className="font-black uppercase leading-normal text-[13px]">{name}</p>
+                                    {item.serialNumber && <p className="text-[10px] font-mono opacity-50 mt-1 uppercase">S/N: {item.serialNumber}</p>}
                                 </td>
-                                <td className="p-3 text-right tabular-nums">{qty.toFixed(2)}</td>
-                                <td className="p-3 text-right tabular-nums">{formatCurrency(unitPrice)}</td>
-                                <td className="p-3 text-right tabular-nums font-bold">{formatCurrency(qty * unitPrice)}</td>
+                                <td className="p-4 text-right tabular-nums font-bold border-r border-gray-100">{qty.toFixed(0)}</td>
+                                <td className="p-4 text-right tabular-nums font-medium border-r border-gray-100">{formatCurrency(unitPrice)}</td>
+                                <td className="p-4 text-right tabular-nums font-black text-[13px]">{formatCurrency(qty * unitPrice)}</td>
                             </tr>
                         );
                     })}
@@ -179,39 +180,39 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
             {/* Totals Section (Only on Last Page) */}
             {pageIdx === pages.length - 1 && (
-                <div className="flex justify-end mt-6">
-                    <div className="w-[300px]">
-                        <div className="flex justify-between p-2 border border-gray-200">
-                            <span className="font-black uppercase text-[9px] opacity-60">current order subtotal</span>
-                            <span className="font-bold">{formatCurrency(currentTotal)}</span>
+                <div className="flex justify-end mt-8">
+                    <div className="w-[350px]">
+                        <div className="flex justify-between p-3 border-2 border-gray-200">
+                            <span className="font-black uppercase text-[10px] opacity-60">Current Total</span>
+                            <span className="font-black text-[13px]">{formatCurrency(currentTotal)}</span>
                         </div>
-                        <div className="flex justify-between p-2 border border-t-0 border-gray-200 bg-orange-50">
-                            <span className="font-black uppercase text-[9px] text-orange-600">previous account balance</span>
-                            <span className="font-bold text-orange-700">{formatCurrency(previousBalance)}</span>
+                        <div className="flex justify-between p-3 border-2 border-t-0 border-gray-200 bg-orange-50">
+                            <span className="font-black uppercase text-[10px] text-orange-600">Balance Brought Forward</span>
+                            <span className="font-black text-[13px] text-orange-700">{formatCurrency(previousBalance)}</span>
                         </div>
-                        <div className="flex justify-between p-3 border border-t-0 border-black bg-blue-50">
-                            <span className="font-black uppercase text-xs">net amount due</span>
-                            <span className="font-black text-lg">{formatCurrency(totalAmountDue)}</span>
+                        <div className="flex justify-between p-4 border-2 border-t-0 border-black bg-blue-50">
+                            <span className="font-black uppercase text-[12px]">Net Amount Due</span>
+                            <span className="font-black text-2xl tracking-tighter text-blue-900">KES {formatCurrency(totalAmountDue)}</span>
                         </div>
                     </div>
                 </div>
             )}
             
             {pageIdx === pages.length - 1 && (
-                 <p className="mt-4 text-[9px] font-black uppercase italic opacity-60">
+                 <p className="mt-6 text-[11px] font-black uppercase italic opacity-60 leading-relaxed border-l-4 border-black pl-4">
                     Amount in words: {numberToWords(totalAmountDue)}
                 </p>
             )}
           </div>
 
           {/* FOOTER (On Every Page) */}
-          <footer className="mt-auto pt-8 border-t border-gray-200">
+          <footer className="mt-auto pt-8 border-t-2 border-gray-200">
              <div className="flex justify-between items-end">
-                <div className="text-[9px] font-bold text-gray-500 space-y-0.5">
-                    <p>{workspace?.name}</p>
-                    <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
+                <div className="text-[10px] font-bold text-gray-500 space-y-1">
+                    <p className="uppercase">{workspace?.name}</p>
+                    <p className="opacity-60">Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
                 </div>
-                <div className="text-[10px] font-black">
+                <div className="text-[12px] font-black bg-gray-100 px-3 py-1 rounded">
                     PAGE {pageIdx + 1} OF {pages.length}
                 </div>
              </div>
@@ -221,3 +222,4 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     </div>
   );
 }
+

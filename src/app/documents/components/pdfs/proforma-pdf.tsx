@@ -7,8 +7,8 @@ import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 import { numberToWords } from "@/lib/utils";
 
-const ITEMS_PER_PAGE_FIRST = 12;
-const ITEMS_PER_PAGE_OTHER = 22;
+const ITEMS_PER_PAGE_FIRST = 10;
+const ITEMS_PER_PAGE_OTHER = 18;
 
 export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -49,61 +49,59 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
       {pages.map((pageItems, pageIdx) => (
         <div 
             key={pageIdx} 
-            className="a4-pdf-page p-[12mm] font-sans text-[11px] bg-white text-black w-[210mm] h-[297mm] flex flex-col box-border shadow-md"
+            className="a4-pdf-page p-[10mm] font-sans text-[12px] bg-white text-black w-[210mm] h-[297mm] flex flex-col box-border shadow-md"
         >
           {/* HEADER (Only on First Page) */}
           {pageIdx === 0 && (
-            <header className="flex justify-between items-start mb-4">
-                <div className="space-y-2">
-                    <h1 className="text-2xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Proforma Invoice</h1>
-                    <div className="space-y-0.5 text-[10px] font-medium text-black">
-                        <p><span className="w-20 inline-block opacity-60">Number</span> <span className="font-bold">{workspace?.invoicePrefix || 'PI'}{proformaNo}</span></p>
-                        <p><span className="w-20 inline-block opacity-60">Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
+            <header className="flex justify-between items-start mb-8 pb-8 border-b-4 border-black">
+                <div className="space-y-3">
+                    <h1 className="text-4xl font-black uppercase tracking-tighter" style={{ color: primaryIndigo }}>Proforma Invoice</h1>
+                    <div className="space-y-1 text-[11px] font-bold text-black/70">
+                        <p><span className="w-24 inline-block opacity-40 uppercase tracking-widest text-[9px]">Document No</span> <span className="font-black text-black">{workspace?.invoicePrefix || 'PI'}{proformaNo}</span></p>
+                        <p><span className="w-24 inline-block opacity-40 uppercase tracking-widest text-[9px]">Date Issued</span> <span className="font-black text-black">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
                     </div>
                 </div>
                 <div className="flex flex-col items-end">
                 {workspace?.logoUrl ? (
-                    <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain" crossOrigin="anonymous" />
+                    <img src={workspace.logoUrl} alt="Logo" className="h-32 w-auto object-contain" crossOrigin="anonymous" />
                 ) : (
-                    <div className="h-14 w-14 bg-gray-50 flex items-center justify-center text-[8px] font-black border border-dashed border-gray-200 text-gray-300">LOGO</div>
+                    <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
                 )}
                 </div>
             </header>
           )}
 
           {pageIdx === 0 && (
-            <section className="grid grid-cols-2 gap-3 mb-6">
-                <div className="p-3 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
-                    <h3 className="font-medium text-[12px] mb-1" style={{ color: primaryIndigo }}>Billed By</h3>
-                    <p className="font-bold uppercase">{workspace?.name || 'The Business'}</p>
-                    <p className="text-[9px] font-medium text-black/70">{workspace?.address || 'Kenya'}</p>
+            <section className="grid grid-cols-2 gap-8 mb-10">
+                <div className="p-6 rounded-2xl space-y-1.5 border-2 border-slate-100 shadow-sm" style={{ backgroundColor: secondaryIndigo }}>
+                    <h3 className="font-black text-[12px] mb-3 uppercase tracking-tight underline decoration-2 underline-offset-4" style={{ color: primaryIndigo }}>Billed By</h3>
+                    <p className="font-black text-sm uppercase">{workspace?.name || 'OFFICIAL BUSINESS'}</p>
+                    <p className="text-[11px] font-medium text-black/70 leading-tight">{workspace?.address || 'Kenya'}</p>
                 </div>
-                <div className="p-3 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
-                    <h3 className="font-medium text-[12px] mb-1" style={{ color: primaryIndigo }}>Billed To</h3>
-                    <p className="font-bold">{customer.name}</p>
-                    <p className="text-[9px] font-medium text-black/70">{customer.address || 'Nairobi, Kenya'}</p>
-                    <p className="text-[9px] font-medium text-black/70">{customer.phone}</p>
+                <div className="p-6 rounded-2xl space-y-1.5 border-2 border-slate-100 shadow-sm" style={{ backgroundColor: secondaryIndigo }}>
+                    <h3 className="font-black text-[12px] mb-3 uppercase tracking-tight underline decoration-2 underline-offset-4" style={{ color: primaryIndigo }}>Billed To</h3>
+                    <p className="font-black text-sm uppercase">{customer.name}</p>
+                    <p className="text-[11px] font-medium text-black/70 leading-tight">{customer.address || 'Nairobi, Kenya'}</p>
+                    <p className="text-[11px] font-black text-black/70">{customer.phone}</p>
                 </div>
             </section>
           )}
 
           {pageIdx > 0 && (
-            <div className="mb-4">
-                <p className="text-[10px] font-black uppercase opacity-40">Proforma Continued: {proformaNo} - Page {pageIdx + 1}</p>
+            <div className="mb-6">
+                <p className="text-[11px] font-black uppercase opacity-40 tracking-widest">Proforma Continued: {proformaNo} - Page {pageIdx + 1}</p>
             </div>
           )}
 
           <section className="flex-grow">
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse border-2 border-black">
                 <thead>
                     <tr className="text-left text-white" style={{ backgroundColor: primaryIndigo }}>
-                        <th className="py-2 px-3 font-bold text-[10px] rounded-l-sm">Item</th>
-                        <th className="py-2 text-right font-bold text-[10px] w-16">TAX Rate</th>
-                        <th className="py-2 text-right font-bold text-[10px] w-16">Quantity</th>
-                        <th className="py-2 text-right font-bold text-[10px] w-24">Rate</th>
-                        <th className="py-2 text-right font-bold text-[10px] w-24">Amount</th>
-                        <th className="py-2 text-right font-bold text-[10px] w-16">TAX</th>
-                        <th className="py-2 px-3 text-right font-bold text-[10px] rounded-r-sm w-32">Total</th>
+                        <th className="p-4 font-black text-[11px] border-r border-blue-900 uppercase">Item Description</th>
+                        <th className="p-4 text-right font-black text-[11px] border-r border-blue-900 w-20 uppercase">TAX</th>
+                        <th className="p-4 text-right font-black text-[11px] border-r border-blue-900 w-20 uppercase">Qty</th>
+                        <th className="p-4 text-right font-black text-[11px] border-r border-blue-900 w-28 uppercase">Rate</th>
+                        <th className="p-4 px-4 text-right font-black text-[11px] w-36 uppercase">Subtotal</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -112,20 +110,17 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                         const desc = item.description && item.name ? item.description : null;
                         const unitPrice = item.price || item.unitPrice;
                         const rowSubtotal = item.quantity * unitPrice;
-                        const rowTax = applyVat ? rowSubtotal * 0.16 : 0;
                         return (
                             <tr key={idx} className="border-b border-gray-100">
-                                <td className="py-2 px-3 align-top">
-                                    <p className="font-bold text-[10px] uppercase">{name}</p>
-                                    {desc && <p className="text-[8px] text-gray-500 italic leading-tight">{desc}</p>}
-                                    {item.serialNumber && <p className="text-[8px] text-gray-500 font-mono">S/N: {item.serialNumber}</p>}
+                                <td className="p-4 align-top border-r border-gray-100">
+                                    <p className="font-black text-[13px] uppercase leading-tight">{name}</p>
+                                    {desc && <p className="text-[10px] text-gray-500 italic mt-1 leading-tight">{desc}</p>}
+                                    {item.serialNumber && <p className="text-[10px] text-gray-500 font-mono mt-1 uppercase">S/N: {item.serialNumber}</p>}
                                 </td>
-                                <td className="py-2 text-right text-[9px]">{applyVat ? '16%' : '0%'}</td>
-                                <td className="py-2 text-right text-[9px]">{item.quantity}</td>
-                                <td className="py-2 text-right text-[9px]">KES {formatCurrency(unitPrice)}</td>
-                                <td className="py-2 text-right text-[9px]">KES {formatCurrency(rowSubtotal)}</td>
-                                <td className="py-2 text-right text-[9px]">KES {formatCurrency(rowTax)}</td>
-                                <td className="py-2 px-3 text-right text-[9px] font-bold">KES {formatCurrency(rowSubtotal + rowTax)}</td>
+                                <td className="p-4 text-right text-[11px] font-bold border-r border-gray-100">{applyVat ? '16%' : '0%'}</td>
+                                <td className="p-4 text-right text-[11px] font-black border-r border-gray-100">{item.quantity}</td>
+                                <td className="p-4 text-right text-[11px] font-medium border-r border-gray-100">{formatCurrency(unitPrice)}</td>
+                                <td className="p-4 px-4 text-right text-[13px] font-black">{formatCurrency(rowSubtotal)}</td>
                             </tr>
                         );
                     })}
@@ -133,38 +128,37 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
             </table>
 
             {pageIdx === pages.length - 1 && (
-                <div className="flex justify-between items-start mt-4">
-                    <div className="max-w-[300px]">
-                        <p className="text-[9px] font-bold text-black uppercase">
+                <div className="flex justify-between items-start mt-8">
+                    <div className="max-w-[380px]">
+                        <p className="text-[11px] font-black uppercase text-black leading-relaxed border-l-4 border-black pl-4">
                             Total (in words) : {numberToWords(total)}
                         </p>
                     </div>
-                    <div className="w-[240px] space-y-2">
-                        <div className="flex justify-between items-center text-[9px]">
-                            <span className="font-bold opacity-60">Amount</span>
-                            <span className="font-bold">KES {formatCurrency(subtotal || total)}</span>
+                    <div className="w-[350px] space-y-2">
+                        <div className="flex justify-between items-center p-2 border-b border-black/10">
+                            <span className="font-bold opacity-60 uppercase text-[10px]">Net Amount</span>
+                            <span className="font-black text-[13px]">KES {formatCurrency(subtotal || total)}</span>
                         </div>
-                        <div className="flex justify-between items-center text-[9px]">
-                            <span className="font-bold opacity-60">TAX</span>
-                            <span className="font-bold">KES {formatCurrency(vat || 0)}</span>
+                        <div className="flex justify-between items-center p-2 border-b border-black/10">
+                            <span className="font-bold opacity-60 uppercase text-[10px]">Tax Amount</span>
+                            <span className="font-black text-[13px]">KES {formatCurrency(vat || 0)}</span>
                         </div>
-                        <div className="pt-2 border-t border-black flex justify-between items-center">
-                            <span className="text-[12px] font-bold">Total (KES)</span>
-                            <span className="text-[14px] font-bold">KES {formatCurrency(total)}</span>
+                        <div className="pt-4 border-t-4 border-black flex justify-between items-center px-2">
+                            <span className="text-[12px] font-black uppercase">Grand Total</span>
+                            <span className="text-3xl font-black text-blue-900 tracking-tighter">KES {formatCurrency(total)}</span>
                         </div>
-                        <div className="h-0.5 bg-black w-full mt-[-1px]"></div>
                     </div>
                 </div>
             )}
           </section>
 
-          <footer className="mt-auto pt-6 border-t border-gray-200">
+          <footer className="mt-auto pt-8 border-t-2 border-gray-200">
              <div className="flex justify-between items-end">
-                <div className="text-[9px] font-bold text-gray-500 space-y-0.5 text-center flex-1">
-                    {workspace?.website && <p>{workspace.website}</p>}
-                    <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
+                <div className="text-[10px] font-bold text-gray-500 space-y-1 text-center flex-1">
+                    <p className="uppercase">{workspace?.name}</p>
+                    <p className="opacity-60">Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
                 </div>
-                <div className="text-[10px] font-black shrink-0">
+                <div className="text-[12px] font-black bg-gray-100 px-3 py-1 rounded">
                     PAGE {pageIdx + 1} OF {pages.length}
                 </div>
              </div>
@@ -174,3 +168,4 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
     </div>
   );
 }
+
