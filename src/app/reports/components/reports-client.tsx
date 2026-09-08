@@ -50,6 +50,7 @@ export function ReportsClient() {
 
   const [vatFilter, setVatFilter] = useState<'all' | 'with-vat' | 'no-vat'>('all');
   const [docTypeFilter, setDocTypeFilter] = useState<'all' | 'Receipt' | 'Invoice'>('all');
+  const [isExportingInternal, setIsExporting] = useState(false);
 
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -199,7 +200,7 @@ export function ReportsClient() {
             if (i > 0) pdf.addPage();
             
             const canvas = await html2canvas(pages[i] as HTMLElement, {
-                scale: 3.0, // High quality
+                scale: 3.5, // High resolution
                 useCORS: true,
                 backgroundColor: "#ffffff",
                 width: 794, // Fixed A4 width at 96 DPI
@@ -213,7 +214,7 @@ export function ReportsClient() {
         }
 
         pdf.save(`Profit_Loss_Statement_${format(new Date(), 'yyyyMMdd')}.pdf`);
-        toast({ title: "Combined PDF Saved" });
+        toast({ title: "Report Saved" });
     } catch (error) {
         console.error("PDF Capture Error:", error);
         toast({ variant: 'destructive', title: 'Export Failed' });
@@ -221,8 +222,6 @@ export function ReportsClient() {
         setIsExporting(false);
     }
   };
-
-  const [isExportingInternal, setIsExporting] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -253,7 +252,7 @@ export function ReportsClient() {
 
                     <div className="flex gap-3 mt-auto w-full sm:w-auto">
                         <Button onClick={handleDownloadPdf} disabled={isLoading || isExportingInternal} className="flex-1 sm:flex-none h-11 px-6 font-black uppercase text-[10px] tracking-widest shadow-lg">
-                            {isExportingInternal ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />} Save Combined PDF
+                            {isExportingInternal ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />} Download PDF
                         </Button>
                     </div>
                 </CardContent>
@@ -266,7 +265,7 @@ export function ReportsClient() {
                 </div>
             ) : (
                 <div className="flex justify-center bg-muted/20 p-4 md:p-8 rounded-2xl border-2 border-dashed overflow-x-auto">
-                    <div className="shrink-0 origin-top transform scale-[0.45] sm:scale-[0.7] lg:scale-[0.85] xl:scale-100">
+                    <div className="shrink-0 origin-top transform scale-[0.4] sm:scale-[0.6] lg:scale-[0.75] xl:scale-[0.85] 2xl:scale-100">
                         <div id="pnl-report-container" className="relative flex flex-col gap-8">
                             <PnlReport data={pnlData} dateRange={date} />
                         </div>
@@ -325,12 +324,6 @@ export function ReportsClient() {
                     >
                         <Download className="mr-2 h-4 w-4" /> Download Detailed CSV
                     </Button>
-
-                    <div className="p-5 bg-primary/5 rounded-2xl border border-dashed border-primary/20 text-center">
-                        <p className="text-[10px] text-muted-foreground font-medium italic leading-relaxed">
-                            "Use this tool to download raw data for your KRA tax returns or internal office audits."
-                        </p>
-                    </div>
                 </CardContent>
             </Card>
 
@@ -340,7 +333,7 @@ export function ReportsClient() {
                 </CardHeader>
                 <CardContent>
                     <p className="text-[11px] font-medium leading-relaxed text-muted-foreground">
-                        The PDF report now includes a detailed transaction statement on subsequent pages to provide full accountability for the P&L numbers.
+                        The summary page provides a bird's-eye view, while the audit statement pages track every single cent back to the original client record.
                     </p>
                 </CardContent>
             </Card>
