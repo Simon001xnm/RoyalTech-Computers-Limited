@@ -7,6 +7,7 @@ import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 /**
  * @fileOverview High-Fidelity P&L and Statement Report
@@ -73,8 +74,8 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
   const isNegative = netIncome < 0;
 
   const unifiedLedger = [
-      ...sales.map(s => ({ ...s, ledgerType: 'INCOME', label: s.customerName || 'Sale' })),
-      ...expenses.map(e => ({ ...e, ledgerType: 'EXPENSE', label: e.category || 'Shop Expense' }))
+      ...sales.map((s: any) => ({ ...s, ledgerType: 'INCOME', label: s.customerName || 'Sale' })),
+      ...expenses.map((e: any) => ({ ...e, ledgerType: 'EXPENSE', label: e.category || 'Shop Expense' }))
   ].sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
 
   const statementPages: any[][] = [];
@@ -128,7 +129,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                 </div>
                 {Object.entries(costOfGoodsSold.cogsByCategory).length > 0 ? (
                     Object.entries(costOfGoodsSold.cogsByCategory).map(([category, amount]) => (
-                        <ReportRow key={category} label={category} amount={amount} isSubItem />
+                        <ReportRow key={category} label={category} amount={amount as number} isSubItem />
                     ))
                 ) : (
                     <p className="text-[11px] italic opacity-40 px-6 py-4 font-medium border-b border-dashed">No direct inventory costs recorded for this period.</p>
@@ -143,7 +144,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                 </div>
                 {Object.entries(operatingExpenses.expenseByCategory).length > 0 ? (
                     Object.entries(operatingExpenses.expenseByCategory).map(([category, amount]) => (
-                        <ReportRow key={category} label={category} amount={amount} isSubItem />
+                        <ReportRow key={category} label={category} amount={amount as number} isSubItem />
                     ))
                 ) : (
                     <p className="text-[11px] italic opacity-40 px-6 py-4 font-medium border-b border-dashed">No overhead expenses recorded for this period.</p>
@@ -169,7 +170,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
 
         <footer className="mt-auto pt-6 border-t-2 border-black flex justify-between items-end">
             <div className="text-left space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Financial Statement &bull; Verified Node Output</p>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Financial Statement & bull; Verified Node Output</p>
                 <p className="text-[8px] font-bold opacity-30 uppercase">Confidential Business Report</p>
             </div>
             <div className="flex items-center gap-4">
@@ -248,7 +249,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
             </div>
 
             <footer className="mt-auto pt-6 border-t-2 border-slate-100 flex justify-between items-center">
-                <p className="text-[9px] font-black uppercase tracking-widest opacity-20">Transaction Audit Statement &bull; High Fidelity Ledger Output</p>
+                <p className="text-[9px] font-black uppercase tracking-widest opacity-20">Transaction Audit Statement & bull; High Fidelity Ledger Output</p>
                 <p className="text-[12px] font-black bg-slate-50 px-4 py-2 rounded-sm border border-slate-100">PAGE {pageIdx + 2} OF {statementPages.length + 1}</p>
             </footer>
           </div>
