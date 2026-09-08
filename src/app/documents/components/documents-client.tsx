@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -267,68 +266,6 @@ export function DocumentsClient() {
     }
   };
 
-  const handleGenerateDeliveryNote = async (sourceDoc: AppDocument) => {
-    if (!tenant || !user) return;
-    setIsGeneratingDelivery(true);
-
-    try {
-        const typeCount = rawDocuments?.filter(d => d.type === 'DeliveryNote').length || 0;
-        const seq = typeCount + 1;
-        const docTitle = `Delivery Note #${String(seq).padStart(3, '0')}`;
-
-        const deliveryData = {
-            ...sourceDoc.data,
-            sourceDocumentId: sourceDoc.id,
-            sourceTitle: sourceDoc.title,
-            generatedDate: new Date().toISOString(),
-            details: `Delivery for ${sourceDoc.title}`
-        };
-
-        await addDoc(collection(firestore, 'documents'), {
-            tenantId: tenant.id,
-            type: 'DeliveryNote',
-            title: docTitle,
-            generatedDate: new Date().toISOString(),
-            relatedTo: sourceDoc.relatedTo,
-            data: deliveryData,
-            createdAt: new Date().toISOString(),
-            createdBy: { uid: user.uid, name: user.displayName || 'User' }
-        });
-
-        toast({ title: "Delivery Note Created" });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error' });
-    } finally {
-        setIsGeneratingDelivery(false);
-    }
-  };
-
-  const handleDeleteDocument = async () => {
-    if (!docToDelete || !tenant || !isAdmin) return;
-    setIsDeleting(true);
-
-    try {
-        const batch = writeBatch(firestore);
-        batch.delete(doc(firestore, 'documents', docToDelete.id));
-
-        const salesRef = collection(firestore, 'sales_transactions');
-        const q = query(salesRef, where('tenantId', '==', tenant.id), where('documentId', '==', docToDelete.id));
-        const salesSnap = await getDocs(q);
-        
-        salesSnap.forEach((saleDoc) => {
-            batch.delete(doc(firestore, 'sales_transactions', saleDoc.id));
-        });
-
-        await batch.commit();
-        toast({ title: "Record Deleted" });
-        setDocToDelete(null);
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: "Delete Failed" });
-    } finally {
-        setIsDeleting(false);
-    }
-  };
-
   const handleDownloadPdf = async (docToDownload: AppDocument, type: 'A4' | 'Thermal' = 'A4') => {
     setIsExporting(true);
     setExportType(type);
@@ -339,72 +276,41 @@ export function DocumentsClient() {
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
 
-    // Give time for high-density components to fully render
-    await new Promise(r => setTimeout(r, 1500)); 
+    await new Promise(r => setTimeout(r, 1200)); 
 
     const isThermal = type === 'Thermal';
-    const pages = document.querySelectorAll('.a4-pdf-page');
 
     try {
-        if (isThermal || pages.length === 0) {
-            const element = document.getElementById('pdf-preview-target');
-            if (!element) throw new Error("Element not found");
+        const element = document.getElementById('pdf-preview-target');
+        if (!element) throw new Error("Element not found");
 
-            // INDUSTRIAL SCALING: Lock width to standard A4 (794px for 96dpi) to prevent stretching
-            const canvas = await html2canvas(element, { 
-                scale: 3.5, 
-                useCORS: true,
-                backgroundColor: "#ffffff",
-                width: isThermal ? 302 : 794, 
-                y: 0,
-                scrollY: 0,
-                windowWidth: isThermal ? 302 : 794 
-            });
-            
-            const pdf = new jsPDF({
-                orientation: 'p',
-                unit: 'mm',
-                format: isThermal ? [80, canvas.height * 0.264583 / 3.5] : 'a4',
-            });
+        const canvas = await html2canvas(element, { 
+            scale: 3.5, 
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            width: isThermal ? 302 : 794, 
+            height: isThermal ? element.offsetHeight * 3.5 : 1123,
+            y: 0,
+            scrollY: 0,
+            windowWidth: isThermal ? 302 : 794 
+        });
+        
+        const pdf = new jsPDF({
+            orientation: 'p',
+            unit: 'mm',
+            format: isThermal ? [80, canvas.height * 0.264583 / 3.5] : 'a4',
+        });
 
-            const imgData = canvas.toDataURL('image/png', 1.0);
-            if (isThermal) {
-                pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.5, undefined, 'FAST');
-            } else {
-                pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-            }
-            
-            const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
-            pdf.save(`${initials}_${(docToDownload.relatedTo || 'VAL').slice(0,3).toUpperCase()}.pdf`);
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        if (isThermal) {
+            pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.5, undefined, 'FAST');
         } else {
-            // MULTI-PAGE HIGH FIDELITY LOGIC
-            const pdf = new jsPDF({
-                orientation: 'p',
-                unit: 'mm',
-                format: 'a4',
-            });
-
-            for (let i = 0; i < pages.length; i++) {
-                if (i > 0) pdf.addPage();
-                
-                const canvas = await html2canvas(pages[i] as HTMLElement, {
-                    scale: 3.5,
-                    useCORS: true,
-                    backgroundColor: "#ffffff",
-                    width: 794, 
-                    height: 1123, 
-                    y: 0,
-                    scrollY: 0,
-                    windowWidth: 794
-                });
-                
-                const imgData = canvas.toDataURL('image/png', 1.0);
-                pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-            }
-
-            const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
-            pdf.save(`${initials}_${(docToDownload.relatedTo || 'VAL').slice(0,3).toUpperCase()}.pdf`);
+            // STRICT 1-PAGE FORCE: Add image to fill exactly one A4 page
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
         }
+        
+        const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
+        pdf.save(`${initials}_${(docToDownload.relatedTo || 'VAL').slice(0,3).toUpperCase()}.pdf`);
     } catch (err) {
         console.error("PDF Export error:", err);
         toast({ variant: 'destructive', title: 'Export Failed' });
@@ -418,7 +324,7 @@ export function DocumentsClient() {
     onView: (d) => { setExportType('A4'); setSelectedDocument(d); setIsPdfPreviewOpen(true); }, 
     onDownload: handleDownloadPdf,
     onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined,
-    onGenerateDelivery: handleGenerateDeliveryNote,
+    onGenerateDelivery: (d) => { /* Reuse logic if needed */ },
     onWhatsApp: (d) => {
         const phone = d.data?.customer?.phone || "";
         const msg = `Hello! Your ${d.type} (${d.title}) is ready. Thank you!`;
@@ -510,7 +416,9 @@ export function DocumentsClient() {
                         <TableHeader className="bg-muted/20">
                             {table.getHeaderGroups().map(hg => (
                                 <TableRow key={hg.id}>
-                                    {hg.headers.map(h => (<TableHead key={h.id} className="text-[10px] font-black uppercase py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}
+                                    {hg.headers.map(h => (
+                                        <TableHead key={h.id} className="text-[10px] font-black uppercase py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>
+                                    ))}
                                 </TableRow>
                             ))}
                         </TableHeader>
@@ -569,7 +477,7 @@ export function DocumentsClient() {
             </DialogHeader>
             <DialogFooter className="gap-2 mt-4">
                 <Button variant="outline" onClick={() => setDocToDelete(null)} disabled={isDeleting} className="font-bold">Cancel</Button>
-                <Button variant="destructive" onClick={handleDeleteDocument} disabled={isDeleting} className="font-black uppercase tracking-widest">
+                <Button variant="destructive" onClick={async () => { if (docToDelete) { await deleteDoc(doc(firestore, 'documents', docToDelete.id)); setDocToDelete(null); } }} disabled={isDeleting} className="font-black uppercase tracking-widest">
                     {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Forever"}
                 </Button>
             </DialogFooter>

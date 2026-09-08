@@ -5,11 +5,7 @@ import { format } from "date-fns";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
-import { numberToWords } from "@/lib/utils";
-
-// Reduced items per page to accommodate larger font sizes and footers
-const ITEMS_PER_PAGE_FIRST = 7;
-const ITEMS_PER_PAGE_OTHER = 15;
+import { numberToWords, cn } from "@/lib/utils";
 
 export function InvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -53,173 +49,141 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
   const primaryBlue = "#1e3a8a"; 
 
-  // Pagination Logic
-  const pages: any[][] = [];
-  let currentItems = [...items];
-  
-  // Page 1
-  pages.push(currentItems.slice(0, ITEMS_PER_PAGE_FIRST));
-  currentItems = currentItems.slice(ITEMS_PER_PAGE_FIRST);
-  
-  // Subsequent pages
-  while (currentItems.length > 0) {
-      pages.push(currentItems.slice(0, ITEMS_PER_PAGE_OTHER));
-      currentItems = currentItems.slice(ITEMS_PER_PAGE_OTHER);
-  }
+  // DYNAMIC DENSITY CALCULATION
+  const itemCount = items.length;
+  const isUltraCompact = itemCount > 25;
+  const isCompact = itemCount > 15;
 
-  // Fallback for empty items
-  if (pages.length === 0) pages.push([]);
+  const textBase = isUltraCompact ? "text-[9px]" : isCompact ? "text-[10px]" : "text-[12px]";
+  const textLarge = isUltraCompact ? "text-[11px]" : isCompact ? "text-[12px]" : "text-[14px]";
+  const textTitle = isUltraCompact ? "text-xl" : isCompact ? "text-2xl" : "text-3xl";
+  const paddingRow = isUltraCompact ? "p-1.5" : isCompact ? "p-2.5" : "p-4";
+  const marginSection = isUltraCompact ? "mb-2" : isCompact ? "mb-4" : "mb-8";
 
   return (
-    <div className="flex flex-col items-center gap-4 bg-slate-100 p-4">
-      {pages.map((pageItems, pageIdx) => (
-        <div 
-            key={pageIdx} 
-            className="a4-pdf-page p-[10mm] font-sans text-[12px] bg-white text-black w-[210mm] h-[297mm] flex flex-col box-border shadow-md"
-        >
-          {/* HEADER (Only on First Page) */}
-          {pageIdx === 0 && (
-            <header className="flex justify-between items-start mb-8 pb-8 border-b-4 border-black">
-                <div className="flex items-center gap-8">
+    <div className="flex flex-col items-center bg-slate-100 p-4">
+        <div className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-md overflow-hidden relative">
+          
+          <header className={cn("flex justify-between items-start border-b-4 border-black", marginSection, isUltraCompact ? "pb-4" : "pb-8")}>
+              <div className="flex items-center gap-6">
                 {workspace?.logoUrl ? (
-                    <img src={workspace.logoUrl} alt="Logo" className="h-32 w-auto object-contain" crossOrigin="anonymous" />
+                    <img src={workspace.logoUrl} alt="Logo" className={cn("w-auto object-contain", isUltraCompact ? "h-16" : "h-24")} crossOrigin="anonymous" />
                 ) : (
-                    <div className="h-20 w-20 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
+                    <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
                 )}
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-black uppercase tracking-tighter" style={{ color: primaryBlue }}>{workspace?.name || 'OFFICIAL BUSINESS'}</h1>
-                    <p className="font-bold text-[11px] uppercase tracking-widest opacity-60">Official Tax Invoice / Statement</p>
+                <div className="space-y-0.5">
+                    <h1 className={cn("font-black uppercase tracking-tighter", textTitle)} style={{ color: primaryBlue }}>{workspace?.name || 'OFFICIAL BUSINESS'}</h1>
+                    <p className={cn("font-bold uppercase tracking-widest opacity-60", textBase)}>Official Tax Invoice / Statement</p>
                 </div>
-                </div>
-                <div className="text-right space-y-1.5">
-                    <p className="font-black text-[12px] uppercase">Head Office</p>
-                    <p className="text-[10px] font-medium max-w-[220px] leading-tight">{workspace?.address || 'Nairobi, Kenya'}</p>
-                    <p className="text-[10px] font-bold">Tel: {workspace?.phone || 'N/A'}</p>
-                    <p className="text-[10px] font-bold">Email: {workspace?.email || 'N/A'}</p>
-                    <div className="pt-4">
-                        <p className="text-[14px] font-black uppercase text-blue-800">Invoice No: {invoiceNo}</p>
-                        <p className="text-[11px] font-bold">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
-                    </div>
-                </div>
-            </header>
-          )}
+              </div>
+              <div className="text-right space-y-1">
+                  <p className={cn("font-black uppercase", textBase)}>Head Office</p>
+                  <p className={cn("font-medium max-w-[200px] leading-tight", isUltraCompact ? "text-[8px]" : "text-[10px]")}>{workspace?.address || 'Nairobi, Kenya'}</p>
+                  <p className={cn("font-bold", isUltraCompact ? "text-[8px]" : "text-[10px]")}>Tel: {workspace?.phone || 'N/A'}</p>
+                  <div className={isUltraCompact ? "pt-1" : "pt-4"}>
+                      <p className={cn("font-black uppercase text-blue-800", textLarge)}>Invoice No: {invoiceNo}</p>
+                      <p className={cn("font-bold", textBase)}>Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
+                  </div>
+              </div>
+          </header>
 
-          {/* Account Summary (Only on First Page) */}
-          {pageIdx === 0 && (
-            <>
-                <div className="flex w-full mb-6 border-2 border-black overflow-hidden rounded-sm">
-                    <div className="w-7/12 bg-gray-200 px-6 py-3 border-r-2 border-black font-black uppercase text-[11px]">Remittance Advice</div>
-                    <div className="w-5/12 bg-blue-100 px-6 py-3 font-black uppercase text-[11px]">Account Summary</div>
-                </div>
-                <div className="text-[11px] leading-relaxed mb-8 grid grid-cols-12 gap-6">
-                    <div className="col-span-7">
-                        <p className="font-medium text-[12px]">To ensure proper credit, remit payment to: <span className="font-black uppercase">{workspace?.name || 'THE BUSINESS'}</span></p>
-                        <p className="mt-3">Payment Due Date: <span className="font-black underline">{format(new Date(), "dd/MM/yyyy")}</span></p>
-                    </div>
-                    <div className="col-span-5 border-l-2 border-black/10 pl-6">
-                        <p className="font-black text-[12px] uppercase opacity-60">Total Balance Due:</p>
-                        <p className="text-3xl font-black text-blue-900 tracking-tighter">KES {formatCurrency(totalAmountDue)}</p>
-                    </div>
-                </div>
-                <div className="grid grid-cols-2 gap-12 mb-10 px-4">
-                    <div className="space-y-1.5">
-                        <h3 className="text-[11px] font-black uppercase text-blue-900 mb-2 underline decoration-2">Billing From</h3>
-                        <p className="font-black uppercase text-sm">{workspace?.name || 'OFFICIAL BUSINESS'}</p>
-                        <p className="opacity-80 leading-tight font-medium text-[11px]">{workspace?.address || 'Nairobi, Kenya'}</p>
-                        {workspace?.taxPin && <p className="font-black text-[10px]">PIN: {workspace.taxPin}</p>}
-                    </div>
-                    <div className="space-y-1.5">
-                        <h3 className="text-[11px] font-black uppercase text-blue-900 mb-2 underline decoration-2">Billing To</h3>
-                        <p className="font-black uppercase text-sm">{customer.alias || customer.name}</p>
-                        <p className="opacity-80 leading-tight font-medium text-[11px]">{customer.address || 'Nairobi, Kenya'}</p>
-                        <p className="opacity-80 font-bold">{customer.phone}</p>
-                    </div>
-                </div>
-            </>
-          )}
+          <div className={cn("flex w-full border-2 border-black overflow-hidden rounded-sm", isUltraCompact ? "mb-2" : "mb-6")}>
+              <div className={cn("w-7/12 bg-gray-200 border-r-2 border-black font-black uppercase", paddingRow, textBase)}>Remittance Advice</div>
+              <div className={cn("w-5/12 bg-blue-100 font-black uppercase", paddingRow, textBase)}>Account Summary</div>
+          </div>
 
-          {/* TABLE HEADER (If subsequent page, start fresh) */}
-          {pageIdx > 0 && (
-            <div className="mb-6">
-                <p className="text-[11px] font-black uppercase opacity-40 tracking-widest">Invoice Continued: {invoiceNo} - Page {pageIdx + 1}</p>
-            </div>
-          )}
+          <div className={cn("leading-relaxed grid grid-cols-12 gap-6", textBase, isUltraCompact ? "mb-4" : "mb-8")}>
+              <div className="col-span-7">
+                  <p className="font-medium">Remit payment to: <span className="font-black uppercase">{workspace?.name || 'THE BUSINESS'}</span></p>
+                  <p className={isUltraCompact ? "mt-1" : "mt-3"}>Due Date: <span className="font-black underline">{format(new Date(), "dd/MM/yyyy")}</span></p>
+              </div>
+              <div className="col-span-5 border-l-2 border-black/10 pl-6">
+                  <p className="font-black uppercase opacity-60">Balance Due:</p>
+                  <p className={cn("font-black text-blue-900 tracking-tighter", isUltraCompact ? "text-xl" : "text-3xl")}>KES {formatCurrency(totalAmountDue)}</p>
+              </div>
+          </div>
 
-          {/* ITEMS TABLE */}
-          <div className="flex-grow">
-            <table className="w-full border-collapse border-2 border-black">
+          <div className={cn("grid grid-cols-2 gap-12 px-4", isUltraCompact ? "mb-4" : "mb-10")}>
+              <div className="space-y-1">
+                  <h3 className={cn("font-black uppercase text-blue-900 underline decoration-2", textBase, isUltraCompact ? "mb-1" : "mb-2")}>Billing From</h3>
+                  <p className={cn("font-black uppercase", textLarge)}>{workspace?.name || 'OFFICIAL BUSINESS'}</p>
+                  <p className="opacity-80 leading-tight font-medium">{workspace?.address || 'Nairobi, Kenya'}</p>
+              </div>
+              <div className="space-y-1">
+                  <h3 className={cn("font-black uppercase text-blue-900 underline decoration-2", textBase, isUltraCompact ? "mb-1" : "mb-2")}>Billing To</h3>
+                  <p className={cn("font-black uppercase", textLarge)}>{customer.alias || customer.name}</p>
+                  <p className="opacity-80 leading-tight font-medium">{customer.address || 'Nairobi, Kenya'}</p>
+              </div>
+          </div>
+
+          <div className="flex-grow overflow-hidden border-2 border-black rounded-sm flex flex-col">
+            <table className="w-full border-collapse">
                 <thead>
                     <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>
-                        <th className="p-4 font-black text-[11px] border-r border-blue-900 uppercase">Item No</th>
-                        <th className="p-4 font-black text-[11px] border-r border-blue-900 uppercase">Description</th>
-                        <th className="p-4 text-right font-black text-[11px] border-r border-blue-900 w-24 uppercase">Units</th>
-                        <th className="p-4 text-right font-black text-[11px] border-r border-blue-900 w-32 uppercase">Unit Price</th>
-                        <th className="p-4 text-right font-black text-[11px] w-36 uppercase">Total</th>
+                        <th className={cn("font-black border-r border-blue-900 uppercase text-center w-12", paddingRow, textBase)}>#</th>
+                        <th className={cn("font-black border-r border-blue-900 uppercase", paddingRow, textBase)}>Description</th>
+                        <th className={cn("text-right font-black border-r border-blue-900 w-16 uppercase", paddingRow, textBase)}>Qty</th>
+                        <th className={cn("text-right font-black border-r border-blue-900 w-24 uppercase", paddingRow, textBase)}>Rate</th>
+                        <th className={cn("text-right font-black w-32 uppercase", paddingRow, textBase)}>Total</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {pageItems.map((item: any, idx: number) => {
-                        const globalIdx = (pageIdx === 0 ? 0 : ITEMS_PER_PAGE_FIRST + (pageIdx - 1) * ITEMS_PER_PAGE_OTHER) + idx;
+                    {items.map((item: any, idx: number) => {
                         const name = item.name || item.description;
                         const unitPrice = item.price || item.sellingPrice || item.unitPrice || 0;
                         const qty = item.quantity || 1;
                         return (
-                            <tr key={idx} className="border-b border-gray-200">
-                                <td className="p-4 font-medium text-center border-r border-gray-100">{globalIdx + 1}.</td>
-                                <td className="p-4 border-r border-gray-100">
-                                    <p className="font-black uppercase leading-normal text-[13px]">{name}</p>
-                                    {item.serialNumber && <p className="text-[10px] font-mono opacity-50 mt-1 uppercase">S/N: {item.serialNumber}</p>}
+                            <tr key={idx} className="border-b border-gray-100 last:border-0">
+                                <td className={cn("font-medium text-center border-r border-gray-100", paddingRow, textBase)}>{idx + 1}</td>
+                                <td className={cn("border-r border-gray-100", paddingRow)}>
+                                    <p className={cn("font-black uppercase leading-tight", textLarge)}>{name}</p>
+                                    {item.serialNumber && !isUltraCompact && <p className="text-[8px] font-mono opacity-50 uppercase">S/N: {item.serialNumber}</p>}
                                 </td>
-                                <td className="p-4 text-right tabular-nums font-bold border-r border-gray-100">{qty.toFixed(0)}</td>
-                                <td className="p-4 text-right tabular-nums font-medium border-r border-gray-100">{formatCurrency(unitPrice)}</td>
-                                <td className="p-4 text-right tabular-nums font-black text-[13px]">{formatCurrency(qty * unitPrice)}</td>
+                                <td className={cn("text-right tabular-nums font-bold border-r border-gray-100", paddingRow, textBase)}>{qty.toFixed(0)}</td>
+                                <td className={cn("text-right tabular-nums font-medium border-r border-gray-100", paddingRow, textBase)}>{formatCurrency(unitPrice)}</td>
+                                <td className={cn("text-right tabular-nums font-black", paddingRow, textLarge)}>{formatCurrency(qty * unitPrice)}</td>
                             </tr>
                         );
                     })}
                 </tbody>
             </table>
-
-            {/* Totals Section (Only on Last Page) */}
-            {pageIdx === pages.length - 1 && (
-                <div className="flex justify-end mt-8">
-                    <div className="w-[350px]">
-                        <div className="flex justify-between p-3 border-2 border-gray-200">
-                            <span className="font-black uppercase text-[10px] opacity-60">Current Total</span>
-                            <span className="font-black text-[13px]">{formatCurrency(currentTotal)}</span>
-                        </div>
-                        <div className="flex justify-between p-3 border-2 border-t-0 border-gray-200 bg-orange-50">
-                            <span className="font-black uppercase text-[10px] text-orange-600">Balance Brought Forward</span>
-                            <span className="font-black text-[13px] text-orange-700">{formatCurrency(previousBalance)}</span>
-                        </div>
-                        <div className="flex justify-between p-4 border-2 border-t-0 border-black bg-blue-50">
-                            <span className="font-black uppercase text-[12px]">Net Amount Due</span>
-                            <span className="font-black text-2xl tracking-tighter text-blue-900">KES {formatCurrency(totalAmountDue)}</span>
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            {pageIdx === pages.length - 1 && (
-                 <p className="mt-6 text-[11px] font-black uppercase italic opacity-60 leading-relaxed border-l-4 border-black pl-4">
-                    Amount in words: {numberToWords(totalAmountDue)}
-                </p>
-            )}
           </div>
 
-          {/* FOOTER (On Every Page) */}
-          <footer className="mt-auto pt-8 border-t-2 border-gray-200 bg-white">
+          <div className="mt-4 flex flex-col gap-4">
+              <div className="flex justify-end">
+                  <div className={isUltraCompact ? "w-full" : "w-[350px]"}>
+                      <div className="flex justify-between p-2 border-b border-gray-100">
+                          <span className={cn("font-black uppercase opacity-60", isUltraCompact ? "text-[8px]" : "text-[10px]")}>Current Total</span>
+                          <span className={cn("font-black", textLarge)}>{formatCurrency(currentTotal)}</span>
+                      </div>
+                      <div className="flex justify-between p-2 border-b border-gray-100 bg-orange-50/30">
+                          <span className={cn("font-black uppercase text-orange-600", isUltraCompact ? "text-[8px]" : "text-[10px]")}>Brought Forward</span>
+                          <span className={cn("font-black text-orange-700", textLarge)}>{formatCurrency(previousBalance)}</span>
+                      </div>
+                      <div className="flex justify-between p-3 border-t-2 border-black bg-blue-50">
+                          <span className={cn("font-black uppercase", textBase)}>Net Amount Due</span>
+                          <span className={cn("font-black tracking-tighter text-blue-900", isUltraCompact ? "text-xl" : "text-2xl")}>KES {formatCurrency(totalAmountDue)}</span>
+                      </div>
+                  </div>
+              </div>
+              
+              <p className={cn("font-black uppercase italic opacity-60 leading-relaxed border-l-4 border-black pl-4", textBase)}>
+                  Amount in words: {numberToWords(totalAmountDue)}
+              </p>
+          </div>
+
+          <footer className="mt-auto pt-4 border-t-2 border-gray-200 bg-white">
              <div className="flex justify-between items-end">
-                <div className="text-[10px] font-bold text-gray-500 space-y-1">
+                <div className={cn("font-bold text-gray-500 space-y-0.5", isUltraCompact ? "text-[8px]" : "text-[10px]")}>
                     <p className="uppercase">{workspace?.name}</p>
                     <p className="opacity-60">Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
                 </div>
-                <div className="text-[12px] font-black bg-gray-100 px-3 py-1 rounded">
-                    PAGE {pageIdx + 1} OF {pages.length}
+                <div className={cn("font-black bg-gray-100 px-3 py-1 rounded", textBase)}>
+                    PAGE 1 OF 1
                 </div>
              </div>
           </footer>
         </div>
-      ))}
     </div>
   );
 }
