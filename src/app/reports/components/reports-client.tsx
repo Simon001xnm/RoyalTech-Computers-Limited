@@ -161,7 +161,6 @@ export function ReportsClient() {
         'data.applyVat': 'Has VAT'
     };
 
-    // Flatten data for CSV
     const flattened = itemsToExport.map(d => ({
         ...d,
         generatedDate: format(parseISO(d.generatedDate), 'yyyy-MM-dd HH:mm'),
@@ -183,18 +182,39 @@ export function ReportsClient() {
     if (!reportElement) return;
 
     try {
+        // Use a fixed width for A4 at 96 DPI to ensure perfect aspect ratio
         const canvas = await html2canvas(reportElement, { 
             scale: 2.5, 
             useCORS: true, 
-            windowWidth: 1200,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            width: 794 // 210mm at 96 DPI
         });
-        const pdf = new jsPDF('p', 'mm', 'a4');
+
         const imgData = canvas.toDataURL('image/png', 1.0);
-        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        const imgWidth = 210;
+        const pageHeight = 297;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        let position = 0;
+
+        // Add the first page
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pageHeight;
+
+        // If content overflows, add subsequent pages (slicing)
+        while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+            heightLeft -= pageHeight;
+        }
+
         pdf.save(`Profit_Loss_Report_${format(new Date(), 'yyyyMMdd')}.pdf`);
         toast({ title: "PDF Report Saved" });
     } catch (error) {
+        console.error("PDF Capture Error:", error);
         toast({ variant: 'destructive', title: 'Export Failed' });
     }
   };
