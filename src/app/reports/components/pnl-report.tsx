@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 /**
  * @fileOverview High-Fidelity P&L and Statement Report
  * PAGINATION: Strictly forced A4 pages (210mm x 297mm)
- * STABILITY: Block-based layout to prevent html2canvas overlapping.
+ * STABILITY: Block-based layout to prevent overlap and ensure footer visibility.
  */
 interface PnlReportProps {
   data: PnlData;
@@ -54,7 +54,8 @@ const ReportRow = ({
   </div>
 );
 
-const ITEMS_PER_PAGE_STATEMENT = 18;
+// Reduced from 18 to 15 to ensure footer fits with larger fonts
+const ITEMS_PER_PAGE_STATEMENT = 15;
 
 export function PnlReport({ data, dateRange }: PnlReportProps) {
   const { tenant } = useSaaS();
@@ -68,7 +69,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
 
   const { operatingIncome, costOfGoodsSold, operatingExpenses, netIncome, sales, expenses } = data;
 
-  const primaryIndigo = "#1e3a8a"; // Solid Professional Blue
+  const primaryIndigo = "#1e3a8a"; 
   const secondaryIndigo = "#f8fafc";
   const companyName = company?.name || 'YOUR BUSINESS';
   const isNegative = netIncome < 0;
@@ -112,7 +113,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
             <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-2">{company?.address || 'Kenya'} &bull; {company?.email || 'OFFICE RECORDS'}</p>
         </section>
 
-        <div className="flex-grow space-y-12">
+        <div className="flex-grow space-y-10">
             <div>
                 <div className="text-white text-[11px] font-black uppercase px-4 py-3 rounded-sm mb-4 flex justify-between items-center shadow-sm" style={{ backgroundColor: primaryIndigo }}>
                     <span>1. Operating Income</span>
@@ -132,7 +133,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                         <ReportRow key={category} label={category} amount={amount as number} isSubItem />
                     ))
                 ) : (
-                    <p className="text-[11px] italic opacity-40 px-6 py-4 font-medium border-b border-dashed">No direct inventory costs recorded for this period.</p>
+                    <p className="text-[11px] italic opacity-40 px-6 py-4 font-medium border-b border-dashed">No direct inventory costs recorded.</p>
                 )}
                 <ReportRow label="Total COGS" amount={costOfGoodsSold.totalCogs} isTotal />
             </div>
@@ -147,30 +148,30 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                         <ReportRow key={category} label={category} amount={amount as number} isSubItem />
                     ))
                 ) : (
-                    <p className="text-[11px] italic opacity-40 px-6 py-4 font-medium border-b border-dashed">No overhead expenses recorded for this period.</p>
+                    <p className="text-[11px] italic opacity-40 px-6 py-4 font-medium border-b border-dashed">No overhead expenses recorded.</p>
                 )}
                 <ReportRow label="Total Operating Expenses" amount={operatingExpenses.totalExpenses} isTotal />
             </div>
 
             <div className={cn(
-                "mt-12 flex justify-between p-8 items-center rounded-2xl border-4 shadow-xl",
+                "mt-8 flex justify-between p-6 items-center rounded-2xl border-4 shadow-xl",
                 isNegative ? "bg-red-600 border-red-700 text-white" : "bg-emerald-600 border-emerald-700 text-white"
             )}>
                 <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80">Reporting Bottom Line</span>
-                    <p className="text-3xl font-black uppercase tracking-tighter">Net {isNegative ? 'Loss' : 'Profit'}</p>
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80">Bottom Line</span>
+                    <p className="text-2xl font-black uppercase tracking-tighter">Net {isNegative ? 'Loss' : 'Profit'}</p>
                 </div>
                 <div className="text-right">
-                    <span className="text-4xl font-black tracking-tighter tabular-nums">
+                    <span className="text-3xl font-black tracking-tighter tabular-nums">
                         {isNegative ? '-' : ''}KES {formatCurrency(Math.abs(netIncome))}
                     </span>
                 </div>
             </div>
         </div>
 
-        <footer className="mt-auto pt-6 border-t-2 border-black flex justify-between items-end">
+        <footer className="mt-auto pt-6 border-t-2 border-black flex justify-between items-end bg-white">
             <div className="text-left space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Financial Statement & bull; Verified Node Output</p>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Financial Statement &bull; Verified Node Output</p>
                 <p className="text-[8px] font-bold opacity-30 uppercase">Confidential Business Report</p>
             </div>
             <div className="flex items-center gap-4">
@@ -239,17 +240,17 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                     </tbody>
                 </table>
                 {pageIdx === statementPages.length - 1 && (
-                    <div className="mt-12 p-8 bg-slate-50 rounded-2xl border-2 border-slate-100 border-dashed">
+                    <div className="mt-8 p-6 bg-slate-50 rounded-2xl border-2 border-slate-100 border-dashed">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Audit Conclusion</p>
                         <p className="text-[12px] leading-relaxed text-slate-500 font-medium italic m-0">
-                            This summarized ledger provides a verified shop-level audit of all activity within the selected timeframe. All entries correspond to verified workspace transactions. End of detailed reporting for this period. Total transactions analyzed: {unifiedLedger.length}.
+                            This ledger provides a verified shop-level audit. Total transactions: {unifiedLedger.length}.
                         </p>
                     </div>
                 )}
             </div>
 
-            <footer className="mt-auto pt-6 border-t-2 border-slate-100 flex justify-between items-center">
-                <p className="text-[9px] font-black uppercase tracking-widest opacity-20">Transaction Audit Statement & bull; High Fidelity Ledger Output</p>
+            <footer className="mt-auto pt-6 border-t-2 border-slate-100 flex justify-between items-center bg-white">
+                <p className="text-[9px] font-black uppercase tracking-widest opacity-20">Transaction Audit Statement &bull; High Fidelity Ledger Output</p>
                 <p className="text-[12px] font-black bg-slate-50 px-4 py-2 rounded-sm border border-slate-100">PAGE {pageIdx + 2} OF {statementPages.length + 1}</p>
             </footer>
           </div>

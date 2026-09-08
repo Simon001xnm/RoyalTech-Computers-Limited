@@ -7,8 +7,9 @@ import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 import { numberToWords } from "@/lib/utils";
 
-const ITEMS_PER_PAGE_FIRST = 8;
-const ITEMS_PER_PAGE_OTHER = 18;
+// Reduced items per page to accommodate larger font sizes and footers
+const ITEMS_PER_PAGE_FIRST = 7;
+const ITEMS_PER_PAGE_OTHER = 15;
 
 export function InvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -112,7 +113,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 </div>
                 <div className="text-[11px] leading-relaxed mb-8 grid grid-cols-12 gap-6">
                     <div className="col-span-7">
-                        <p className="font-medium">To ensure proper credit, please enclose a copy of this statement with your payment and remit to: <span className="font-black uppercase">{workspace?.name || 'THE BUSINESS'}</span></p>
+                        <p className="font-medium text-[12px]">To ensure proper credit, remit payment to: <span className="font-black uppercase">{workspace?.name || 'THE BUSINESS'}</span></p>
                         <p className="mt-3">Payment Due Date: <span className="font-black underline">{format(new Date(), "dd/MM/yyyy")}</span></p>
                     </div>
                     <div className="col-span-5 border-l-2 border-black/10 pl-6">
@@ -124,13 +125,13 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     <div className="space-y-1.5">
                         <h3 className="text-[11px] font-black uppercase text-blue-900 mb-2 underline decoration-2">Billing From</h3>
                         <p className="font-black uppercase text-sm">{workspace?.name || 'OFFICIAL BUSINESS'}</p>
-                        <p className="opacity-80 leading-tight font-medium">{workspace?.address || 'Nairobi, Kenya'}</p>
+                        <p className="opacity-80 leading-tight font-medium text-[11px]">{workspace?.address || 'Nairobi, Kenya'}</p>
                         {workspace?.taxPin && <p className="font-black text-[10px]">PIN: {workspace.taxPin}</p>}
                     </div>
                     <div className="space-y-1.5">
                         <h3 className="text-[11px] font-black uppercase text-blue-900 mb-2 underline decoration-2">Billing To</h3>
                         <p className="font-black uppercase text-sm">{customer.alias || customer.name}</p>
-                        <p className="opacity-80 leading-tight font-medium">{customer.address || 'Nairobi, Kenya'}</p>
+                        <p className="opacity-80 leading-tight font-medium text-[11px]">{customer.address || 'Nairobi, Kenya'}</p>
                         <p className="opacity-80 font-bold">{customer.phone}</p>
                     </div>
                 </div>
@@ -206,7 +207,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
           </div>
 
           {/* FOOTER (On Every Page) */}
-          <footer className="mt-auto pt-8 border-t-2 border-gray-200">
+          <footer className="mt-auto pt-8 border-t-2 border-gray-200 bg-white">
              <div className="flex justify-between items-end">
                 <div className="text-[10px] font-bold text-gray-500 space-y-1">
                     <p className="uppercase">{workspace?.name}</p>
@@ -222,4 +223,3 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     </div>
   );
 }
-
