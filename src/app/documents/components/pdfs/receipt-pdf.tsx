@@ -38,7 +38,6 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
   const todayTotal = Number(data.total || (subtotal + vat));
   const amountPaidToday = data.amountPaid !== undefined ? Number(data.amountPaid) : todayTotal;
   const previousBalance = Number(data.previousBalance || 0);
-  // Total debt is previous balance + today's remaining unpaid amount
   const balanceToday = Math.max(0, todayTotal - amountPaidToday);
   const totalAccountDebt = balanceToday + previousBalance;
 

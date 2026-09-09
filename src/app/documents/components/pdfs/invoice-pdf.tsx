@@ -209,13 +209,12 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
           )}
 
           <footer className="mt-auto pt-8 border-t border-gray-100 bg-white">
-             <div className="text-center space-y-1.5">
+             <div className="text-center space-y-1.5 pb-4">
                 <p className="text-[9px] font-black uppercase tracking-tight opacity-60">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
                 <p className="text-[10px] font-bold uppercase tracking-widest">{workspace?.name || 'Matesh Technologies'}</p>
                 <p className="text-[8px] font-bold text-gray-500">
                     Phone: {workspace?.phone || '+254701694469'} • Email: {workspace?.email || 'mateshtechltd@gmail.com'}
                 </p>
-                <p className="text-[7px] font-black mt-3 lowercase tracking-tighter">developed by simonstylestechnologies 0758673616</p>
              </div>
              <div className="flex justify-end mt-4">
                 <div className="font-black bg-gray-50 px-3 py-1 rounded text-[9px] text-gray-400">
