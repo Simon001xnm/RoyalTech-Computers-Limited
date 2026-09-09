@@ -162,10 +162,13 @@ export function ReportsClient() {
 
   // ANALYTICS DASHBOARD ENGINE
   const analytics = useMemo(() => {
-    if (!rawSales || !rawExpenses || !rawCustomers) return null;
+    if (!rawSales || !rawExpenses || !rawCustomers || !date?.from || !date?.to) return null;
 
-    const now = new Date();
-    const months = eachMonthOfInterval({ start: startOfYear(now), end: now });
+    const interval = { start: startOfDay(date.from), end: endOfDay(date.to) };
+    const filteredSalesForPeriod = rawSales.filter(s => { try { return isWithinInterval(parseISO(s.date), interval); } catch { return false; } });
+    const filteredExpensesForPeriod = rawExpenses.filter(e => { try { return isWithinInterval(parseISO(e.date), interval); } catch { return false; } });
+
+    const months = eachMonthOfInterval({ start: startOfYear(date.from), end: endOfYear(date.to) });
 
     const monthlyData = months.map(month => {
         const monthSales = rawSales.filter(s => isSameMonth(parseISO(s.date), month));
@@ -175,20 +178,43 @@ export function ReportsClient() {
         return { name: format(month, 'MMM'), revenue: rev, costs: exp, transactions: monthSales.length };
     });
 
-    const totalRevenue = rawSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-    const totalExpenses = rawExpenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+    const totalRevenue = filteredSalesForPeriod.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
+    const totalExpenses = filteredExpensesForPeriod.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+    
+    // Product Distribution Logic (Top 5 + Others)
+    const productCounts: Record<string, number> = {};
+    filteredSalesForPeriod.forEach(sale => {
+      sale.items?.forEach((item: any) => {
+        const name = item.name || item.description || 'Unknown Product';
+        const qty = Number(item.quantity) || 1;
+        productCounts[name] = (productCounts[name] || 0) + qty;
+      });
+    });
+
+    const sortedProducts = Object.entries(productCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value]) => ({ name, value }));
+
+    const top5 = sortedProducts.slice(0, 5);
+    const rest = sortedProducts.slice(5);
+    const othersValue = rest.reduce((acc, p) => acc + p.value, 0);
+
+    const categoryData = [...top5];
+    if (othersValue > 0) {
+      categoryData.push({ name: 'Others', value: othersValue });
+    }
     
     return {
         monthlyData,
         metrics: {
             successRate: 85,
-            totalTrans: rawSales.length,
+            totalTrans: filteredSalesForPeriod.length,
             totalRevenue,
             expenseRatio: totalRevenue > 0 ? Math.round((totalExpenses / totalRevenue) * 100) : 0
         },
-        categoryData: [{ name: 'Laptops', value: 40 }, { name: 'Parts', value: 25 }, { name: 'Service', value: 15 }]
+        categoryData: categoryData.length > 0 ? categoryData : [{ name: 'No Sales Data', value: 1 }]
     };
-  }, [rawSales, rawExpenses, rawCustomers]);
+  }, [rawSales, rawExpenses, rawCustomers, date]);
 
   const handleApplyPreset = (preset: FilterPreset) => {
     setFilterPreset(preset);
@@ -335,6 +361,8 @@ export function ReportsClient() {
 
   if (isLoading) return <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest opacity-20">Analyzing Node Intelligence...</div>;
 
+  const COLORS = ['#00c853', '#263238', '#546e7a', '#78909c', '#b0bec5', '#cfd8dc'];
+
   return (
     <div className="space-y-6 pb-20">
       <PageHeader 
@@ -354,25 +382,37 @@ export function ReportsClient() {
                 <Card className="border-none shadow-sm ring-1 ring-black/5 bg-white">
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-[#00c853]/10 p-3 rounded-xl"><Activity className="h-6 w-6 text-[#00c853]" /></div>
-                        <div className="space-y-0.5"><p className="text-lg font-black">{analytics?.metrics.successRate}%</p><p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Success Rate</p></div>
+                        <div className="space-y-0.5">
+                            <p className="text-lg font-black">{analytics?.metrics.successRate}%</p>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Success Rate</p>
+                        </div>
                     </CardContent>
                 </Card>
                 <Card className="border-none shadow-sm ring-1 ring-black/5 bg-white">
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-[#00c853]/10 p-3 rounded-xl"><ShoppingCart className="h-6 w-6 text-[#00c853]" /></div>
-                        <div className="space-y-0.5"><p className="text-lg font-black">{analytics?.metrics.totalTrans}</p><p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Transactions</p></div>
+                        <div className="space-y-0.5">
+                            <p className="text-lg font-black">{analytics?.metrics.totalTrans}</p>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Transactions</p>
+                        </div>
                     </CardContent>
                 </Card>
                 <Card className="border-none shadow-sm ring-1 ring-black/5 bg-white">
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-[#00c853]/10 p-3 rounded-xl"><DollarSign className="h-6 w-6 text-[#00c853]" /></div>
-                        <div className="space-y-0.5"><p className="text-lg font-black">{formatCurrency(analytics?.metrics.totalRevenue || 0)}</p><p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Gross Revenue</p></div>
+                        <div className="space-y-0.5">
+                            <p className="text-lg font-black">{formatCurrency(analytics?.metrics.totalRevenue || 0)}</p>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Gross Revenue</p>
+                        </div>
                     </CardContent>
                 </Card>
                 <Card className="border-none shadow-sm ring-1 ring-black/5 bg-white">
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-[#00c853]/10 p-3 rounded-xl"><Percent className="h-6 w-6 text-[#00c853]" /></div>
-                        <div className="space-y-0.5"><p className="text-lg font-black">{analytics?.metrics.expenseRatio}%</p><p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Expense Ratio</p></div>
+                        <div className="space-y-0.5">
+                            <p className="text-lg font-black">{analytics?.metrics.expenseRatio}%</p>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Expense Ratio</p>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
@@ -407,14 +447,25 @@ export function ReportsClient() {
                     </CardContent>
                 </Card>
                 <Card className="border-none shadow-xl ring-1 ring-black/5 overflow-hidden">
-                    <CardHeader className="bg-black text-white p-3 text-center"><CardTitle className="text-xs font-black uppercase tracking-widest">Category Split</CardTitle></CardHeader>
+                    <CardHeader className="bg-black text-white p-3 text-center"><CardTitle className="text-xs font-black uppercase tracking-widest">Moving Products Split</CardTitle></CardHeader>
                     <CardContent className="p-6 h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                                <Pie data={analytics?.categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value">
-                                    <Cell fill="#00c853" /><Cell fill="#263238" /><Cell fill="#cfd8dc" />
+                                <Pie 
+                                  data={analytics?.categoryData} 
+                                  cx="50%" 
+                                  cy="50%" 
+                                  innerRadius={60} 
+                                  outerRadius={80} 
+                                  dataKey="value"
+                                  label={({ name }) => name}
+                                >
+                                    {analytics?.categoryData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
                                 </Pie>
                                 <Tooltip />
+                                <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: '10px', textTransform: 'uppercase' }} />
                             </PieChart>
                         </ResponsiveContainer>
                     </CardContent>
