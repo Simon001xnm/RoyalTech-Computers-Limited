@@ -56,11 +56,21 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
   }, [sales]);
 
   const unifiedLedger = [
-      ...sales.map((s: any) => ({ ...s, ledgerType: 'INFLOW', label: s.customerName || 'Sale' })),
-      ...expenses.map((e: any) => ({ ...e, ledgerType: 'OUTFLOW', label: e.category || 'Expense' }))
+      ...sales.map((s: any) => ({ 
+        ...s, 
+        isIncome: true,
+        actualType: s.type || (Number(s.balance) > 0 ? 'Invoice' : 'Receipt'), 
+        label: s.customerName || 'Sale' 
+      })),
+      ...expenses.map((e: any) => ({ 
+        ...e, 
+        isIncome: false,
+        actualType: 'Expense', 
+        label: e.category || 'Expense' 
+      }))
   ].sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
 
-  const LEDGER_ITEMS_PER_PAGE = 22; // Reduced slightly to account for increased padding
+  const LEDGER_ITEMS_PER_PAGE = 22;
   const ledgerPages: any[][] = [];
   for (let i = 0; i < unifiedLedger.length; i += LEDGER_ITEMS_PER_PAGE) {
       ledgerPages.push(unifiedLedger.slice(i, i + LEDGER_ITEMS_PER_PAGE));
@@ -158,13 +168,13 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                         <tr className="text-left">
                             <th className="p-4 font-black text-[9px] uppercase w-24 border border-blue-900">Date</th>
                             <th className="p-4 font-black text-[9px] uppercase border border-blue-900">Reference & Description</th>
-                            <th className="p-4 font-black text-[9px] uppercase w-24 text-center border border-blue-900">Protocol</th>
-                            <th className="p-4 text-right font-black text-[9px] uppercase w-36 border border-blue-900">Value (KES)</th>
+                            <th className="p-4 font-black text-[9px] uppercase w-24 text-center border border-blue-900">MAT</th>
+                            <th className="p-4 text-right font-black text-[9px] uppercase w-36 border border-blue-900">CASH (KES)</th>
                         </tr>
                     </thead>
                     <tbody>
                         {pageData.map((item: any, i) => {
-                            const isIncome = item.ledgerType === 'INFLOW';
+                            const isIncome = item.isIncome;
                             const amount = Number(item.total || item.amount || 0);
                             return (
                                 <tr key={i} className="border-b border-gray-100 last:border-0">
@@ -174,7 +184,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                                     </td>
                                     <td className="p-4 text-center align-middle">
                                         <span className={cn("text-[8px] font-black uppercase px-2 py-1 rounded inline-block", isIncome ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
-                                            {item.ledgerType}
+                                            {item.actualType}
                                         </span>
                                     </td>
                                     <td className={cn("p-4 text-right font-black tabular-nums text-[11px] align-middle", isIncome ? "text-green-700" : "text-red-700")}>
