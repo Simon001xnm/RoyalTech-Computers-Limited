@@ -50,7 +50,6 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     : (docSnapshot.id || 'TEMP').slice(0, 5).toUpperCase();
 
   const primaryBlue = "#1e3a8a";
-  const headerGray = "#f1f5f9";
 
   // Pagination Logic
   const pages: any[][] = [];
@@ -115,7 +114,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
               <div className="grid grid-cols-[60%_40%] gap-0 mb-8 border-b pb-8">
                   <div className="pr-12 space-y-4">
-                      <p className="text-[9px] leading-relaxed font-medium">
+                      <p className="text-[9px] font-medium leading-relaxed">
                         To ensure proper credit, please enclose a copy of this statement with your payment and remit to: <span className="font-black uppercase">{workspace?.name || 'MATESH TECHNOLOGIES'}</span>
                       </p>
                       <p className="text-[10px] font-bold">Payment Due Date: <span className="font-black">{format(new Date(docSnapshot.generatedDate), "dd/MM/yyyy")}</span></p>
@@ -209,16 +208,16 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             </div>
           )}
 
-          <footer className="mt-auto pt-6 border-t border-gray-100 bg-white">
-             <div className="text-center mb-4">
-                <p className="text-[9px] font-black uppercase tracking-widest opacity-60">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+          <footer className="mt-auto pt-8 border-t border-gray-100 bg-white">
+             <div className="text-center space-y-1.5">
+                <p className="text-[9px] font-black uppercase tracking-tight opacity-60">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest">{workspace?.name || 'Matesh Technologies'}</p>
+                <p className="text-[8px] font-bold text-gray-500">
+                    Phone: {workspace?.phone || '+254701694469'} • Email: {workspace?.email || 'mateshtechltd@gmail.com'}
+                </p>
+                <p className="text-[7px] font-black mt-3 uppercase tracking-tighter">DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616</p>
              </div>
-             <div className="flex justify-between items-end">
-                <div className="font-bold text-gray-400 space-y-0.5 text-[8px]">
-                    <p className="uppercase tracking-widest">{workspace?.name}</p>
-                    <p className="opacity-60">Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
-                    <p className="text-[7px] font-black mt-1">DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616</p>
-                </div>
+             <div className="flex justify-end mt-4">
                 <div className="font-black bg-gray-50 px-3 py-1 rounded text-[9px] text-gray-400">
                     PAGE {pageIdx + 1} OF {pages.length}
                 </div>

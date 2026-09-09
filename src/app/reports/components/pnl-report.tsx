@@ -90,7 +90,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
       ledgerPages.push(unifiedLedger.slice(i, i + LEDGER_ITEMS_PER_PAGE));
   }
 
-  const companyName = company?.name || 'MATESH TECHNOLOGIES LTD';
+  const companyName = company?.name || 'Matesh Technologies';
   const jetBlack = "#000000";
 
   return (
@@ -178,18 +178,15 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
               </table>
           </div>
 
-          <footer className="mt-auto pt-6 border-t border-black flex flex-col gap-4">
-              <div className="text-center">
-                  <p className="text-[9px] font-black uppercase tracking-widest opacity-60">THIS STATEMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+          <footer className="mt-auto pt-6 border-t border-black flex flex-col gap-1">
+              <div className="text-center space-y-1">
+                  <p className="text-[9px] font-black uppercase tracking-tight opacity-60">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest">{companyName}</p>
+                  <p className="text-[8px] font-bold opacity-60">Phone: {company?.phone || '+254701694469'} • Email: {company?.email || 'mateshtechltd@gmail.com'}</p>
+                  <p className="text-[7px] font-black pt-2 uppercase tracking-tighter">DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616</p>
               </div>
-              <div className="flex justify-between items-end">
-                <div className="text-left text-[8px] font-black uppercase tracking-widest">
-                    {companyName} &bull; Generated: {format(new Date(), 'dd/MM/yyyy HH:mm')}
-                    <p className="text-[7px] font-black mt-1">DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616</p>
-                </div>
-                <div className="text-right">
-                    <p className="text-[10px] font-black bg-slate-100 px-4 py-1.5 rounded-sm uppercase font-mono border border-black">PAGE {sIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
-                </div>
+              <div className="flex justify-end pt-4">
+                  <p className="text-[10px] font-black bg-slate-100 px-4 py-1.5 rounded-sm uppercase font-mono border border-black">PAGE {sIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
               </div>
           </footer>
         </div>
@@ -245,14 +242,16 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                 </table>
              </div>
 
-             <footer className="mt-auto pt-6 border-t border-black flex flex-col gap-4">
-                <div className="text-center">
-                    <p className="text-[9px] font-black uppercase tracking-widest opacity-60">THIS STATEMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+             <footer className="mt-auto pt-6 border-t border-black flex flex-col gap-1">
+                <div className="text-center space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-tight opacity-60">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest">{companyName}</p>
+                    <p className="text-[8px] font-bold opacity-60">Phone: {company?.phone || '+254701694469'} • Email: {company?.email || 'mateshtechltd@gmail.com'}</p>
+                    <p className="text-[7px] font-black pt-2 uppercase tracking-tighter">DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616</p>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center pt-4">
                     <div className="text-left">
-                        <p className="text-[8px] font-black opacity-30 uppercase tracking-widest">{companyName} &bull; Detailed Ledger Audit</p>
-                        <p className="text-[7px] font-black mt-1 uppercase opacity-30">DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616</p>
+                        <p className="text-[8px] font-black opacity-30 uppercase tracking-widest">Document Generated: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
                     </div>
                     <p className="text-[10px] font-black bg-slate-100 px-4 py-1.5 rounded-sm tracking-widest font-mono border border-black">PAGE {summaryPages.length + pIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
                 </div>

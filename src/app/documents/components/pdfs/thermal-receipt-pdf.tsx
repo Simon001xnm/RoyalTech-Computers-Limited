@@ -41,7 +41,7 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
-  const bizName = workspace?.name || liveCompany?.name || 'OFFICIAL BUSINESS';
+  const bizName = workspace?.name || liveCompany?.name || 'Matesh Technologies';
 
   return (
     <div className="flex flex-col items-center bg-white p-0 overflow-visible">
@@ -140,15 +140,14 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
         </div>
 
         {/* FOOTER */}
-        <div className="text-center space-y-3 mb-2 w-full">
+        <div className="text-center space-y-2 mb-2 w-full pt-2">
           <p className="text-[8px] font-black uppercase opacity-60 leading-tight">
             THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE
           </p>
-          <p className="text-[9px] font-black">*** Thank you ***</p>
+          <p className="text-[9px] font-black uppercase">{bizName}</p>
           <div className="text-[8px] space-y-1 opacity-80">
-            {workspace?.website && <p>{workspace.website}</p>}
-            <p>Tel: {workspace?.phone || 'N/A'}</p>
-            <p className="text-[7px] font-black pt-2 uppercase tracking-tighter">
+            <p>Phone: {workspace?.phone || '+254701694469'} • Email: {workspace?.email || 'mateshtechltd@gmail.com'}</p>
+            <p className="text-[7px] font-black pt-3 uppercase tracking-tighter">
                 DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616
             </p>
           </div>
