@@ -8,6 +8,7 @@ import { doc } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useMemo } from 'react';
 
 interface PnlReportProps {
   data: PnlData;
@@ -22,32 +23,6 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-const ReportRow = ({
-  label,
-  amount,
-  isTotal = false,
-  isSubItem = false,
-}: {
-  label: string;
-  amount: number;
-  isTotal?: boolean;
-  isSubItem?: boolean;
-}) => (
-  <div
-    className={cn(
-      "flex justify-between items-center border-b border-gray-100 py-2.5",
-      isTotal ? 'bg-slate-50 font-bold px-4 border-b-2 border-black' : 'font-medium',
-      isSubItem ? 'pl-8 pr-4 text-[10px]' : 'px-2 text-[11px]'
-    )}
-  >
-    <div className="uppercase tracking-tight truncate leading-none">{label}</div>
-    <div className="text-right font-mono font-bold flex items-baseline">
-      <span className="opacity-30 mr-1.5 text-[8px] font-sans">KES</span>
-      {formatCurrency(amount)}
-    </div>
-  </div>
-);
-
 export function PnlReport({ data, dateRange }: PnlReportProps) {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
@@ -58,159 +33,168 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
   );
   const { data: company } = useDoc(companyRef);
 
-  const { operatingIncome, costOfGoodsSold, operatingExpenses, netIncome, sales, expenses } = data;
+  const { sales, expenses } = data;
 
+  // 1. Calculate Customer-wise Summary for the period
+  const customerSummary = useMemo(() => {
+    const summaryMap: Record<string, {
+        name: string,
+        openingBalance: number,
+        periodInvoiced: number,
+        periodPaid: number,
+        closingBalance: number
+    }> = {};
+
+    sales.forEach(s => {
+        const cId = s.customerId || 'walk-in';
+        if (!summaryMap[cId]) {
+            summaryMap[cId] = {
+                name: s.customerName || 'GENERAL WALK-IN',
+                openingBalance: Number(s.previousBalance || 0),
+                periodInvoiced: 0,
+                periodPaid: 0,
+                closingBalance: 0
+            };
+        }
+        summaryMap[cId].periodInvoiced += Number(s.total || 0);
+        summaryMap[cId].periodPaid += Number(s.amountPaid || 0);
+        summaryMap[cId].closingBalance = summaryMap[cId].openingBalance + summaryMap[cId].periodInvoiced - summaryMap[cId].periodPaid;
+    });
+
+    return Object.values(summaryMap).sort((a,b) => b.periodInvoiced - a.periodInvoiced);
+  }, [sales]);
+
+  // 2. Prepare detailed ledger (Transactions)
   const unifiedLedger = [
-      ...sales.map((s: any) => ({ ...s, ledgerType: 'INCOME', label: s.customerName || 'Sale' })),
-      ...expenses.map((e: any) => ({ ...e, ledgerType: 'EXPENSE', label: e.category || 'Shop Expense' }))
+      ...sales.map((s: any) => ({ ...s, ledgerType: 'INFLOW', label: s.customerName || 'Sale' })),
+      ...expenses.map((e: any) => ({ ...e, ledgerType: 'OUTFLOW', label: e.category || 'Expense' }))
   ].sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
 
-  // Pagination for Ledger
-  const ITEMS_PER_PAGE = 30;
+  // Pagination for Ledger (Subsequent pages)
+  const LEDGER_ITEMS_PER_PAGE = 25;
   const ledgerPages: any[][] = [];
-  for (let i = 0; i < unifiedLedger.length; i += ITEMS_PER_PAGE) {
-      ledgerPages.push(unifiedLedger.slice(i, i + ITEMS_PER_PAGE));
+  for (let i = 0; i < unifiedLedger.length; i += LEDGER_ITEMS_PER_PAGE) {
+      ledgerPages.push(unifiedLedger.slice(i, i + LEDGER_ITEMS_PER_PAGE));
   }
 
   const primaryBlue = "#1e3a8a";
-  const primaryGreen = "#10b981";
-  const companyName = company?.name || 'OFFICIAL BUSINESS';
-  const isNegative = netIncome < 0;
+  const companyName = company?.name || 'MATESH TECHNOLOGIES';
 
   return (
     <div className="flex flex-col items-center gap-10 bg-slate-200 p-8 no-scrollbar">
-      {/* PAGE 1: SUMMARIZED PROFIT & LOSS STATEMENT */}
+      
+      {/* PAGE 1: OFFICIAL STATEMENT OF ACCOUNTS (SUMMARY) */}
       <div className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden">
         <header className="flex justify-between items-start mb-6">
             <div className="flex items-center gap-4 w-1/4">
               {company?.logoUrl ? (
-                  <img src={company.logoUrl} alt="Logo" className="h-16 w-auto object-contain" crossOrigin="anonymous" />
+                  <img src={company.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
               ) : (
-                  <div className="h-14 w-14 bg-gray-50 flex items-center justify-center text-[10px] font-bold border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
+                  <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-bold border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
               )}
             </div>
-            <div className="flex flex-col items-center justify-center text-center flex-1 pt-4 px-4 overflow-hidden">
-                <h1 className="text-[28px] font-bold uppercase tracking-tight leading-none truncate w-full" style={{ color: primaryBlue }}>
+            <div className="flex flex-col items-start justify-center flex-1 pt-2 px-4 overflow-hidden">
+                <h1 className="text-[28px] font-black uppercase tracking-tighter leading-none" style={{ color: primaryBlue }}>
                     {companyName}
                 </h1>
-                <p className="font-bold text-[10px] uppercase tracking-wide mt-1" style={{ color: primaryGreen }}>Official P&L Statement</p>
+                <p className="font-bold text-[10px] uppercase tracking-wide mt-1 opacity-70">Official Business Statement / Summary</p>
             </div>
-            <div className="text-right w-1/4 space-y-0.5">
-                <p className="font-bold uppercase text-[10px]">HEAD OFFICE</p>
-                <p className="text-[9px] font-bold leading-tight">{company?.address || 'Nairobi, Kenya'}</p>
+            <div className="text-right w-1/3 space-y-0.5">
+                <p className="font-black uppercase text-[10px]">HEAD OFFICE</p>
+                <p className="text-[9px] font-bold leading-tight uppercase">{company?.address || 'NAIROBI, KENYA'}</p>
                 <div className="pt-3">
-                    <Badge variant="default" className="ml-auto text-[8px] font-black uppercase py-0.5 border">AUDIT VALID</Badge>
-                    <p className="text-[9px] font-bold text-muted-foreground mt-1">Period: {dateRange?.from ? format(dateRange.from, 'MMM yyyy') : 'Current'}</p>
+                    <p className="text-[11px] font-black uppercase" style={{ color: primaryBlue }}>REPORT REF: AUD-{format(new Date(), 'yyMM')}</p>
+                    <p className="text-[9px] font-bold text-muted-foreground mt-1">Period: {dateRange?.from ? format(dateRange.from, 'MMM yyyy') : 'All Time'}</p>
                 </div>
             </div>
         </header>
-        <div className="h-px w-full bg-black mb-8" />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 flex-grow">
-            <div className="space-y-10">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm">
-                    <div className="flex justify-between items-center mb-4">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">1. Revenue (Inflow)</span>
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-800 border-none h-4 text-[8px] font-black">GROSS SALES</Badge>
-                    </div>
-                    <ReportRow label="Operational Sales" amount={operatingIncome.totalSales} />
-                    <ReportRow label="Total Invoiced Value" amount={operatingIncome.totalSales} isTotal />
-                </div>
+        <div className="h-0.5 w-full bg-black mb-8" />
 
-                <div className="bg-amber-50/30 p-4 rounded-xl border border-amber-100 shadow-sm">
-                    <div className="flex justify-between items-center mb-4">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-amber-700">2. Direct Costs (COGS)</span>
-                        <Badge variant="secondary" className="bg-amber-50 text-amber-800 border-none h-4 text-[8px] font-black">ACQUISITION</Badge>
-                    </div>
-                    {Object.entries(costOfGoodsSold.cogsByCategory).map(([category, amount]) => (
-                        <ReportRow key={category} label={category} amount={amount as number} isSubItem />
-                    ))}
-                    <ReportRow label="Total Inventory Costs" amount={costOfGoodsSold.totalCogs} isTotal />
-                </div>
+        {/* SUMMARY BAR */}
+        <div className="flex w-full mb-6 border border-black rounded-[8px] overflow-hidden">
+            <div className="w-[100%] p-2 bg-[#e0f2fe]">
+                <p className="text-[10px] font-black uppercase tracking-widest text-center">CUSTOMER FINANCIAL SUMMARY (PERIODIC)</p>
             </div>
+        </div>
 
-            <div className="space-y-10">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm">
-                    <div className="flex justify-between items-center mb-4">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">3. Overheads (Expenses)</span>
-                        <Badge variant="secondary" className="bg-slate-100 text-slate-800 border-none h-4 text-[8px] font-black">OPERATING SPEND</Badge>
-                    </div>
-                    {Object.entries(operatingExpenses.expenseByCategory).map(([category, amount]) => (
-                        <ReportRow key={category} label={category} amount={amount as number} isSubItem />
+        <div className="flex-grow overflow-hidden">
+            <table className="w-full border-collapse">
+                <thead>
+                    <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>
+                        <th className="p-3 font-black text-[9px] uppercase">CUSTOMER</th>
+                        <th className="p-3 text-right font-black text-[9px] uppercase w-28">OPENING</th>
+                        <th className="p-3 text-right font-black text-[9px] uppercase w-28">INVOICED</th>
+                        <th className="p-3 text-right font-black text-[9px] uppercase w-28">PAID</th>
+                        <th className="p-3 text-right font-black text-[9px] uppercase w-32">CLOSING BAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {customerSummary.map((c, idx) => (
+                        <tr key={idx} className="border-b border-gray-100 h-11">
+                            <td className="p-3 font-black uppercase text-[10px] truncate max-w-[200px]">{c.name}</td>
+                            <td className="p-3 text-right font-bold text-[10px] opacity-40">{formatCurrency(c.openingBalance)}</td>
+                            <td className="p-3 text-right font-black text-[10px] text-blue-700">{formatCurrency(c.periodInvoiced)}</td>
+                            <td className="p-3 text-right font-black text-[10px] text-green-700">{formatCurrency(c.periodPaid)}</td>
+                            <td className="p-3 text-right font-black text-[11px] bg-slate-50">{formatCurrency(c.closingBalance)}</td>
+                        </tr>
                     ))}
-                    <ReportRow label="Total Expenditures" amount={operatingExpenses.totalExpenses} isTotal />
-                </div>
-
-                <div className={cn(
-                    "p-8 rounded-[24px] border shadow-xl flex flex-col gap-4 mt-auto",
-                    isNegative ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"
-                )}>
-                    <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] opacity-40">Period Performance</span>
-                        <div className={cn("px-3 py-0.5 rounded-full", isNegative ? "bg-red-600 text-white" : "bg-emerald-600 text-white")}>
-                            <span className="text-[8px] font-black uppercase tracking-widest">{isNegative ? 'LOSS' : 'PROFIT'}</span>
-                        </div>
-                    </div>
-                    <h2 className={cn("text-lg font-bold uppercase tracking-tight m-0", isNegative ? "text-red-700" : "text-emerald-700")}>
-                        Net {isNegative ? 'Deficit' : 'Surplus'} Outcome
-                    </h2>
-                    <div className="pt-4 border-t border-black/5">
-                        <span className={cn("text-2xl font-black tracking-tight tabular-nums", isNegative ? "text-red-800" : "text-emerald-800")}>
-                            {isNegative ? '-' : ''}KES {formatCurrency(Math.abs(netIncome))}
-                        </span>
-                    </div>
-                </div>
-            </div>
+                    {customerSummary.length === 0 && (
+                        <tr><td colSpan={5} className="p-12 text-center text-[10px] font-bold uppercase opacity-30 italic">No customer transactions in this period</td></tr>
+                    )}
+                </tbody>
+            </table>
         </div>
 
         <footer className="mt-auto pt-6 border-t border-gray-100 flex justify-between items-end">
             <div className="text-left text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                {companyName} &bull; Summarized Statement &bull; {format(new Date(), 'dd/MM/yy HH:mm')}
+                {companyName} &bull; Generated: {format(new Date(), 'dd/MM/yyyy HH:mm')}
             </div>
             <div className="text-right">
-                <p className="text-[9px] font-bold bg-gray-50 text-gray-400 px-4 py-1.5 rounded-sm uppercase">PAGE 1 OF {ledgerPages.length + 1}</p>
+                <p className="text-[9px] font-bold bg-gray-50 text-gray-400 px-4 py-1.5 rounded-sm uppercase font-mono">PAGE 1 OF {ledgerPages.length + 1}</p>
             </div>
         </footer>
       </div>
 
-      {/* PAGE 2+: DETAILED AUDIT LEDGER */}
+      {/* SUBSEQUENT PAGES: DETAILED TRANSACTION AUDIT LEDGER */}
       {ledgerPages.map((pageData, pIdx) => (
           <div key={pIdx} className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden">
-             <header className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
-                <h3 className="text-lg font-bold uppercase tracking-tight m-0">Detailed Audit Ledger</h3>
+             <header className="flex justify-between items-center mb-6 pb-4 border-b-2 border-black">
+                <div className="flex items-center gap-3">
+                    <Badge className="bg-black text-white font-black uppercase text-[8px] px-2 h-5">AUDIT TRAIL</Badge>
+                    <h3 className="text-lg font-black uppercase tracking-tighter m-0">Detailed Transaction Ledger</h3>
+                </div>
                 <div className="text-right flex flex-col gap-1">
-                    <p className="text-[14px] font-bold uppercase text-slate-400 m-0">{companyName}</p>
-                    <Badge variant="outline" className="ml-auto text-[9px] font-bold uppercase py-0.5 border-slate-200">{dateRange?.from ? format(dateRange.from, 'MMM yyyy') : 'Audit'}</Badge>
+                    <p className="text-[12px] font-black uppercase text-slate-400 m-0">{companyName}</p>
                 </div>
              </header>
 
              <div className="flex-grow overflow-hidden flex flex-col">
                 <table className="w-full border-collapse">
-                    <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                    <thead className="text-white" style={{ backgroundColor: primaryBlue }}>
                         <tr className="text-left">
-                            <th className="p-3 font-bold text-[9px] uppercase w-24">Date</th>
-                            <th className="p-3 font-bold text-[9px] uppercase">Reference & Description</th>
-                            <th className="p-3 font-bold text-[9px] uppercase w-32">Type</th>
-                            <th className="p-3 text-right font-bold text-[9px] uppercase w-40">Value (KES)</th>
+                            <th className="p-3 font-black text-[9px] uppercase w-24">Date</th>
+                            <th className="p-3 font-black text-[9px] uppercase">Reference & Description</th>
+                            <th className="p-3 font-black text-[9px] uppercase w-24 text-center">Type</th>
+                            <th className="p-3 text-right font-black text-[9px] uppercase w-36">Value (KES)</th>
                         </tr>
                     </thead>
                     <tbody>
                         {pageData.map((item: any, i) => {
-                            const isIncome = item.ledgerType === 'INCOME';
+                            const isIncome = item.ledgerType === 'INFLOW';
                             const amount = Number(item.total || item.amount || 0);
                             return (
-                                <tr key={i} className="border-b border-gray-50 last:border-0">
-                                    <td className="p-2 font-mono text-[9px] font-bold opacity-40">{format(parseISO(item.date), 'dd MMM yy')}</td>
-                                    <td className="p-2">
-                                        <p className="font-bold uppercase text-[9px] truncate max-w-[280px] tracking-tight">{item.label}</p>
-                                        <p className="text-[7px] opacity-20 font-mono mt-0.5 uppercase">ID: {item.id.slice(0, 12)}</p>
+                                <tr key={i} className="border-b border-gray-100 h-10">
+                                    <td className="p-3 font-mono text-[9px] font-bold opacity-40">{format(parseISO(item.date), 'dd/MM/yy')}</td>
+                                    <td className="p-3">
+                                        <p className="font-black uppercase text-[10px] truncate max-w-[320px] tracking-tight">{item.label}</p>
                                     </td>
-                                    <td className="p-2">
-                                        <Badge variant="outline" className={cn("text-[7px] font-bold uppercase h-3.5 px-1.5 border-none", isIncome ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800")}>
-                                            {isIncome ? 'INFLOW' : 'OUTFLOW'}
+                                    <td className="p-3 text-center">
+                                        <Badge variant="outline" className={cn("text-[7px] font-black uppercase h-3.5 px-1.5 border-none", isIncome ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
+                                            {item.ledgerType}
                                         </Badge>
                                     </td>
-                                    <td className={cn("p-2 text-right font-bold tabular-nums text-[9px] tracking-tight", isIncome ? "text-emerald-700" : "text-red-700")}>
+                                    <td className={cn("p-3 text-right font-black tabular-nums text-[10px]", isIncome ? "text-green-700" : "text-red-700")}>
                                         {formatCurrency(amount)}
                                     </td>
                                 </tr>
@@ -221,8 +205,8 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
              </div>
 
              <footer className="mt-6 pt-6 border-t border-gray-100 flex justify-between items-center bg-white">
-                <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">{companyName} &bull; Detailed Statement</p>
-                <p className="text-[9px] font-bold bg-gray-50 text-gray-300 px-4 py-1.5 rounded-sm tracking-widest">PAGE {pIdx + 2} OF {ledgerPages.length + 1}</p>
+                <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">{companyName} &bull; Detailed Ledger Audit</p>
+                <p className="text-[9px] font-black bg-gray-50 text-gray-300 px-4 py-1.5 rounded-sm tracking-widest font-mono">PAGE {pIdx + 2} OF {ledgerPages.length + 1}</p>
              </footer>
           </div>
       ))}
