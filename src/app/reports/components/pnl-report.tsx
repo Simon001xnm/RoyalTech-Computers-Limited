@@ -60,7 +60,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
       ...expenses.map((e: any) => ({ ...e, ledgerType: 'OUTFLOW', label: e.category || 'Expense' }))
   ].sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
 
-  const LEDGER_ITEMS_PER_PAGE = 24;
+  const LEDGER_ITEMS_PER_PAGE = 22; // Reduced slightly to account for increased padding
   const ledgerPages: any[][] = [];
   for (let i = 0; i < unifiedLedger.length; i += LEDGER_ITEMS_PER_PAGE) {
       ledgerPages.push(unifiedLedger.slice(i, i + LEDGER_ITEMS_PER_PAGE));
@@ -88,7 +88,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
             </div>
             <div className="text-right space-y-1">
                 <p className="font-black text-[10px] uppercase">HEAD OFFICE</p>
-                <p className="text-[9px] font-bold leading-tight max-w-[200px]">{company?.address || 'Nairobi, Kenya'}</p>
+                <p className="text-[9px] font-bold leading-tight max-w-[200px] uppercase">{company?.address || 'Nairobi, Kenya'}</p>
                 <div className="pt-2">
                     <p className="text-[11px] font-black uppercase text-blue-900">
                         {dateRange?.from ? format(dateRange.from, 'dd MMM yy') : '--'} - {dateRange?.to ? format(dateRange.to, 'dd MMM yy') : '--'}
@@ -116,12 +116,12 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                 </thead>
                 <tbody>
                     {customerSummary.map((c, idx) => (
-                        <tr key={idx} className="border-b border-gray-100 h-10">
-                            <td className="p-2.5 font-bold uppercase text-[10px] truncate max-w-[200px]">{c.name}</td>
-                            <td className="p-2.5 text-right font-medium text-[10px] opacity-40">{formatCurrency(c.openingBalance)}</td>
-                            <td className="p-2.5 text-right font-black text-[10px] text-blue-700">{formatCurrency(c.periodInvoiced)}</td>
-                            <td className="p-2.5 text-right font-black text-[10px] text-green-700">{formatCurrency(c.periodPaid)}</td>
-                            <td className="p-2.5 text-right font-black text-[11px] bg-slate-50">{formatCurrency(c.closingBalance)}</td>
+                        <tr key={idx} className="border-b border-gray-100">
+                            <td className="p-3 font-bold uppercase text-[10px] truncate max-w-[200px]">{c.name}</td>
+                            <td className="p-3 text-right font-medium text-[10px] opacity-40">{formatCurrency(c.openingBalance)}</td>
+                            <td className="p-3 text-right font-black text-[10px] text-blue-700">{formatCurrency(c.periodInvoiced)}</td>
+                            <td className="p-3 text-right font-black text-[10px] text-green-700">{formatCurrency(c.periodPaid)}</td>
+                            <td className="p-3 text-right font-black text-[11px] bg-slate-50">{formatCurrency(c.closingBalance)}</td>
                         </tr>
                     ))}
                     {customerSummary.length === 0 && (
@@ -156,10 +156,10 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                 <table className="w-full border-collapse border border-black/10">
                     <thead className="text-white" style={{ backgroundColor: primaryBlue }}>
                         <tr className="text-left">
-                            <th className="p-3 font-black text-[9px] uppercase w-24 border border-blue-900">Date</th>
-                            <th className="p-3 font-black text-[9px] uppercase border border-blue-900">Reference & Description</th>
-                            <th className="p-3 font-black text-[9px] uppercase w-24 text-center border border-blue-900">Protocol</th>
-                            <th className="p-3 text-right font-black text-[9px] uppercase w-36 border border-blue-900">Value (KES)</th>
+                            <th className="p-4 font-black text-[9px] uppercase w-24 border border-blue-900">Date</th>
+                            <th className="p-4 font-black text-[9px] uppercase border border-blue-900">Reference & Description</th>
+                            <th className="p-4 font-black text-[9px] uppercase w-24 text-center border border-blue-900">Protocol</th>
+                            <th className="p-4 text-right font-black text-[9px] uppercase w-36 border border-blue-900">Value (KES)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -167,17 +167,17 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                             const isIncome = item.ledgerType === 'INFLOW';
                             const amount = Number(item.total || item.amount || 0);
                             return (
-                                <tr key={i} className="border-b border-gray-100 h-10">
-                                    <td className="p-2.5 font-mono text-[9px] font-bold opacity-40">{format(parseISO(item.date), 'dd/MM/yy')}</td>
-                                    <td className="p-2.5">
-                                        <p className="font-black uppercase text-[10px] truncate max-w-[320px] tracking-tight">{item.label}</p>
+                                <tr key={i} className="border-b border-gray-100 last:border-0">
+                                    <td className="p-4 font-mono text-[9px] font-bold opacity-40 align-middle">{format(parseISO(item.date), 'dd/MM/yy')}</td>
+                                    <td className="p-4 align-middle">
+                                        <p className="font-black uppercase text-[10px] leading-normal tracking-tight">{item.label}</p>
                                     </td>
-                                    <td className="p-2.5 text-center">
-                                        <span className={cn("text-[8px] font-black uppercase px-2 py-0.5 rounded", isIncome ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
+                                    <td className="p-4 text-center align-middle">
+                                        <span className={cn("text-[8px] font-black uppercase px-2 py-1 rounded inline-block", isIncome ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
                                             {item.ledgerType}
                                         </span>
                                     </td>
-                                    <td className={cn("p-2.5 text-right font-black tabular-nums text-[10px]", isIncome ? "text-green-700" : "text-red-700")}>
+                                    <td className={cn("p-4 text-right font-black tabular-nums text-[11px] align-middle", isIncome ? "text-green-700" : "text-red-700")}>
                                         {formatCurrency(amount)}
                                     </td>
                                 </tr>
