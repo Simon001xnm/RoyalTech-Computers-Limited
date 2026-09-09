@@ -253,7 +253,7 @@ export function ReportsClient() {
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-[#00c853]/10 p-3 rounded-xl"><Activity className="h-6 w-6 text-[#00c853]" /></div>
                         <div className="space-y-0.5">
-                            <p className="text-2xl font-black">{analytics?.metrics.successRate}%</p>
+                            <p className="text-lg font-black">{analytics?.metrics.successRate}%</p>
                             <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Successful Sales</p>
                         </div>
                     </CardContent>
@@ -262,7 +262,7 @@ export function ReportsClient() {
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-[#00c853]/10 p-3 rounded-xl"><ShoppingCart className="h-6 w-6 text-[#00c853]" /></div>
                         <div className="space-y-0.5">
-                            <p className="text-2xl font-black">{analytics?.metrics.totalTrans}</p>
+                            <p className="text-lg font-black">{analytics?.metrics.totalTrans}</p>
                             <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Total Transactions</p>
                         </div>
                     </CardContent>
@@ -271,7 +271,9 @@ export function ReportsClient() {
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-[#00c853]/10 p-3 rounded-xl"><DollarSign className="h-6 w-6 text-[#00c853]" /></div>
                         <div className="space-y-0.5">
-                            <p className="text-2xl font-black">KES {(analytics?.metrics.totalRevenue || 0 / 1000000).toFixed(1)}M</p>
+                            <p className="text-lg font-black">
+                                KES {((analytics?.metrics.totalRevenue || 0) / 1000000).toFixed(2)}M
+                            </p>
                             <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Total Revenue {format(new Date(), 'yyyy')}</p>
                         </div>
                     </CardContent>
@@ -280,7 +282,7 @@ export function ReportsClient() {
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-[#00c853]/10 p-3 rounded-xl"><Percent className="h-6 w-6 text-[#00c853]" /></div>
                         <div className="space-y-0.5">
-                            <p className="text-2xl font-black">{analytics?.metrics.expenseRatio}%</p>
+                            <p className="text-lg font-black">{analytics?.metrics.expenseRatio}%</p>
                             <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Expenses to Revenue</p>
                         </div>
                     </CardContent>
