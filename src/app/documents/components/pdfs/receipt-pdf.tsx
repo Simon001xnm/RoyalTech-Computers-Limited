@@ -88,7 +88,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                     )}
                   </div>
                   <div className="flex flex-col items-center justify-center text-center flex-1 pt-4 px-4 overflow-hidden">
-                      <h1 className="text-[20px] font-bold uppercase tracking-tight leading-none truncate w-full" style={{ color: primaryBlue }}>
+                      <h1 className="text-[28px] font-bold uppercase tracking-tight leading-none truncate w-full" style={{ color: primaryBlue }}>
                         {workspace?.name || 'OFFICIAL BUSINESS'}
                       </h1>
                       <p className="font-bold text-[10px] uppercase tracking-wide mt-1" style={{ color: primaryGreen }}>Official Payment Receipt</p>
