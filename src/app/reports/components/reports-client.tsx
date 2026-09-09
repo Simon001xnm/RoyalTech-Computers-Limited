@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -96,7 +95,6 @@ export function ReportsClient() {
     if (!rawSales || !rawExpenses || !rawCustomers) return null;
 
     const now = new Date();
-    const currentYear = now.getFullYear();
     const months = eachMonthOfInterval({
         start: startOfYear(now),
         end: now
@@ -272,7 +270,7 @@ export function ReportsClient() {
                         <div className="bg-[#00c853]/10 p-3 rounded-xl"><DollarSign className="h-6 w-6 text-[#00c853]" /></div>
                         <div className="space-y-0.5">
                             <p className="text-lg font-black">
-                                KES {((analytics?.metrics.totalRevenue || 0) / 1000000).toFixed(2)}M
+                                KES {(analytics?.metrics.totalRevenue || 0).toLocaleString()}
                             </p>
                             <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Total Revenue {format(new Date(), 'yyyy')}</p>
                         </div>
