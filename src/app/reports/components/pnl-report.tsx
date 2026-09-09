@@ -111,7 +111,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                     <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-black text-black">LOGO</div>
                 )}
                 <div className="space-y-0.5">
-                  <h1 className="text-2xl font-black uppercase tracking-tighter" style={{ color: jetBlack }}>{companyName}</h1>
+                  <h1 className="text-[28px] font-black uppercase tracking-tighter" style={{ color: jetBlack }}>{companyName}</h1>
                   <p className="font-bold text-[10px] uppercase tracking-widest">Official Auditor Statement</p>
                 </div>
               </div>
@@ -178,12 +178,18 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
               </table>
           </div>
 
-          <footer className="mt-auto pt-6 border-t border-black flex justify-between items-end">
-              <div className="text-left text-[8px] font-black uppercase tracking-widest">
-                  {companyName} &bull; Generated: {format(new Date(), 'dd/MM/yyyy HH:mm')}
+          <footer className="mt-auto pt-6 border-t border-black flex flex-col gap-4">
+              <div className="text-center">
+                  <p className="text-[9px] font-black uppercase tracking-widest opacity-60">THIS STATEMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
               </div>
-              <div className="text-right">
-                  <p className="text-[10px] font-black bg-slate-100 px-4 py-1.5 rounded-sm uppercase font-mono border border-black">PAGE {sIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
+              <div className="flex justify-between items-end">
+                <div className="text-left text-[8px] font-black uppercase tracking-widest">
+                    {companyName} &bull; Generated: {format(new Date(), 'dd/MM/yyyy HH:mm')}
+                    <p className="text-[7px] font-black mt-1">DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-[10px] font-black bg-slate-100 px-4 py-1.5 rounded-sm uppercase font-mono border border-black">PAGE {sIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
+                </div>
               </div>
           </footer>
         </div>
@@ -239,9 +245,17 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                 </table>
              </div>
 
-             <footer className="mt-auto pt-6 border-t border-black flex justify-between items-center">
-                <p className="text-[8px] font-black opacity-30 uppercase tracking-widest">{companyName} &bull; Detailed Ledger Audit</p>
-                <p className="text-[10px] font-black bg-slate-100 px-4 py-1.5 rounded-sm tracking-widest font-mono border border-black">PAGE {summaryPages.length + pIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
+             <footer className="mt-auto pt-6 border-t border-black flex flex-col gap-4">
+                <div className="text-center">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-60">THIS STATEMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                </div>
+                <div className="flex justify-between items-center">
+                    <div className="text-left">
+                        <p className="text-[8px] font-black opacity-30 uppercase tracking-widest">{companyName} &bull; Detailed Ledger Audit</p>
+                        <p className="text-[7px] font-black mt-1 uppercase opacity-30">DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616</p>
+                    </div>
+                    <p className="text-[10px] font-black bg-slate-100 px-4 py-1.5 rounded-sm tracking-widest font-mono border border-black">PAGE {summaryPages.length + pIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
+                </div>
              </footer>
           </div>
       ))}

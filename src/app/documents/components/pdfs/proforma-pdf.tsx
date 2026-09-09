@@ -153,10 +153,14 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
           </section>
 
           <footer className="mt-auto pt-8 border-t-2 border-gray-200">
+             <div className="text-center mb-4">
+                <p className="text-[9px] font-black uppercase tracking-widest opacity-60">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+             </div>
              <div className="flex justify-between items-end">
                 <div className="text-[10px] font-bold text-gray-500 space-y-1 text-center flex-1">
                     <p className="uppercase">{workspace?.name}</p>
                     <p className="opacity-60">Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
+                    <p className="text-[7px] font-black mt-1">DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616</p>
                 </div>
                 <div className="text-[12px] font-black bg-gray-100 px-3 py-1 rounded">
                     PAGE {pageIdx + 1} OF {pages.length}
@@ -168,4 +172,3 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
     </div>
   );
 }
-

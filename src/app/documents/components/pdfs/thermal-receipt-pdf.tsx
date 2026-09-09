@@ -8,7 +8,7 @@ import { useSaaS } from "@/components/saas/saas-provider";
 
 /**
  * @fileOverview Professional Thermal Receipt (80mm)
- * Enhanced with item pricing and Account Balance tracking.
+ * Enhanced with item pricing, Account Balance tracking, and mandated footers.
  */
 export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -141,10 +141,16 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
 
         {/* FOOTER */}
         <div className="text-center space-y-3 mb-2 w-full">
+          <p className="text-[8px] font-black uppercase opacity-60 leading-tight">
+            THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE
+          </p>
           <p className="text-[9px] font-black">*** Thank you ***</p>
           <div className="text-[8px] space-y-1 opacity-80">
             {workspace?.website && <p>{workspace.website}</p>}
             <p>Tel: {workspace?.phone || 'N/A'}</p>
+            <p className="text-[7px] font-black pt-2 uppercase tracking-tighter">
+                DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616
+            </p>
           </div>
         </div>
 

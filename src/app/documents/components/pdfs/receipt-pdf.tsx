@@ -207,10 +207,14 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
           )}
 
           <footer className="mt-auto pt-6 border-t border-gray-100 bg-white">
+             <div className="text-center mb-4">
+                <p className="text-[9px] font-black uppercase tracking-widest opacity-60">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+             </div>
              <div className="flex justify-between items-end">
                 <div className="font-bold text-gray-400 space-y-0.5 text-[8px]">
                     <p className="uppercase tracking-widest">{workspace?.name}</p>
                     <p className="opacity-60">Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
+                    <p className="text-[7px] font-black mt-1">DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616</p>
                 </div>
                 <div className="font-black bg-gray-50 px-3 py-1 rounded text-[9px] text-gray-400">
                     PAGE {pageIdx + 1} OF {pages.length}
