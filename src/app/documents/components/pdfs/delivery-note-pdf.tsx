@@ -108,7 +108,6 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
          <div className="space-y-1 text-[9px] font-bold text-gray-500 mt-4">
             {website && <p>{website}</p>}
             <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
-            <p className="text-[7px] font-black mt-2 lowercase">developed by simonstylestechnologies 0758673616</p>
          </div>
       </footer>
     </div>

@@ -183,7 +183,6 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                   <p className="text-[9px] font-black uppercase tracking-tight opacity-60">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
                   <p className="text-[10px] font-bold uppercase tracking-widest">{companyName}</p>
                   <p className="text-[8px] font-bold opacity-60">Phone: {company?.phone || '+254701694469'} • Email: {company?.email || 'mateshtechltd@gmail.com'}</p>
-                  <p className="text-[7px] font-black pt-2 lowercase tracking-tighter">developed by simonstylestechnologies 0758673616</p>
               </div>
               <div className="flex justify-end pt-4">
                   <p className="text-[10px] font-black bg-slate-100 px-4 py-1.5 rounded-sm uppercase font-mono border border-black">PAGE {sIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
@@ -247,7 +246,6 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                     <p className="text-[9px] font-black uppercase tracking-tight opacity-60">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
                     <p className="text-[10px] font-bold uppercase tracking-widest">{companyName}</p>
                     <p className="text-[8px] font-bold opacity-60">Phone: {company?.phone || '+254701694469'} • Email: {company?.email || 'mateshtechltd@gmail.com'}</p>
-                    <p className="text-[7px] font-black pt-2 lowercase tracking-tighter">developed by simonstylestechnologies 0758673616</p>
                 </div>
                 <div className="flex justify-between items-center pt-4">
                     <div className="text-left">
