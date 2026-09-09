@@ -46,18 +46,24 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
   return (
     <SidebarProvider defaultOpen={true}>
       <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-md no-print">
-        <SidebarHeader className="p-4">
-            <Link href="/" className="flex items-center gap-2">
-                <div className="bg-primary p-1.5 rounded-lg shadow-sm">
+        <SidebarHeader className="h-20 flex items-center justify-center p-0">
+            <Link href="/" className="flex items-center justify-center w-full">
+                 <div className="bg-primary/5 p-2 rounded-2xl shadow-sm border border-primary/10 transition-all hover:scale-105 active:scale-95">
                     {company?.logoUrl ? (
-                        <img src={company.logoUrl} className="h-5 w-5 object-contain invert brightness-0" alt="Logo" />
+                        <img 
+                            src={company.logoUrl} 
+                            className="h-10 w-10 object-contain" 
+                            alt="Identity" 
+                        />
                     ) : (
-                        <Building2 className="h-5 w-5 text-primary-foreground" />
+                        <img 
+                            src="https://picsum.photos/seed/identity/128/128" 
+                            className="h-10 w-10 object-contain rounded-lg" 
+                            alt="Identity" 
+                            data-ai-hint="business identity"
+                        />
                     )}
                 </div>
-                <h1 className="text-lg font-black uppercase tracking-tighter text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-                    {company?.name || APP_NAME}
-                </h1>
             </Link>
         </SidebarHeader>
         <SidebarContent>
