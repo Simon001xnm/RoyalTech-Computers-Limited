@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { Download, Calendar as CalendarIcon, Loader2, Filter, FileSpreadsheet, TrendingUp, DollarSign, Activity, Users, ShoppingCart, Percent, ReceiptText, Wallet, ArrowRight } from 'lucide-react';
+import { Download, Calendar as CalendarIcon, Loader2, Filter, FileSpreadsheet, TrendingUp, DollarSign, Activity, Users, ShoppingCart, Percent, ReceiptText, Wallet, ArrowRight, ArrowUpDown } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { format, startOfYear, isWithinInterval, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isSameMonth, startOfDay, endOfDay, endOfYear } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -36,6 +36,17 @@ import {
   Pie,
   Legend
 } from 'recharts';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  flexRender,
+  type ColumnDef,
+  type PaginationState,
+  type SortingState,
+} from "@tanstack/react-table";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 export interface PnlData {
   operatingIncome: {
@@ -71,6 +82,11 @@ export function ReportsClient() {
   const [filterPreset, setFilterPreset] = useState<FilterPreset>('month');
   const [isExporting, setIsExporting] = useState(false);
   const [viewMode, setViewMode] = useState<'dashboard' | 'official'>('dashboard');
+
+  // Pagination States
+  const [customerPagination, setCustomerPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+  const [ledgerPagination, setLedgerPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+  const [ledgerSorting, setLedgerSorting] = useState<SortingState>([{ id: 'date', desc: true }]);
 
   // DATA FETCHING
   const salesQuery = useMemoFirebase(() => {
@@ -213,7 +229,7 @@ export function ReportsClient() {
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
 
-  const customerSummary = useMemo(() => {
+  const customerSummaryData = useMemo(() => {
     const summaryMap: Record<string, any> = {};
     pnlData.sales.forEach(s => {
         const cId = s.customerId || 'walk-in';
@@ -226,10 +242,101 @@ export function ReportsClient() {
     return Object.values(summaryMap).sort((a,b) => b.sales - a.sales);
   }, [pnlData.sales]);
 
+  const unifiedLedgerData = useMemo(() => {
+    return [
+      ...pnlData.sales.map(s => ({...s, ledgerType: 'INFLOW', label: s.customerName || 'Sale'})),
+      ...pnlData.expenses.map(e => ({...e, ledgerType: 'OUTFLOW', label: e.category || 'Expense'}))
+    ];
+  }, [pnlData.sales, pnlData.expenses]);
+
+  // TABLE COLUMNS - CUSTOMER SUMMARY
+  const customerColumns = useMemo<ColumnDef<any>[]>(() => [
+    {
+      accessorKey: "name",
+      header: "Client Identity",
+      cell: ({ row }) => <span className="font-bold uppercase text-xs">{row.original.name}</span>
+    },
+    {
+      accessorKey: "opening",
+      header: () => <div className="text-right">Opening</div>,
+      cell: ({ row }) => <div className="text-right text-xs opacity-50">{formatCurrency(row.original.opening)}</div>
+    },
+    {
+      accessorKey: "sales",
+      header: () => <div className="text-right">Period Sales</div>,
+      cell: ({ row }) => <div className="text-right font-black text-xs text-blue-600">{formatCurrency(row.original.sales)}</div>
+    },
+    {
+      accessorKey: "paid",
+      header: () => <div className="text-right">Collected</div>,
+      cell: ({ row }) => <div className="text-right font-black text-xs text-green-600">{formatCurrency(row.original.paid)}</div>
+    },
+    {
+      id: "closing",
+      header: () => <div className="text-right">Closing Bal</div>,
+      cell: ({ row }) => <div className="text-right font-black text-sm bg-muted/30 px-2 py-1 rounded">{formatCurrency(row.original.opening + row.original.sales - row.original.paid)}</div>
+    }
+  ], []);
+
+  // TABLE COLUMNS - LEDGER
+  const ledgerColumns = useMemo<ColumnDef<any>[]>(() => [
+    {
+      accessorKey: "date",
+      header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="p-0 font-black uppercase text-[10px]">Date <ArrowUpDown className="ml-1 h-3 w-3" /></Button>,
+      cell: ({ row }) => <span className="text-[10px] font-mono font-bold opacity-40">{format(parseISO(row.original.date), 'dd/MM/yyyy')}</span>
+    },
+    {
+      accessorKey: "label",
+      header: "Transaction Details",
+      cell: ({ row }) => <span className="font-bold uppercase text-xs truncate block max-w-xs">{row.original.label}</span>
+    },
+    {
+      accessorKey: "ledgerType",
+      header: () => <div className="text-center">Protocol</div>,
+      cell: ({ row }) => {
+        const type = row.original.ledgerType;
+        return (
+          <div className="flex justify-center">
+            <Badge className={cn("text-[8px] font-black uppercase border-none", type === 'INFLOW' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>{type}</Badge>
+          </div>
+        )
+      }
+    },
+    {
+      id: "amount",
+      header: () => <div className="text-right">Amount</div>,
+      cell: ({ row }) => {
+        const type = row.original.ledgerType;
+        const amt = Number(row.original.total || row.original.amount);
+        return <div className={cn("text-right font-black text-xs", type === 'INFLOW' ? "text-green-700" : "text-red-700")}>{formatCurrency(amt)}</div>
+      }
+    }
+  ], []);
+
+  const customerTable = useReactTable({
+    data: customerSummaryData,
+    columns: customerColumns,
+    state: { pagination: customerPagination },
+    onPaginationChange: setCustomerPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  const ledgerTable = useReactTable({
+    data: unifiedLedgerData,
+    columns: ledgerColumns,
+    state: { pagination: ledgerPagination, sorting: ledgerSorting },
+    onPaginationChange: setLedgerPagination,
+    onSortingChange: setLedgerSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
   if (isLoading) return <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest opacity-20">Analyzing Node Intelligence...</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       <PageHeader 
         title="Business Intelligence Center" 
         description="Unified analytics for sales, costs, and customer loyalty." 
@@ -243,7 +350,6 @@ export function ReportsClient() {
 
       {viewMode === 'dashboard' ? (
         <div className="space-y-6 max-w-[1400px] mx-auto animate-in fade-in duration-700">
-            {/* TOP METRIC STRIP */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="border-none shadow-sm ring-1 ring-black/5 bg-white">
                     <CardContent className="p-4 flex items-center gap-4">
@@ -271,7 +377,6 @@ export function ReportsClient() {
                 </Card>
             </div>
 
-            {/* DASHBOARD CHARTS */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="border-none shadow-xl ring-1 ring-black/5 overflow-hidden">
                     <CardHeader className="bg-black text-white p-3 text-center"><CardTitle className="text-xs font-black uppercase tracking-widest">Monthly Sales Performance</CardTitle></CardHeader>
@@ -318,7 +423,6 @@ export function ReportsClient() {
         </div>
       ) : (
         <div className="space-y-8 animate-in fade-in duration-500">
-            {/* SOFTWARE VIEW: CONTROLS */}
             <Card className="shadow-xl border-none ring-1 ring-black/5 bg-white">
                 <CardHeader className="bg-muted/10 border-b py-4 px-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -350,7 +454,6 @@ export function ReportsClient() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-8 space-y-10">
-                    {/* FINANCIAL STRIP */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="p-6 bg-blue-50 border-l-4 border-blue-600 rounded-xl space-y-1">
                             <p className="text-[10px] font-black uppercase text-blue-600 opacity-60">Net Period Sales</p>
@@ -366,69 +469,85 @@ export function ReportsClient() {
                         </div>
                     </div>
 
-                    {/* CUSTOMER SUMMARY TABLE */}
+                    {/* PAGINATED CUSTOMER SUMMARY */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
                             <Users className="h-4 w-4 text-primary" />
                             <h3 className="text-sm font-black uppercase tracking-widest">Customer Financial Summary</h3>
                         </div>
-                        <div className="border rounded-2xl overflow-hidden shadow-sm">
+                        <div className="border rounded-2xl overflow-hidden shadow-sm bg-white">
                             <Table>
                                 <TableHeader className="bg-muted/50">
-                                    <TableRow>
-                                        <TableHead className="text-[10px] font-black uppercase py-4">Client Identity</TableHead>
-                                        <TableHead className="text-right text-[10px] font-black uppercase">Opening</TableHead>
-                                        <TableHead className="text-right text-[10px] font-black uppercase">Period Sales</TableHead>
-                                        <TableHead className="text-right text-[10px] font-black uppercase">Collected</TableHead>
-                                        <TableHead className="text-right text-[10px] font-black uppercase">Closing Bal</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {customerSummary.map((c, i) => (
-                                        <TableRow key={i} className="hover:bg-muted/10 h-14">
-                                            <TableCell className="font-bold uppercase text-xs">{c.name}</TableCell>
-                                            <TableCell className="text-right text-xs opacity-50">{formatCurrency(c.opening)}</TableCell>
-                                            <TableCell className="text-right font-black text-xs text-blue-600">{formatCurrency(c.sales)}</TableCell>
-                                            <TableCell className="text-right font-black text-xs text-green-600">{formatCurrency(c.paid)}</TableCell>
-                                            <TableCell className="text-right font-black text-sm bg-muted/30">{formatCurrency(c.opening + c.sales - c.paid)}</TableCell>
+                                    {customerTable.getHeaderGroups().map(hg => (
+                                        <TableRow key={hg.id}>
+                                            {hg.headers.map(h => (
+                                                <TableHead key={h.id} className="text-[10px] font-black uppercase py-4">
+                                                    {flexRender(h.column.columnDef.header, h.getContext())}
+                                                </TableHead>
+                                            ))}
                                         </TableRow>
                                     ))}
+                                </TableHeader>
+                                <TableBody>
+                                    {customerTable.getRowModel().rows.length ? (
+                                        customerTable.getRowModel().rows.map(row => (
+                                            <TableRow key={row.id} className="hover:bg-muted/10 h-14">
+                                                {row.getVisibleCells().map(cell => (
+                                                    <TableCell key={cell.id} className="py-2">
+                                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                    </TableCell>
+                                                ))}
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={customerColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">No customer activity recorded.</TableCell>
+                                        </TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
+                            <DataTablePagination table={customerTable} />
                         </div>
                     </div>
 
-                    {/* DETAILED LEDGER */}
+                    {/* PAGINATED DETAILED LEDGER */}
                     <div className="space-y-4 pt-4">
                         <div className="flex items-center gap-2">
                             <Wallet className="h-4 w-4 text-primary" />
                             <h3 className="text-sm font-black uppercase tracking-widest">Period Transaction Ledger</h3>
                         </div>
-                        <div className="border rounded-2xl overflow-hidden shadow-sm">
+                        <div className="border rounded-2xl overflow-hidden shadow-sm bg-white">
                             <Table>
                                 <TableHeader className="bg-muted/50">
-                                    <TableRow>
-                                        <TableHead className="text-[10px] font-black uppercase py-4">Date</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase">Transaction Details</TableHead>
-                                        <TableHead className="text-center text-[10px] font-black uppercase">Protocol</TableHead>
-                                        <TableHead className="text-right text-[10px] font-black uppercase">Amount</TableHead>
-                                    </TableRow>
+                                    {ledgerTable.getHeaderGroups().map(hg => (
+                                        <TableRow key={hg.id}>
+                                            {hg.headers.map(h => (
+                                                <TableHead key={h.id} className="text-[10px] font-black uppercase py-4">
+                                                    {flexRender(h.column.columnDef.header, h.getContext())}
+                                                </TableHead>
+                                            ))}
+                                        </TableRow>
+                                    ))}
                                 </TableHeader>
                                 <TableBody>
-                                    {[...pnlData.sales.map(s => ({...s, type: 'INFLOW', label: s.customerName})), ...pnlData.expenses.map(e => ({...e, type: 'OUTFLOW', label: e.category}))]
-                                        .sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())
-                                        .map((item: any, i) => (
-                                            <TableRow key={i} className="h-12">
-                                                <TableCell className="text-[10px] font-mono font-bold opacity-40">{format(parseISO(item.date), 'dd/MM/yyyy')}</TableCell>
-                                                <TableCell className="font-bold uppercase text-xs truncate max-w-xs">{item.label}</TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge className={cn("text-[8px] font-black uppercase border-none", item.type === 'INFLOW' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>{item.type}</Badge>
-                                                </TableCell>
-                                                <TableCell className={cn("text-right font-black text-xs", item.type === 'INFLOW' ? "text-green-700" : "text-red-700")}>{formatCurrency(Number(item.total || item.amount))}</TableCell>
+                                    {ledgerTable.getRowModel().rows.length ? (
+                                        ledgerTable.getRowModel().rows.map(row => (
+                                            <TableRow key={row.id} className="h-12 hover:bg-muted/10">
+                                                {row.getVisibleCells().map(cell => (
+                                                    <TableCell key={cell.id} className="py-2">
+                                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                    </TableCell>
+                                                ))}
                                             </TableRow>
-                                        ))}
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={ledgerColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">No transactions found for this period.</TableCell>
+                                        </TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
+                            <DataTablePagination table={ledgerTable} />
                         </div>
                     </div>
                 </CardContent>
@@ -436,7 +555,6 @@ export function ReportsClient() {
         </div>
       )}
 
-      {/* HIDDEN PDF TEMPLATE AREA */}
       <div className="fixed left-[-9999px] top-0 pointer-events-none">
         <div id="pnl-export-target" className="bg-white">
             <PnlReport data={pnlData} dateRange={date} />
