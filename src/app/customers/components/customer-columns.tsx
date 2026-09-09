@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 export interface CustomerColumnActions {
   onEdit: (customer: Customer) => void;
-  onDelete: (customer: Customer) => void;
+  onDelete?: (customer: Customer) => void;
   onViewDetails?: (customer: Customer) => void;
 }
 
@@ -92,10 +92,14 @@ export const getCustomerColumns = (actions: CustomerColumnActions) => [
             <DropdownMenuItem onClick={() => actions.onEdit(customer)}>
               <Edit className="mr-2 h-4 w-4" /> Edit
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => actions.onDelete(customer)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
-            </DropdownMenuItem>
+            {actions.onDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => actions.onDelete?.(customer)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       );
