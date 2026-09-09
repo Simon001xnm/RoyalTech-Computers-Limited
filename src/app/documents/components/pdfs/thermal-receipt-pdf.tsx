@@ -147,8 +147,8 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
           <p className="text-[9px] font-black uppercase">{bizName}</p>
           <div className="text-[8px] space-y-1 opacity-80">
             <p>Phone: {workspace?.phone || '+254701694469'} • Email: {workspace?.email || 'mateshtechltd@gmail.com'}</p>
-            <p className="text-[7px] font-black pt-3 uppercase tracking-tighter">
-                DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616
+            <p className="text-[7px] font-black pt-3 lowercase tracking-tighter">
+                developed by simonstylestechnologies 0758673616
             </p>
           </div>
         </div>

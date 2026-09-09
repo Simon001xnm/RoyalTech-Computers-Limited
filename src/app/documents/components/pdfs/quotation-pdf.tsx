@@ -161,7 +161,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                 <div className="text-[10px] font-bold text-gray-500 space-y-1">
                     <p className="uppercase">{workspace?.name}</p>
                     <p className="opacity-60">Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
-                    <p className="text-[7px] font-black mt-1">DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616</p>
+                    <p className="text-[7px] font-black mt-1 lowercase">developed by simonstylestechnologies 0758673616</p>
                 </div>
                 <div className="text-[12px] font-black bg-gray-100 px-3 py-1 rounded">
                     PAGE {pageIdx + 1} OF {pages.length}

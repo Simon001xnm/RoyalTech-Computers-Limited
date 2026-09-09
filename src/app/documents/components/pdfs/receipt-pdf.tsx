@@ -213,7 +213,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                 <p className="text-[8px] font-bold text-gray-500">
                     Phone: {workspace?.phone || '+254701694469'} • Email: {workspace?.email || 'mateshtechltd@gmail.com'}
                 </p>
-                <p className="text-[7px] font-black mt-3 uppercase tracking-tighter">DEVELOPED BY SIMONSTYLESTECHNOLOGIES 0758673616</p>
+                <p className="text-[7px] font-black mt-3 lowercase tracking-tighter">developed by simonstylestechnologies 0758673616</p>
              </div>
              <div className="flex justify-end mt-4">
                 <div className="font-black bg-gray-50 px-3 py-1 rounded text-[9px] text-gray-400">
