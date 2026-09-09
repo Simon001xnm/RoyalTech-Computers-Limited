@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { Download, Calendar as CalendarIcon, Loader2, Filter, FileSpreadsheet, TrendingUp, DollarSign, Activity, Users, ShoppingCart, Percent } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
-import { format, startOfYear, isWithinInterval, parseISO, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, isSameMonth } from 'date-fns';
+import { format, startOfYear, isWithinInterval, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isSameMonth, startOfDay, endOfDay, endOfYear } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn, exportToCsv } from '@/lib/utils';
@@ -55,16 +55,19 @@ export interface PnlData {
   expenses: any[];
 }
 
+type FilterPreset = 'today' | 'month' | 'year' | 'custom';
+
 export function ReportsClient() {
   const { toast } = useToast();
   const { tenant } = useSaaS();
   const firestore = useFirestore();
 
   const [date, setDate] = useState<DateRange | undefined>({
-    from: startOfYear(new Date()),
-    to: new Date(),
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
   });
 
+  const [filterPreset, setFilterPreset] = useState<FilterPreset>('month');
   const [isExporting, setIsExporting] = useState(false);
   const [viewMode, setViewMode] = useState<'dashboard' | 'official'>('dashboard');
 
@@ -100,7 +103,6 @@ export function ReportsClient() {
         end: now
     });
 
-    // 1. Monthly Trends
     const monthlyData = months.map(month => {
         const monthSales = rawSales.filter(s => isSameMonth(parseISO(s.date), month));
         const monthExp = rawExpenses.filter(e => isSameMonth(parseISO(e.date), month));
@@ -117,17 +119,15 @@ export function ReportsClient() {
             revenue: rev,
             costs: cost + exp,
             transactions: monthSales.length,
-            answered: Math.floor(monthSales.length * 0.85) // Simulated matching metric
+            answered: Math.floor(monthSales.length * 0.85)
         };
     });
 
-    // 2. Top Metrics
     const totalRevenue = rawSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
     const totalExpenses = rawExpenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
     const totalTrans = rawSales.length;
-    const successRate = totalTrans > 0 ? 85 : 0; // Simulated success rate
+    const successRate = totalTrans > 0 ? 85 : 0;
 
-    // 3. Customer Satisfaction Pie
     const satisfactionData = [
         { name: 'Very Satisfied', value: 30, color: '#00c853' },
         { name: 'Satisfied', value: 39, color: '#69f0ae' },
@@ -136,7 +136,6 @@ export function ReportsClient() {
         { name: 'Very Unsatisfied', value: 6, color: '#d50000' }
     ];
 
-    // 4. Product/Service Category Mix
     const catMap: Record<string, number> = {};
     rawSales.forEach(s => s.items?.forEach((i: any) => {
         const cat = i.category || 'General';
@@ -157,7 +156,7 @@ export function ReportsClient() {
         },
         satisfactionData,
         categoryData,
-        retention: 95 // Simulated retention
+        retention: 95
     };
   }, [rawSales, rawExpenses, rawCustomers]);
 
@@ -171,7 +170,7 @@ export function ReportsClient() {
             grossProfit: 0, netIncome: 0, sales: [], expenses: []
         };
     }
-    const interval = { start: date.from, end: date.to };
+    const interval = { start: startOfDay(date.from), end: endOfDay(date.to) };
     const filteredSales = rawSales.filter(s => { try { return isWithinInterval(parseISO(s.date), interval); } catch { return false; } });
     const filteredExpenses = rawExpenses.filter(e => { try { return isWithinInterval(parseISO(e.date), interval); } catch { return false; } });
 
@@ -211,6 +210,22 @@ export function ReportsClient() {
     };
   }, [rawSales, rawExpenses, date]);
 
+  const handleApplyPreset = (preset: FilterPreset) => {
+    setFilterPreset(preset);
+    const now = new Date();
+    switch (preset) {
+        case 'today':
+            setDate({ from: startOfDay(now), to: endOfDay(now) });
+            break;
+        case 'month':
+            setDate({ from: startOfMonth(now), to: endOfMonth(now) });
+            break;
+        case 'year':
+            setDate({ from: startOfYear(now), to: endOfYear(now) });
+            break;
+    }
+  };
+
   const handleDownloadPdf = async () => {
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
@@ -224,8 +239,29 @@ export function ReportsClient() {
             const canvas = await html2canvas(pages[i] as HTMLElement, { scale: 3.5, useCORS: true, backgroundColor: "#ffffff", width: 794, height: 1123, y: 0, scrollY: 0, windowWidth: 794 });
             pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
         }
-        pdf.save(`Official_Report_${format(new Date(), 'yyyyMMdd')}.pdf`);
+        pdf.save(`Profit_Loss_Report_${format(date?.from || new Date(), 'yyyyMMdd')}.pdf`);
     } finally { setIsExporting(false); }
+  };
+
+  const handleExportRawData = () => {
+    if (pnlData.sales.length === 0 && pnlData.expenses.length === 0) {
+        toast({ variant: 'outline', title: 'No Data', description: 'No records found for the selected period.' });
+        return;
+    }
+
+    // Export Sales Ledger
+    if (pnlData.sales.length > 0) {
+        const salesMapping = { date: 'Date', customerName: 'Customer', total: 'Total Amount', amountPaid: 'Paid', balance: 'Outstanding' };
+        exportToCsv(`Sales_Audit_${format(date?.from || new Date(), 'yyyyMMdd')}.csv`, pnlData.sales, salesMapping);
+    }
+
+    // Export Expense Ledger
+    if (pnlData.expenses.length > 0) {
+        const expMapping = { date: 'Date', category: 'Category', amount: 'Amount', notes: 'Notes' };
+        exportToCsv(`Expenses_Audit_${format(date?.from || new Date(), 'yyyyMMdd')}.csv`, pnlData.expenses, expMapping);
+    }
+
+    toast({ title: 'Export Complete', description: 'CSV data files have been generated.' });
   };
 
   if (isLoading) return <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest opacity-20">Analyzing Node Intelligence...</div>;
@@ -432,29 +468,69 @@ export function ReportsClient() {
                 <CardHeader className="bg-muted/10 py-4 px-6 border-b">
                     <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
                         <Filter className="h-3 w-3" />
-                        Report Settings
+                        Audit Control Filters
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-6 flex flex-wrap items-center gap-6">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase opacity-60">Reporting Interval</Label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                            <Button variant={'outline'} className={cn('w-full sm:w-[280px] justify-start text-left font-normal h-11 bg-white border-2', !date && 'text-muted-foreground')}>
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {date?.from ? (date.to ? <>{format(date.from, 'LLL dd, y')} - {format(date.to, 'LLL dd, y')}</> : format(date.from, 'LLL dd, y')) : <span>Pick a date range</span>}
+                <CardContent className="pt-6">
+                    <div className="flex flex-wrap items-end gap-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase opacity-60">Step 1: Choose Period</Label>
+                            <div className="flex gap-2 bg-muted/20 p-1 rounded-xl border w-fit">
+                                <Button 
+                                    variant={filterPreset === 'today' ? 'default' : 'ghost'} 
+                                    size="sm" 
+                                    onClick={() => handleApplyPreset('today')}
+                                    className="h-8 text-[10px] font-black uppercase px-4"
+                                >Daily</Button>
+                                <Button 
+                                    variant={filterPreset === 'month' ? 'default' : 'ghost'} 
+                                    size="sm" 
+                                    onClick={() => handleApplyPreset('month')}
+                                    className="h-8 text-[10px] font-black uppercase px-4"
+                                >Monthly</Button>
+                                <Button 
+                                    variant={filterPreset === 'year' ? 'default' : 'ghost'} 
+                                    size="sm" 
+                                    onClick={() => handleApplyPreset('year')}
+                                    className="h-8 text-[10px] font-black uppercase px-4"
+                                >Yearly</Button>
+                                <Button 
+                                    variant={filterPreset === 'custom' ? 'default' : 'ghost'} 
+                                    size="sm" 
+                                    onClick={() => setFilterPreset('custom')}
+                                    className="h-8 text-[10px] font-black uppercase px-4"
+                                >Specific Range</Button>
+                            </div>
+                        </div>
+
+                        {filterPreset === 'custom' && (
+                            <div className="space-y-2 animate-in slide-in-from-left-2 duration-300">
+                                <Label className="text-[10px] font-black uppercase opacity-60">Step 2: Pick Dates</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                    <Button variant={'outline'} className={cn('w-full sm:w-[280px] justify-start text-left font-normal h-10 bg-white border-2', !date && 'text-muted-foreground')}>
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {date?.from ? (date.to ? <>{format(date.from, 'LLL dd, y')} - {format(date.to, 'LLL dd, y')}</> : format(date.from, 'LLL dd, y')) : <span>Select range...</span>}
+                                    </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start"><Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={setDate} numberOfMonths={2} /></PopoverContent>
+                                </Popover>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3 ml-auto">
+                            <Button variant="outline" onClick={handleExportRawData} className="h-10 px-6 font-black uppercase text-[10px] tracking-widest border-2">
+                                <FileSpreadsheet className="mr-2 h-4 w-4" /> Download Raw Data
                             </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start"><Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={setDate} numberOfMonths={2} /></PopoverContent>
-                        </Popover>
+                            <Button onClick={handleDownloadPdf} disabled={isLoading || isExporting} className="h-10 px-8 font-black uppercase text-[10px] tracking-widest shadow-xl">
+                                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />} Get Audit PDF
+                            </Button>
+                        </div>
                     </div>
-                    <Button onClick={handleDownloadPdf} disabled={isLoading || isExporting} className="h-11 px-8 font-black uppercase text-[10px] tracking-widest shadow-xl ml-auto">
-                        {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />} Download Official PDF
-                    </Button>
                 </CardContent>
             </Card>
 
-            <div className="flex justify-center bg-slate-100 rounded-3xl border-2 border-dashed p-4 md:p-12 overflow-x-auto no-scrollbar">
+            <div className="flex justify-center bg-slate-100 rounded-[32px] border-2 border-dashed p-4 md:p-12 overflow-x-auto no-scrollbar">
                 <div className="shrink-0 origin-top transform scale-[0.4] sm:scale-[0.55] lg:scale-[0.7] xl:scale-[0.8] 2xl:scale-100">
                     <PnlReport data={pnlData} dateRange={date} />
                 </div>
