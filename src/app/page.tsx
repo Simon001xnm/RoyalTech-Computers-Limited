@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, getDocs, addDoc } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { PageHeader } from '@/components/layout/page-header';
 import { SummaryCard } from '@/components/dashboard/summary-card';
@@ -35,7 +35,9 @@ import {
     Banknote,
     Smartphone,
     Landmark,
-    Lock as LockIcon
+    Lock as LockIcon,
+    Truck,
+    UserPlus
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -74,11 +76,12 @@ import {
   type PaginationState,
 } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { InvoicePdf } from "./documents/components/pdfs/invoice-pdf";
 import { ReceiptPdf } from "./documents/components/pdfs/receipt-pdf";
 import { ProformaInvoicePdf } from "./documents/components/pdfs/proforma-pdf";
 import { QuotationPdf } from "./documents/components/pdfs/quotation-pdf";
+import { DeliveryNotePdf } from "./documents/components/pdfs/delivery-note-pdf";
 import { useToast } from "@/hooks/use-toast";
 import type { Document as AppDocument, DocumentType } from "@/types";
 import {
@@ -98,7 +101,8 @@ const TYPE_INITIALS: Record<string, string> = {
     'Invoice': 'INV',
     'Receipt': 'RCT',
     'Quotation': 'QTN',
-    'Proforma': 'PRO'
+    'Proforma': 'PRO',
+    'DeliveryNote': 'DLV'
 };
 
 const VAT_RATE = 0.16;
@@ -135,6 +139,12 @@ export default function DashboardPage() {
   const [posAction, setPosAction] = useState<DocumentType | null>(null);
   const [paymentMode, setPaymentMode] = useState<'Cash' | 'M-Pesa' | 'Bank'>('Cash');
   const [applyVat, setApplyVat] = useState(false);
+
+  // New Customer State
+  const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
 
   // New POS Selection Logic
   const [configuringProduct, setConfiguringProduct] = useState<any>(null);
@@ -397,6 +407,59 @@ export default function DashboardPage() {
     }
   };
 
+  const handleCreateCustomer = async () => {
+    if (!tenant || !user || !newCustName) return;
+    setIsSavingCustomer(true);
+    try {
+        const docRef = await addDoc(collection(firestore, 'customers'), {
+            tenantId: tenant.id,
+            name: newCustName,
+            phone: newCustPhone,
+            registrationDate: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
+        });
+        setSelectedCustomer({ id: docRef.id, name: newCustName });
+        setIsNewCustomerOpen(false);
+        setNewCustName('');
+        setNewCustPhone('');
+        toast({ title: "Client Registered" });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: "Registration Failed" });
+    } finally {
+        setIsSavingCustomer(false);
+    }
+  };
+
+  const handleGenerateDelivery = async (originDoc: AppDocument) => {
+    if (!tenant || !user) return;
+    try {
+        const timestamp = new Date().toISOString();
+        const docRef = await addDoc(collection(firestore, 'documents'), {
+            tenantId: tenant.id,
+            type: 'DeliveryNote',
+            title: `Delivery Note #${Math.floor(Math.random() * 1000)}`,
+            generatedDate: timestamp,
+            relatedTo: originDoc.relatedTo,
+            data: {
+                ...originDoc.data,
+                workspace: workspaceProfile ? {
+                    name: workspaceProfile.name || '',
+                    address: workspaceProfile.address || '',
+                    phone: workspaceProfile.phone || '',
+                    email: workspaceProfile.email || '',
+                    logoUrl: workspaceProfile.logoUrl || null
+                } : null
+            },
+            createdAt: timestamp,
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
+        });
+        toast({ title: "Delivery Note Created" });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: "Generation Failed" });
+    }
+  };
+
   const handleViewDocument = (docObj: AppDocument) => {
     setSelectedDocument(docObj);
     setIsPdfPreviewOpen(true);
@@ -494,18 +557,27 @@ export default function DashboardPage() {
     {
         id: "actions",
         header: () => <div className="text-right pr-6">Action</div>,
-        cell: ({ row }) => (
-            <div className="flex justify-end pr-6 gap-2">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleViewDocument(row.original)} disabled={isExporting}>
-                    <Eye className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownloadPdf(row.original)} disabled={isExporting}>
-                    <Download className="h-3.5 w-3.5" />
-                </Button>
-            </div>
-        )
+        cell: ({ row }) => {
+            const docObj = row.original;
+            const canGenerateDelivery = ['Invoice', 'Receipt'].includes(docObj.type);
+            return (
+                <div className="flex justify-end pr-6 gap-2">
+                    {canGenerateDelivery && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-orange-600 hover:text-orange-700" onClick={() => handleGenerateDelivery(docObj)}>
+                            <Truck className="h-3.5 w-3.5" />
+                        </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleViewDocument(docObj)} disabled={isExporting}>
+                        <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownloadPdf(docObj)} disabled={isExporting}>
+                        <Download className="h-3.5 w-3.5" />
+                    </Button>
+                </div>
+            );
+        }
     }
-  ], [isExporting]);
+  ], [isExporting, workspaceProfile]);
 
   const table = useReactTable({
     data: stats?.items || [],
@@ -531,6 +603,7 @@ export default function DashboardPage() {
       case 'Receipt': return <ReceiptPdf document={selectedDocument} />;
       case 'Proforma': return <ProformaInvoicePdf document={selectedDocument} />;
       case 'Quotation': return <QuotationPdf document={selectedDocument} />;
+      case 'DeliveryNote': return <DeliveryNotePdf document={selectedDocument} />;
       default: return null;
     }
   };
@@ -654,19 +727,19 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* DASHBOARD POS PROTOCOL */}
+          {/* DASHBOARD POS TERMINAL */}
           <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden flex flex-col">
             <CardHeader className="bg-primary/5 border-b py-3 px-5">
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
                         <ShoppingCart className="h-3 w-3" />
-                        Quick Sell Protocol
+                        Quick Sell
                     </CardTitle>
                     <Badge variant="outline" className="text-[8px] font-black uppercase h-5 bg-white">v3.0</Badge>
                 </div>
             </CardHeader>
             <CardContent className="p-4 flex-grow flex flex-col gap-5 overflow-hidden">
-                {/* 1. Protocol: Select Action */}
+                {/* 1. Action */}
                 <div className="space-y-2">
                     <Label className="text-[8px] font-black uppercase opacity-50">1. Select Document Type</Label>
                     <div className="grid grid-cols-3 gap-2">
@@ -694,52 +767,63 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* 2. Protocol: Select Customer */}
+                {/* 2. Customer */}
                 <div className="space-y-2">
                     <Label className={cn("text-[8px] font-black uppercase opacity-50", !posAction && "text-destructive")}>
                         2. Identify Customer {!posAction && "(Unlock Step 1 First)"}
                     </Label>
-                    <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
-                        <PopoverTrigger asChild disabled={!posAction}>
-                            <Button 
-                                variant="outline" 
-                                className={cn(
-                                    "w-full h-11 justify-between text-[10px] font-bold uppercase tracking-tight bg-white",
-                                    !posAction && "opacity-40 cursor-not-allowed border-dashed"
-                                )}
-                            >
-                                <div className="flex items-center gap-2">
-                                    {!posAction ? <LockIcon className="h-4 w-4" /> : <UserIcon className="h-4 w-4 text-primary" />}
-                                    <span>{selectedCustomer ? selectedCustomer.name : 'Select Client...'}</span>
-                                </div>
-                                <Search className="h-3 w-3 opacity-30" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[340px] p-0" align="start">
-                             <Command>
-                                <CommandInput placeholder="Find client..." className="h-9" />
-                                <CommandList>
-                                    <CommandGroup>
-                                        {customers?.map(c => (
-                                            <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({ id: c.id, name: c.name }); setCustomerSearchOpen(false); }} className="text-[10px] uppercase font-bold p-3">
-                                                {c.name}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                             </Command>
-                        </PopoverContent>
-                    </Popover>
+                    <div className="flex gap-2">
+                        <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
+                            <PopoverTrigger asChild disabled={!posAction}>
+                                <Button 
+                                    variant="outline" 
+                                    className={cn(
+                                        "flex-1 h-11 justify-between text-[10px] font-bold uppercase tracking-tight bg-white",
+                                        !posAction && "opacity-40 cursor-not-allowed border-dashed"
+                                    )}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        {!posAction ? <LockIcon className="h-4 w-4" /> : <UserIcon className="h-4 w-4 text-primary" />}
+                                        <span>{selectedCustomer ? selectedCustomer.name : 'Select Client...'}</span>
+                                    </div>
+                                    <Search className="h-3 w-3 opacity-30" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0" align="start">
+                                <Command>
+                                    <CommandInput placeholder="Find client..." className="h-9" />
+                                    <CommandList>
+                                        <CommandGroup>
+                                            {customers?.map(c => (
+                                                <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({ id: c.id, name: c.name }); setCustomerSearchOpen(false); }} className="text-[10px] uppercase font-bold p-3">
+                                                    {c.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-11 w-11 border-2 border-primary text-primary"
+                            onClick={() => setIsNewCustomerOpen(true)}
+                            disabled={!posAction}
+                        >
+                            <UserPlus className="h-5 w-5" />
+                        </Button>
+                    </div>
                 </div>
 
-                {/* 3. Protocol: Add Products */}
+                {/* 3. Add Products */}
                 <div className="space-y-2">
                     <Label className={cn("text-[8px] font-black uppercase opacity-50", !selectedCustomer && "text-destructive")}>
                         3. Add Items to Cart {!selectedCustomer && "(Unlock Step 2 First)"}
                     </Label>
                     <Popover open={productSearchOpen} onOpenChange={(open) => {
                         if (open && !selectedCustomer) {
-                            toast({ variant: 'destructive', title: 'Protocol Error', description: 'Please select a customer before browsing inventory.' });
+                            toast({ variant: 'destructive', title: 'Action Error', description: 'Please select a customer before browsing inventory.' });
                             return;
                         }
                         setProductSearchOpen(open);
@@ -817,7 +901,7 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* 4. Protocol: Options */}
+                {/* 4. Options */}
                 <div className="space-y-3 pt-2 border-t">
                     <div className="flex items-center justify-between">
                         <Label className="text-[8px] font-black uppercase opacity-50">4. Payment & Tax</Label>
@@ -924,6 +1008,42 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
+      {/* NEW CUSTOMER DIALOG */}
+      <Dialog open={isNewCustomerOpen} onOpenChange={setIsNewCustomerOpen}>
+        <DialogContent className="sm:max-w-md border-none shadow-2xl">
+            <DialogHeader>
+                <DialogTitle className="text-xl font-black uppercase">Register Client</DialogTitle>
+                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Add a new account to your shop database.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 pt-4">
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Full Name / Business</Label>
+                    <Input 
+                        value={newCustName} 
+                        onChange={e => setNewCustName(e.target.value)} 
+                        placeholder="e.g. John Doe"
+                        className="h-11 font-bold"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60">Phone Number</Label>
+                    <Input 
+                        value={newCustPhone} 
+                        onChange={e => setNewCustPhone(e.target.value)} 
+                        placeholder="e.g. 0712345678"
+                        className="h-11 font-bold"
+                    />
+                </div>
+                <div className="pt-4 flex justify-end gap-3 border-t">
+                    <Button variant="outline" onClick={() => setIsNewCustomerOpen(false)} className="h-11 font-bold">Cancel</Button>
+                    <Button onClick={handleCreateCustomer} disabled={isSavingCustomer || !newCustName} className="h-11 px-8 font-black uppercase tracking-widest">
+                        {isSavingCustomer ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Client"}
+                    </Button>
+                </div>
+            </div>
+        </DialogContent>
+      </Dialog>
+
       <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
         <CardHeader className="bg-muted/30 border-b py-4 px-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -988,4 +1108,3 @@ function startOfDay(date: Date) {
     d.setHours(0, 0, 0, 0);
     return d;
 }
-
