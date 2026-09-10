@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { PageHeader } from '@/components/layout/page-header';
 import { SummaryCard } from '@/components/dashboard/summary-card';
@@ -15,7 +15,6 @@ import {
     FileWarning, 
     TrendingUp,
     Wallet,
-    Zap,
     Calendar as CalendarIcon,
     Filter,
     Clock,
@@ -23,9 +22,13 @@ import {
     Eye,
     Loader2,
     BarChart3,
-    ArrowRight,
+    Search,
+    ShoppingCart,
+    Plus,
+    Trash2,
+    Check,
     X,
-    Search
+    User as UserIcon
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +39,6 @@ import {
     endOfDay,
     startOfMonth,
     startOfWeek,
-    isToday,
     startOfYear,
     endOfMonth,
     endOfWeek,
@@ -51,6 +53,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Separator } from '@/components/ui/separator';
 import type { DateRange } from 'react-day-picker';
 import {
   useReactTable,
@@ -61,7 +65,7 @@ import {
   type PaginationState,
 } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { InvoicePdf } from "./documents/components/pdfs/invoice-pdf";
 import { ReceiptPdf } from "./documents/components/pdfs/receipt-pdf";
 import { ProformaInvoicePdf } from "./documents/components/pdfs/proforma-pdf";
@@ -76,8 +80,7 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    Legend,
-    Cell
+    Legend
 } from 'recharts';
 
 type TimeFilter = 'today' | 'week' | 'month' | 'year' | 'custom';
@@ -92,6 +95,7 @@ const TYPE_INITIALS: Record<string, string> = {
 export default function DashboardPage() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   
   const [filter, setFilter] = useState<TimeFilter>('month');
@@ -110,6 +114,13 @@ export default function DashboardPage() {
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
+
+  // POS State
+  const [cart, setCart] = useState<any[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [isProcessingSale, setIsProcessingSale] = useState(false);
+  const [productSearchOpen, setProductSearchOpen] = useState(false);
+  const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -148,10 +159,16 @@ export default function DashboardPage() {
     return query(collection(firestore, 'documents'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
 
+  const customersQuery = useMemoFirebase(() => {
+    if (!tenant) return null;
+    return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
+  }, [firestore, tenant?.id]);
+
   const { data: sales, isLoading: salesLoading } = useCollection(salesQuery);
   const { data: assets, isLoading: stockLoading } = useCollection(stockQuery);
   const { data: expenses, isLoading: expLoading } = useCollection(expensesQuery);
   const { data: documents, isLoading: docsLoading } = useCollection<AppDocument>(docsQuery);
+  const { data: customers } = useCollection(customersQuery);
 
   const stats = useMemo(() => {
     if (!sales || !assets || !expenses || !documents) return null;
@@ -172,7 +189,6 @@ export default function DashboardPage() {
     const filteredExp = expenses.filter(e => { try { return isWithinInterval(parseISO(e.date), interval); } catch { return false; } });
     let filteredDocs = documents.filter(d => { try { return isWithinInterval(parseISO(d.generatedDate), interval); } catch { return false; } });
 
-    // Internal Ledger Filter (Customer Name)
     if (ledgerSearch.trim()) {
         const searchLower = ledgerSearch.toLowerCase();
         filteredDocs = filteredDocs.filter(d => (d.relatedTo || '').toLowerCase().includes(searchLower));
@@ -188,19 +204,11 @@ export default function DashboardPage() {
     const totalDebt = sales.filter(s => (Number(s.balance) || 0) > 0).reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
     const lowStock = assets.filter(a => Number(a.quantity) <= (Number(a.minStock) || 5));
 
-    const productMap: Record<string, number> = {};
-    filteredSales.forEach(s => s.items?.forEach((i: any) => {
-        const name = i.name || 'Other';
-        productMap[name] = (productMap[name] || 0) + (Number(i.quantity) || 1);
-    }));
-    const topSelling = Object.entries(productMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
-
     return {
         totalRevenue, totalProfit, totalExpenses, totalDebt,
         lowStockCount: lowStock.length,
         unpaidCount: sales.filter(s => (Number(s.balance) || 0) > 0).length,
         items: [...filteredDocs].sort((a,b) => parseISO(b.generatedDate).getTime() - parseISO(a.generatedDate).getTime()),
-        topSelling,
         viewLabel: filter === 'custom' && dateRange?.from ? `${format(dateRange.from, 'dd MMM')} - ${format(dateRange.to || now, 'dd MMM')}` : filter.toUpperCase()
     };
   }, [sales, assets, expenses, documents, filter, dateRange, ledgerSearch]);
@@ -235,6 +243,88 @@ export default function DashboardPage() {
         };
     });
   }, [sales, expenses]);
+
+  // POS Logic
+  const handleAddToCart = (product: any) => {
+    const existing = cart.find(i => i.id === product.id);
+    if (existing) {
+        setCart(cart.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1, total: (i.quantity + 1) * i.sellingPrice } : i));
+    } else {
+        setCart([...cart, {
+            id: product.id,
+            name: product.model || product.name,
+            quantity: 1,
+            sellingPrice: product.sellingPrice || 0,
+            total: product.sellingPrice || 0,
+            buyingPrice: product.purchasePrice || 0
+        }]);
+    }
+    setProductSearchOpen(false);
+  };
+
+  const cartTotal = cart.reduce((acc, i) => acc + i.total, 0);
+
+  const handleFinishSale = async () => {
+    if (!tenant || !user || !selectedCustomer || cart.length === 0) return;
+    setIsProcessingSale(true);
+
+    try {
+        const batch = writeBatch(firestore);
+        const timestamp = new Date().toISOString();
+
+        const docRef = doc(collection(firestore, 'documents'));
+        const saleRef = doc(collection(firestore, 'sales_transactions'));
+
+        const saleData = {
+            tenantId: tenant.id,
+            date: timestamp,
+            customerId: selectedCustomer.id,
+            customerName: selectedCustomer.name,
+            items: cart.map(i => ({ ...i, productId: i.id, type: 'asset' })),
+            subtotal: cartTotal,
+            total: cartTotal,
+            amountPaid: cartTotal,
+            balance: 0,
+            status: 'Paid',
+            paymentMethod: 'Cash',
+            createdAt: timestamp,
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
+        };
+
+        batch.set(saleRef, { ...saleData, id: saleRef.id, documentId: docRef.id });
+        batch.set(docRef, {
+            tenantId: tenant.id,
+            type: 'Receipt',
+            title: `Receipt #${Math.floor(Math.random() * 1000)}`,
+            generatedDate: timestamp,
+            relatedTo: selectedCustomer.name,
+            data: { ...saleData, customer: selectedCustomer },
+            createdAt: timestamp,
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
+        });
+
+        // Update stock
+        for (const item of cart) {
+            const productRef = doc(firestore, 'assets', item.id);
+            const currentProduct = assets?.find(p => p.id === item.id);
+            if (currentProduct) {
+                batch.update(productRef, { 
+                    quantity: (currentProduct.quantity || 0) - item.quantity,
+                    updatedAt: timestamp 
+                });
+            }
+        }
+
+        await batch.commit();
+        setCart([]);
+        setSelectedCustomer(null);
+        toast({ title: "Sale Completed" });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: "Sale Failed", description: e.message });
+    } finally {
+        setIsProcessingSale(false);
+    }
+  };
 
   const handleViewDocument = (docObj: AppDocument) => {
     setSelectedDocument(docObj);
@@ -283,9 +373,7 @@ export default function DashboardPage() {
 
         const initials = TYPE_INITIALS[docObj.type] || 'DOC';
         pdf.save(`${initials}_${(docObj.relatedTo || 'VAL').slice(0,3).toUpperCase()}.pdf`);
-        toast({ title: "Document Saved" });
     } catch (err) {
-        console.error("PDF Export error:", err);
         toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
         if (!wasPreviewOpen) {
@@ -360,7 +448,7 @@ export default function DashboardPage() {
   const formatKes = (val: number) => new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
 
   if (salesLoading || stockLoading || expLoading || docsLoading) {
-      return <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground">Checking Shop Records...</div>;
+      return <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground">Checking Shop Records...</div>;
   }
 
   if (!stats) return null;
@@ -440,7 +528,8 @@ export default function DashboardPage() {
           <SummaryCard title="Total Money Owed" value={formatKes(stats.totalDebt)} icon={FileWarning} description="Historical pending payments" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+          {/* ANALYTICS */}
           <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden">
             <CardHeader className="bg-muted/10 border-b py-4 px-6">
                 <div className="flex items-center gap-3">
@@ -458,25 +547,9 @@ export default function DashboardPage() {
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={performanceStats} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                            <XAxis 
-                                dataKey="name" 
-                                axisLine={false} 
-                                tickLine={false} 
-                                fontSize={10} 
-                                fontWeight="bold"
-                                tick={{ fill: '#000000' }}
-                            />
-                            <YAxis 
-                                axisLine={false} 
-                                tickLine={false} 
-                                fontSize={10} 
-                                tickFormatter={(v) => `Ksh ${v/1000}k`}
-                                tick={{ fill: '#000000' }}
-                            />
-                            <Tooltip 
-                                cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}
-                            />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} fontWeight="bold" tick={{ fill: '#000000' }} />
+                            <YAxis axisLine={false} tickLine={false} fontSize={10} tickFormatter={(v) => `Ksh ${v/1000}k`} tick={{ fill: '#000000' }} />
+                            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }} />
                             <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 'black', textTransform: 'uppercase' }} />
                             <Bar dataKey="Revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} barSize={40} />
                             <Bar dataKey="Expenses" fill="hsl(var(--destructive))" radius={[6, 6, 0, 0]} barSize={40} />
@@ -484,22 +557,22 @@ export default function DashboardPage() {
                     </ResponsiveContainer>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
                     {performanceStats.map((p) => (
-                        <div key={p.name} className="p-4 bg-muted/20 rounded-2xl border space-y-3">
-                            <p className="text-[10px] font-black uppercase text-center border-b pb-2">{p.name} Report</p>
+                        <div key={p.name} className="p-3 bg-muted/20 rounded-2xl border space-y-2">
+                            <p className="text-[9px] font-black uppercase text-center border-b pb-2">{p.name}</p>
                             <div className="space-y-1">
-                                <div className="flex justify-between items-center text-[9px] font-bold">
-                                    <span className="opacity-40">REVENUE</span>
+                                <div className="flex justify-between items-center text-[8px] font-bold">
+                                    <span className="opacity-40">REV</span>
                                     <span className="text-primary">{formatKes(p.Revenue)}</span>
                                 </div>
-                                <div className="flex justify-between items-center text-[9px] font-bold">
-                                    <span className="opacity-40">EXPENSES</span>
+                                <div className="flex justify-between items-center text-[8px] font-bold">
+                                    <span className="opacity-40">EXP</span>
                                     <span className="text-red-600">{formatKes(p.Expenses)}</span>
                                 </div>
-                                <div className="pt-2 mt-1 border-t flex justify-between items-center">
-                                    <span className="text-[8px] font-black uppercase">SURPLUS</span>
-                                    <span className={cn("text-xs font-black", p.Surplus >= 0 ? "text-green-600" : "text-red-600")}>
+                                <div className="pt-1 mt-1 border-t flex justify-between items-center">
+                                    <span className="text-[7px] font-black uppercase">NET</span>
+                                    <span className={cn("text-[10px] font-black", p.Surplus >= 0 ? "text-green-600" : "text-red-600")}>
                                         {formatKes(p.Surplus)}
                                     </span>
                                 </div>
@@ -510,22 +583,115 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-md border-none ring-1 ring-black/5 bg-white">
-            <CardHeader className="bg-muted/10 border-b py-3 px-5"><CardTitle className="text-xs font-black uppercase tracking-widest">Popular Items (Selected Period)</CardTitle></CardHeader>
-            <CardContent className="p-0">
-                <div className="divide-y">
-                    {stats.topSelling.map(([name, qty]) => (
-                        <div key={name} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-primary/5 p-2 rounded-lg text-primary">
-                                    <Package className="h-4 w-4" />
+          {/* DASHBOARD POS (Replacing Popular Items) */}
+          <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden flex flex-col">
+            <CardHeader className="bg-primary/5 border-b py-3 px-5">
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                        <ShoppingCart className="h-3 w-3" />
+                        Quick POS
+                    </CardTitle>
+                    <Badge variant="outline" className="text-[8px] font-black uppercase h-5 bg-white">Ready</Badge>
+                </div>
+            </CardHeader>
+            <CardContent className="p-4 flex-grow flex flex-col gap-4 overflow-hidden">
+                {/* Product Search */}
+                <Popover open={productSearchOpen} onOpenChange={setProductSearchOpen}>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between h-10 text-[10px] font-bold uppercase tracking-tight bg-muted/20 border-dashed">
+                            <span>{productSearchOpen ? 'Selecting...' : 'Add Item to Cart...'}</span>
+                            <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[340px] p-0" align="start">
+                        <Command>
+                            <CommandInput placeholder="Search inventory..." className="h-9" />
+                            <CommandList>
+                                <CommandEmpty>No stock found.</CommandEmpty>
+                                <CommandGroup heading="Available Items">
+                                    {assets?.filter(p => (p.quantity || 0) > 0).map(p => (
+                                        <CommandItem key={p.id} onSelect={() => handleAddToCart(p)} className="p-2 cursor-pointer">
+                                            <div className="flex justify-between w-full items-center">
+                                                <div>
+                                                    <p className="font-bold text-[10px] uppercase truncate max-w-[150px]">{p.model}</p>
+                                                    <p className="text-[8px] opacity-40 font-mono">#{p.serialNumber?.slice(-6)}</p>
+                                                </div>
+                                                <span className="font-black text-primary text-[10px]">{formatKes(p.sellingPrice)}</span>
+                                            </div>
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
+
+                {/* Cart View */}
+                <div className="flex-grow overflow-y-auto min-h-[200px] border rounded-xl p-2 bg-muted/5">
+                    {cart.length > 0 ? (
+                        <div className="space-y-2">
+                            {cart.map(item => (
+                                <div key={item.id} className="flex justify-between items-center p-2 bg-white rounded-lg shadow-sm group">
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] font-black uppercase truncate max-w-[120px]">{item.name}</span>
+                                        <span className="text-[8px] font-bold opacity-40">{item.quantity} x {formatKes(item.sellingPrice)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-black">{formatKes(item.total)}</span>
+                                        <button onClick={() => setCart(cart.filter(i => i.id !== item.id))} className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-600 transition-all">
+                                            <Trash2 className="h-3 w-3" />
+                                        </button>
+                                    </div>
                                 </div>
-                                <p className="text-[10px] font-bold uppercase truncate max-w-[180px]">{name}</p>
-                            </div>
-                            <Badge className="font-black text-[10px] bg-black text-white">{qty} SOLD</Badge>
+                            ))}
                         </div>
-                    ))}
-                    {stats.topSelling.length === 0 && <div className="p-12 text-center opacity-30 text-xs font-bold uppercase italic">No items sold in this period</div>}
+                    ) : (
+                        <div className="h-full flex flex-col items-center justify-center opacity-20 py-10">
+                            <ShoppingCart className="h-8 w-8 mb-2" />
+                            <p className="text-[8px] font-black uppercase tracking-widest">Basket Empty</p>
+                        </div>
+                    )}
+                </div>
+
+                <Separator />
+
+                {/* Customer & Total */}
+                <div className="space-y-3">
+                    <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" className="w-full h-8 text-[9px] font-black uppercase tracking-widest border border-primary/20 bg-primary/5 text-primary">
+                                <UserIcon className="h-3 w-3 mr-2" />
+                                {selectedCustomer ? selectedCustomer.name : 'Select Client...'}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0">
+                             <Command>
+                                <CommandInput placeholder="Find client..." className="h-8" />
+                                <CommandList>
+                                    <CommandGroup>
+                                        {customers?.map(c => (
+                                            <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({ id: c.id, name: c.name }); setCustomerSearchOpen(false); }} className="text-[10px] uppercase font-bold">
+                                                {c.name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                             </Command>
+                        </PopoverContent>
+                    </Popover>
+
+                    <div className="p-3 bg-black text-white rounded-xl shadow-lg flex justify-between items-center">
+                        <span className="text-[8px] font-black uppercase opacity-50">Grand Total</span>
+                        <span className="text-lg font-black tracking-tighter">{formatKes(cartTotal)}</span>
+                    </div>
+
+                    <Button 
+                        onClick={handleFinishSale} 
+                        className="w-full h-12 font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                        disabled={isProcessingSale || cart.length === 0 || !selectedCustomer}
+                    >
+                        {isProcessingSale ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Complete Sale'}
+                    </Button>
                 </div>
             </CardContent>
           </Card>
