@@ -1,19 +1,19 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import type { Expense } from '@/types';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, TrendingDown, ReceiptText, Wallet, Calendar as CalendarIcon } from 'lucide-react';
+import { PlusCircle, TrendingDown, ReceiptText, Wallet, Calendar as CalendarIcon, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { TransactionForm } from './transaction-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { useSaaS } from '@/components/saas/saas-provider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   useReactTable,
   getCoreRowModel,
@@ -24,8 +24,10 @@ import {
 } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
+type TimeFilter = 'today' | 'week' | 'month' | 'year' | 'all';
+
 /**
- * @fileOverview Expense Feed with Pagination
+ * @fileOverview Expense Feed with Time Filtering
  * Shows money spent by the shop. New entries appear instantly.
  */
 export function AccountingClient() {
@@ -33,6 +35,7 @@ export function AccountingClient() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [filter, setFilter] = useState<TimeFilter>('all');
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -47,20 +50,44 @@ export function AccountingClient() {
   
   const isLoading = isUserLoading || expensesLoading;
 
-  const sortedExpenses = useMemo(() => {
+  const filteredExpenses = useMemo(() => {
       if (!rawExpenses) return [];
-      return [...rawExpenses].sort((a,b) => {
+      
+      const now = new Date();
+      let interval: { start: Date; end: Date } | null = null;
+
+      switch (filter) {
+          case 'today': interval = { start: startOfDay(now), end: endOfDay(now) }; break;
+          case 'week': interval = { start: startOfWeek(now), end: endOfWeek(now) }; break;
+          case 'month': interval = { start: startOfMonth(now), end: endOfMonth(now) }; break;
+          case 'year': interval = { start: startOfYear(now), end: endOfYear(now) }; break;
+          default: interval = null;
+      }
+
+      let results = [...rawExpenses];
+      
+      if (interval) {
+          results = results.filter(e => {
+              try {
+                  return isWithinInterval(parseISO(e.date), interval!);
+              } catch {
+                  return false;
+              }
+          });
+      }
+
+      return results.sort((a,b) => {
           const dateA = a.date ? new Date(a.date).getTime() : 0;
           const dateB = b.date ? new Date(b.date).getTime() : 0;
           return dateB - dateA;
       });
-  }, [rawExpenses]);
+  }, [rawExpenses, filter]);
 
   const { totalExpenses, categoryCount } = useMemo(() => {
-    const total = sortedExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-    const categories = new Set(sortedExpenses.map(e => e.category)).size;
+    const total = filteredExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const categories = new Set(filteredExpenses.map(e => e.category)).size;
     return { totalExpenses: total, categoryCount: categories };
-  }, [sortedExpenses]);
+  }, [filteredExpenses]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
@@ -97,7 +124,7 @@ export function AccountingClient() {
   ], []);
 
   const table = useReactTable({
-    data: sortedExpenses,
+    data: filteredExpenses,
     columns,
     state: { pagination },
     onPaginationChange: setPagination,
@@ -121,9 +148,26 @@ export function AccountingClient() {
       <PageHeader
         title="Money Spent (Expense Feed)"
         description="A live record of all shop expenditures saved to the cloud."
-        actionLabel="Record New Spend"
-        onAction={() => setIsFormOpen(true)}
-        ActionIcon={PlusCircle}
+        actions={
+            <div className="flex items-center gap-3">
+                <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
+                    <SelectTrigger className="h-10 w-40 bg-white font-black uppercase text-[10px] tracking-widest border-2">
+                        <Filter className="h-3 w-3 mr-2 text-primary" />
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Lifetime History</SelectItem>
+                        <SelectItem value="today">Today's Spend</SelectItem>
+                        <SelectItem value="week">This Week</SelectItem>
+                        <SelectItem value="month">This Month</SelectItem>
+                        <SelectItem value="year">This Year</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Button onClick={() => setIsFormOpen(true)} className="h-10 px-6 font-black uppercase text-[10px] tracking-widest shadow-lg">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Record New Spend
+                </Button>
+            </div>
+        }
       />
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
@@ -132,6 +176,7 @@ export function AccountingClient() {
             value={formatCurrency(totalExpenses)} 
             icon={TrendingDown} 
             className="border-l-4 border-l-red-500"
+            description={`Total for ${filter.toUpperCase()}`}
         />
         <SummaryCard 
             title="Categories" 
@@ -140,19 +185,22 @@ export function AccountingClient() {
             description="Active expense types" 
         />
         <SummaryCard 
-            title="Period" 
-            value="Lifetime" 
+            title="Records" 
+            value={filteredExpenses.length} 
             icon={CalendarIcon} 
-            description="All records for this workspace" 
+            description={`Transactions in ${filter}`} 
         />
       </div>
 
       <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
         <CardHeader className="bg-muted/10 border-b py-4">
-            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-red-600">
-                <ReceiptText className="h-4 w-4" />
-                Expenditure Ledger
-            </CardTitle>
+            <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-red-600">
+                    <ReceiptText className="h-4 w-4" />
+                    Expenditure Ledger
+                </CardTitle>
+                <Badge variant="outline" className="text-[8px] font-black uppercase bg-white">Showing: {filter}</Badge>
+            </div>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -183,7 +231,7 @@ export function AccountingClient() {
                   <TableCell colSpan={4} className="h-40 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground opacity-30">
                         <ReceiptText className="h-12 w-12" />
-                        <p className="text-xs font-black uppercase tracking-widest">No spending records found.</p>
+                        <p className="text-xs font-black uppercase tracking-widest">No spending records found for this period.</p>
                     </div>
                   </TableCell>
                 </TableRow>
