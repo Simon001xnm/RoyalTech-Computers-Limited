@@ -10,20 +10,16 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Dynamic Paginated Invoice
- * Uses an intelligent height-estimation algorithm to handle 
- * continuous table flow and automatic page breaking.
- * 
- * CALIBRATED FOR ZERO CLIPPING:
- * Logic ensures rows are never split or hidden behind footers.
+ * Features high-precision height estimation and integrated payment gateways.
  */
 
 // CONSERVATIVE HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   // A4 Standard
-const HEADER_P1 = 520;      // Branding + Billing overhead (Conservative)
+const HEADER_P1 = 620;      // Branded Header + Payment Info (Recalibrated for new info)
 const HEADER_PX = 120;      // "Continued" header height
 const TABLE_HEADER = 50;    // Blue header height
 const FOOTER_RESERVE = 180;  // Disclaimer + Signature area padding
-const ROW_BASE = 60;        // Single-line row height (Conservative)
+const ROW_BASE = 60;        // Single-line row height
 const SUMMARY_BLOCK = 320;   // Totals/Sign-off block
 const CHARS_PER_LINE = 45;   // Conservative wrap limit
 
@@ -103,12 +99,6 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
     if (currentPageItems.length > 0) calculatedPages.push(currentPageItems);
 
-    // INTEGRITY VALIDATION
-    const totalRendered = calculatedPages.reduce((acc, p) => acc + p.length, 0);
-    if (items.length > 0 && totalRendered !== items.length) {
-        console.error(`PAGINATION ERROR: Data count (${items.length}) != Rendered count (${totalRendered})`);
-    }
-
     return calculatedPages;
   }, [items]);
 
@@ -132,7 +122,6 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     <h1 className="text-[26px] font-black uppercase tracking-tighter leading-tight" style={{ color: primaryBlue }}>
                       {workspace?.name || 'OFFICIAL BUSINESS'}
                     </h1>
-                    <p className="font-black text-[10px] uppercase tracking-widest mt-1 text-green-700">Official Tax Invoice</p>
                   </div>
                 </div>
                 
@@ -167,9 +156,9 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
               </div>
 
               <div className="grid grid-cols-[60%_40%] gap-0 mb-8 border-b pb-8">
-                  <div className="pr-12 space-y-6">
+                  <div className="pr-12 space-y-4">
                       <p className="text-[10px] font-medium leading-relaxed opacity-80">
-                        Please remit your payment to: <span className="font-black uppercase">{workspace?.name || 'THE BUSINESS'}</span>. Include your Invoice Number as the reference to ensure proper account credit.
+                        Please remit your payment to: <span className="font-black uppercase">{workspace?.name || 'THE BUSINESS'}</span>. Include your Invoice Number as the reference.
                       </p>
                       
                       <div className="grid grid-cols-2 gap-8">
@@ -189,6 +178,21 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                               </div>
                           </div>
                       </div>
+
+                      {/* PAYMENT DETAILS BLOCK */}
+                      <div className="grid grid-cols-2 gap-4 pt-2">
+                        <div className="p-3 bg-slate-50 border rounded-md border-black/5">
+                            <p className="text-[7px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Bank Payment</p>
+                            <p className="text-[9px] font-black">DTB</p>
+                            <p className="text-[9px] font-medium uppercase">{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
+                            <p className="text-[9px] font-black">ACC NO: 0084976001</p>
+                        </div>
+                        <div className="p-3 bg-slate-50 border rounded-md border-black/5">
+                            <p className="text-[7px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Lipan Na M-Pesa</p>
+                            <p className="text-[9px] font-black">PAYBILL NO: 516600</p>
+                            <p className="text-[9px] font-black">ACC NO: 5084975001</p>
+                        </div>
+                      </div>
                   </div>
                   <div className="bg-blue-50/40 p-8 flex flex-col justify-center border-l border-black/5 rounded-r-lg">
                       <p className="text-[11px] font-bold opacity-40 uppercase tracking-widest mb-1">Net Balance Due</p>
@@ -201,7 +205,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             </>
           )}
 
-          {/* ITEM TABLE (Repeated Header per page) */}
+          {/* ITEM TABLE */}
           <div className="flex-grow overflow-hidden flex flex-col">
             <table className="w-full border-collapse">
                 <thead>
@@ -244,7 +248,6 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
           {/* TOTALS & FOOTER */}
           <footer className="mt-auto pt-6 border-t border-gray-100 bg-white">
-             {/* TOTALS (Last Page Only) */}
              {pageIdx === pages.length - 1 && (
                 <div className="mb-8 pt-4 border-t-2 border-black/5">
                     <div className="flex justify-between items-start gap-12">
@@ -284,7 +287,6 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 </div>
              )}
 
-             {/* BRANDED FOOTER - Only on Last Page */}
              {pageIdx === pages.length - 1 && (
                 <div className="text-center space-y-1.5 pb-6">
                     <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
@@ -295,7 +297,6 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 </div>
              )}
              
-             {/* UNIVERSAL FOOTER - Every Page in Pure Black */}
              <div className="flex justify-between items-center border-t pt-4">
                 <div className="text-[8px] font-black uppercase tracking-tighter text-black">
                    GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
@@ -310,4 +311,3 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     </div>
   );
 }
-
