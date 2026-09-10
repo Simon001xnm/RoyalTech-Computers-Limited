@@ -82,7 +82,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     <h1 className="text-[26px] font-black uppercase tracking-tighter leading-tight" style={{ color: primaryBlue }}>
                       {workspace?.name || 'OFFICIAL BUSINESS'}
                     </h1>
-                    <p className="font-bold text-[10px] uppercase tracking-widest mt-1 opacity-60">Official Tax Invoice</p>
+                    <p className="font-black text-[10px] uppercase tracking-widest mt-1 text-green-700">Official Tax Invoice</p>
                   </div>
                 </div>
                 
@@ -170,10 +170,15 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                         const qty = Number(item.quantity || 1);
                         const rowTotal = unitPrice * qty;
                         
+                        // OFFSET CALCULATION: Ensures numbering doesn't skip
+                        const itemNumber = pageIdx === 0 
+                            ? idx + 1 
+                            : ITEMS_PER_PAGE_FIRST + ((pageIdx - 1) * ITEMS_PER_PAGE_OTHER) + idx + 1;
+
                         return (
                             <tr key={idx} className="border-b border-gray-100 last:border-0 h-14">
                                 <td className="p-4 text-[10px] font-black text-center opacity-20">
-                                    {(pageIdx * ITEMS_PER_PAGE_OTHER + idx + 1).toString().padStart(2, '0')}
+                                    {itemNumber.toString().padStart(2, '0')}
                                 </td>
                                 <td className="p-4">
                                     <p className="font-black uppercase leading-tight text-[11px] tracking-tight">{item.name || item.description}</p>

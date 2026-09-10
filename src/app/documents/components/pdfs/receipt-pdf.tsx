@@ -159,11 +159,16 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                         const qty = Number(item.quantity || 1);
                         const rowTotal = unitRate * qty;
                         
+                        // OFFSET CALCULATION: Ensures numbering doesn't skip
+                        const itemNumber = pageIdx === 0 
+                            ? idx + 1 
+                            : ITEMS_PER_PAGE_FIRST + ((pageIdx - 1) * ITEMS_PER_PAGE_OTHER) + idx + 1;
+
                         return (
                             <tr key={idx} className="border-b border-gray-100 last:border-0 h-10">
                                 <td className="p-2.5">
                                     <p className="font-bold uppercase leading-tight text-[10px]">
-                                        {pageIdx * ITEMS_PER_PAGE_OTHER + idx + 1}. {item.name || item.description}
+                                        {itemNumber}. {item.name || item.description}
                                     </p>
                                 </td>
                                 <td className="p-2.5 text-center font-bold text-[9px] opacity-40">{data.applyVat ? '16%' : '0%'}</td>
