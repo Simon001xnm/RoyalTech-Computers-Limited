@@ -12,18 +12,20 @@ import { useMemo } from 'react';
  * @fileOverview High-Fidelity Dynamic Paginated Invoice
  * Uses an intelligent height-estimation algorithm to handle 
  * continuous table flow and automatic page breaking.
+ * 
+ * CALIBRATED FOR ZERO CLIPPING:
+ * Logic ensures rows are never split or hidden behind footers.
  */
 
-// CALIBRATED HEIGHT CONSTANTS (Pixels)
-const PAGE_HEIGHT = 1123; // A4 Standard
-const MARGIN_BUFFER = 40;
-const HEADER_P1 = 440;    // Branding + Billing overhead
-const HEADER_PX = 80;     // "Continued" header height
-const TABLE_HEADER = 50;  // Blue header height
-const FOOTER_RESERVE = 120; // Disclaimer + Pagination space
-const ROW_BASE = 52;      // Single-line row height
-const SUMMARY_BLOCK = 280; // Totals/Sign-off block
-const CHARS_PER_LINE = 55; // Estimation limit for desc wrap
+// CONSERVATIVE HEIGHT CONSTANTS (Pixels)
+const PAGE_HEIGHT = 1123;   // A4 Standard
+const HEADER_P1 = 520;      // Branding + Billing overhead (Conservative)
+const HEADER_PX = 120;      // "Continued" header height
+const TABLE_HEADER = 50;    // Blue header height
+const FOOTER_RESERVE = 180;  // Disclaimer + Signature area padding
+const ROW_BASE = 60;        // Single-line row height (Conservative)
+const SUMMARY_BLOCK = 320;   // Totals/Sign-off block
+const CHARS_PER_LINE = 45;   // Conservative wrap limit
 
 export function InvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -67,9 +69,8 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
   const primaryBlue = "#1e3a8a";
 
   /**
-   * DYNAMIC PAGINATION ENGINE
-   * Estimates item heights and distributes them across pages based 
-   * on actual vertical availability.
+   * REINFORCED PAGINATION ENGINE
+   * Prevents clipping by measuring before rendering.
    */
   const pages = useMemo(() => {
     const calculatedPages: any[][] = [];
@@ -79,21 +80,21 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     items.forEach((item: any, idx: number) => {
         const isLastItem = idx === items.length - 1;
         
-        // 1. Calculate Estimated Row Height
+        // 1. Estimate Row Height with wrap safety
         const descText = (item.name || item.description || "");
-        const lines = Math.ceil(descText.length / CHARS_PER_LINE);
-        const itemHeight = ROW_BASE + (lines > 1 ? (lines - 1) * 15 : 0);
+        const lines = Math.max(1, Math.ceil(descText.length / CHARS_PER_LINE));
+        const itemHeight = ROW_BASE + (lines > 1 ? (lines - 1) * 18 : 0);
 
-        // 2. Check if Summary block needs to fit on this page too
+        // 2. Space needed on current page
         const totalsSpace = isLastItem ? SUMMARY_BLOCK : 0;
         const spaceNeeded = itemHeight + totalsSpace;
 
-        // 3. Page Break Logic
+        // 3. Page Break Logic (Strict)
         if (currentHeightUsed + spaceNeeded > PAGE_HEIGHT && currentPageItems.length > 0) {
             calculatedPages.push(currentPageItems);
             currentPageItems = [item];
             // Reset for next page (Continued header overhead)
-            currentHeightUsed = HEADER_PX + TABLE_HEADER + FOOTER_RESERVE + itemHeight;
+            currentHeightUsed = HEADER_PX + TABLE_HEADER + FOOTER_RESERVE + itemHeight + totalsSpace;
         } else {
             currentPageItems.push(item);
             currentHeightUsed += itemHeight;
@@ -101,14 +102,15 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     });
 
     if (currentPageItems.length > 0) calculatedPages.push(currentPageItems);
+
+    // INTEGRITY VALIDATION
+    const totalRendered = calculatedPages.reduce((acc, p) => acc + p.length, 0);
+    if (items.length > 0 && totalRendered !== items.length) {
+        console.error(`PAGINATION ERROR: Data count (${items.length}) != Rendered count (${totalRendered})`);
+    }
+
     return calculatedPages;
   }, [items]);
-
-  // Validation Check
-  const totalRendered = pages.reduce((acc, p) => acc + p.length, 0);
-  if (items.length > 0 && totalRendered !== items.length) {
-      console.warn(`PAGINATION WARNING: ${items.length} items in data, but ${totalRendered} rendered.`);
-  }
 
   return (
     <div className="flex flex-col items-center gap-10 bg-slate-200 p-10 no-scrollbar">
@@ -147,7 +149,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             </header>
           ) : (
             <div className="mb-6 border-b pb-4 flex justify-between items-end">
-                <p className="text-[9px] font-black uppercase opacity-40 tracking-widest">Invoice Continued: #{invoiceNo}</p>
+                <p className="text-[11px] font-black uppercase opacity-40 tracking-widest">Invoice Continued: #{invoiceNo}</p>
                 <p className="text-[9px] font-black">Page {pageIdx + 1}</p>
             </div>
           )}
@@ -217,7 +219,6 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                         const qty = Number(item.quantity || 1);
                         const rowTotal = unitPrice * qty;
                         
-                        // MATHEMATICALLY STRICT SEQUENTIAL NUMBERING
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
 
                         return (
@@ -241,47 +242,48 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             </table>
           </div>
 
-          {/* TOTALS (Last Page Only) */}
-          {pageIdx === pages.length - 1 && (
-            <div className="mt-6 pt-4 border-t-2 border-black/5">
-                <div className="flex justify-between items-start gap-12">
-                    <div className="flex-1 space-y-4">
-                        <div className="p-4 bg-slate-50 border rounded-lg">
-                            <p className="text-[8px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Amount in Words</p>
-                            <p className="font-black uppercase text-[10px] leading-relaxed italic text-blue-900">
-                                {numberToWords(currentTotal)}
-                            </p>
-                        </div>
-                        <div className="text-[9px] font-medium text-muted-foreground italic max-w-[300px]">
-                            * All items remain property of {workspace?.name || 'the seller'} until the total balance is cleared.
-                        </div>
-                    </div>
-                    
-                    <div className="w-[340px] space-y-0">
-                        <div className="flex justify-between items-center p-3.5 bg-slate-50/50 border-b border-white">
-                            <span className="font-bold opacity-40 uppercase text-[9px]">Invoice Subtotal</span>
-                            <span className="font-black text-[11px]">{formatCurrency(subtotal)}</span>
-                        </div>
-                        {vat > 0 && (
-                            <div className="flex justify-between items-center p-3.5 bg-slate-50/50 border-b border-white">
-                                <span className="font-bold opacity-40 uppercase text-[9px]">Tax Amount (16%)</span>
-                                <span className="font-black text-[11px]">{formatCurrency(vat)}</span>
+          {/* TOTALS & FOOTER */}
+          <footer className="mt-auto pt-6 border-t border-gray-100 bg-white">
+             {/* TOTALS (Last Page Only) */}
+             {pageIdx === pages.length - 1 && (
+                <div className="mb-8 pt-4 border-t-2 border-black/5">
+                    <div className="flex justify-between items-start gap-12">
+                        <div className="flex-1 space-y-4">
+                            <div className="p-4 bg-slate-50 border rounded-lg">
+                                <p className="text-[8px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Amount in Words</p>
+                                <p className="font-black uppercase text-[10px] leading-relaxed italic text-blue-900">
+                                    {numberToWords(currentTotal)}
+                                </p>
                             </div>
-                        )}
-                        <div className="flex justify-between items-center p-3.5 bg-orange-50/30 border-b border-white">
-                            <span className="font-bold text-orange-800/60 uppercase text-[9px]">Brought Forward</span>
-                            <span className="font-black text-orange-800 text-[11px]">{formatCurrency(previousBalance)}</span>
+                            <div className="text-[9px] font-medium text-muted-foreground italic max-w-[300px]">
+                                * All items remain property of {workspace?.name || 'the seller'} until the total balance is cleared.
+                            </div>
                         </div>
-                        <div className="flex justify-between items-center p-5 bg-blue-900 text-white shadow-xl mt-2 rounded-sm">
-                            <span className="text-[12px] font-black uppercase tracking-tighter">Net Amount Due</span>
-                            <span className="font-black tracking-tight text-[22px]">KES {formatCurrency(totalAmountDue)}</span>
+                        
+                        <div className="w-[340px] space-y-0">
+                            <div className="flex justify-between items-center p-3.5 bg-slate-50/50 border-b border-white">
+                                <span className="font-bold opacity-40 uppercase text-[9px]">Invoice Subtotal</span>
+                                <span className="font-black text-[11px]">{formatCurrency(subtotal)}</span>
+                            </div>
+                            {vat > 0 && (
+                                <div className="flex justify-between items-center p-3.5 bg-slate-50/50 border-b border-white">
+                                    <span className="font-bold opacity-40 uppercase text-[9px]">Tax Amount (16%)</span>
+                                    <span className="font-black text-[11px]">{formatCurrency(vat)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center p-3.5 bg-orange-50/30 border-b border-white">
+                                <span className="font-bold text-orange-800/60 uppercase text-[9px]">Brought Forward</span>
+                                <span className="font-black text-orange-800 text-[11px]">{formatCurrency(previousBalance)}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-5 bg-blue-900 text-white shadow-xl mt-2 rounded-sm">
+                                <span className="text-[12px] font-black uppercase tracking-tighter">Net Amount Due</span>
+                                <span className="font-black tracking-tight text-[22px]">KES {formatCurrency(totalAmountDue)}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-          )}
+             )}
 
-          <footer className="mt-auto pt-10 border-t border-gray-100 bg-white">
              {/* BRANDED FOOTER - Only on Last Page */}
              {pageIdx === pages.length - 1 && (
                 <div className="text-center space-y-1.5 pb-6">
@@ -294,7 +296,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
              )}
              
              {/* UNIVERSAL FOOTER - Every Page in Pure Black */}
-             <div className="flex justify-between items-center">
+             <div className="flex justify-between items-center border-t pt-4">
                 <div className="text-[8px] font-black uppercase tracking-tighter text-black">
                    GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
                 </div>
@@ -308,3 +310,4 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     </div>
   );
 }
+

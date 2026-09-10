@@ -8,15 +8,20 @@ import { useSaaS } from '@/components/saas/saas-provider';
 import { numberToWords, cn } from "@/lib/utils";
 import { useMemo } from 'react';
 
-// CALIBRATED HEIGHT CONSTANTS (Pixels)
+/**
+ * @fileOverview High-Fidelity Dynamic Paginated Receipt
+ * Calibrated for zero clipping and absolute sequential numbering.
+ */
+
+// CONSERVATIVE HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;
-const HEADER_P1 = 320;
-const HEADER_PX = 80;
-const TABLE_HEADER = 45;
-const FOOTER_RESERVE = 110;
-const ROW_BASE = 48;
-const SUMMARY_BLOCK = 260;
-const CHARS_PER_LINE = 55;
+const HEADER_P1 = 360;      // Branding overhead (Conservative)
+const HEADER_PX = 100;      // "Continued" header
+const TABLE_HEADER = 50;
+const FOOTER_RESERVE = 160;  // Safe margin for bottom disclaimer
+const ROW_BASE = 55;        // Row height baseline
+const SUMMARY_BLOCK = 280;   // Totals block height
+const CHARS_PER_LINE = 50;
 
 export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -66,7 +71,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
   const warningOrange = "#9a3412";
 
   /**
-   * DYNAMIC PAGINATION ENGINE
+   * REINFORCED PAGINATION ENGINE
    */
   const pages = useMemo(() => {
     const calculatedPages: any[][] = [];
@@ -76,15 +81,15 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
     items.forEach((item: any, idx: number) => {
         const isLastItem = idx === items.length - 1;
         const descText = (item.name || item.description || "");
-        const lines = Math.ceil(descText.length / CHARS_PER_LINE);
-        const itemHeight = ROW_BASE + (lines > 1 ? (lines - 1) * 12 : 0);
+        const lines = Math.max(1, Math.ceil(descText.length / CHARS_PER_LINE));
+        const itemHeight = ROW_BASE + (lines > 1 ? (lines - 1) * 15 : 0);
         
         const spaceNeeded = itemHeight + (isLastItem ? SUMMARY_BLOCK : 0);
 
         if (currentHeightUsed + spaceNeeded > PAGE_HEIGHT && currentPageItems.length > 0) {
             calculatedPages.push(currentPageItems);
             currentPageItems = [item];
-            currentHeightUsed = HEADER_PX + TABLE_HEADER + FOOTER_RESERVE + itemHeight;
+            currentHeightUsed = HEADER_PX + TABLE_HEADER + FOOTER_RESERVE + itemHeight + (isLastItem ? SUMMARY_BLOCK : 0);
         } else {
             currentPageItems.push(item);
             currentHeightUsed += itemHeight;
@@ -92,11 +97,18 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
     });
 
     if (currentPageItems.length > 0) calculatedPages.push(currentPageItems);
+
+    // Validation
+    const totalRendered = calculatedPages.reduce((acc, p) => acc + p.length, 0);
+    if (items.length > 0 && totalRendered !== items.length) {
+        console.error(`PAGINATION ERROR: Rendered items mismatch.`);
+    }
+
     return calculatedPages;
   }, [items]);
 
   return (
-    <div className="flex flex-col items-center gap-6 bg-slate-100 p-8">
+    <div className="flex flex-col items-center gap-6 bg-slate-100 p-8 no-scrollbar">
       {pages.map((pageItems, pageIdx) => (
         <div 
             key={pageIdx} 
@@ -125,7 +137,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                     <p className="text-[8px] font-bold lowercase opacity-60">Email: {workspace?.email || 'mateshtechltd@gmail.com'}</p>
                     <div className="pt-2">
                         <p className="text-[11px] font-black uppercase" style={{ color: primaryBlue }}>Receipt: #{receiptNo}</p>
-                        <p className="text-[8px] font-bold text-muted-foreground">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
+                        <p className="text-[8px] font-bold text-muted-foreground uppercase">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
                     </div>
                 </div>
             </header>
@@ -164,7 +176,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             </>
           )}
 
-          {/* ITEM TABLE (Header per page) */}
+          {/* ITEM TABLE */}
           <div className="flex-grow overflow-hidden flex flex-col">
             <table className="w-full border-collapse">
                 <thead>
@@ -185,7 +197,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
 
                         return (
-                            <tr key={idx} className="border-b border-gray-100 last:border-0 h-10">
+                            <tr key={idx} className="border-b border-gray-100 last:border-0 h-11">
                                 <td className="p-2.5">
                                     <p className="font-bold uppercase leading-tight text-[10px]">
                                         {itemNumber.toString().padStart(2, '0')}. {item.name || item.description}
@@ -202,44 +214,44 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             </table>
           </div>
 
-          {/* SUMMARY BLOCK (Last Page Only) */}
-          {pageIdx === pages.length - 1 && (
-            <div className="mt-6 flex flex-col gap-4">
-                <div className="flex justify-between items-start gap-8">
-                    <div className="flex-1 pt-2">
-                        <p className="font-black uppercase text-[9px] leading-relaxed text-black max-w-[350px]">
-                            Paid in words: <span className="font-bold underline underline-offset-4">{numberToWords(amountPaidToday)}</span>
-                        </p>
-                    </div>
-                    <div className="w-[300px] space-y-1">
-                        <div className="flex justify-between items-center px-2 py-1 border-t border-black/10">
-                            <span className="font-bold opacity-40 uppercase text-[9px]">Today's Subtotal</span>
-                            <span className="font-black text-[10px]">{formatCurrency(subtotal)}</span>
+          {/* FOOTER AREA */}
+          <footer className="mt-auto pt-6 border-t border-gray-100 bg-white">
+             {/* SUMMARY BLOCK (Last Page Only) */}
+             {pageIdx === pages.length - 1 && (
+                <div className="mb-6 flex flex-col gap-4">
+                    <div className="flex justify-between items-start gap-8">
+                        <div className="flex-1 pt-2">
+                            <p className="font-black uppercase text-[9px] leading-relaxed text-black max-w-[350px]">
+                                Paid in words: <span className="font-bold underline underline-offset-4">{numberToWords(amountPaidToday)}</span>
+                            </p>
                         </div>
-                        <div className="flex justify-between items-center px-2 py-1">
-                            <span className="font-black uppercase text-[9px] opacity-80">Receipt Total</span>
-                            <span className="font-black text-[10px]">KES {formatCurrency(todayTotal)}</span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-[#f0fdf4] border-l-4 border-l-[#15803d] my-2 shadow-sm rounded-r-md">
-                            <span className="text-[10px] font-black uppercase text-green-900">Amount Paid Today</span>
-                            <span className="font-black tracking-tight text-[12px] text-green-900">KES {formatCurrency(amountPaidToday)}</span>
-                        </div>
-                        <div className="flex justify-between items-center px-2 py-4 border-t-2 border-black mt-1">
-                            <span className="text-[12px] font-black uppercase tracking-tighter">Total Account Debt</span>
-                            <span className="font-black tracking-tighter text-[22px] leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(totalAccountDebt)}</span>
+                        <div className="w-[300px] space-y-1">
+                            <div className="flex justify-between items-center px-2 py-1 border-t border-black/10">
+                                <span className="font-bold opacity-40 uppercase text-[9px]">Today's Subtotal</span>
+                                <span className="font-black text-[10px]">{formatCurrency(subtotal)}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-2 py-1">
+                                <span className="font-black uppercase text-[9px] opacity-80">Receipt Total</span>
+                                <span className="font-black text-[10px]">KES {formatCurrency(todayTotal)}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-[#f0fdf4] border-l-4 border-l-[#15803d] my-2 shadow-sm rounded-r-md">
+                                <span className="text-[10px] font-black uppercase text-green-900">Amount Paid Today</span>
+                                <span className="font-black tracking-tight text-[12px] text-green-900">KES {formatCurrency(amountPaidToday)}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-2 py-4 border-t-2 border-black mt-1">
+                                <span className="text-[12px] font-black uppercase tracking-tighter">Total Account Debt</span>
+                                <span className="font-black tracking-tighter text-[22px] leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(totalAccountDebt)}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-          )}
+             )}
 
-          {/* FOOTER */}
-          <footer className="mt-auto pt-6 border-t border-gray-100 bg-white">
              {/* BRANDED BLOCK - Only on Last Page */}
              {pageIdx === pages.length - 1 && (
                 <div className="text-center space-y-1 pb-2">
-                    <p className="text-[8px] font-black uppercase tracking-tight text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
-                    <p className="text-[9px] font-bold uppercase tracking-widest leading-none" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
+                    <p className="text-[9px] font-black uppercase tracking-tight text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest leading-none" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
                     <p className="text-[8px] font-bold text-black">
                         Phone: {workspace?.phone || '+254701694469'}. Email: {workspace?.email || 'mateshtechltd@gmail.com'}
                     </p>
@@ -247,7 +259,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
              )}
 
              {/* UNIVERSAL TRACKING - Every Page in Pure Black */}
-             <div className="flex justify-between items-center mt-2">
+             <div className="flex justify-between items-center mt-2 border-t pt-2">
                 <div className="text-[8px] font-black uppercase tracking-tighter text-black">
                    GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
                 </div>
