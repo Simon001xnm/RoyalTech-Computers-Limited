@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -23,7 +24,8 @@ import {
     Loader2,
     BarChart3,
     ArrowRight,
-    X
+    X,
+    Search
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +40,8 @@ import {
     startOfYear,
     endOfMonth,
     endOfWeek,
-    endOfYear
+    endOfYear,
+    startOfDay
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -47,6 +50,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type { DateRange } from 'react-day-picker';
 import {
   useReactTable,
@@ -91,6 +95,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   
   const [filter, setFilter] = useState<TimeFilter>('month');
+  const [ledgerSearch, setLedgerSearch] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: new Date()
@@ -165,7 +170,13 @@ export default function DashboardPage() {
 
     const filteredSales = sales.filter(s => { try { return isWithinInterval(parseISO(s.date), interval); } catch { return false; } });
     const filteredExp = expenses.filter(e => { try { return isWithinInterval(parseISO(e.date), interval); } catch { return false; } });
-    const filteredDocs = documents.filter(d => { try { return isWithinInterval(parseISO(d.generatedDate), interval); } catch { return false; } });
+    let filteredDocs = documents.filter(d => { try { return isWithinInterval(parseISO(d.generatedDate), interval); } catch { return false; } });
+
+    // Internal Ledger Filter (Customer Name)
+    if (ledgerSearch.trim()) {
+        const searchLower = ledgerSearch.toLowerCase();
+        filteredDocs = filteredDocs.filter(d => (d.relatedTo || '').toLowerCase().includes(searchLower));
+    }
 
     const totalRevenue = filteredSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
     const totalCost = filteredSales.reduce((acc, s) => {
@@ -192,7 +203,7 @@ export default function DashboardPage() {
         topSelling,
         viewLabel: filter === 'custom' && dateRange?.from ? `${format(dateRange.from, 'dd MMM')} - ${format(dateRange.to || now, 'dd MMM')}` : filter.toUpperCase()
     };
-  }, [sales, assets, expenses, documents, filter, dateRange]);
+  }, [sales, assets, expenses, documents, filter, dateRange, ledgerSearch]);
 
   const performanceStats = useMemo(() => {
     if (!sales || !expenses) return [];
@@ -235,15 +246,12 @@ export default function DashboardPage() {
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
     
-    // If not already viewing it, we set it and open the preview temporarily for the capture
     const wasPreviewOpen = isPdfPreviewOpen;
     if (!wasPreviewOpen) {
         setSelectedDocument(docObj);
         setIsPdfPreviewOpen(true);
-        // Wait for render
         await new Promise(r => setTimeout(r, 1200));
     } else {
-        // Wait slightly for any transition
         await new Promise(r => setTimeout(r, 500));
     }
 
@@ -525,19 +533,30 @@ export default function DashboardPage() {
 
       <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
         <CardHeader className="bg-muted/30 border-b py-4 px-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                     <FileWarning className="h-4 w-4 text-muted-foreground" />
                     <CardTitle className="text-sm font-black uppercase tracking-widest">Recent Activity Ledger</CardTitle>
                 </div>
-                {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search by customer..." 
+                            value={ledgerSearch}
+                            onChange={(e) => setLedgerSearch(e.target.value)}
+                            className="pl-8 h-9 text-[10px] font-bold uppercase bg-white w-full sm:w-64 border-muted"
+                        />
+                    </div>
+                    {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                </div>
             </div>
         </CardHeader>
         <CardContent className="p-0">
             <Table>
                 <TableHeader className="bg-muted/20">{table.getHeaderGroups().map((headerGroup) => (<TableRow key={headerGroup.id}>{headerGroup.headers.map((header) => (<TableHead key={header.id} className="text-[10px] font-black uppercase py-4">{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
                 <TableBody>
-                    {table.getRowModel().rows.length ? (table.getRowModel().rows.map((row) => (<TableRow key={row.id} className="h-12 border-b last:border-0 hover:bg-muted/5 transition-colors">{row.getVisibleCells().map((cell) => (<TableCell key={cell.id} className="py-2">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))) : (<TableRow><TableCell colSpan={columns.length} className="h-32 text-center opacity-30 text-xs font-bold uppercase italic">No documents found for this period</TableCell></TableRow>)}
+                    {table.getRowModel().rows.length ? (table.getRowModel().rows.map((row) => (<TableRow key={row.id} className="h-12 border-b last:border-0 hover:bg-muted/5 transition-colors">{row.getVisibleCells().map((cell) => (<TableCell key={cell.id} className="py-2">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))) : (<TableRow><TableCell colSpan={columns.length} className="h-32 text-center opacity-30 text-xs font-bold uppercase italic">No documents found for this criteria</TableCell></TableRow>)}
                 </TableBody>
             </Table>
             <DataTablePagination table={table} />
