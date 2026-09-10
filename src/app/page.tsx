@@ -22,7 +22,8 @@ import {
     Eye,
     Loader2,
     BarChart3,
-    ArrowRight
+    ArrowRight,
+    X
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,7 +57,7 @@ import {
   type PaginationState,
 } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { InvoicePdf } from "./documents/components/pdfs/invoice-pdf";
 import { ReceiptPdf } from "./documents/components/pdfs/receipt-pdf";
 import { ProformaInvoicePdf } from "./documents/components/pdfs/proforma-pdf";
@@ -224,15 +225,27 @@ export default function DashboardPage() {
     });
   }, [sales, expenses]);
 
+  const handleViewDocument = (docObj: AppDocument) => {
+    setSelectedDocument(docObj);
+    setIsPdfPreviewOpen(true);
+  };
+
   const handleDownloadPdf = async (docObj: AppDocument) => {
     setIsExporting(true);
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
     
-    setSelectedDocument(docObj);
-    setIsPdfPreviewOpen(true);
-
-    await new Promise(r => setTimeout(r, 1200));
+    // If not already viewing it, we set it and open the preview temporarily for the capture
+    const wasPreviewOpen = isPdfPreviewOpen;
+    if (!wasPreviewOpen) {
+        setSelectedDocument(docObj);
+        setIsPdfPreviewOpen(true);
+        // Wait for render
+        await new Promise(r => setTimeout(r, 1200));
+    } else {
+        // Wait slightly for any transition
+        await new Promise(r => setTimeout(r, 500));
+    }
 
     try {
         const pages = document.querySelectorAll('.a4-pdf-page');
@@ -240,7 +253,7 @@ export default function DashboardPage() {
 
         if (pages.length === 0) {
             const element = document.getElementById('dashboard-export-target');
-            if (!element) throw new Error("Element not found");
+            if (!element) throw new Error("Export target element not found");
             const canvas = await html2canvas(element, { scale: 3.5, useCORS: true, backgroundColor: "#ffffff", width: 794 });
             const imgData = canvas.toDataURL('image/png', 1.0);
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
@@ -264,11 +277,14 @@ export default function DashboardPage() {
         pdf.save(`${initials}_${(docObj.relatedTo || 'VAL').slice(0,3).toUpperCase()}.pdf`);
         toast({ title: "Document Saved" });
     } catch (err) {
+        console.error("PDF Export error:", err);
         toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
-        setIsPdfPreviewOpen(false);
+        if (!wasPreviewOpen) {
+            setIsPdfPreviewOpen(false);
+            setSelectedDocument(null);
+        }
         setIsExporting(false);
-        setSelectedDocument(null);
     }
   };
 
@@ -313,6 +329,9 @@ export default function DashboardPage() {
         header: () => <div className="text-right pr-6">Action</div>,
         cell: ({ row }) => (
             <div className="flex justify-end pr-6 gap-2">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleViewDocument(row.original)} disabled={isExporting}>
+                    <Eye className="h-3.5 w-3.5" />
+                </Button>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownloadPdf(row.original)} disabled={isExporting}>
                     <Download className="h-3.5 w-3.5" />
                 </Button>
@@ -414,18 +433,15 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-6">
-          {/* PERFORMANCE BREAKDOWN REDESIGN */}
           <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden">
             <CardHeader className="bg-muted/10 border-b py-4 px-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-primary p-2 rounded-xl shadow-sm">
-                            <BarChart3 className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-sm font-black uppercase tracking-widest">Performance Intelligence</CardTitle>
-                            <CardDescription className="text-[10px] font-bold uppercase text-primary">Cross-Period Comparative Analysis</CardDescription>
-                        </div>
+                <div className="flex items-center gap-3">
+                    <div className="bg-primary p-2 rounded-xl shadow-sm">
+                        <BarChart3 className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-sm font-black uppercase tracking-widest">Performance Intelligence</CardTitle>
+                        <CardDescription className="text-[10px] font-bold uppercase text-primary">Cross-Period Comparative Analysis</CardDescription>
                     </div>
                 </div>
             </CardHeader>
@@ -460,7 +476,6 @@ export default function DashboardPage() {
                     </ResponsiveContainer>
                 </div>
 
-                {/* COLLECTED FIGURES GRID */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
                     {performanceStats.map((p) => (
                         <div key={p.name} className="p-4 bg-muted/20 rounded-2xl border space-y-3">
@@ -529,9 +544,29 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
       
-      <div className="fixed left-[-9999px] top-0 pointer-events-none overflow-visible">
-        <div id="dashboard-export-target" className="bg-white">{selectedDocument && renderPdfPreview()}</div>
-      </div>
+      <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
+        <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
+          <DialogHeader className="p-6 bg-white border-b no-print flex flex-row items-center justify-between">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">View Document</DialogTitle>
+            <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!)} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">
+                    {isExporting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Download className="h-3 w-3 mr-2" />}
+                    Download PDF
+                </Button>
+                <DialogClose asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                        <X className="h-4 w-4" />
+                    </Button>
+                </DialogClose>
+            </div>
+          </DialogHeader>
+          <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-4 md:p-8">
+            <div id="dashboard-export-target" className="shrink-0 relative overflow-visible origin-top scale-[0.4] sm:scale-[0.6] md:scale-100 bg-white shadow-2xl">
+                {renderPdfPreview()}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
