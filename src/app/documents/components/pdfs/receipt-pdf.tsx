@@ -10,17 +10,17 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Dynamic Paginated Receipt
- * Calibrated for zero clipping and absolute sequential numbering.
+ * Calibrated for maximum density on page 1.
  */
 
-// CONSERVATIVE HEIGHT CONSTANTS (Pixels)
+// CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;
-const HEADER_P1 = 350;      // Branding + Payments (Reduced from 400)
-const HEADER_PX = 100;      // "Continued" header
-const TABLE_HEADER = 50;
-const FOOTER_RESERVE = 100;  // Reduced from 160
-const ROW_BASE = 40;        // Reduced from 55
-const SUMMARY_BLOCK = 280;   
+const HEADER_P1 = 280;      
+const HEADER_PX = 100;      
+const TABLE_HEADER = 40;
+const FOOTER_RESERVE = 60;  
+const ROW_BASE = 36;        
+const SUMMARY_BLOCK = 240;   
 const CHARS_PER_LINE = 50;
 
 export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -104,29 +104,24 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden"
         >
           {pageIdx === 0 ? (
-            <header className="flex justify-between items-start mb-4">
+            <header className="flex justify-between items-start mb-2 pb-2 border-b">
                 <div className="flex items-center gap-4">
                   {workspace?.logoUrl ? (
-                      <img src={workspace.logoUrl} alt="Logo" className="h-16 w-auto object-contain" crossOrigin="anonymous" />
+                      <img src={workspace.logoUrl} alt="Logo" className="h-14 w-auto object-contain" crossOrigin="anonymous" />
                   ) : (
-                      <div className="h-12 w-12 bg-gray-50 flex items-center justify-center text-[8px] font-bold border-2 border-dashed border-gray-200 text-gray-300 uppercase">LOGO</div>
+                      <div className="h-10 w-10 bg-gray-50 flex items-center justify-center text-[8px] font-bold border-2 border-dashed border-gray-200 text-gray-300 uppercase">LOGO</div>
                   )}
                   <div className="flex flex-col">
-                    <h1 className="text-[22px] font-black uppercase tracking-tighter leading-none" style={{ color: primaryBlue }}>
+                    <h1 className="text-[20px] font-black uppercase tracking-tighter leading-none" style={{ color: primaryBlue }}>
                       {workspace?.name || 'MATESH TECHNOLOGIES'}
                     </h1>
-                    <p className="font-black text-[10px] mt-0.5 uppercase tracking-widest text-black" style={{ color: successGreen }}>Official Payment Receipt</p>
+                    <p className="font-black text-[9px] mt-0.5 uppercase tracking-widest text-black" style={{ color: successGreen }}>Official Payment Receipt</p>
                   </div>
                 </div>
                 <div className="text-right space-y-0.5">
-                    <p className="font-black uppercase text-9px text-black">Contact Details</p>
-                    <p className="text-[8px] font-bold leading-tight uppercase text-black max-w-[200px]">{workspace?.address || 'Nairobi, Kenya'}</p>
-                    <p className="text-[8px] font-bold text-black">Tel: {workspace?.phone || '+254701694469'}</p>
-                    <p className="text-[8px] font-bold lowercase text-black opacity-60">Email: {workspace?.email || 'mateshtechltd@gmail.com'}</p>
-                    <div className="pt-2">
-                        <p className="text-[11px] font-black uppercase" style={{ color: primaryBlue }}>Receipt: #{receiptNo}</p>
-                        <p className="text-[8px] font-bold text-black opacity-50 uppercase">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
-                    </div>
+                    <p className="text-[9px] font-black uppercase" style={{ color: primaryBlue }}>Receipt: #{receiptNo}</p>
+                    <p className="text-[8px] font-bold text-black opacity-50 uppercase">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
+                    <p className="text-[7px] font-bold uppercase text-black">{workspace?.address || 'Nairobi, Kenya'}</p>
                 </div>
             </header>
           ) : (
@@ -137,38 +132,26 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
           )}
 
           {pageIdx === 0 && (
-            <>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="p-4 bg-[#f0f7ff] rounded-xl border border-blue-100/50 space-y-1">
-                      <p className="text-[8px] font-black uppercase text-blue-800/60 tracking-widest">Client Name</p>
-                      <p className="text-[12px] font-black uppercase tracking-tight text-black">{customer.name}</p>
-                      <p className="text-[9px] font-medium text-black opacity-50 uppercase leading-none">{customer.address || 'Kenya'}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                      <div className="p-3 bg-slate-50 border rounded-lg border-black/5">
-                          <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest mb-1">Bank Settlement</p>
-                          <p className="text-[9px] font-black text-black leading-tight">Bank DTB; MATESH TECHNOLOGIES</p>
-                          <p className="text-[9px] font-black text-black uppercase">ACC: 0084976001</p>
-                      </div>
-                      <div className="p-3 bg-slate-50 border rounded-lg border-black/5">
-                          <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest mb-1">Mobile Money</p>
-                          <p className="text-[9px] font-black text-black leading-tight">PAYBILL: 516600</p>
-                          <p className="text-[9px] font-black text-black uppercase">ACC: 5084975001</p>
-                      </div>
-                  </div>
-              </div>
-            </>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="p-3 bg-[#f0f7ff] rounded-xl border border-blue-100/50 space-y-1">
+                    <p className="text-[7px] font-black uppercase text-blue-800/60 tracking-widest">Client Name</p>
+                    <p className="text-[11px] font-black uppercase tracking-tight text-black">{customer.name}</p>
+                </div>
+                <div className="p-2 bg-slate-50 border rounded-lg border-black/5 text-right">
+                    <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest">Settlement</p>
+                    <p className="text-[8px] font-black text-black">Paybill: 516600 | Acc: 5084975001</p>
+                </div>
+            </div>
           )}
 
           <div className="flex-grow overflow-hidden flex flex-col">
             <table className="w-full border-collapse">
                 <thead>
                     <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>
-                        <th className="p-2.5 font-black text-[9px] uppercase rounded-l-sm">Description</th>
-                        <th className="p-2.5 text-center font-black text-[9px] uppercase w-20">Tax</th>
-                        <th className="p-2.5 text-center font-black text-[9px] uppercase w-20">Qty</th>
-                        <th className="p-2.5 text-right font-black text-[9px] uppercase w-32">Rate</th>
-                        <th className="p-2.5 text-right font-black text-[9px] uppercase w-36 rounded-r-sm">Total</th>
+                        <th className="p-2 font-black text-[8px] uppercase rounded-l-sm">Description</th>
+                        <th className="p-2 text-center font-black text-[8px] uppercase w-20">Qty</th>
+                        <th className="p-2 text-right font-black text-[8px] uppercase w-32">Rate</th>
+                        <th className="p-2 text-right font-black text-[8px] uppercase w-36 rounded-r-sm">Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -179,16 +162,15 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
 
                         return (
-                            <tr key={idx} className="border-b border-gray-100 last:border-0 h-11">
-                                <td className="p-2.5">
+                            <tr key={idx} className="border-b border-gray-100 last:border-0 h-10">
+                                <td className="p-2">
                                     <p className="font-bold uppercase leading-tight text-[10px] text-black">
                                         {itemNumber.toString().padStart(2, '0')}. {item.name || item.description}
                                     </p>
                                 </td>
-                                <td className="p-2.5 text-center font-bold text-[9px] text-black opacity-40">{data.applyVat ? '16%' : '0%'}</td>
-                                <td className="p-2.5 text-center font-black text-[10px] text-black">{qty}</td>
-                                <td className="p-2.5 text-right tabular-nums font-bold text-[9px] text-black">KES {formatCurrency(unitRate)}</td>
-                                <td className="p-2.5 text-right tabular-nums font-black text-[10px] text-black">KES {formatCurrency(rowTotal)}</td>
+                                <td className="p-2 text-center font-black text-[10px] text-black">{qty}</td>
+                                <td className="p-2 text-right tabular-nums font-bold text-[9px] text-black">KES {formatCurrency(unitRate)}</td>
+                                <td className="p-2 text-right tabular-nums font-black text-[10px] text-black">KES {formatCurrency(rowTotal)}</td>
                             </tr>
                         );
                     })}
@@ -196,48 +178,30 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             </table>
           </div>
 
-          <footer className="mt-auto pt-6 border-t border-gray-100 bg-white">
+          <footer className="mt-auto pt-4 border-t border-gray-100 bg-white">
              {pageIdx === pages.length - 1 && (
-                <div className="mb-6 flex flex-col gap-4">
+                <div className="mb-4 flex flex-col gap-4">
                     <div className="flex justify-between items-start gap-8">
-                        <div className="flex-1 pt-2">
-                            <p className="font-black uppercase text-[10px] leading-relaxed text-black max-w-[350px]">
+                        <div className="flex-1 pt-1">
+                            <p className="font-black uppercase text-[9px] leading-relaxed text-black max-w-[350px]">
                                 Paid in words: <span className="font-bold underline underline-offset-4">{numberToWords(amountPaidToday)}</span>
                             </p>
                         </div>
                         <div className="w-[300px] space-y-1">
-                            <div className="flex justify-between items-center px-2 py-1 border-t border-black/10">
-                                <span className="font-bold text-black opacity-40 uppercase text-[9px]">Today's Subtotal</span>
-                                <span className="font-black text-[10px] text-black">{formatCurrency(subtotal)}</span>
+                            <div className="flex justify-between items-center p-3 bg-[#f0fdf4] border-l-4 border-l-[#15803d] my-1 shadow-sm rounded-r-md">
+                                <span className="text-[9px] font-black uppercase text-green-900">Amount Paid Today</span>
+                                <span className="font-black tracking-tight text-[14px] text-green-900">KES {formatCurrency(amountPaidToday)}</span>
                             </div>
-                            <div className="flex justify-between items-center px-2 py-1">
-                                <span className="font-black uppercase text-[9px] text-black opacity-80">Receipt Total</span>
-                                <span className="font-black text-[10px] text-black">KES {formatCurrency(todayTotal)}</span>
-                            </div>
-                            <div className="flex justify-between items-center p-4 bg-[#f0fdf4] border-l-4 border-l-[#15803d] my-2 shadow-sm rounded-r-md">
-                                <span className="text-[10px] font-black uppercase text-green-900">Amount Paid Today</span>
-                                <span className="font-black tracking-tight text-[13px] text-green-900">KES {formatCurrency(amountPaidToday)}</span>
-                            </div>
-                            <div className="flex justify-between items-center px-2 py-6 border-t-2 border-black mt-2">
-                                <span className="text-[12px] font-black uppercase tracking-tighter text-black">Total Account Debt</span>
-                                <span className="font-black tracking-tighter text-[24px] leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(totalAccountDebt)}</span>
+                            <div className="flex justify-between items-center px-2 py-4 border-t-2 border-black mt-1">
+                                <span className="text-[11px] font-black uppercase tracking-tighter text-black">Total Account Debt</span>
+                                <span className="font-black tracking-tighter text-[20px] leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(totalAccountDebt)}</span>
                             </div>
                         </div>
                     </div>
                 </div>
              )}
 
-             {pageIdx === pages.length - 1 && (
-                <div className="text-center space-y-1 pb-2">
-                    <p className="text-[9px] font-black uppercase tracking-tight text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest leading-none" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
-                    <p className="text-[9px] font-black text-black">
-                        Phone: {workspace?.phone || '+254701694469'}. Email: {workspace?.email || 'mateshtechltd@gmail.com'}
-                    </p>
-                </div>
-             )}
-
-             <div className="flex justify-between items-center mt-2 border-t pt-2">
+             <div className="flex justify-between items-center mt-1 border-t pt-2">
                 <div className="text-[8px] font-black uppercase tracking-normal text-black">
                    GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
                 </div>

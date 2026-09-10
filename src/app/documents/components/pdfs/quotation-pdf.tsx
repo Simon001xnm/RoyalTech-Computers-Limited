@@ -15,12 +15,12 @@ import { useMemo } from 'react';
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 380;      // Header + Quote/Payment Info (Reduced from 440)
+const HEADER_P1 = 280;      // Tighter Header
 const HEADER_PX = 100;      // "Continued" header height
 const TABLE_HEADER = 50;    
-const FOOTER_RESERVE = 100;  // Reduced from 160
-const ROW_BASE = 40;        // Reduced from 55
-const SUMMARY_BLOCK = 280;   
+const FOOTER_RESERVE = 60;  
+const ROW_BASE = 36;        
+const SUMMARY_BLOCK = 240;   
 const CHARS_PER_LINE = 55;   
 
 export function QuotationPdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -87,13 +87,6 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
     });
 
     if (currentPageItems.length > 0) calculatedPages.push(currentPageItems);
-    
-    // Safety check: ensure 100% item delivery
-    const totalItemsCalculated = calculatedPages.reduce((acc, p) => acc + p.length, 0);
-    if (totalItemsCalculated !== items.length) {
-        console.warn(`PAGINATION_VALIDATION_ERROR: Rendered ${totalItemsCalculated}/${items.length} items.`);
-    }
-
     return calculatedPages;
   }, [items]);
 
@@ -105,27 +98,26 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
             className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden"
         >
           {pageIdx === 0 ? (
-            <header className="flex justify-between items-start mb-6 pb-2 border-b">
+            <header className="flex justify-between items-start mb-4 pb-2 border-b">
                 <div className="flex items-center gap-4 w-[50%]">
                   {workspace?.logoUrl ? (
-                      <img src={workspace.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
+                      <img src={workspace.logoUrl} alt="Logo" className="h-16 w-auto object-contain" crossOrigin="anonymous" />
                   ) : (
-                      <div className="h-14 w-14 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300 uppercase">LOGO</div>
+                      <div className="h-10 w-10 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300 uppercase">LOGO</div>
                   )}
                   <div>
-                    <h1 className="text-[22px] font-black uppercase tracking-tighter leading-tight" style={{ color: primaryBlue }}>
+                    <h1 className="text-[20px] font-black uppercase tracking-tighter leading-tight" style={{ color: primaryBlue }}>
                       {workspace?.name || 'MATESH TECHNOLOGIES'}
                     </h1>
                   </div>
                 </div>
                 
                 <div className="text-right w-[45%] space-y-0.5">
-                    <p className="text-[11px] font-black uppercase" style={{ color: primaryBlue }}>QUOTE: #{quoteNo}</p>
+                    <p className="text-[10px] font-black uppercase" style={{ color: primaryBlue }}>QUOTE: #{quoteNo}</p>
                     <p className="text-[8px] font-bold text-black opacity-50 uppercase">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
-                    <div className="pt-2 text-[8px] font-bold leading-tight uppercase text-black">
+                    <div className="pt-1 text-[8px] font-bold leading-tight uppercase text-black">
                         <p>{workspace?.address || 'Nairobi, Kenya'}</p>
                         <p>Tel: {workspace?.phone || 'N/A'}</p>
-                        <p className="lowercase opacity-70">Email: {workspace?.email || 'N/A'}</p>
                     </div>
                 </div>
             </header>
@@ -137,50 +129,35 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
           )}
 
           {pageIdx === 0 && (
-            <>
-              <div className="grid grid-cols-[60%_40%] gap-4 mb-6">
-                  <div className="space-y-4">
-                      <div className="p-3.5 bg-slate-50 border rounded-xl border-black/5 space-y-1">
-                          <p className="text-[7px] font-black uppercase text-blue-900/60 tracking-widest">Client Name</p>
-                          <p className="text-[12px] font-black uppercase tracking-tight text-black">{customer.name}</p>
-                          <p className="text-[8px] font-medium text-black opacity-50 uppercase">{customer.address || 'Kenya'}</p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-3 bg-slate-50 border rounded-md border-black/5">
-                            <p className="text-[7px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Bank Payment</p>
-                            <p className="text-[9px] font-black text-black">Bank DTB; NAME-MATESH TECHNOLOGIES</p>
-                            <p className="text-[10px] font-black uppercase text-black">ACC NO: 0084976001</p>
-                        </div>
-                        <div className="p-3 bg-slate-50 border rounded-md border-black/5">
-                            <p className="text-[7px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Lipan Na M-Pesa</p>
-                            <p className="text-[9px] font-black text-black">PAYBILL NO: 516600</p>
-                            <p className="text-[10px] font-black text-black">ACC NO: 5084975001</p>
-                        </div>
-                      </div>
-                  </div>
-                  <div className="bg-blue-50/40 p-6 flex flex-col justify-center border border-black/5 rounded-2xl text-center">
-                      <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Total Quote Value</p>
-                      <div className="pb-4">
-                          <p className="text-[26px] font-black tracking-tighter leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(total)}</p>
-                      </div>
-                      <div className="mt-2 pt-4 border-t border-blue-200">
-                         <p className="text-[9px] font-bold uppercase tracking-tight text-black">Validity: <span className="font-black">30 DAYS</span></p>
-                      </div>
-                  </div>
-              </div>
-            </>
+            <div className="grid grid-cols-[60%_40%] gap-4 mb-4">
+                <div className="space-y-4">
+                    <div className="p-3 bg-slate-50 border rounded-xl border-black/5 space-y-1">
+                        <p className="text-[7px] font-black uppercase text-blue-900/60 tracking-widest">Client Details</p>
+                        <p className="text-[11px] font-black uppercase tracking-tight text-black">{customer.name}</p>
+                        <p className="text-[8px] font-medium text-black opacity-50 uppercase">{customer.address || 'Kenya'}</p>
+                    </div>
+                </div>
+                <div className="bg-blue-50/40 p-4 flex flex-col justify-center border border-black/5 rounded-2xl text-center">
+                    <p className="text-[9px] font-black text-black uppercase tracking-widest mb-1">Total Quote Value</p>
+                    <div className="pb-2">
+                        <p className="text-[22px] font-black tracking-tighter leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(total)}</p>
+                    </div>
+                    <div className="mt-1 pt-2 border-t border-blue-200">
+                        <p className="text-[8px] font-bold uppercase tracking-tight text-black">Validity: <span className="font-black">30 DAYS</span></p>
+                    </div>
+                </div>
+            </div>
           )}
 
           <div className="flex-grow overflow-hidden flex flex-col">
             <table className="w-full border-collapse">
                 <thead>
                     <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>
-                        <th className="p-2.5 font-black text-[8px] uppercase w-12 text-center rounded-l-sm">Ref</th>
-                        <th className="p-2.5 font-black text-[8px] uppercase">Description & Specifications</th>
-                        <th className="p-2.5 text-center font-black text-[8px] uppercase w-16">Qty</th>
-                        <th className="p-2.5 text-right font-black text-[8px] uppercase w-28">Unit Price</th>
-                        <th className="p-2.5 text-right font-black text-[8px] uppercase w-32 rounded-r-sm">Total</th>
+                        <th className="p-2 font-black text-[8px] uppercase w-12 text-center rounded-l-sm">Ref</th>
+                        <th className="p-2 font-black text-[8px] uppercase">Description & Specifications</th>
+                        <th className="p-2 text-center font-black text-[8px] uppercase w-16">Qty</th>
+                        <th className="p-2 text-right font-black text-[8px] uppercase w-28">Unit Price</th>
+                        <th className="p-2 text-right font-black text-[8px] uppercase w-32 rounded-r-sm">Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -192,16 +169,16 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
 
                         return (
-                            <tr key={idx} className="border-b border-gray-100 last:border-0 h-12">
-                                <td className="p-2.5 text-[9px] font-black text-center text-black opacity-20">
+                            <tr key={idx} className="border-b border-gray-100 last:border-0 h-10">
+                                <td className="p-2 text-[9px] font-black text-center text-black opacity-20">
                                     {itemNumber.toString().padStart(2, '0')}
                                 </td>
-                                <td className="p-2.5">
+                                <td className="p-2">
                                     <p className="font-black uppercase leading-tight text-[10px] tracking-tight text-black">{item.name || item.description}</p>
                                 </td>
-                                <td className="p-2.5 text-center font-black text-[9px] text-black">{qty}</td>
-                                <td className="p-2.5 text-right tabular-nums font-bold text-[9px] text-black opacity-70">{formatCurrency(unitPrice)}</td>
-                                <td className="p-2.5 text-right tabular-nums font-black text-[10px] text-black">{formatCurrency(rowTotal)}</td>
+                                <td className="p-2 text-center font-black text-[9px] text-black">{qty}</td>
+                                <td className="p-2 text-right tabular-nums font-bold text-[9px] text-black opacity-70">{formatCurrency(unitPrice)}</td>
+                                <td className="p-2 text-right tabular-nums font-black text-[10px] text-black">{formatCurrency(rowTotal)}</td>
                             </tr>
                         );
                     })}
@@ -211,28 +188,25 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
 
           <footer className="mt-auto pt-4 border-t border-gray-100 bg-white">
              {pageIdx === pages.length - 1 && (
-                <div className="mb-6 pt-2 border-t-2 border-black/5">
+                <div className="mb-4 pt-2 border-t-2 border-black/5">
                     <div className="flex justify-between items-start gap-8">
                         <div className="flex-1 space-y-3">
-                            <div className="p-4 bg-slate-50 border rounded-lg">
+                            <div className="p-3 bg-slate-50 border rounded-lg">
                                 <p className="text-[7px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Amount in Words</p>
                                 <p className="font-black uppercase text-[10px] leading-relaxed italic text-blue-900">
                                     {numberToWords(total)}
                                 </p>
                             </div>
-                            <div className="text-[8px] font-medium text-black italic max-w-[280px]">
-                                * This quotation is valid for a period of 30 days from the date of issue.
-                            </div>
                         </div>
                         
                         <div className="w-[300px] space-y-0">
-                            <div className="flex justify-between items-center p-2.5 bg-slate-50/50 border-b border-white">
+                            <div className="flex justify-between items-center p-2 bg-slate-50/50 border-b border-white">
                                 <span className="font-bold text-black opacity-40 uppercase text-[8px]">Quote Subtotal</span>
                                 <span className="font-black text-[10px] text-black">{formatCurrency(subtotal)}</span>
                             </div>
-                            <div className="flex justify-between items-center p-5 bg-blue-900 text-white shadow-xl mt-1 rounded-sm">
+                            <div className="flex justify-between items-center p-4 bg-blue-900 text-white shadow-xl mt-1 rounded-sm">
                                 <span className="text-[11px] font-black uppercase tracking-tighter">Grand Total</span>
-                                <span className="font-black tracking-tight text-[20px]">KES {formatCurrency(total)}</span>
+                                <span className="font-black tracking-tight text-[18px]">KES {formatCurrency(total)}</span>
                             </div>
                         </div>
                     </div>
@@ -241,11 +215,8 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
 
              {pageIdx === pages.length - 1 && (
                 <div className="text-center space-y-1 pb-4">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS QUOTATION IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
                     <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
-                    <p className="text-[9px] font-black text-black">
-                        Phone: {workspace?.phone || '+254701694469'}. Email: {workspace?.email || 'mateshtechltd@gmail.com'}
-                    </p>
                 </div>
              )}
              
