@@ -159,16 +159,14 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                         const qty = Number(item.quantity || 1);
                         const rowTotal = unitRate * qty;
                         
-                        // OFFSET CALCULATION: Ensures numbering doesn't skip
-                        const itemNumber = pageIdx === 0 
-                            ? idx + 1 
-                            : ITEMS_PER_PAGE_FIRST + ((pageIdx - 1) * ITEMS_PER_PAGE_OTHER) + idx + 1;
+                        // FIXED INDEX CALCULATION: Continuous numbering
+                        const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
 
                         return (
                             <tr key={idx} className="border-b border-gray-100 last:border-0 h-10">
                                 <td className="p-2.5">
                                     <p className="font-bold uppercase leading-tight text-[10px]">
-                                        {itemNumber}. {item.name || item.description}
+                                        {itemNumber.toString().padStart(2, '0')}. {item.name || item.description}
                                     </p>
                                 </td>
                                 <td className="p-2.5 text-center font-bold text-[9px] opacity-40">{data.applyVat ? '16%' : '0%'}</td>
@@ -215,13 +213,17 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
 
           {/* FOOTER */}
           <footer className="mt-auto pt-6 border-t border-gray-100 bg-white">
-             <div className="text-center space-y-1 pb-2">
-                <p className="text-[8px] font-black uppercase tracking-tight text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
-                <p className="text-[9px] font-bold uppercase tracking-widest leading-none" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
-                <p className="text-[8px] font-bold text-black">
-                    Phone: {workspace?.phone || '+254701694469'}. Email: {workspace?.email || 'mateshtechltd@gmail.com'}
-                </p>
-             </div>
+             {/* SIGNATURE BLOCK - Last Page Only */}
+             {pageIdx === pages.length - 1 && (
+                <div className="text-center space-y-1 pb-2">
+                    <p className="text-[8px] font-black uppercase tracking-tight text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest leading-none" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
+                    <p className="text-[8px] font-bold text-black">
+                        Phone: {workspace?.phone || '+254701694469'}. Email: {workspace?.email || 'mateshtechltd@gmail.com'}
+                    </p>
+                </div>
+             )}
+
              <div className="flex justify-between items-center mt-2">
                 <div className="text-[8px] font-black uppercase tracking-tighter text-black">
                    GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
