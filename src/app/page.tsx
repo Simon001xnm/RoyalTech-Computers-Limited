@@ -20,9 +20,11 @@ import {
     Clock,
     Download,
     Eye,
-    Loader2
+    Loader2,
+    BarChart3,
+    ArrowRight
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
     format, 
@@ -32,12 +34,14 @@ import {
     startOfMonth,
     startOfWeek,
     isToday,
-    startOfYear
+    startOfYear,
+    endOfMonth,
+    endOfWeek,
+    endOfYear
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -59,6 +63,17 @@ import { ProformaInvoicePdf } from "./documents/components/pdfs/proforma-pdf";
 import { QuotationPdf } from "./documents/components/pdfs/quotation-pdf";
 import { useToast } from "@/hooks/use-toast";
 import type { Document as AppDocument } from "@/types";
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    Legend,
+    Cell
+} from 'recharts';
 
 type TimeFilter = 'today' | 'week' | 'month' | 'year' | 'custom';
 
@@ -139,7 +154,7 @@ export default function DashboardPage() {
     let interval: { start: Date; end: Date };
 
     switch (filter) {
-        case 'today': interval = { start: new Date().setHours(0,0,0,0) as any, end: endOfDay(now) }; break;
+        case 'today': interval = { start: startOfDay(now), end: endOfDay(now) }; break;
         case 'week': interval = { start: startOfWeek(now), end: endOfDay(now) }; break;
         case 'month': interval = { start: startOfMonth(now), end: endOfDay(now) }; break;
         case 'year': interval = { start: startOfYear(now), end: endOfDay(now) }; break;
@@ -177,6 +192,37 @@ export default function DashboardPage() {
         viewLabel: filter === 'custom' && dateRange?.from ? `${format(dateRange.from, 'dd MMM')} - ${format(dateRange.to || now, 'dd MMM')}` : filter.toUpperCase()
     };
   }, [sales, assets, expenses, documents, filter, dateRange]);
+
+  const performanceStats = useMemo(() => {
+    if (!sales || !expenses) return [];
+    const now = new Date();
+
+    const periods = [
+        { label: 'Today', start: startOfDay(now), end: endOfDay(now) },
+        { label: 'Week', start: startOfWeek(now), end: endOfWeek(now) },
+        { label: 'Month', start: startOfMonth(now), end: endOfMonth(now) },
+        { label: 'Year', start: startOfYear(now), end: endOfYear(now) },
+    ];
+
+    return periods.map(p => {
+        const pSales = sales.filter(s => { try { return isWithinInterval(parseISO(s.date), p); } catch { return false; } });
+        const pExp = expenses.filter(e => { try { return isWithinInterval(parseISO(e.date), p); } catch { return false; } });
+
+        const revenue = pSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
+        const expense = pExp.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+        const cogs = pSales.reduce((acc, s) => {
+            const saleCogs = s.items?.reduce((c: number, i: any) => c + (Number(i.buyingPrice || 0) * (Number(i.quantity) || 1)), 0) || 0;
+            return acc + saleCogs;
+        }, 0);
+
+        return {
+            name: p.label,
+            Revenue: revenue,
+            Expenses: expense + cogs,
+            Surplus: revenue - (expense + cogs)
+        };
+    });
+  }, [sales, expenses]);
 
   const handleDownloadPdf = async (docObj: AppDocument) => {
     setIsExporting(true);
@@ -367,21 +413,94 @@ export default function DashboardPage() {
           <SummaryCard title="Total Money Owed" value={formatKes(stats.totalDebt)} icon={FileWarning} description="Historical pending payments" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="shadow-md border-none ring-1 ring-black/5 bg-white">
-            <CardHeader className="bg-muted/10 border-b py-3 px-5"><CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2"><Zap className="h-3 w-3 text-primary" />Performance Breakdown</CardTitle></CardHeader>
-            <CardContent className="p-6 space-y-6">
-                <div className="space-y-2"><div className="flex justify-between text-[9px] font-black uppercase"><span>Revenue</span><span className="text-primary">{formatKes(stats.totalRevenue)}</span></div><Progress value={100} className="h-2" /></div>
-                <div className="space-y-2"><div className="flex justify-between text-[9px] font-black uppercase"><span>Costs & Expenses</span><span className="text-red-600">{formatKes(stats.totalRevenue - stats.totalProfit)}</span></div><Progress value={Math.min(100, ((stats.totalRevenue - stats.totalProfit) / (stats.totalRevenue || 1)) * 100)} className="h-2 bg-red-50" /></div>
-                <div className="space-y-2"><div className="flex justify-between text-[9px] font-black uppercase"><span>Net Margin</span><span className="text-green-600">{((stats.totalProfit / (stats.totalRevenue || 1)) * 100).toFixed(1)}%</span></div><Progress value={Math.max(0, (stats.totalProfit / (stats.totalRevenue || 1)) * 100)} className="h-2 bg-green-50" /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-6">
+          {/* PERFORMANCE BREAKDOWN REDESIGN */}
+          <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden">
+            <CardHeader className="bg-muted/10 border-b py-4 px-6">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-primary p-2 rounded-xl shadow-sm">
+                            <BarChart3 className="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-sm font-black uppercase tracking-widest">Performance Intelligence</CardTitle>
+                            <CardDescription className="text-[10px] font-bold uppercase text-primary">Cross-Period Comparative Analysis</CardDescription>
+                        </div>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-8">
+                <div className="h-[350px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={performanceStats} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                            <XAxis 
+                                dataKey="name" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                fontSize={10} 
+                                fontWeight="bold"
+                                tick={{ fill: '#000000' }}
+                            />
+                            <YAxis 
+                                axisLine={false} 
+                                tickLine={false} 
+                                fontSize={10} 
+                                tickFormatter={(v) => `Ksh ${v/1000}k`}
+                                tick={{ fill: '#000000' }}
+                            />
+                            <Tooltip 
+                                cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}
+                            />
+                            <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 'black', textTransform: 'uppercase' }} />
+                            <Bar dataKey="Revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} barSize={40} />
+                            <Bar dataKey="Expenses" fill="hsl(var(--destructive))" radius={[6, 6, 0, 0]} barSize={40} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* COLLECTED FIGURES GRID */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+                    {performanceStats.map((p) => (
+                        <div key={p.name} className="p-4 bg-muted/20 rounded-2xl border space-y-3">
+                            <p className="text-[10px] font-black uppercase text-center border-b pb-2">{p.name} Report</p>
+                            <div className="space-y-1">
+                                <div className="flex justify-between items-center text-[9px] font-bold">
+                                    <span className="opacity-40">REVENUE</span>
+                                    <span className="text-primary">{formatKes(p.Revenue)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[9px] font-bold">
+                                    <span className="opacity-40">EXPENSES</span>
+                                    <span className="text-red-600">{formatKes(p.Expenses)}</span>
+                                </div>
+                                <div className="pt-2 mt-1 border-t flex justify-between items-center">
+                                    <span className="text-[8px] font-black uppercase">SURPLUS</span>
+                                    <span className={cn("text-xs font-black", p.Surplus >= 0 ? "text-green-600" : "text-red-600")}>
+                                        {formatKes(p.Surplus)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </CardContent>
           </Card>
+
           <Card className="shadow-md border-none ring-1 ring-black/5 bg-white">
             <CardHeader className="bg-muted/10 border-b py-3 px-5"><CardTitle className="text-xs font-black uppercase tracking-widest">Popular Items (Selected Period)</CardTitle></CardHeader>
             <CardContent className="p-0">
                 <div className="divide-y">
                     {stats.topSelling.map(([name, qty]) => (
-                        <div key={name} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors"><p className="text-[10px] font-bold uppercase truncate max-w-[180px]">{name}</p><Badge className="font-black text-[10px] bg-black text-white">{qty} SOLD</Badge></div>
+                        <div key={name} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-primary/5 p-2 rounded-lg text-primary">
+                                    <Package className="h-4 w-4" />
+                                </div>
+                                <p className="text-[10px] font-bold uppercase truncate max-w-[180px]">{name}</p>
+                            </div>
+                            <Badge className="font-black text-[10px] bg-black text-white">{qty} SOLD</Badge>
+                        </div>
                     ))}
                     {stats.topSelling.length === 0 && <div className="p-12 text-center opacity-30 text-xs font-bold uppercase italic">No items sold in this period</div>}
                 </div>
@@ -390,7 +509,15 @@ export default function DashboardPage() {
       </div>
 
       <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
-        <CardHeader className="bg-muted/30 border-b py-4 px-6"><div className="flex items-center justify-between"><CardTitle className="text-sm font-black uppercase tracking-widest">Documents</CardTitle>{isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}</div></CardHeader>
+        <CardHeader className="bg-muted/30 border-b py-4 px-6">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <FileWarning className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-black uppercase tracking-widest">Recent Activity Ledger</CardTitle>
+                </div>
+                {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+            </div>
+        </CardHeader>
         <CardContent className="p-0">
             <Table>
                 <TableHeader className="bg-muted/20">{table.getHeaderGroups().map((headerGroup) => (<TableRow key={headerGroup.id}>{headerGroup.headers.map((header) => (<TableHead key={header.id} className="text-[10px] font-black uppercase py-4">{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
@@ -407,4 +534,10 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+function startOfDay(date: Date) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d;
 }
