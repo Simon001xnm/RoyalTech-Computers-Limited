@@ -55,7 +55,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
     : (docSnapshot.id || 'TEMP').slice(0, 3).toUpperCase();
 
   const primaryBlue = "#1e3a8a";
-  const successGreen = "#15803d"; // Darker green for high-density look
+  const successGreen = "#15803d"; 
   const warningOrange = "#9a3412";
 
   // Pagination Logic
@@ -76,7 +76,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             key={pageIdx} 
             className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden"
         >
-          {/* HEADER (First Page) - Reduced Size */}
+          {/* HEADER (First Page) */}
           {pageIdx === 0 && (
             <header className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-4">
@@ -94,7 +94,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                 </div>
                 <div className="text-right space-y-0.5">
                     <p className="font-black uppercase text-[9px]">Head Office Contact</p>
-                    <p className="text-[8px] font-bold leading-tight uppercase max-w-[200px]">{workspace?.address || 'GOOD HOPE PLAZA NAIROBI'}</p>
+                    <p className="text-[8px] font-bold leading-tight uppercase max-w-[200px]">{workspace?.address || 'Nairobi, Kenya'}</p>
                     <p className="text-[8px] font-bold">Tel: {workspace?.phone || '+254701694469'}</p>
                     <p className="text-[8px] font-bold lowercase opacity-60">Email: {workspace?.email || 'mateshtechltd@gmail.com'}</p>
                     <div className="pt-2">
@@ -109,7 +109,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             <>
               <div className="h-0.5 w-full bg-black/10 mb-6" />
               
-              {/* INFO BOXES - More Compact */}
+              {/* INFO BOXES */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="p-5 bg-[#f0f7ff] rounded-2xl border border-blue-100/50 space-y-2 min-h-[100px]">
                       <p className="text-[9px] font-black uppercase text-blue-800/60 tracking-widest">Payment From</p>
@@ -141,7 +141,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             </div>
           )}
 
-          {/* ITEM TABLE - Reduced Padding */}
+          {/* ITEM TABLE */}
           <div className="flex-grow overflow-hidden flex flex-col">
             <table className="w-full border-collapse">
                 <thead>
@@ -177,12 +177,12 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             </table>
           </div>
 
-          {/* SUMMARY BLOCK (Last Page Only) - More Compact */}
+          {/* SUMMARY BLOCK */}
           {pageIdx === pages.length - 1 && (
             <div className="mt-6 flex flex-col gap-4">
                 <div className="flex justify-between items-start gap-8">
                     <div className="flex-1 pt-2">
-                        <p className="font-black uppercase text-[9px] leading-relaxed opacity-60 max-w-[350px]">
+                        <p className="font-black uppercase text-[9px] leading-relaxed text-black max-w-[350px]">
                             Paid in words: <span className="font-bold underline underline-offset-4">{numberToWords(amountPaidToday)}</span>
                         </p>
                     </div>
@@ -208,18 +208,18 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             </div>
           )}
 
-          {/* FOOTER - Standardized */}
+          {/* FOOTER */}
           <footer className="mt-auto pt-6 border-t border-gray-100 bg-white">
              <div className="text-center space-y-1 pb-2">
-                <p className="text-[8px] font-black uppercase tracking-tight opacity-40">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
-                <p className="text-[9px] font-bold uppercase tracking-widest leading-none">{workspace?.name || 'Matesh Technologies'}</p>
-                <p className="text-[8px] font-medium text-gray-400">
-                    Phone: {workspace?.phone || '+254701694469'} • Email: {workspace?.email || 'mateshtechltd@gmail.com'}
+                <p className="text-[8px] font-black uppercase tracking-tight text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest leading-none" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
+                <p className="text-[8px] font-bold text-black">
+                    Phone: {workspace?.phone || '+254701694469'}. Email: {workspace?.email || 'mateshtechltd@gmail.com'}
                 </p>
              </div>
              <div className="flex justify-end mt-2">
-                <div className="font-black bg-gray-50 px-2 py-1 rounded text-[8px] text-gray-300 uppercase">
-                    Page {pageIdx + 1} of {pages.length}
+                <div className="font-black text-[8px] text-black uppercase tracking-widest">
+                    PAGE {pageIdx + 1} OF {pages.length}
                 </div>
              </div>
           </footer>

@@ -90,8 +90,9 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
       ledgerPages.push(unifiedLedger.slice(i, i + LEDGER_ITEMS_PER_PAGE));
   }
 
-  const companyName = company?.name || 'Matesh Technologies';
+  const companyName = company?.name || 'MATESH TECHNOLOGIES';
   const jetBlack = "#000000";
+  const primaryBlue = "#1e3a8a";
 
   return (
     <div className="flex flex-col items-center gap-0 bg-slate-200 no-scrollbar" style={{ color: jetBlack }}>
@@ -180,12 +181,12 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
 
           <footer className="mt-auto pt-6 border-t border-black flex flex-col gap-1">
               <div className="text-center space-y-1">
-                  <p className="text-[9px] font-black uppercase tracking-tight opacity-60">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest">{companyName}</p>
-                  <p className="text-[8px] font-bold opacity-60">Phone: {company?.phone || '+254701694469'} • Email: {company?.email || 'mateshtechltd@gmail.com'}</p>
+                  <p className="text-[9px] font-black uppercase tracking-tight text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: primaryBlue }}>{companyName}</p>
+                  <p className="text-[8px] font-bold text-black">Phone: {company?.phone || '+254701694469'}. Email: {company?.email || 'mateshtechltd@gmail.com'}</p>
               </div>
               <div className="flex justify-end pt-4">
-                  <p className="text-[10px] font-black bg-slate-100 px-4 py-1.5 rounded-sm uppercase font-mono border border-black">PAGE {sIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
+                  <p className="text-[10px] font-black text-black uppercase font-mono">PAGE {sIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
               </div>
           </footer>
         </div>
@@ -243,15 +244,15 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
 
              <footer className="mt-auto pt-6 border-t border-black flex flex-col gap-1">
                 <div className="text-center space-y-1">
-                    <p className="text-[9px] font-black uppercase tracking-tight opacity-60">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest">{companyName}</p>
-                    <p className="text-[8px] font-bold opacity-60">Phone: {company?.phone || '+254701694469'} • Email: {company?.email || 'mateshtechltd@gmail.com'}</p>
+                    <p className="text-[9px] font-black uppercase tracking-tight text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: primaryBlue }}>{companyName}</p>
+                    <p className="text-[8px] font-bold text-black">Phone: {company?.phone || '+254701694469'}. Email: {company?.email || 'mateshtechltd@gmail.com'}</p>
                 </div>
                 <div className="flex justify-between items-center pt-4">
                     <div className="text-left">
-                        <p className="text-[8px] font-black opacity-30 uppercase tracking-widest">Document Generated: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+                        <p className="text-[8px] font-black text-black/30 uppercase tracking-widest">Document Generated: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
                     </div>
-                    <p className="text-[10px] font-black bg-slate-100 px-4 py-1.5 rounded-sm tracking-widest font-mono border border-black">PAGE {summaryPages.length + pIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
+                    <p className="text-[10px] font-black text-black uppercase font-mono">PAGE {summaryPages.length + pIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
                 </div>
              </footer>
           </div>

@@ -166,9 +166,9 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 </thead>
                 <tbody>
                     {pageItems.map((item: any, idx: number) => {
-                        const unitRate = Number(item.sellingPrice || item.price || item.unitPrice || 0);
+                        const unitPrice = Number(item.sellingPrice || item.price || item.unitPrice || 0);
                         const qty = Number(item.quantity || 1);
-                        const rowTotal = unitRate * qty;
+                        const rowTotal = unitPrice * qty;
                         
                         return (
                             <tr key={idx} className="border-b border-gray-100 last:border-0 h-14">
@@ -182,7 +182,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                                     )}
                                 </td>
                                 <td className="p-4 text-center font-black text-[10px]">{qty}</td>
-                                <td className="p-4 text-right tabular-nums font-bold text-[10px] opacity-70">{formatCurrency(unitRate)}</td>
+                                <td className="p-4 text-right tabular-nums font-bold text-[10px] opacity-70">{formatCurrency(unitPrice)}</td>
                                 <td className="p-4 text-right tabular-nums font-black text-[11px]">{formatCurrency(rowTotal)}</td>
                             </tr>
                         );
@@ -233,18 +233,18 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
           <footer className="mt-auto pt-10 border-t border-gray-100 bg-white">
              <div className="text-center space-y-1.5 pb-6">
-                <p className="text-[9px] font-black uppercase tracking-widest opacity-40">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
-                <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: primaryBlue }}>{workspace?.name || 'The Business'}</p>
-                <p className="text-[8px] font-bold text-gray-400">
-                    Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}
+                <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
+                <p className="text-[8px] font-bold text-black">
+                    Phone: {workspace?.phone || '+254701694469'}. Email: {workspace?.email || 'mateshtechltd@gmail.com'}
                 </p>
              </div>
              <div className="flex justify-between items-center">
-                <div className="text-[8px] font-black uppercase opacity-20 tracking-tighter">
+                <div className="text-[8px] font-black uppercase tracking-tighter text-black/20">
                    Generated: {format(new Date(), 'dd/MM/yy HH:mm')}
                 </div>
-                <div className="font-black bg-gray-50 px-4 py-1.5 rounded-full text-[9px] text-gray-300 uppercase tracking-widest">
-                    Page {pageIdx + 1} of {pages.length}
+                <div className="font-black text-[9px] text-black uppercase tracking-widest">
+                    PAGE {pageIdx + 1} OF {pages.length}
                 </div>
              </div>
           </footer>
