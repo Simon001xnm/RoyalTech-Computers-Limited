@@ -107,7 +107,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                     {pageItems.map((item: any, idx: number) => {
                         const unitPrice = item.price || item.unitPrice;
                         const rowSubtotal = item.quantity * unitPrice;
-                        // SEQUENTIAL NUMBERING
+                        // STRICT SEQUENTIAL NUMBERING
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
 
                         return (
@@ -151,7 +151,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
             )}
           </section>
 
-          {/* FOOTER (On Every Page) */}
+          {/* FOOTER */}
           <footer className="mt-auto pt-8 border-t-2 border-gray-200">
              {/* BRANDED FOOTER - Only on Last Page */}
              {pageIdx === pages.length - 1 && (

@@ -7,8 +7,9 @@ import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 import { numberToWords, cn } from "@/lib/utils";
 
-const ITEMS_PER_PAGE_FIRST = 10;
-const ITEMS_PER_PAGE_OTHER = 18;
+// Reduced capacity to ensure no items overflow or get skipped visually
+const ITEMS_PER_PAGE_FIRST = 8;
+const ITEMS_PER_PAGE_OTHER = 12;
 
 export function InvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -170,7 +171,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                         const qty = Number(item.quantity || 1);
                         const rowTotal = unitPrice * qty;
                         
-                        // STRICT SEQUENTIAL LOGIC: Current page offset + current index
+                        // MATHEMATICALLY STRICT SEQUENTIAL NUMBERING
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
 
                         return (
@@ -194,7 +195,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             </table>
           </div>
 
-          {/* TOTALS (Last Page) */}
+          {/* TOTALS (Last Page Only) */}
           {pageIdx === pages.length - 1 && (
             <div className="mt-10 pt-6 border-t-2 border-black/5">
                 <div className="flex justify-between items-start gap-12">

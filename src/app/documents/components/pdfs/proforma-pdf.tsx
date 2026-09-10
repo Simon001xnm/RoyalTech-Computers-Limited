@@ -105,7 +105,7 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                 <tbody>
                     {pageItems.map((item: any, idx: number) => {
                         const rowSubtotal = item.quantity * (item.price || item.unitPrice);
-                        // SEQUENTIAL NUMBERING
+                        // STRICT SEQUENTIAL NUMBERING
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
                         
                         return (

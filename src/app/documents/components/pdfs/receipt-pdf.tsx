@@ -7,9 +7,9 @@ import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 import { numberToWords, cn } from "@/lib/utils";
 
-// Standard capacity for high-density content
-const ITEMS_PER_PAGE_FIRST = 15;
-const ITEMS_PER_PAGE_OTHER = 22;
+// Optimized capacity for reliable multi-page flow
+const ITEMS_PER_PAGE_FIRST = 12;
+const ITEMS_PER_PAGE_OTHER = 18;
 
 export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -108,8 +108,6 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
           {pageIdx === 0 && (
             <>
               <div className="h-0.5 w-full bg-black/10 mb-6" />
-              
-              {/* INFO BOXES */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="p-5 bg-[#f0f7ff] rounded-2xl border border-blue-100/50 space-y-2 min-h-[100px]">
                       <p className="text-[9px] font-black uppercase text-blue-800/60 tracking-widest">Payment From</p>
