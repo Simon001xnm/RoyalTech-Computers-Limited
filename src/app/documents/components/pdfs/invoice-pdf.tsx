@@ -15,12 +15,12 @@ import { useMemo } from 'react';
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 300;      // Branded Header + Info Block
+const HEADER_P1 = 260;      // Reduced height after removing Advice bar
 const HEADER_PX = 100;      // "Continued" header height
 const TABLE_HEADER = 40;    
-const FOOTER_RESERVE = 70;  // Safety space at the bottom
-const ROW_BASE = 36;        // Standard row height
-const SUMMARY_BLOCK = 240;   // Totals + Amount in Words + Branding Footer
+const FOOTER_RESERVE = 60;  // Safety space at the bottom
+const ROW_BASE = 34;        // Tighter row base
+const SUMMARY_BLOCK = 240;   
 const CHARS_PER_LINE = 55;   
 
 export function InvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -79,8 +79,6 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
         const lines = Math.max(1, Math.ceil(descText.length / CHARS_PER_LINE));
         const itemHeight = ROW_BASE + (lines > 1 ? (lines - 1) * 15 : 0);
 
-        // Calculate space needed for this item. 
-        // If it's the last item, we also need to fit the summary block.
         const totalsSpace = isLastItem ? SUMMARY_BLOCK : 0;
         const spaceNeeded = itemHeight + totalsSpace;
 
@@ -106,7 +104,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden"
         >
           {pageIdx === 0 ? (
-            <header className="flex justify-between items-start mb-2 pb-2 border-b">
+            <header className="flex justify-between items-start mb-4 pb-2 border-b">
                 <div className="flex items-center gap-4 w-[50%]">
                   {workspace?.logoUrl ? (
                       <img src={workspace.logoUrl} alt="Logo" className="h-16 w-auto object-contain" crossOrigin="anonymous" />
@@ -137,56 +135,45 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
           )}
 
           {pageIdx === 0 && (
-            <>
-              <div className="flex w-full mb-2 border border-black rounded-sm overflow-hidden">
-                  <div className="w-[60%] border-r border-black py-1 bg-slate-50 flex items-center justify-center">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-black">Remittance Advice</p>
-                  </div>
-                  <div className="w-[40%] py-1 bg-blue-50 flex items-center justify-center">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-blue-900">Account Summary</p>
-                  </div>
-              </div>
-
-              <div className="grid grid-cols-[60%_40%] gap-0 mb-4 border-b pb-4">
-                  <div className="pr-8 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                              <p className="text-[7px] font-black uppercase text-blue-800 tracking-widest">Billing From</p>
-                              <p className="text-[9px] font-black uppercase leading-tight text-black">{workspace?.name || 'The Shop'}</p>
-                              <p className="text-[8px] font-medium text-black opacity-50 uppercase leading-tight">{workspace?.address || 'Kenya'}</p>
-                          </div>
-                          <div className="space-y-1">
-                              <p className="text-[7px] font-black uppercase text-blue-800 tracking-widest">Billing To</p>
-                              <p className="text-[9px] font-black uppercase leading-tight text-black">{customer.name}</p>
-                              <p className="text-[8px] font-medium text-black opacity-50 uppercase leading-tight">{customer.address || 'Nairobi, Kenya'}</p>
-                              <p className="text-[8px] font-bold text-black">{customer.phone}</p>
-                          </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 pt-1">
-                        <div className="p-2 bg-slate-50 border rounded-md border-black/5">
-                            <p className="text-[6px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Bank Payment</p>
-                            <p className="text-[8px] font-black text-black leading-tight uppercase">Bank DTB; NAME-MATESH TECHNOLOGIES</p>
-                            <p className="text-[9px] font-black uppercase text-black">ACC NO: 0084976001</p>
+            <div className="grid grid-cols-[60%_40%] gap-0 mb-4 border-b pb-4">
+                <div className="pr-8 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <p className="text-[7px] font-black uppercase text-blue-800 tracking-widest">Billing From</p>
+                            <p className="text-[9px] font-black uppercase leading-tight text-black">{workspace?.name || 'The Shop'}</p>
+                            <p className="text-[8px] font-medium text-black opacity-50 uppercase leading-tight">{workspace?.address || 'Kenya'}</p>
                         </div>
-                        <div className="p-2 bg-slate-50 border rounded-md border-black/5">
-                            <p className="text-[6px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Lipan Na M-Pesa</p>
-                            <p className="text-[8px] font-black text-black">PAYBILL NO: 516600</p>
-                            <p className="text-[9px] font-black text-black">ACC NO: 5084975001</p>
+                        <div className="space-y-1">
+                            <p className="text-[7px] font-black uppercase text-blue-800 tracking-widest">Billing To</p>
+                            <p className="text-[9px] font-black uppercase leading-tight text-black">{customer.name}</p>
+                            <p className="text-[8px] font-medium text-black opacity-50 uppercase leading-tight">{customer.address || 'Nairobi, Kenya'}</p>
+                            <p className="text-[8px] font-bold text-black">{customer.phone}</p>
                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 pt-1">
+                      <div className="p-2 bg-slate-50 border rounded-md border-black/5">
+                          <p className="text-[6px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Bank Payment</p>
+                          <p className="text-[8px] font-black text-black leading-tight uppercase">Bank DTB; NAME-MATESH TECHNOLOGIES</p>
+                          <p className="text-[9px] font-black uppercase text-black">ACC NO: 0084976001</p>
                       </div>
-                  </div>
-                  <div className="bg-blue-50/40 p-4 flex flex-col justify-center border-l border-black/5 rounded-r-lg">
-                      <p className="text-[9px] font-black text-black uppercase tracking-widest mb-1">Net Balance Due</p>
-                      <div className="pb-2">
-                          <p className="text-[22px] font-black tracking-tighter leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(totalAmountDue)}</p>
+                      <div className="p-2 bg-slate-50 border rounded-md border-black/5">
+                          <p className="text-[6px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Lipan Na M-Pesa</p>
+                          <p className="text-[8px] font-black text-black">PAYBILL NO: 516600</p>
+                          <p className="text-[9px] font-black text-black">ACC NO: 5084975001</p>
                       </div>
-                      <div className="mt-1 pt-2 border-t border-blue-200">
-                         <p className="text-[8px] font-bold uppercase tracking-tight text-black">Term: <span className="font-black">DUE ON RECEIPT</span></p>
-                      </div>
-                  </div>
-              </div>
-            </>
+                    </div>
+                </div>
+                <div className="bg-blue-50/40 p-4 flex flex-col justify-center border-l border-black/5 rounded-r-lg">
+                    <p className="text-[9px] font-black text-black uppercase tracking-widest mb-1">Net Balance Due</p>
+                    <div className="pb-2">
+                        <p className="text-[22px] font-black tracking-tighter leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(totalAmountDue)}</p>
+                    </div>
+                    <div className="mt-1 pt-2 border-t border-blue-200">
+                        <p className="text-[8px] font-bold uppercase tracking-tight text-black">Term: <span className="font-black">DUE ON RECEIPT</span></p>
+                    </div>
+                </div>
+            </div>
           )}
 
           <div className="flex-grow overflow-hidden flex flex-col">
