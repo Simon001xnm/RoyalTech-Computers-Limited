@@ -103,10 +103,10 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             <>
               {/* ADVICE BAR */}
               <div className="flex w-full mb-6 border border-black rounded-sm overflow-hidden">
-                  <div className="w-[60%] border-r border-black p-2.5 bg-slate-50">
+                  <div className="w-[60%] border-r border-black py-2 bg-slate-50 flex items-center justify-center">
                       <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Remittance Advice</p>
                   </div>
-                  <div className="w-[40%] p-2.5 bg-blue-50">
+                  <div className="w-[40%] py-2 bg-blue-50 flex items-center justify-center">
                       <p className="text-[10px] font-black uppercase tracking-widest text-blue-900/60">Account Summary</p>
                   </div>
               </div>
@@ -253,4 +253,3 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     </div>
   );
 }
-
