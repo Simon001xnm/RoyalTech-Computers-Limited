@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, isSameDay } from 'date-fns';
 import { TransactionForm } from './transaction-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { useSaaS } from '@/components/saas/saas-provider';
@@ -29,8 +29,8 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 type TimeFilter = 'today' | 'week' | 'month' | 'year' | 'all';
 
 /**
- * @fileOverview Expense Feed with Time Filtering
- * Shows money spent by the shop. New entries appear instantly.
+ * @fileOverview Expense Feed with Smart Time Filtering
+ * Optimized for local-day accuracy to ensure "Today" entries are always visible.
  */
 export function AccountingClient() {
   const { user, isUserLoading } = useUser();
@@ -56,22 +56,24 @@ export function AccountingClient() {
       if (!rawExpenses) return [];
       
       const now = new Date();
-      let interval: { start: Date; end: Date } | null = null;
-
-      switch (filter) {
-          case 'today': interval = { start: startOfDay(now), end: endOfDay(now) }; break;
-          case 'week': interval = { start: startOfWeek(now), end: endOfWeek(now) }; break;
-          case 'month': interval = { start: startOfMonth(now), end: endOfMonth(now) }; break;
-          case 'year': interval = { start: startOfYear(now), end: endOfYear(now) }; break;
-          default: interval = null;
-      }
-
       let results = [...rawExpenses];
       
-      if (interval) {
+      if (filter !== 'all') {
           results = results.filter(e => {
               try {
-                  return isWithinInterval(parseISO(e.date), interval!);
+                  const expenseDate = parseISO(e.date);
+                  if (filter === 'today') {
+                      return isSameDay(expenseDate, now);
+                  }
+                  
+                  let interval: { start: Date; end: Date };
+                  switch (filter) {
+                      case 'week': interval = { start: startOfWeek(now), end: endOfDay(now) }; break;
+                      case 'month': interval = { start: startOfMonth(now), end: endOfMonth(now) }; break;
+                      case 'year': interval = { start: startOfYear(now), end: endOfYear(now) }; break;
+                      default: return true;
+                  }
+                  return isWithinInterval(expenseDate, interval);
               } catch {
                   return false;
               }
@@ -95,6 +97,7 @@ export function AccountingClient() {
     return new Intl.NumberFormat("en-KE", {
       style: "currency",
       currency: "KES",
+      maximumFractionDigits: 0
     }).format(amount);
   };
 
