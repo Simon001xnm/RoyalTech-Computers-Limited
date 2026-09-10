@@ -34,7 +34,8 @@ import {
     FilePlus2,
     Banknote,
     Smartphone,
-    Landmark
+    Landmark,
+    Lock as LockIcon
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -131,9 +132,14 @@ export default function DashboardPage() {
   const [isProcessingSale, setIsProcessingSale] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
-  const [posAction, setPosAction] = useState<DocumentType>('Receipt');
+  const [posAction, setPosAction] = useState<DocumentType | null>(null);
   const [paymentMode, setPaymentMode] = useState<'Cash' | 'M-Pesa' | 'Bank'>('Cash');
   const [applyVat, setApplyVat] = useState(false);
+
+  // New POS Selection Logic
+  const [configuringProduct, setConfiguringProduct] = useState<any>(null);
+  const [configQty, setConfigQty] = useState('1');
+  const [configPrice, setConfigPrice] = useState('');
 
   useEffect(() => {
     const updateTime = () => {
@@ -264,31 +270,42 @@ export default function DashboardPage() {
   }, [sales, expenses]);
 
   // POS Logic
-  const handleAddToCart = (product: any) => {
-    if ((product.quantity || 0) <= 0) {
-        toast({ variant: 'destructive', title: 'Out of Stock', description: `Adjust stock levels for ${product.model} before selling.` });
+  const handleOpenConfigDialog = (product: any) => {
+    setConfiguringProduct(product);
+    setConfigQty('1');
+    setConfigPrice(String(product.sellingPrice || 0));
+    setProductSearchOpen(false);
+  };
+
+  const handleAddToCart = () => {
+    if (!configuringProduct) return;
+    const qty = parseInt(configQty) || 1;
+    const price = parseFloat(configPrice) || 0;
+
+    if (qty > (configuringProduct.quantity || 0)) {
+        toast({ variant: 'destructive', title: 'Insufficient Stock', description: `Only ${configuringProduct.quantity} units available.` });
         return;
     }
 
-    const existing = cart.find(i => i.id === product.id);
+    const existing = cart.find(i => i.id === configuringProduct.id);
     if (existing) {
-        const newQty = existing.quantity + 1;
-        if (newQty > (product.quantity || 0)) {
-            toast({ variant: 'destructive', title: 'Insufficient Stock', description: `Only ${product.quantity} units available.` });
-            return;
+        const newQty = existing.quantity + qty;
+        if (newQty > (configuringProduct.quantity || 0)) {
+             toast({ variant: 'destructive', title: 'Insufficient Stock', description: `Only ${configuringProduct.quantity} total units available.` });
+             return;
         }
-        setCart(cart.map(i => i.id === product.id ? { ...i, quantity: newQty, total: newQty * i.sellingPrice } : i));
+        setCart(cart.map(i => i.id === configuringProduct.id ? { ...i, quantity: newQty, total: newQty * price, sellingPrice: price } : i));
     } else {
         setCart([...cart, {
-            id: product.id,
-            name: product.model || product.name,
-            quantity: 1,
-            sellingPrice: product.sellingPrice || 0,
-            total: product.sellingPrice || 0,
-            buyingPrice: product.purchasePrice || 0
+            id: configuringProduct.id,
+            name: configuringProduct.model || configuringProduct.name,
+            quantity: qty,
+            sellingPrice: price,
+            total: qty * price,
+            buyingPrice: configuringProduct.purchasePrice || 0
         }]);
     }
-    setProductSearchOpen(false);
+    setConfiguringProduct(null);
   };
 
   const subtotal = cart.reduce((acc, i) => acc + i.total, 0);
@@ -296,7 +313,7 @@ export default function DashboardPage() {
   const cartTotal = subtotal + vatAmount;
 
   const handleFinishSale = async () => {
-    if (!tenant || !user || !selectedCustomer || cart.length === 0) return;
+    if (!tenant || !user || !selectedCustomer || cart.length === 0 || !posAction) return;
     setIsProcessingSale(true);
 
     try {
@@ -335,7 +352,6 @@ export default function DashboardPage() {
 
         batch.set(docRef, documentData);
 
-        // Only record sale and update stock for Receipts/Invoices
         if (posAction === 'Receipt' || posAction === 'Invoice') {
             const saleRef = doc(collection(firestore, 'sales_transactions'));
             const saleData = {
@@ -357,7 +373,6 @@ export default function DashboardPage() {
             };
             batch.set(saleRef, saleData);
 
-            // Update stock
             for (const item of cart) {
                 const productRef = doc(firestore, 'assets', item.id);
                 const currentProduct = assets?.find(p => p.id === item.id);
@@ -373,7 +388,8 @@ export default function DashboardPage() {
         await batch.commit();
         setCart([]);
         setSelectedCustomer(null);
-        toast({ title: `${posAction} Completed` });
+        setPosAction(null);
+        toast({ title: `Transaction Processed` });
     } catch (e: any) {
         toast({ variant: 'destructive', title: "Process Failed", description: e.message });
     } finally {
@@ -680,12 +696,20 @@ export default function DashboardPage() {
 
                 {/* 2. Protocol: Select Customer */}
                 <div className="space-y-2">
-                    <Label className="text-[8px] font-black uppercase opacity-50">2. Identify Customer</Label>
+                    <Label className={cn("text-[8px] font-black uppercase opacity-50", !posAction && "text-destructive")}>
+                        2. Identify Customer {!posAction && "(Unlock Step 1 First)"}
+                    </Label>
                     <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full h-11 justify-between text-[10px] font-bold uppercase tracking-tight bg-white">
+                        <PopoverTrigger asChild disabled={!posAction}>
+                            <Button 
+                                variant="outline" 
+                                className={cn(
+                                    "w-full h-11 justify-between text-[10px] font-bold uppercase tracking-tight bg-white",
+                                    !posAction && "opacity-40 cursor-not-allowed border-dashed"
+                                )}
+                            >
                                 <div className="flex items-center gap-2">
-                                    <UserIcon className="h-4 w-4 text-primary" />
+                                    {!posAction ? <LockIcon className="h-4 w-4" /> : <UserIcon className="h-4 w-4 text-primary" />}
                                     <span>{selectedCustomer ? selectedCustomer.name : 'Select Client...'}</span>
                                 </div>
                                 <Search className="h-3 w-3 opacity-30" />
@@ -710,12 +734,23 @@ export default function DashboardPage() {
 
                 {/* 3. Protocol: Add Products */}
                 <div className="space-y-2">
-                    <Label className="text-[8px] font-black uppercase opacity-50">3. Add Items to Cart</Label>
-                    <Popover open={productSearchOpen} onOpenChange={setProductSearchOpen}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full justify-between h-11 text-[10px] font-black uppercase tracking-widest bg-primary/5 border-primary/20 text-primary border-2">
+                    <Label className={cn("text-[8px] font-black uppercase opacity-50", !selectedCustomer && "text-destructive")}>
+                        3. Add Items to Cart {!selectedCustomer && "(Unlock Step 2 First)"}
+                    </Label>
+                    <Popover open={productSearchOpen} onOpenChange={(open) => {
+                        if (open && !selectedCustomer) {
+                            toast({ variant: 'destructive', title: 'Protocol Error', description: 'Please select a customer before browsing inventory.' });
+                            return;
+                        }
+                        setProductSearchOpen(open);
+                    }}>
+                        <PopoverTrigger asChild disabled={!selectedCustomer}>
+                            <Button variant="outline" className={cn(
+                                "w-full justify-between h-11 text-[10px] font-black uppercase tracking-widest bg-primary/5 border-primary/20 text-primary border-2",
+                                !selectedCustomer && "opacity-40 cursor-not-allowed border-muted text-muted-foreground bg-muted/5"
+                            )}>
                                 <span>{productSearchOpen ? 'Selecting...' : 'Add Products...'}</span>
-                                <Plus className="h-4 w-4" />
+                                {selectedCustomer ? <Plus className="h-4 w-4" /> : <LockIcon className="h-4 w-4" />}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[340px] p-0" align="start">
@@ -730,7 +765,7 @@ export default function DashboardPage() {
                                             return (
                                                 <CommandItem 
                                                     key={p.id} 
-                                                    onSelect={() => !isOut && handleAddToCart(p)} 
+                                                    onSelect={() => !isOut && handleOpenConfigDialog(p)} 
                                                     disabled={isOut}
                                                     className={cn("p-3 cursor-pointer", isOut && "opacity-40 cursor-not-allowed")}
                                                 >
@@ -821,20 +856,73 @@ export default function DashboardPage() {
                             <span className="text-[8px] font-black uppercase opacity-50 block">Grand Total</span>
                             <span className="text-2xl font-black tracking-tighter leading-none">{formatKes(cartTotal)}</span>
                         </div>
-                        <Badge className="bg-primary text-white border-none text-[8px] font-black uppercase">{posAction}</Badge>
+                        <Badge className="bg-primary text-white border-none text-[8px] font-black uppercase">{posAction || 'Pending'}</Badge>
                     </div>
 
                     <Button 
                         onClick={handleFinishSale} 
                         className="w-full h-14 font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all text-sm"
-                        disabled={isProcessingSale || cart.length === 0 || !selectedCustomer}
+                        disabled={isProcessingSale || cart.length === 0 || !selectedCustomer || !posAction}
                     >
-                        {isProcessingSale ? <Loader2 className="h-5 w-5 animate-spin" /> : `Finish ${posAction}`}
+                        {isProcessingSale ? <Loader2 className="h-5 w-5 animate-spin" /> : `Finish ${posAction || 'Process'}`}
                     </Button>
                 </div>
             </CardContent>
           </Card>
       </div>
+
+      {/* NEW ITEM CONFIGURATION DIALOG */}
+      <Dialog open={!!configuringProduct} onOpenChange={(open) => !open && setConfiguringProduct(null)}>
+        <DialogContent className="sm:max-w-md border-none shadow-2xl">
+            <DialogHeader>
+                <DialogTitle className="text-xl font-black uppercase tracking-tight">Add to Basket</DialogTitle>
+                <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">{configuringProduct?.model}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 pt-4">
+                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex justify-between items-center">
+                    <div>
+                        <p className="text-[10px] font-black uppercase opacity-40">Shop Price</p>
+                        <p className="text-lg font-black text-primary">KES {configuringProduct?.sellingPrice?.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[10px] font-black uppercase opacity-40">In Shop</p>
+                        <p className="text-lg font-black">{configuringProduct?.quantity} Units</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase">Quantity</Label>
+                        <Input 
+                            type="number" 
+                            value={configQty} 
+                            onChange={e => setConfigQty(e.target.value)} 
+                            className="h-12 text-lg font-black"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase">Final Price (KES)</Label>
+                        <Input 
+                            type="number" 
+                            value={configPrice} 
+                            onChange={e => setConfigPrice(e.target.value)} 
+                            className="h-12 text-lg font-black border-primary"
+                            placeholder="Enter Price"
+                            autoFocus
+                        />
+                    </div>
+                </div>
+
+                <div className="pt-4 flex justify-between items-center border-t">
+                    <div>
+                        <p className="text-[10px] font-black uppercase opacity-40">Subtotal</p>
+                        <p className="text-2xl font-black text-primary">KES {((parseInt(configQty) || 0) * (parseFloat(configPrice) || 0)).toLocaleString()}</p>
+                    </div>
+                    <Button className="h-14 px-8 font-black uppercase tracking-widest shadow-xl" onClick={handleAddToCart}>Add to Cart</Button>
+                </div>
+            </div>
+        </DialogContent>
+      </Dialog>
 
       <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
         <CardHeader className="bg-muted/30 border-b py-4 px-6">
@@ -900,3 +988,4 @@ function startOfDay(date: Date) {
     d.setHours(0, 0, 0, 0);
     return d;
 }
+
