@@ -15,11 +15,11 @@ import { useMemo } from 'react';
 
 // CONSERVATIVE HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;
-const HEADER_P1 = 400;      // Branding + Payments
+const HEADER_P1 = 350;      // Branding + Payments (Reduced from 400)
 const HEADER_PX = 100;      // "Continued" header
 const TABLE_HEADER = 50;
-const FOOTER_RESERVE = 160;  
-const ROW_BASE = 55;        
+const FOOTER_RESERVE = 100;  // Reduced from 160
+const ROW_BASE = 40;        // Reduced from 55
 const SUMMARY_BLOCK = 280;   
 const CHARS_PER_LINE = 50;
 

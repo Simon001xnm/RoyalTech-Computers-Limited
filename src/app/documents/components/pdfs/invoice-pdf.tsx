@@ -10,16 +10,16 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview Compact High-Fidelity Dynamic Paginated Invoice
- * Optimized to reduce unnecessary spacing and maximize item density.
+ * Optimized to maximize item density and resolve premature page breaking.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 540;      // Branded Header + Payment Info
+const HEADER_P1 = 400;      // Branded Header + Payment Info (Reduced from 540)
 const HEADER_PX = 100;      // "Continued" header height
 const TABLE_HEADER = 40;    
-const FOOTER_RESERVE = 140;  
-const ROW_BASE = 45;        
+const FOOTER_RESERVE = 100;  // Reduced from 140
+const ROW_BASE = 40;        // Reduced from 45
 const SUMMARY_BLOCK = 260;   
 const CHARS_PER_LINE = 55;   
 

@@ -10,16 +10,16 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Dynamic Paginated Quotation
- * Re-engineered to match the clean, unboxed Invoice aesthetic.
+ * Optimized to maximize item density and resolve premature page breaking.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 440;      // Header + Quote/Payment Info
+const HEADER_P1 = 380;      // Header + Quote/Payment Info (Reduced from 440)
 const HEADER_PX = 100;      // "Continued" header height
 const TABLE_HEADER = 50;    
-const FOOTER_RESERVE = 160;  
-const ROW_BASE = 55;        
+const FOOTER_RESERVE = 100;  // Reduced from 160
+const ROW_BASE = 40;        // Reduced from 55
 const SUMMARY_BLOCK = 280;   
 const CHARS_PER_LINE = 55;   
 
