@@ -119,7 +119,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                   </div>
                 </div>
                 <div className="text-right space-y-0.5">
-                    <p className="font-black uppercase text-[9px] text-black">Contact Details</p>
+                    <p className="font-black uppercase text-9px text-black">Contact Details</p>
                     <p className="text-[8px] font-bold leading-tight uppercase text-black max-w-[200px]">{workspace?.address || 'Nairobi, Kenya'}</p>
                     <p className="text-[8px] font-bold text-black">Tel: {workspace?.phone || '+254701694469'}</p>
                     <p className="text-[8px] font-bold lowercase text-black opacity-60">Email: {workspace?.email || 'mateshtechltd@gmail.com'}</p>
@@ -238,7 +238,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
              )}
 
              <div className="flex justify-between items-center mt-2 border-t pt-2">
-                <div className="text-[8px] font-black uppercase tracking-tighter text-black">
+                <div className="text-[8px] font-black uppercase tracking-normal text-black">
                    GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
                 </div>
                 <div className="font-black text-[8px] text-black uppercase tracking-widest">

@@ -250,7 +250,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
              )}
              
              <div className="flex justify-between items-center border-t pt-2">
-                <div className="text-[8px] font-black uppercase tracking-tighter text-black">
+                <div className="text-[8px] font-black uppercase tracking-normal text-black">
                    GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
                 </div>
                 <div className="font-black text-[9px] text-black uppercase tracking-widest">

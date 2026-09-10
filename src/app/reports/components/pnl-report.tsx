@@ -187,7 +187,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
               </div>
               <div className="flex justify-between items-center pt-4">
                   <div className="text-left">
-                      <p className="text-[8px] font-black text-black uppercase tracking-widest">GENERATED: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+                      <p className="text-[8px] font-black text-black uppercase tracking-normal">GENERATED: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
                   </div>
                   <p className="text-[10px] font-black text-black uppercase font-mono">PAGE {sIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
               </div>
@@ -253,7 +253,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                 </div>
                 <div className="flex justify-between items-center pt-4">
                     <div className="text-left">
-                        <p className="text-[8px] font-black text-black uppercase tracking-widest">GENERATED: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+                        <p className="text-[8px] font-black text-black uppercase tracking-normal">GENERATED: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
                     </div>
                     <p className="text-[10px] font-black text-black uppercase font-mono">PAGE {summaryPages.length + pIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
                 </div>
