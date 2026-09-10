@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -30,7 +31,7 @@ type TimeFilter = 'today' | 'week' | 'month' | 'year' | 'all';
 
 /**
  * @fileOverview Expense Feed with Smart Time Filtering
- * Optimized for local-day accuracy to ensure "Today" entries are always visible.
+ * Optimized for Kenya Timezone (UTC+3) to ensure "Today" entries are always visible.
  */
 export function AccountingClient() {
   const { user, isUserLoading } = useUser();
@@ -56,14 +57,19 @@ export function AccountingClient() {
       if (!rawExpenses) return [];
       
       const now = new Date();
+      // Use local date string for "Today" comparison to resolve timezone offset issues in Kenya
+      const todayStr = format(now, 'yyyy-MM-dd');
+      
       let results = [...rawExpenses];
       
       if (filter !== 'all') {
           results = results.filter(e => {
               try {
                   const expenseDate = parseISO(e.date);
+                  
                   if (filter === 'today') {
-                      return isSameDay(expenseDate, now);
+                      // Compare strings to ensure we are looking at the same calendar day locally
+                      return format(expenseDate, 'yyyy-MM-dd') === todayStr;
                   }
                   
                   let interval: { start: Date; end: Date };
@@ -106,15 +112,20 @@ export function AccountingClient() {
         accessorKey: "date",
         header: "Date & Time",
         cell: ({ row }) => (
-            <span className="text-[10px] font-bold text-muted-foreground">
-                {row.original.date ? format(parseISO(row.original.date), 'dd MMM, HH:mm') : 'Recently'}
-            </span>
+            <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase">
+                    {row.original.date ? format(parseISO(row.original.date), 'dd MMM yyyy') : 'Recently'}
+                </span>
+                <span className="text-[9px] font-mono text-muted-foreground">
+                    {row.original.date ? format(parseISO(row.original.date), 'hh:mm a') : '--:--'}
+                </span>
+            </div>
         )
     },
     {
         accessorKey: "category",
         header: "Category",
-        cell: ({ row }) => <span className="font-black uppercase text-[10px] tracking-tight">{row.original.category}</span>
+        cell: ({ row }) => <span className="font-black uppercase text-[10px] tracking-tight text-primary">{row.original.category}</span>
     },
     {
         accessorKey: "notes",
