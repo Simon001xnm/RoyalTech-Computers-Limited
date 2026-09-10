@@ -240,8 +240,8 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 </p>
              </div>
              <div className="flex justify-between items-center">
-                <div className="text-[8px] font-black uppercase tracking-tighter text-black/20">
-                   Generated: {format(new Date(), 'dd/MM/yy HH:mm')}
+                <div className="text-[8px] font-black uppercase tracking-tighter text-black">
+                   GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
                 </div>
                 <div className="font-black text-[9px] text-black uppercase tracking-widest">
                     PAGE {pageIdx + 1} OF {pages.length}

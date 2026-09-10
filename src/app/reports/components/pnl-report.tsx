@@ -185,7 +185,10 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                   <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: primaryBlue }}>{companyName}</p>
                   <p className="text-[8px] font-bold text-black">Phone: {company?.phone || '+254701694469'}. Email: {company?.email || 'mateshtechltd@gmail.com'}</p>
               </div>
-              <div className="flex justify-end pt-4">
+              <div className="flex justify-between items-center pt-4">
+                  <div className="text-left">
+                      <p className="text-[8px] font-black text-black uppercase tracking-widest">GENERATED: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+                  </div>
                   <p className="text-[10px] font-black text-black uppercase font-mono">PAGE {sIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
               </div>
           </footer>
@@ -250,7 +253,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
                 </div>
                 <div className="flex justify-between items-center pt-4">
                     <div className="text-left">
-                        <p className="text-[8px] font-black text-black/30 uppercase tracking-widest">Document Generated: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+                        <p className="text-[8px] font-black text-black uppercase tracking-widest">GENERATED: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
                     </div>
                     <p className="text-[10px] font-black text-black uppercase font-mono">PAGE {summaryPages.length + pIdx + 1} OF {summaryPages.length + ledgerPages.length}</p>
                 </div>

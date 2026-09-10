@@ -217,7 +217,10 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                     Phone: {workspace?.phone || '+254701694469'}. Email: {workspace?.email || 'mateshtechltd@gmail.com'}
                 </p>
              </div>
-             <div className="flex justify-end mt-2">
+             <div className="flex justify-between items-center mt-2">
+                <div className="text-[8px] font-black uppercase tracking-tighter text-black">
+                   GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
+                </div>
                 <div className="font-black text-[8px] text-black uppercase tracking-widest">
                     PAGE {pageIdx + 1} OF {pages.length}
                 </div>
