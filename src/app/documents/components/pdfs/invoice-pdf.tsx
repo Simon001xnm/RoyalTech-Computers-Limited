@@ -170,7 +170,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                         const qty = Number(item.quantity || 1);
                         const rowTotal = unitPrice * qty;
                         
-                        // FIXED INDEX CALCULATION: Continuous numbering
+                        // STRICT SEQUENTIAL LOGIC: Current page offset + current index
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
 
                         return (
@@ -235,7 +235,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
           )}
 
           <footer className="mt-auto pt-10 border-t border-gray-100 bg-white">
-             {/* SIGNATURE BLOCK - Last Page Only */}
+             {/* BRANDED FOOTER - Only on Last Page */}
              {pageIdx === pages.length - 1 && (
                 <div className="text-center space-y-1.5 pb-6">
                     <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
@@ -246,6 +246,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 </div>
              )}
              
+             {/* UNIVERSAL FOOTER - Every Page in Pure Black */}
              <div className="flex justify-between items-center">
                 <div className="text-[8px] font-black uppercase tracking-tighter text-black">
                    GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}

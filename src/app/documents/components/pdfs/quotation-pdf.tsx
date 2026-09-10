@@ -33,10 +33,8 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
   // Pagination Logic
   const pages: any[][] = [];
   let currentItems = [...items];
-  
   pages.push(currentItems.slice(0, ITEMS_PER_PAGE_FIRST));
   currentItems = currentItems.slice(ITEMS_PER_PAGE_FIRST);
-  
   while (currentItems.length > 0) {
       pages.push(currentItems.slice(0, ITEMS_PER_PAGE_OTHER));
       currentItems = currentItems.slice(ITEMS_PER_PAGE_OTHER);
@@ -107,14 +105,15 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                 </thead>
                 <tbody>
                     {pageItems.map((item: any, idx: number) => {
-                        const name = item.name || item.description;
                         const unitPrice = item.price || item.unitPrice;
                         const rowSubtotal = item.quantity * unitPrice;
+                        // SEQUENTIAL NUMBERING
+                        const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
+
                         return (
                             <tr key={idx} className="border-b border-gray-100">
                                 <td className="p-4 align-top border-r border-gray-100">
-                                    <p className="font-black text-[13px] uppercase leading-tight">{name}</p>
-                                    {item.description && item.name && <p className="text-[10px] text-gray-500 italic mt-1 leading-tight">{item.description}</p>}
+                                    <p className="font-black text-[13px] uppercase leading-tight">{itemNumber}. {item.name || item.description}</p>
                                 </td>
                                 <td className="p-4 text-right text-[11px] font-bold border-r border-gray-100">{applyVat ? '16%' : '0%'}</td>
                                 <td className="p-4 text-right text-[11px] font-black border-r border-gray-100">{item.quantity}</td>
@@ -154,15 +153,21 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
 
           {/* FOOTER (On Every Page) */}
           <footer className="mt-auto pt-8 border-t-2 border-gray-200">
-             <div className="text-center mb-4">
-                <p className="text-[9px] font-black uppercase tracking-widest opacity-60">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
-             </div>
-             <div className="flex justify-between items-end">
-                <div className="text-[10px] font-bold text-gray-500 space-y-1">
-                    <p className="uppercase">{workspace?.name}</p>
-                    <p className="opacity-60">Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
+             {/* BRANDED FOOTER - Only on Last Page */}
+             {pageIdx === pages.length - 1 && (
+                <div className="text-center mb-4 space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: primaryIndigo }}>{workspace?.name}</p>
+                    <p className="text-[8px] font-bold text-black opacity-60">Phone: {workspace?.phone || 'N/A'} . Email: {workspace?.email || 'N/A'}</p>
                 </div>
-                <div className="text-[12px] font-black bg-gray-100 px-3 py-1 rounded">
+             )}
+
+             {/* UNIVERSAL TRACKING - Every Page in Pure Black */}
+             <div className="flex justify-between items-end">
+                <div className="text-[8px] font-black uppercase tracking-tighter text-black">
+                    GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
+                </div>
+                <div className="text-[12px] font-black bg-gray-100 px-3 py-1 rounded text-black">
                     PAGE {pageIdx + 1} OF {pages.length}
                 </div>
              </div>

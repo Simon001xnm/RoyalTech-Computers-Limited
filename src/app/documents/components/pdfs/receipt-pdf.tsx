@@ -7,9 +7,9 @@ import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 import { numberToWords, cn } from "@/lib/utils";
 
-// Increased capacity for high-density content
-const ITEMS_PER_PAGE_FIRST = 18;
-const ITEMS_PER_PAGE_OTHER = 26;
+// Standard capacity for high-density content
+const ITEMS_PER_PAGE_FIRST = 15;
+const ITEMS_PER_PAGE_OTHER = 22;
 
 export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -137,7 +137,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
 
           {pageIdx > 0 && (
             <div className="mb-4">
-                <p className="text-[8px] font-black uppercase opacity-40 tracking-widest">Receipt Continued: {receiptNo} - Page {pageIdx + 1}</p>
+                <p className="text-[8px] font-black uppercase opacity-40 tracking-widest">Receipt Continued: #{receiptNo} - Page {pageIdx + 1}</p>
             </div>
           )}
 
@@ -159,7 +159,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                         const qty = Number(item.quantity || 1);
                         const rowTotal = unitRate * qty;
                         
-                        // FIXED INDEX CALCULATION: Continuous numbering
+                        // STRICT SEQUENTIAL LOGIC: Continuous numbering across pages
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
 
                         return (
@@ -180,7 +180,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             </table>
           </div>
 
-          {/* SUMMARY BLOCK */}
+          {/* SUMMARY BLOCK (Last Page Only) */}
           {pageIdx === pages.length - 1 && (
             <div className="mt-6 flex flex-col gap-4">
                 <div className="flex justify-between items-start gap-8">
@@ -213,7 +213,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
 
           {/* FOOTER */}
           <footer className="mt-auto pt-6 border-t border-gray-100 bg-white">
-             {/* SIGNATURE BLOCK - Last Page Only */}
+             {/* BRANDED BLOCK - Only on Last Page */}
              {pageIdx === pages.length - 1 && (
                 <div className="text-center space-y-1 pb-2">
                     <p className="text-[8px] font-black uppercase tracking-tight text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
@@ -224,6 +224,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                 </div>
              )}
 
+             {/* UNIVERSAL TRACKING - Every Page in Pure Black */}
              <div className="flex justify-between items-center mt-2">
                 <div className="text-[8px] font-black uppercase tracking-tighter text-black">
                    GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}

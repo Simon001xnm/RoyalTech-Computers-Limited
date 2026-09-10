@@ -34,10 +34,8 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
   // Pagination Logic
   const pages: any[][] = [];
   let currentItems = [...items];
-  
   pages.push(currentItems.slice(0, ITEMS_PER_PAGE_FIRST));
   currentItems = currentItems.slice(ITEMS_PER_PAGE_FIRST);
-  
   while (currentItems.length > 0) {
       pages.push(currentItems.slice(0, ITEMS_PER_PAGE_OTHER));
       currentItems = currentItems.slice(ITEMS_PER_PAGE_OTHER);
@@ -106,20 +104,19 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                 </thead>
                 <tbody>
                     {pageItems.map((item: any, idx: number) => {
-                        const name = item.name || item.description;
-                        const desc = item.description && item.name ? item.description : null;
-                        const unitPrice = item.price || item.unitPrice;
-                        const rowSubtotal = item.quantity * unitPrice;
+                        const rowSubtotal = item.quantity * (item.price || item.unitPrice);
+                        // SEQUENTIAL NUMBERING
+                        const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
+                        
                         return (
                             <tr key={idx} className="border-b border-gray-100">
                                 <td className="p-4 align-top border-r border-gray-100">
-                                    <p className="font-black text-[13px] uppercase leading-tight">{name}</p>
-                                    {desc && <p className="text-[10px] text-gray-500 italic mt-1 leading-tight">{desc}</p>}
+                                    <p className="font-black text-[13px] uppercase leading-tight">{itemNumber}. {item.name || item.description}</p>
                                     {item.serialNumber && <p className="text-[10px] text-gray-500 font-mono mt-1 uppercase">S/N: {item.serialNumber}</p>}
                                 </td>
                                 <td className="p-4 text-right text-[11px] font-bold border-r border-gray-100">{applyVat ? '16%' : '0%'}</td>
                                 <td className="p-4 text-right text-[11px] font-black border-r border-gray-100">{item.quantity}</td>
-                                <td className="p-4 text-right text-[11px] font-medium border-r border-gray-100">{formatCurrency(unitPrice)}</td>
+                                <td className="p-4 text-right text-[11px] font-medium border-r border-gray-100">{formatCurrency(item.price || item.unitPrice)}</td>
                                 <td className="p-4 px-4 text-right text-[13px] font-black">{formatCurrency(rowSubtotal)}</td>
                             </tr>
                         );
@@ -153,15 +150,21 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
           </section>
 
           <footer className="mt-auto pt-8 border-t-2 border-gray-200">
-             <div className="text-center mb-4">
-                <p className="text-[9px] font-black uppercase tracking-widest opacity-60">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
-             </div>
+             {/* BRANDED FOOTER - Only on Last Page */}
+             {pageIdx === pages.length - 1 && (
+                 <div className="text-center mb-4 space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: primaryIndigo }}>{workspace?.name}</p>
+                    <p className="text-[8px] font-bold text-black opacity-60">Phone: {workspace?.phone || 'N/A'} . Email: {workspace?.email || 'N/A'}</p>
+                 </div>
+             )}
+             
+             {/* UNIVERSAL TRACKING - Every Page in Pure Black */}
              <div className="flex justify-between items-end">
-                <div className="text-[10px] font-bold text-gray-500 space-y-1 text-center flex-1">
-                    <p className="uppercase">{workspace?.name}</p>
-                    <p className="opacity-60">Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
+                <div className="text-[8px] font-black uppercase tracking-tighter text-black">
+                    GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
                 </div>
-                <div className="text-[12px] font-black bg-gray-100 px-3 py-1 rounded">
+                <div className="text-[12px] font-black bg-gray-100 px-3 py-1 rounded text-black">
                     PAGE {pageIdx + 1} OF {pages.length}
                 </div>
              </div>
