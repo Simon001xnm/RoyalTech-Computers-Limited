@@ -347,7 +347,7 @@ export default function DashboardPage() {
                 balance: posAction === 'Receipt' ? 0 : cartTotal,
                 customer: selectedCustomer,
                 applyVat,
-                paymentMethod: paymentMode,
+                paymentMethod: posAction === 'Quotation' ? 'N/A' : paymentMode,
                 workspace: workspaceProfile ? {
                     name: workspaceProfile.name || '',
                     address: workspaceProfile.address || '',
@@ -904,36 +904,38 @@ export default function DashboardPage() {
                 {/* 4. Options */}
                 <div className="space-y-3 pt-2 border-t">
                     <div className="flex items-center justify-between">
-                        <Label className="text-[8px] font-black uppercase opacity-50">4. Payment & Tax</Label>
+                        <Label className="text-[8px] font-black uppercase opacity-50">4. Finalize Details</Label>
                         <div className="flex items-center gap-2">
                             <Switch checked={applyVat} onCheckedChange={setApplyVat} id="pos-vat" />
                             <Label htmlFor="pos-vat" className="text-[10px] font-black uppercase cursor-pointer">16% VAT</Label>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2">
-                        <Button 
-                            variant={paymentMode === 'Cash' ? 'default' : 'outline'} 
-                            onClick={() => setPaymentMode('Cash')}
-                            className="h-10 text-[9px] font-black uppercase px-0 border-2"
-                        >
-                            <Banknote className="h-3 w-3 mr-1" /> Cash
-                        </Button>
-                        <Button 
-                            variant={paymentMode === 'M-Pesa' ? 'default' : 'outline'} 
-                            onClick={() => setPaymentMode('M-Pesa')}
-                            className="h-10 text-[9px] font-black uppercase px-0 border-2"
-                        >
-                            <Smartphone className="h-3 w-3 mr-1" /> M-Pesa
-                        </Button>
-                        <Button 
-                            variant={paymentMode === 'Bank' ? 'default' : 'outline'} 
-                            onClick={() => setPaymentMode('Bank')}
-                            className="h-10 text-[9px] font-black uppercase px-0 border-2"
-                        >
-                            <Landmark className="h-3 w-3 mr-1" /> Bank
-                        </Button>
-                    </div>
+                    {posAction !== 'Quotation' && (
+                        <div className="grid grid-cols-3 gap-2">
+                            <Button 
+                                variant={paymentMode === 'Cash' ? 'default' : 'outline'} 
+                                onClick={() => setPaymentMode('Cash')}
+                                className="h-10 text-[9px] font-black uppercase px-0 border-2"
+                            >
+                                <Banknote className="h-3 w-3 mr-1" /> Cash
+                            </Button>
+                            <Button 
+                                variant={paymentMode === 'M-Pesa' ? 'default' : 'outline'} 
+                                onClick={() => setPaymentMode('M-Pesa')}
+                                className="h-10 text-[9px] font-black uppercase px-0 border-2"
+                            >
+                                <Smartphone className="h-3 w-3 mr-1" /> M-Pesa
+                            </Button>
+                            <Button 
+                                variant={paymentMode === 'Bank' ? 'default' : 'outline'} 
+                                onClick={() => setPaymentMode('Bank')}
+                                className="h-10 text-[9px] font-black uppercase px-0 border-2"
+                            >
+                                <Landmark className="h-3 w-3 mr-1" /> Bank
+                            </Button>
+                        </div>
+                    )}
 
                     <div className="p-4 bg-black text-white rounded-2xl shadow-xl flex justify-between items-center mt-2">
                         <div>

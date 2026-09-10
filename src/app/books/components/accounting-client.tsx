@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -24,8 +25,8 @@ import {
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 /**
- * @fileOverview Monthly Expense Feed with Pagination
- * Shows all money spent by the shop for the current month.
+ * @fileOverview Expense Feed with Pagination
+ * Shows money spent by the shop. New entries appear instantly.
  */
 export function AccountingClient() {
   const { user, isUserLoading } = useUser();
@@ -46,22 +47,20 @@ export function AccountingClient() {
   
   const isLoading = isUserLoading || expensesLoading;
 
-  const currentMonthExpenses = useMemo(() => {
+  const sortedExpenses = useMemo(() => {
       if (!rawExpenses) return [];
-      const currentMonthStr = format(new Date(), 'yyyy-MM');
-      
-      return rawExpenses.filter(e => {
-          try { 
-            return format(parseISO(e.date), 'yyyy-MM') === currentMonthStr; 
-          } catch { return false; }
-      }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return [...rawExpenses].sort((a,b) => {
+          const dateA = a.date ? new Date(a.date).getTime() : 0;
+          const dateB = b.date ? new Date(b.date).getTime() : 0;
+          return dateB - dateA;
+      });
   }, [rawExpenses]);
 
   const { totalExpenses, categoryCount } = useMemo(() => {
-    const total = currentMonthExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-    const categories = new Set(currentMonthExpenses.map(e => e.category)).size;
+    const total = sortedExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const categories = new Set(sortedExpenses.map(e => e.category)).size;
     return { totalExpenses: total, categoryCount: categories };
-  }, [currentMonthExpenses]);
+  }, [sortedExpenses]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-KE", {
@@ -76,7 +75,7 @@ export function AccountingClient() {
         header: "Date & Time",
         cell: ({ row }) => (
             <span className="text-[10px] font-bold text-muted-foreground">
-                {format(parseISO(row.original.date), 'dd MMM, HH:mm')}
+                {row.original.date ? format(parseISO(row.original.date), 'dd MMM, HH:mm') : 'Recently'}
             </span>
         )
     },
@@ -98,7 +97,7 @@ export function AccountingClient() {
   ], []);
 
   const table = useReactTable({
-    data: currentMonthExpenses,
+    data: sortedExpenses,
     columns,
     state: { pagination },
     onPaginationChange: setPagination,
@@ -120,8 +119,8 @@ export function AccountingClient() {
   return (
     <div className="space-y-6 pb-20">
       <PageHeader
-        title="Money Spent (This Month)"
-        description={`Analyzing spend for ${format(new Date(), 'MMMM yyyy')}`}
+        title="Money Spent (Expense Feed)"
+        description="A live record of all shop expenditures saved to the cloud."
         actionLabel="Record New Spend"
         onAction={() => setIsFormOpen(true)}
         ActionIcon={PlusCircle}
@@ -129,7 +128,7 @@ export function AccountingClient() {
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
         <SummaryCard 
-            title="Total Spend (Month)" 
+            title="Total Spend" 
             value={formatCurrency(totalExpenses)} 
             icon={TrendingDown} 
             className="border-l-4 border-l-red-500"
@@ -142,9 +141,9 @@ export function AccountingClient() {
         />
         <SummaryCard 
             title="Period" 
-            value={format(new Date(), 'MMMM')} 
+            value="Lifetime" 
             icon={CalendarIcon} 
-            description="Filtered by current month" 
+            description="All records for this workspace" 
         />
       </div>
 
