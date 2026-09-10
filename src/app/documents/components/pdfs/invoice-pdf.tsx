@@ -10,12 +10,12 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Dynamic Paginated Invoice
- * Features high-precision height estimation and integrated payment gateways.
+ * Updated with specific payment gateways and zero tax-labeling.
  */
 
 // CONSERVATIVE HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   // A4 Standard
-const HEADER_P1 = 620;      // Branded Header + Payment Info (Recalibrated for new info)
+const HEADER_P1 = 640;      // Branded Header + Payment Info
 const HEADER_PX = 120;      // "Continued" header height
 const TABLE_HEADER = 50;    // Blue header height
 const FOOTER_RESERVE = 180;  // Disclaimer + Signature area padding
@@ -103,7 +103,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
   }, [items]);
 
   return (
-    <div className="flex flex-col items-center gap-10 bg-slate-200 p-10 no-scrollbar">
+    <div className="flex flex-col items-center gap-0 bg-slate-200 p-0 no-scrollbar">
       {pages.map((pageItems, pageIdx) => (
         <div 
             key={pageIdx} 
@@ -184,7 +184,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                         <div className="p-3 bg-slate-50 border rounded-md border-black/5">
                             <p className="text-[7px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Bank Payment</p>
                             <p className="text-[9px] font-black">DTB</p>
-                            <p className="text-[9px] font-medium uppercase">{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
+                            <p className="text-[9px] font-medium uppercase">MATESH TECHNOLOGIES</p>
                             <p className="text-[9px] font-black">ACC NO: 0084976001</p>
                         </div>
                         <div className="p-3 bg-slate-50 border rounded-md border-black/5">
