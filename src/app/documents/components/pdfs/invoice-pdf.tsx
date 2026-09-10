@@ -15,12 +15,12 @@ import { useMemo } from 'react';
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 520;      // Branded Header + Payment Info
+const HEADER_P1 = 540;      // Branded Header + Payment Info
 const HEADER_PX = 100;      // "Continued" header height
 const TABLE_HEADER = 40;    
 const FOOTER_RESERVE = 140;  
 const ROW_BASE = 45;        
-const SUMMARY_BLOCK = 240;   
+const SUMMARY_BLOCK = 260;   
 const CHARS_PER_LINE = 55;   
 
 export function InvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -139,15 +139,15 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             <>
               <div className="flex w-full mb-3 border border-black rounded-sm overflow-hidden">
                   <div className="w-[60%] border-r border-black py-1.5 bg-slate-50 flex items-center justify-center">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-black opacity-70">Remittance Advice</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-black">Remittance Advice</p>
                   </div>
                   <div className="w-[40%] py-1.5 bg-blue-50 flex items-center justify-center">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-blue-900/60">Account Summary</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-blue-900">Account Summary</p>
                   </div>
               </div>
 
               <div className="grid grid-cols-[60%_40%] gap-0 mb-4 border-b pb-4">
-                  <div className="pr-8 space-y-3">
+                  <div className="pr-8 space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1">
                               <p className="text-[7px] font-black uppercase text-blue-800 tracking-widest">Billing From</p>
@@ -162,24 +162,26 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                           </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 pt-1">
-                        <div className="p-2 bg-slate-50 border rounded-md border-black/5">
-                            <p className="text-[6px] font-black uppercase text-blue-900/40 tracking-widest mb-0.5">Bank Payment</p>
-                            <p className="text-[8px] font-black text-black">Bank DTB; NAME-MATESH TECHNOLOGIES</p>
-                            <p className="text-[8px] font-black uppercase text-black">ACC NO: 0084976001</p>
+                      <div className="grid grid-cols-2 gap-4 pt-1">
+                        <div className="p-3 bg-slate-50 border rounded-md border-black/5">
+                            <p className="text-[7px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Bank Payment</p>
+                            <p className="text-[9px] font-black text-black">Bank DTB; NAME-MATESH TECHNOLOGIES</p>
+                            <p className="text-[10px] font-black uppercase text-black">ACC NO: 0084976001</p>
                         </div>
-                        <div className="p-2 bg-slate-50 border rounded-md border-black/5">
-                            <p className="text-[6px] font-black uppercase text-blue-900/40 tracking-widest mb-0.5">Lipan Na M-Pesa</p>
-                            <p className="text-[8px] font-black text-black">PAYBILL NO: 516600</p>
-                            <p className="text-[8px] font-black text-black">ACC NO: 5084975001</p>
+                        <div className="p-3 bg-slate-50 border rounded-md border-black/5">
+                            <p className="text-[7px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Lipan Na M-Pesa</p>
+                            <p className="text-[9px] font-black text-black">PAYBILL NO: 516600</p>
+                            <p className="text-[10px] font-black text-black">ACC NO: 5084975001</p>
                         </div>
                       </div>
                   </div>
-                  <div className="bg-blue-50/40 p-5 flex flex-col justify-center border-l border-black/5 rounded-r-lg">
-                      <p className="text-[9px] font-bold text-black opacity-40 uppercase tracking-widest mb-0.5">Net Balance Due</p>
-                      <p className="text-[24px] font-black tracking-tighter leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(totalAmountDue)}</p>
-                      <div className="mt-2 pt-2 border-t border-blue-200">
-                         <p className="text-[8px] font-bold uppercase tracking-tight text-black">Term: <span className="font-black">DUE ON RECEIPT</span></p>
+                  <div className="bg-blue-50/40 p-6 flex flex-col justify-center border-l border-black/5 rounded-r-lg">
+                      <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Net Balance Due</p>
+                      <div className="pb-4">
+                          <p className="text-[26px] font-black tracking-tighter leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(totalAmountDue)}</p>
+                      </div>
+                      <div className="mt-2 pt-4 border-t border-blue-200">
+                         <p className="text-[9px] font-bold uppercase tracking-tight text-black">Term: <span className="font-black">DUE ON RECEIPT</span></p>
                       </div>
                   </div>
               </div>
@@ -231,10 +233,10 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 <div className="mb-4 pt-2 border-t-2 border-black/5">
                     <div className="flex justify-between items-start gap-8">
                         <div className="flex-1 space-y-3">
-                            <div className="p-3 bg-slate-50 border rounded-lg">
-                                <p className="text-[7px] font-black uppercase text-blue-900/40 tracking-widest mb-0.5">Amount in Words</p>
-                                <p className="font-black uppercase text-[9px] leading-relaxed italic text-blue-900">
-                                    {numberToWords(currentTotal)}
+                            <div className="p-4 bg-slate-50 border rounded-lg">
+                                <p className="text-[7px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Amount in Words</p>
+                                <p className="font-black uppercase text-[10px] leading-relaxed italic text-blue-900">
+                                    {numberToWords(totalAmountDue)}
                                 </p>
                             </div>
                             <div className="text-[8px] font-medium text-black italic max-w-[280px]">
@@ -257,9 +259,9 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                                 <span className="font-bold text-orange-800/60 uppercase text-[8px]">Brought Forward</span>
                                 <span className="font-black text-orange-800 text-[10px]">{formatCurrency(previousBalance)}</span>
                             </div>
-                            <div className="flex justify-between items-center p-4 bg-blue-900 text-white shadow-xl mt-1 rounded-sm">
-                                <span className="text-[10px] font-black uppercase tracking-tighter">Net Amount Due</span>
-                                <span className="font-black tracking-tight text-[18px]">KES {formatCurrency(totalAmountDue)}</span>
+                            <div className="flex justify-between items-center p-5 bg-blue-900 text-white shadow-xl mt-1 rounded-sm">
+                                <span className="text-[11px] font-black uppercase tracking-tighter">Net Amount Due</span>
+                                <span className="font-black tracking-tight text-[20px]">KES {formatCurrency(totalAmountDue)}</span>
                             </div>
                         </div>
                     </div>
@@ -270,7 +272,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 <div className="text-center space-y-1 pb-4">
                     <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
                     <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
-                    <p className="text-[8px] font-bold text-black">
+                    <p className="text-[9px] font-black text-black">
                         Phone: {workspace?.phone || '+254701694469'}. Email: {workspace?.email || 'mateshtechltd@gmail.com'}
                     </p>
                 </div>

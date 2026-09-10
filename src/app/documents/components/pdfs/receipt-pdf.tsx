@@ -15,7 +15,7 @@ import { useMemo } from 'react';
 
 // CONSERVATIVE HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;
-const HEADER_P1 = 380;      // Branding + Payments
+const HEADER_P1 = 400;      // Branding + Payments
 const HEADER_PX = 100;      // "Continued" header
 const TABLE_HEADER = 50;
 const FOOTER_RESERVE = 160;  
@@ -145,15 +145,15 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                       <p className="text-[9px] font-medium text-black opacity-50 uppercase leading-none">{customer.address || 'Kenya'}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                      <div className="p-2 bg-slate-50 border rounded-lg border-black/5">
-                          <p className="text-[5px] font-black uppercase text-black opacity-40 tracking-widest mb-0.5">Bank Settlement</p>
-                          <p className="text-[7px] font-black text-black leading-tight">Bank DTB; MATESH TECHNOLOGIES</p>
-                          <p className="text-[7px] font-black text-black">ACC: 0084976001</p>
+                      <div className="p-3 bg-slate-50 border rounded-lg border-black/5">
+                          <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest mb-1">Bank Settlement</p>
+                          <p className="text-[9px] font-black text-black leading-tight">Bank DTB; MATESH TECHNOLOGIES</p>
+                          <p className="text-[9px] font-black text-black uppercase">ACC: 0084976001</p>
                       </div>
-                      <div className="p-2 bg-slate-50 border rounded-lg border-black/5">
-                          <p className="text-[5px] font-black uppercase text-black opacity-40 tracking-widest mb-0.5">Mobile Money</p>
-                          <p className="text-[7px] font-black text-black leading-tight">PAYBILL: 516600</p>
-                          <p className="text-[7px] font-black text-black">ACC: 5084975001</p>
+                      <div className="p-3 bg-slate-50 border rounded-lg border-black/5">
+                          <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest mb-1">Mobile Money</p>
+                          <p className="text-[9px] font-black text-black leading-tight">PAYBILL: 516600</p>
+                          <p className="text-[9px] font-black text-black uppercase">ACC: 5084975001</p>
                       </div>
                   </div>
               </div>
@@ -201,7 +201,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                 <div className="mb-6 flex flex-col gap-4">
                     <div className="flex justify-between items-start gap-8">
                         <div className="flex-1 pt-2">
-                            <p className="font-black uppercase text-[9px] leading-relaxed text-black max-w-[350px]">
+                            <p className="font-black uppercase text-[10px] leading-relaxed text-black max-w-[350px]">
                                 Paid in words: <span className="font-bold underline underline-offset-4">{numberToWords(amountPaidToday)}</span>
                             </p>
                         </div>
@@ -214,13 +214,13 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                                 <span className="font-black uppercase text-[9px] text-black opacity-80">Receipt Total</span>
                                 <span className="font-black text-[10px] text-black">KES {formatCurrency(todayTotal)}</span>
                             </div>
-                            <div className="flex justify-between items-center p-3 bg-[#f0fdf4] border-l-4 border-l-[#15803d] my-2 shadow-sm rounded-r-md">
+                            <div className="flex justify-between items-center p-4 bg-[#f0fdf4] border-l-4 border-l-[#15803d] my-2 shadow-sm rounded-r-md">
                                 <span className="text-[10px] font-black uppercase text-green-900">Amount Paid Today</span>
-                                <span className="font-black tracking-tight text-[12px] text-green-900">KES {formatCurrency(amountPaidToday)}</span>
+                                <span className="font-black tracking-tight text-[13px] text-green-900">KES {formatCurrency(amountPaidToday)}</span>
                             </div>
-                            <div className="flex justify-between items-center px-2 py-4 border-t-2 border-black mt-1">
+                            <div className="flex justify-between items-center px-2 py-6 border-t-2 border-black mt-2">
                                 <span className="text-[12px] font-black uppercase tracking-tighter text-black">Total Account Debt</span>
-                                <span className="font-black tracking-tighter text-[22px] leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(totalAccountDebt)}</span>
+                                <span className="font-black tracking-tighter text-[24px] leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(totalAccountDebt)}</span>
                             </div>
                         </div>
                     </div>
@@ -231,7 +231,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                 <div className="text-center space-y-1 pb-2">
                     <p className="text-[9px] font-black uppercase tracking-tight text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
                     <p className="text-[10px] font-bold uppercase tracking-widest leading-none" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
-                    <p className="text-[8px] font-bold text-black">
+                    <p className="text-[9px] font-black text-black">
                         Phone: {workspace?.phone || '+254701694469'}. Email: {workspace?.email || 'mateshtechltd@gmail.com'}
                     </p>
                 </div>
