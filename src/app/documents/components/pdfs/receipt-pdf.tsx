@@ -6,10 +6,17 @@ import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 import { numberToWords, cn } from "@/lib/utils";
+import { useMemo } from 'react';
 
-// Optimized capacity for reliable multi-page flow
-const ITEMS_PER_PAGE_FIRST = 12;
-const ITEMS_PER_PAGE_OTHER = 18;
+// CALIBRATED HEIGHT CONSTANTS (Pixels)
+const PAGE_HEIGHT = 1123;
+const HEADER_P1 = 320;
+const HEADER_PX = 80;
+const TABLE_HEADER = 45;
+const FOOTER_RESERVE = 110;
+const ROW_BASE = 48;
+const SUMMARY_BLOCK = 260;
+const CHARS_PER_LINE = 55;
 
 export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -58,16 +65,35 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
   const successGreen = "#15803d"; 
   const warningOrange = "#9a3412";
 
-  // Pagination Logic
-  const pages: any[][] = [];
-  let currentItems = [...items];
-  pages.push(currentItems.slice(0, ITEMS_PER_PAGE_FIRST));
-  currentItems = currentItems.slice(ITEMS_PER_PAGE_FIRST);
-  while (currentItems.length > 0) {
-      pages.push(currentItems.slice(0, ITEMS_PER_PAGE_OTHER));
-      currentItems = currentItems.slice(ITEMS_PER_PAGE_OTHER);
-  }
-  if (pages.length === 0) pages.push([]);
+  /**
+   * DYNAMIC PAGINATION ENGINE
+   */
+  const pages = useMemo(() => {
+    const calculatedPages: any[][] = [];
+    let currentPageItems: any[] = [];
+    let currentHeightUsed = HEADER_P1 + TABLE_HEADER + FOOTER_RESERVE;
+
+    items.forEach((item: any, idx: number) => {
+        const isLastItem = idx === items.length - 1;
+        const descText = (item.name || item.description || "");
+        const lines = Math.ceil(descText.length / CHARS_PER_LINE);
+        const itemHeight = ROW_BASE + (lines > 1 ? (lines - 1) * 12 : 0);
+        
+        const spaceNeeded = itemHeight + (isLastItem ? SUMMARY_BLOCK : 0);
+
+        if (currentHeightUsed + spaceNeeded > PAGE_HEIGHT && currentPageItems.length > 0) {
+            calculatedPages.push(currentPageItems);
+            currentPageItems = [item];
+            currentHeightUsed = HEADER_PX + TABLE_HEADER + FOOTER_RESERVE + itemHeight;
+        } else {
+            currentPageItems.push(item);
+            currentHeightUsed += itemHeight;
+        }
+    });
+
+    if (currentPageItems.length > 0) calculatedPages.push(currentPageItems);
+    return calculatedPages;
+  }, [items]);
 
   return (
     <div className="flex flex-col items-center gap-6 bg-slate-100 p-8">
@@ -76,8 +102,8 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             key={pageIdx} 
             className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden"
         >
-          {/* HEADER (First Page) */}
-          {pageIdx === 0 && (
+          {/* HEADER (First Page Only) */}
+          {pageIdx === 0 ? (
             <header className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-4">
                   {workspace?.logoUrl ? (
@@ -103,6 +129,11 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                     </div>
                 </div>
             </header>
+          ) : (
+             <div className="mb-4 border-b pb-4 flex justify-between items-end">
+                <p className="text-[8px] font-black uppercase opacity-40 tracking-widest">Receipt Continued: #{receiptNo}</p>
+                <p className="text-[8px] font-black">Page {pageIdx + 1}</p>
+            </div>
           )}
 
           {pageIdx === 0 && (
@@ -133,13 +164,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             </>
           )}
 
-          {pageIdx > 0 && (
-            <div className="mb-4">
-                <p className="text-[8px] font-black uppercase opacity-40 tracking-widest">Receipt Continued: #{receiptNo} - Page {pageIdx + 1}</p>
-            </div>
-          )}
-
-          {/* ITEM TABLE */}
+          {/* ITEM TABLE (Header per page) */}
           <div className="flex-grow overflow-hidden flex flex-col">
             <table className="w-full border-collapse">
                 <thead>
@@ -157,7 +182,6 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                         const qty = Number(item.quantity || 1);
                         const rowTotal = unitRate * qty;
                         
-                        // STRICT SEQUENTIAL LOGIC: Continuous numbering across pages
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
 
                         return (

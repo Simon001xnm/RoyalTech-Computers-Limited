@@ -6,10 +6,24 @@ import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 import { numberToWords, cn } from "@/lib/utils";
+import { useMemo } from 'react';
 
-// Reduced capacity to ensure no items overflow or get skipped visually
-const ITEMS_PER_PAGE_FIRST = 8;
-const ITEMS_PER_PAGE_OTHER = 12;
+/**
+ * @fileOverview High-Fidelity Dynamic Paginated Invoice
+ * Uses an intelligent height-estimation algorithm to handle 
+ * continuous table flow and automatic page breaking.
+ */
+
+// CALIBRATED HEIGHT CONSTANTS (Pixels)
+const PAGE_HEIGHT = 1123; // A4 Standard
+const MARGIN_BUFFER = 40;
+const HEADER_P1 = 440;    // Branding + Billing overhead
+const HEADER_PX = 80;     // "Continued" header height
+const TABLE_HEADER = 50;  // Blue header height
+const FOOTER_RESERVE = 120; // Disclaimer + Pagination space
+const ROW_BASE = 52;      // Single-line row height
+const SUMMARY_BLOCK = 280; // Totals/Sign-off block
+const CHARS_PER_LINE = 55; // Estimation limit for desc wrap
 
 export function InvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -52,16 +66,49 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
   const primaryBlue = "#1e3a8a";
 
-  // Pagination Logic
-  const pages: any[][] = [];
-  let currentItems = [...items];
-  pages.push(currentItems.slice(0, ITEMS_PER_PAGE_FIRST));
-  currentItems = currentItems.slice(ITEMS_PER_PAGE_FIRST);
-  while (currentItems.length > 0) {
-      pages.push(currentItems.slice(0, ITEMS_PER_PAGE_OTHER));
-      currentItems = currentItems.slice(ITEMS_PER_PAGE_OTHER);
+  /**
+   * DYNAMIC PAGINATION ENGINE
+   * Estimates item heights and distributes them across pages based 
+   * on actual vertical availability.
+   */
+  const pages = useMemo(() => {
+    const calculatedPages: any[][] = [];
+    let currentPageItems: any[] = [];
+    let currentHeightUsed = HEADER_P1 + TABLE_HEADER + FOOTER_RESERVE;
+
+    items.forEach((item: any, idx: number) => {
+        const isLastItem = idx === items.length - 1;
+        
+        // 1. Calculate Estimated Row Height
+        const descText = (item.name || item.description || "");
+        const lines = Math.ceil(descText.length / CHARS_PER_LINE);
+        const itemHeight = ROW_BASE + (lines > 1 ? (lines - 1) * 15 : 0);
+
+        // 2. Check if Summary block needs to fit on this page too
+        const totalsSpace = isLastItem ? SUMMARY_BLOCK : 0;
+        const spaceNeeded = itemHeight + totalsSpace;
+
+        // 3. Page Break Logic
+        if (currentHeightUsed + spaceNeeded > PAGE_HEIGHT && currentPageItems.length > 0) {
+            calculatedPages.push(currentPageItems);
+            currentPageItems = [item];
+            // Reset for next page (Continued header overhead)
+            currentHeightUsed = HEADER_PX + TABLE_HEADER + FOOTER_RESERVE + itemHeight;
+        } else {
+            currentPageItems.push(item);
+            currentHeightUsed += itemHeight;
+        }
+    });
+
+    if (currentPageItems.length > 0) calculatedPages.push(currentPageItems);
+    return calculatedPages;
+  }, [items]);
+
+  // Validation Check
+  const totalRendered = pages.reduce((acc, p) => acc + p.length, 0);
+  if (items.length > 0 && totalRendered !== items.length) {
+      console.warn(`PAGINATION WARNING: ${items.length} items in data, but ${totalRendered} rendered.`);
   }
-  if (pages.length === 0) pages.push([]);
 
   return (
     <div className="flex flex-col items-center gap-10 bg-slate-200 p-10 no-scrollbar">
@@ -70,8 +117,8 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             key={pageIdx} 
             className="a4-pdf-page p-[12mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden"
         >
-          {/* HEADER (First Page) */}
-          {pageIdx === 0 && (
+          {/* HEADER (First Page Only) */}
+          {pageIdx === 0 ? (
             <header className="flex justify-between items-start mb-8 pb-4">
                 <div className="flex items-center gap-6 w-[45%]">
                   {workspace?.logoUrl ? (
@@ -98,6 +145,11 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     </div>
                 </div>
             </header>
+          ) : (
+            <div className="mb-6 border-b pb-4 flex justify-between items-end">
+                <p className="text-[9px] font-black uppercase opacity-40 tracking-widest">Invoice Continued: #{invoiceNo}</p>
+                <p className="text-[9px] font-black">Page {pageIdx + 1}</p>
+            </div>
           )}
 
           {pageIdx === 0 && (
@@ -112,7 +164,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                   </div>
               </div>
 
-              <div className="grid grid-cols-[60%_40%] gap-0 mb-10 border-b pb-10">
+              <div className="grid grid-cols-[60%_40%] gap-0 mb-8 border-b pb-8">
                   <div className="pr-12 space-y-6">
                       <p className="text-[10px] font-medium leading-relaxed opacity-80">
                         Please remit your payment to: <span className="font-black uppercase">{workspace?.name || 'THE BUSINESS'}</span>. Include your Invoice Number as the reference to ensure proper account credit.
@@ -147,13 +199,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             </>
           )}
 
-          {pageIdx > 0 && (
-            <div className="mb-8 border-b pb-4">
-                <p className="text-[9px] font-black uppercase opacity-40 tracking-widest">Invoice Continued: #{invoiceNo} &bull; Page {pageIdx + 1}</p>
-            </div>
-          )}
-
-          {/* ITEM TABLE */}
+          {/* ITEM TABLE (Repeated Header per page) */}
           <div className="flex-grow overflow-hidden flex flex-col">
             <table className="w-full border-collapse">
                 <thead>
@@ -175,7 +221,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
 
                         return (
-                            <tr key={idx} className="border-b border-gray-100 last:border-0 h-14">
+                            <tr key={idx} className="border-b border-gray-100 last:border-0 min-h-[50px]">
                                 <td className="p-4 text-[10px] font-black text-center opacity-20">
                                     {itemNumber.toString().padStart(2, '0')}
                                 </td>
@@ -197,7 +243,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
           {/* TOTALS (Last Page Only) */}
           {pageIdx === pages.length - 1 && (
-            <div className="mt-10 pt-6 border-t-2 border-black/5">
+            <div className="mt-6 pt-4 border-t-2 border-black/5">
                 <div className="flex justify-between items-start gap-12">
                     <div className="flex-1 space-y-4">
                         <div className="p-4 bg-slate-50 border rounded-lg">
