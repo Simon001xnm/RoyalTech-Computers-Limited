@@ -28,7 +28,13 @@ import {
     Trash2,
     Check,
     X,
-    User as UserIcon
+    User as UserIcon,
+    FileText,
+    Receipt,
+    FilePlus2,
+    Banknote,
+    Smartphone,
+    Landmark
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -55,6 +61,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import type { DateRange } from 'react-day-picker';
 import {
   useReactTable,
@@ -71,7 +79,7 @@ import { ReceiptPdf } from "./documents/components/pdfs/receipt-pdf";
 import { ProformaInvoicePdf } from "./documents/components/pdfs/proforma-pdf";
 import { QuotationPdf } from "./documents/components/pdfs/quotation-pdf";
 import { useToast } from "@/hooks/use-toast";
-import type { Document as AppDocument } from "@/types";
+import type { Document as AppDocument, DocumentType } from "@/types";
 import {
     BarChart,
     Bar,
@@ -91,6 +99,8 @@ const TYPE_INITIALS: Record<string, string> = {
     'Quotation': 'QTN',
     'Proforma': 'PRO'
 };
+
+const VAT_RATE = 0.16;
 
 export default function DashboardPage() {
   const { tenant } = useSaaS();
@@ -121,6 +131,9 @@ export default function DashboardPage() {
   const [isProcessingSale, setIsProcessingSale] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
+  const [posAction, setPosAction] = useState<DocumentType>('Receipt');
+  const [paymentMode, setPaymentMode] = useState<'Cash' | 'M-Pesa' | 'Bank'>('Cash');
+  const [applyVat, setApplyVat] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -169,6 +182,12 @@ export default function DashboardPage() {
   const { data: expenses, isLoading: expLoading } = useCollection(expensesQuery);
   const { data: documents, isLoading: docsLoading } = useCollection<AppDocument>(docsQuery);
   const { data: customers } = useCollection(customersQuery);
+
+  const companyRef = useMemoFirebase(() => 
+    tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
+    [firestore, tenant?.id]
+  );
+  const { data: workspaceProfile } = useDoc(companyRef);
 
   const stats = useMemo(() => {
     if (!sales || !assets || !expenses || !documents) return null;
@@ -246,9 +265,19 @@ export default function DashboardPage() {
 
   // POS Logic
   const handleAddToCart = (product: any) => {
+    if ((product.quantity || 0) <= 0) {
+        toast({ variant: 'destructive', title: 'Out of Stock', description: `Adjust stock levels for ${product.model} before selling.` });
+        return;
+    }
+
     const existing = cart.find(i => i.id === product.id);
     if (existing) {
-        setCart(cart.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1, total: (i.quantity + 1) * i.sellingPrice } : i));
+        const newQty = existing.quantity + 1;
+        if (newQty > (product.quantity || 0)) {
+            toast({ variant: 'destructive', title: 'Insufficient Stock', description: `Only ${product.quantity} units available.` });
+            return;
+        }
+        setCart(cart.map(i => i.id === product.id ? { ...i, quantity: newQty, total: newQty * i.sellingPrice } : i));
     } else {
         setCart([...cart, {
             id: product.id,
@@ -262,7 +291,9 @@ export default function DashboardPage() {
     setProductSearchOpen(false);
   };
 
-  const cartTotal = cart.reduce((acc, i) => acc + i.total, 0);
+  const subtotal = cart.reduce((acc, i) => acc + i.total, 0);
+  const vatAmount = applyVat ? subtotal * VAT_RATE : 0;
+  const cartTotal = subtotal + vatAmount;
 
   const handleFinishSale = async () => {
     if (!tenant || !user || !selectedCustomer || cart.length === 0) return;
@@ -273,54 +304,78 @@ export default function DashboardPage() {
         const timestamp = new Date().toISOString();
 
         const docRef = doc(collection(firestore, 'documents'));
-        const saleRef = doc(collection(firestore, 'sales_transactions'));
-
-        const saleData = {
+        
+        const documentData = {
             tenantId: tenant.id,
-            date: timestamp,
-            customerId: selectedCustomer.id,
-            customerName: selectedCustomer.name,
-            items: cart.map(i => ({ ...i, productId: i.id, type: 'asset' })),
-            subtotal: cartTotal,
-            total: cartTotal,
-            amountPaid: cartTotal,
-            balance: 0,
-            status: 'Paid',
-            paymentMethod: 'Cash',
+            type: posAction,
+            title: `${posAction} #${Math.floor(Math.random() * 1000)}`,
+            generatedDate: timestamp,
+            relatedTo: selectedCustomer.name,
+            data: { 
+                items: cart.map(i => ({ ...i, productId: i.id, type: 'asset' })),
+                subtotal,
+                vat: vatAmount,
+                total: cartTotal,
+                amountPaid: posAction === 'Receipt' ? cartTotal : 0,
+                balance: posAction === 'Receipt' ? 0 : cartTotal,
+                customer: selectedCustomer,
+                applyVat,
+                paymentMethod: paymentMode,
+                workspace: workspaceProfile ? {
+                    name: workspaceProfile.name || '',
+                    address: workspaceProfile.address || '',
+                    phone: workspaceProfile.phone || '',
+                    email: workspaceProfile.email || '',
+                    logoUrl: workspaceProfile.logoUrl || null
+                } : null
+            },
             createdAt: timestamp,
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
-        batch.set(saleRef, { ...saleData, id: saleRef.id, documentId: docRef.id });
-        batch.set(docRef, {
-            tenantId: tenant.id,
-            type: 'Receipt',
-            title: `Receipt #${Math.floor(Math.random() * 1000)}`,
-            generatedDate: timestamp,
-            relatedTo: selectedCustomer.name,
-            data: { ...saleData, customer: selectedCustomer },
-            createdAt: timestamp,
-            createdBy: { uid: user.uid, name: user.displayName || 'User' }
-        });
+        batch.set(docRef, documentData);
 
-        // Update stock
-        for (const item of cart) {
-            const productRef = doc(firestore, 'assets', item.id);
-            const currentProduct = assets?.find(p => p.id === item.id);
-            if (currentProduct) {
-                batch.update(productRef, { 
-                    quantity: (currentProduct.quantity || 0) - item.quantity,
-                    updatedAt: timestamp 
-                });
+        // Only record sale and update stock for Receipts/Invoices
+        if (posAction === 'Receipt' || posAction === 'Invoice') {
+            const saleRef = doc(collection(firestore, 'sales_transactions'));
+            const saleData = {
+                tenantId: tenant.id,
+                date: timestamp,
+                customerId: selectedCustomer.id,
+                customerName: selectedCustomer.name,
+                items: cart.map(i => ({ ...i, productId: i.id, type: 'asset' })),
+                subtotal,
+                vatAmount,
+                total: cartTotal,
+                amountPaid: posAction === 'Receipt' ? cartTotal : 0,
+                balance: posAction === 'Receipt' ? 0 : cartTotal,
+                status: posAction === 'Receipt' ? 'Paid' : 'Credit',
+                paymentMethod: paymentMode,
+                documentId: docRef.id,
+                createdAt: timestamp,
+                createdBy: { uid: user.uid, name: user.displayName || 'User' }
+            };
+            batch.set(saleRef, saleData);
+
+            // Update stock
+            for (const item of cart) {
+                const productRef = doc(firestore, 'assets', item.id);
+                const currentProduct = assets?.find(p => p.id === item.id);
+                if (currentProduct) {
+                    batch.update(productRef, { 
+                        quantity: (currentProduct.quantity || 0) - item.quantity,
+                        updatedAt: timestamp 
+                    });
+                }
             }
         }
 
         await batch.commit();
         setCart([]);
         setSelectedCustomer(null);
-        toast({ title: "Sale Completed" });
+        toast({ title: `${posAction} Completed` });
     } catch (e: any) {
-        toast({ variant: 'destructive', title: "Sale Failed", description: e.message });
+        toast({ variant: 'destructive', title: "Process Failed", description: e.message });
     } finally {
         setIsProcessingSale(false);
     }
@@ -528,7 +583,7 @@ export default function DashboardPage() {
           <SummaryCard title="Total Money Owed" value={formatKes(stats.totalDebt)} icon={FileWarning} description="Historical pending payments" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
           {/* ANALYTICS */}
           <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden">
             <CardHeader className="bg-muted/10 border-b py-4 px-6">
@@ -583,94 +638,66 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* DASHBOARD POS (Replacing Popular Items) */}
+          {/* DASHBOARD POS PROTOCOL */}
           <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden flex flex-col">
             <CardHeader className="bg-primary/5 border-b py-3 px-5">
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
                         <ShoppingCart className="h-3 w-3" />
-                        Quick POS
+                        Quick Sell Protocol
                     </CardTitle>
-                    <Badge variant="outline" className="text-[8px] font-black uppercase h-5 bg-white">Ready</Badge>
+                    <Badge variant="outline" className="text-[8px] font-black uppercase h-5 bg-white">v3.0</Badge>
                 </div>
             </CardHeader>
-            <CardContent className="p-4 flex-grow flex flex-col gap-4 overflow-hidden">
-                {/* Product Search */}
-                <Popover open={productSearchOpen} onOpenChange={setProductSearchOpen}>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between h-10 text-[10px] font-bold uppercase tracking-tight bg-muted/20 border-dashed">
-                            <span>{productSearchOpen ? 'Selecting...' : 'Add Item to Cart...'}</span>
-                            <Plus className="h-3.5 w-3.5" />
+            <CardContent className="p-4 flex-grow flex flex-col gap-5 overflow-hidden">
+                {/* 1. Protocol: Select Action */}
+                <div className="space-y-2">
+                    <Label className="text-[8px] font-black uppercase opacity-50">1. Select Document Type</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                        <Button 
+                            variant={posAction === 'Receipt' ? 'default' : 'outline'} 
+                            onClick={() => setPosAction('Receipt')}
+                            className="h-10 text-[9px] font-black uppercase px-0"
+                        >
+                            <Receipt className="h-3 w-3 mr-1" /> Receipt
                         </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[340px] p-0" align="start">
-                        <Command>
-                            <CommandInput placeholder="Search inventory..." className="h-9" />
-                            <CommandList>
-                                <CommandEmpty>No stock found.</CommandEmpty>
-                                <CommandGroup heading="Available Items">
-                                    {assets?.filter(p => (p.quantity || 0) > 0).map(p => (
-                                        <CommandItem key={p.id} onSelect={() => handleAddToCart(p)} className="p-2 cursor-pointer">
-                                            <div className="flex justify-between w-full items-center">
-                                                <div>
-                                                    <p className="font-bold text-[10px] uppercase truncate max-w-[150px]">{p.model}</p>
-                                                    <p className="text-[8px] opacity-40 font-mono">#{p.serialNumber?.slice(-6)}</p>
-                                                </div>
-                                                <span className="font-black text-primary text-[10px]">{formatKes(p.sellingPrice)}</span>
-                                            </div>
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
-
-                {/* Cart View */}
-                <div className="flex-grow overflow-y-auto min-h-[200px] border rounded-xl p-2 bg-muted/5">
-                    {cart.length > 0 ? (
-                        <div className="space-y-2">
-                            {cart.map(item => (
-                                <div key={item.id} className="flex justify-between items-center p-2 bg-white rounded-lg shadow-sm group">
-                                    <div className="flex flex-col">
-                                        <span className="text-[9px] font-black uppercase truncate max-w-[120px]">{item.name}</span>
-                                        <span className="text-[8px] font-bold opacity-40">{item.quantity} x {formatKes(item.sellingPrice)}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-black">{formatKes(item.total)}</span>
-                                        <button onClick={() => setCart(cart.filter(i => i.id !== item.id))} className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-600 transition-all">
-                                            <Trash2 className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="h-full flex flex-col items-center justify-center opacity-20 py-10">
-                            <ShoppingCart className="h-8 w-8 mb-2" />
-                            <p className="text-[8px] font-black uppercase tracking-widest">Basket Empty</p>
-                        </div>
-                    )}
+                        <Button 
+                            variant={posAction === 'Invoice' ? 'default' : 'outline'} 
+                            onClick={() => setPosAction('Invoice')}
+                            className="h-10 text-[9px] font-black uppercase px-0"
+                        >
+                            <FileText className="h-3 w-3 mr-1" /> Invoice
+                        </Button>
+                        <Button 
+                            variant={posAction === 'Quotation' ? 'default' : 'outline'} 
+                            onClick={() => setPosAction('Quotation')}
+                            className="h-10 text-[9px] font-black uppercase px-0"
+                        >
+                            <FilePlus2 className="h-3 w-3 mr-1" /> Quote
+                        </Button>
+                    </div>
                 </div>
 
-                <Separator />
-
-                {/* Customer & Total */}
-                <div className="space-y-3">
+                {/* 2. Protocol: Select Customer */}
+                <div className="space-y-2">
+                    <Label className="text-[8px] font-black uppercase opacity-50">2. Identify Customer</Label>
                     <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
                         <PopoverTrigger asChild>
-                            <Button variant="ghost" className="w-full h-8 text-[9px] font-black uppercase tracking-widest border border-primary/20 bg-primary/5 text-primary">
-                                <UserIcon className="h-3 w-3 mr-2" />
-                                {selectedCustomer ? selectedCustomer.name : 'Select Client...'}
+                            <Button variant="outline" className="w-full h-11 justify-between text-[10px] font-bold uppercase tracking-tight bg-white">
+                                <div className="flex items-center gap-2">
+                                    <UserIcon className="h-4 w-4 text-primary" />
+                                    <span>{selectedCustomer ? selectedCustomer.name : 'Select Client...'}</span>
+                                </div>
+                                <Search className="h-3 w-3 opacity-30" />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0">
+                        <PopoverContent className="w-[340px] p-0" align="start">
                              <Command>
-                                <CommandInput placeholder="Find client..." className="h-8" />
+                                <CommandInput placeholder="Find client..." className="h-9" />
                                 <CommandList>
                                     <CommandGroup>
                                         {customers?.map(c => (
-                                            <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({ id: c.id, name: c.name }); setCustomerSearchOpen(false); }} className="text-[10px] uppercase font-bold">
+                                            <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({ id: c.id, name: c.name }); setCustomerSearchOpen(false); }} className="text-[10px] uppercase font-bold p-3">
                                                 {c.name}
                                             </CommandItem>
                                         ))}
@@ -679,18 +706,130 @@ export default function DashboardPage() {
                              </Command>
                         </PopoverContent>
                     </Popover>
+                </div>
 
-                    <div className="p-3 bg-black text-white rounded-xl shadow-lg flex justify-between items-center">
-                        <span className="text-[8px] font-black uppercase opacity-50">Grand Total</span>
-                        <span className="text-lg font-black tracking-tighter">{formatKes(cartTotal)}</span>
+                {/* 3. Protocol: Add Products */}
+                <div className="space-y-2">
+                    <Label className="text-[8px] font-black uppercase opacity-50">3. Add Items to Cart</Label>
+                    <Popover open={productSearchOpen} onOpenChange={setProductSearchOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-full justify-between h-11 text-[10px] font-black uppercase tracking-widest bg-primary/5 border-primary/20 text-primary border-2">
+                                <span>{productSearchOpen ? 'Selecting...' : 'Add Products...'}</span>
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[340px] p-0" align="start">
+                            <Command>
+                                <CommandInput placeholder="Search inventory..." className="h-9" />
+                                <CommandList>
+                                    <CommandEmpty>No stock found.</CommandEmpty>
+                                    <CommandGroup heading="Available Inventory">
+                                        {assets?.map(p => {
+                                            const qty = p.quantity || 0;
+                                            const isOut = qty <= 0;
+                                            return (
+                                                <CommandItem 
+                                                    key={p.id} 
+                                                    onSelect={() => !isOut && handleAddToCart(p)} 
+                                                    disabled={isOut}
+                                                    className={cn("p-3 cursor-pointer", isOut && "opacity-40 cursor-not-allowed")}
+                                                >
+                                                    <div className="flex justify-between w-full items-center">
+                                                        <div>
+                                                            <p className="font-bold text-[10px] uppercase truncate max-w-[150px]">{p.model}</p>
+                                                            <p className="text-[8px] font-mono opacity-50">S/N: {p.serialNumber?.slice(-8).toUpperCase()}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="font-black text-primary text-[10px] block">{formatKes(p.sellingPrice)}</span>
+                                                            <span className={cn("text-[8px] font-black uppercase", isOut ? "text-red-500" : "text-green-600")}>
+                                                                {isOut ? 'OUT OF STOCK' : `${qty} IN STOCK`}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </CommandItem>
+                                            );
+                                        })}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+
+                    <div className="min-h-[140px] max-h-[220px] overflow-y-auto border rounded-xl p-2 bg-muted/5">
+                        {cart.length > 0 ? (
+                            <div className="space-y-2">
+                                {cart.map(item => (
+                                    <div key={item.id} className="flex justify-between items-center p-2.5 bg-white rounded-lg shadow-sm border group">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black uppercase truncate max-w-[130px]">{item.name}</span>
+                                            <span className="text-[8px] font-bold opacity-50">{item.quantity} x {formatKes(item.sellingPrice)}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[10px] font-black">{formatKes(item.total)}</span>
+                                            <button onClick={() => setCart(cart.filter(i => i.id !== item.id))} className="text-muted-foreground hover:text-red-600 transition-all">
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center opacity-10 py-12">
+                                <ShoppingCart className="h-10 w-10 mb-2" />
+                                <p className="text-[8px] font-black uppercase tracking-widest">Basket Empty</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 4. Protocol: Options */}
+                <div className="space-y-3 pt-2 border-t">
+                    <div className="flex items-center justify-between">
+                        <Label className="text-[8px] font-black uppercase opacity-50">4. Payment & Tax</Label>
+                        <div className="flex items-center gap-2">
+                            <Switch checked={applyVat} onCheckedChange={setApplyVat} id="pos-vat" />
+                            <Label htmlFor="pos-vat" className="text-[10px] font-black uppercase cursor-pointer">16% VAT</Label>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                        <Button 
+                            variant={paymentMode === 'Cash' ? 'default' : 'outline'} 
+                            onClick={() => setPaymentMode('Cash')}
+                            className="h-10 text-[9px] font-black uppercase px-0 border-2"
+                        >
+                            <Banknote className="h-3 w-3 mr-1" /> Cash
+                        </Button>
+                        <Button 
+                            variant={paymentMode === 'M-Pesa' ? 'default' : 'outline'} 
+                            onClick={() => setPaymentMode('M-Pesa')}
+                            className="h-10 text-[9px] font-black uppercase px-0 border-2"
+                        >
+                            <Smartphone className="h-3 w-3 mr-1" /> M-Pesa
+                        </Button>
+                        <Button 
+                            variant={paymentMode === 'Bank' ? 'default' : 'outline'} 
+                            onClick={() => setPaymentMode('Bank')}
+                            className="h-10 text-[9px] font-black uppercase px-0 border-2"
+                        >
+                            <Landmark className="h-3 w-3 mr-1" /> Bank
+                        </Button>
+                    </div>
+
+                    <div className="p-4 bg-black text-white rounded-2xl shadow-xl flex justify-between items-center mt-2">
+                        <div>
+                            <span className="text-[8px] font-black uppercase opacity-50 block">Grand Total</span>
+                            <span className="text-2xl font-black tracking-tighter leading-none">{formatKes(cartTotal)}</span>
+                        </div>
+                        <Badge className="bg-primary text-white border-none text-[8px] font-black uppercase">{posAction}</Badge>
                     </div>
 
                     <Button 
                         onClick={handleFinishSale} 
-                        className="w-full h-12 font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                        className="w-full h-14 font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all text-sm"
                         disabled={isProcessingSale || cart.length === 0 || !selectedCustomer}
                     >
-                        {isProcessingSale ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Complete Sale'}
+                        {isProcessingSale ? <Loader2 className="h-5 w-5 animate-spin" /> : `Finish ${posAction}`}
                     </Button>
                 </div>
             </CardContent>
