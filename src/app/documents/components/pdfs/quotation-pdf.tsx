@@ -7,7 +7,7 @@ import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 import { numberToWords } from "@/lib/utils";
 
-const ITEMS_PER_PAGE_FIRST = 10;
+const ITEMS_PER_PAGE_FIRST = 12;
 const ITEMS_PER_PAGE_OTHER = 18;
 
 export function QuotationPdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -48,7 +48,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
             className="a4-pdf-page p-[10mm] font-sans text-[12px] bg-white text-black w-[210mm] h-[297mm] flex flex-col box-border shadow-md"
         >
           {pageIdx === 0 && (
-            <header className="flex justify-between items-start mb-4 pb-4 border-b-4 border-black">
+            <header className="flex justify-between items-start mb-6 pb-4 border-b-4 border-black">
                 <div className="flex items-center gap-6">
                 {workspace?.logoUrl ? (
                     <img src={workspace.logoUrl} alt="Logo" className="h-24 w-auto object-contain" crossOrigin="anonymous" />
@@ -56,8 +56,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                     <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
                 )}
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-black uppercase tracking-tighter" style={{ color: primaryIndigo }}>Quotation</h1>
-                    <p className="font-bold text-[11px] text-black opacity-70 uppercase tracking-widest">Business Proposal</p>
+                    <h1 className="text-4xl font-black uppercase tracking-tighter" style={{ color: primaryIndigo }}>Quote</h1>
                 </div>
                 </div>
                 <div className="text-right space-y-1.5">
@@ -80,14 +79,14 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                     <p className="text-[11px] font-black text-black">{customer.phone}</p>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
-                    <div className="p-2 bg-slate-50 border rounded-lg border-black/5">
-                        <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest mb-0.5">Bank Settlement</p>
-                        <p className="text-[8px] font-black text-black">Bank DTB; NAME-MATESH TECHNOLOGIES</p>
-                        <p className="text-[8px] font-black text-black uppercase">ACC NO: 0084976001</p>
+                    <div className="p-3 bg-slate-50 border rounded-lg border-black/5">
+                        <p className="text-[7px] font-black uppercase text-black opacity-40 tracking-widest mb-1">Bank Settlement</p>
+                        <p className="text-[10px] font-black text-black">Bank DTB; NAME-MATESH TECHNOLOGIES</p>
+                        <p className="text-[10px] font-black text-black uppercase">ACC NO: 0084976001</p>
                     </div>
-                    <div className="p-2 bg-slate-50 border rounded-lg border-black/5">
-                        <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest mb-0.5">Mobile Payment</p>
-                        <p className="text-[8px] font-black text-black">PAYBILL NO: 516600 | ACC NO: 5084975001</p>
+                    <div className="p-3 bg-slate-50 border rounded-lg border-black/5">
+                        <p className="text-[7px] font-black uppercase text-black opacity-40 tracking-widest mb-1">Mobile Payment</p>
+                        <p className="text-[10px] font-black text-black">PAYBILL NO: 516600 | ACC NO: 5084975001</p>
                     </div>
                 </div>
             </section>
@@ -95,7 +94,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
 
           {pageIdx > 0 && (
             <div className="mb-6">
-                <p className="text-[11px] font-black uppercase opacity-40 tracking-widest text-black">Quotation Continued: {quoteNo} - Page {pageIdx + 1}</p>
+                <p className="text-[11px] font-black uppercase opacity-40 tracking-widest text-black">Quote Continued: {quoteNo} - Page {pageIdx + 1}</p>
             </div>
           )}
 
@@ -139,12 +138,12 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                             <h4 className="text-[10px] font-black uppercase text-blue-900">Valid for 30 days</h4>
                         </div>
                     </div>
-                    <div className="w-[350px] space-y-3">
+                    <div className="w-[350px] space-y-3 pb-10">
                         <div className="flex justify-between items-center p-2 border-b border-black/10">
                             <span className="font-bold text-black opacity-60 uppercase text-[10px]">Quote Subtotal</span>
                             <span className="font-black text-[13px] text-black">KES {formatCurrency(subtotal || total)}</span>
                         </div>
-                        <div className="pt-4 border-t-4 border-black flex justify-between items-center px-2">
+                        <div className="pt-6 pb-2 border-t-4 border-black flex justify-between items-center px-2">
                             <span className="text-[14px] font-black uppercase text-black">Grand Total</span>
                             <span className="text-3xl font-black text-blue-900 tracking-tighter">KES {formatCurrency(total)}</span>
                         </div>
@@ -158,14 +157,14 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                 <div className="text-center mb-4 space-y-1">
                     <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
                     <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: primaryIndigo }}>{workspace?.name}</p>
-                    <p className="text-[8px] font-bold text-black opacity-60">Phone: {workspace?.phone || 'N/A'} . Email: {workspace?.email || 'N/A'}</p>
+                    <p className="text-[8px] font-bold text-black">Phone: {workspace?.phone || 'N/A'}. Email: {workspace?.email || 'N/A'}</p>
                 </div>
              )}
-             <div className="flex justify-between items-end">
+             <div className="flex justify-between items-end border-t pt-2">
                 <div className="text-[8px] font-black uppercase tracking-tighter text-black">
                     GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
                 </div>
-                <div className="text-[12px] font-black bg-gray-100 px-3 py-1 rounded text-black">
+                <div className="text-[10px] font-black text-black uppercase tracking-widest">
                     PAGE {pageIdx + 1} OF {pages.length}
                 </div>
              </div>
