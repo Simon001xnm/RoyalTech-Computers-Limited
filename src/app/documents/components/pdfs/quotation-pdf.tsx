@@ -30,7 +30,6 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
     ? docSnapshot.title.split('#').pop() 
     : (docSnapshot.id || 'TEMP').slice(0, 5).toUpperCase();
 
-  // Pagination Logic
   const pages: any[][] = [];
   let currentItems = [...items];
   pages.push(currentItems.slice(0, ITEMS_PER_PAGE_FIRST));
@@ -48,47 +47,55 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
             key={pageIdx} 
             className="a4-pdf-page p-[10mm] font-sans text-[12px] bg-white text-black w-[210mm] h-[297mm] flex flex-col box-border shadow-md"
         >
-          {/* BRANDED HEADER (Only on First Page) */}
           {pageIdx === 0 && (
-            <header className="flex justify-between items-start mb-8 pb-8 border-b-4 border-black">
-                <div className="flex items-center gap-8">
+            <header className="flex justify-between items-start mb-4 pb-4 border-b-4 border-black">
+                <div className="flex items-center gap-6">
                 {workspace?.logoUrl ? (
-                    <img src={workspace.logoUrl} alt="Logo" className="h-32 w-auto object-contain" crossOrigin="anonymous" />
+                    <img src={workspace.logoUrl} alt="Logo" className="h-24 w-auto object-contain" crossOrigin="anonymous" />
                 ) : (
-                    <div className="h-20 w-20 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
+                    <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
                 )}
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-black uppercase tracking-tighter" style={{ color: primaryIndigo }}>{workspace?.name || 'OFFICIAL BUSINESS'}</h1>
-                    <p className="font-bold text-[11px] opacity-70 uppercase tracking-widest">Official Business Quotation</p>
+                    <h1 className="text-3xl font-black uppercase tracking-tighter" style={{ color: primaryIndigo }}>Quotation</h1>
+                    <p className="font-bold text-[11px] text-black opacity-70 uppercase tracking-widest">Business Proposal</p>
                 </div>
                 </div>
                 <div className="text-right space-y-1.5">
-                    <p className="font-black text-[12px] uppercase">Contact Details</p>
-                    <p className="text-[10px] font-medium max-w-[220px] leading-tight">{workspace?.address || 'Kenya'}</p>
-                    <p className="text-[10px] font-bold">Tel: {workspace?.phone || 'N/A'}</p>
-                    <p className="text-[10px] font-bold">Email: {workspace?.email || 'N/A'}</p>
-                    <div className="pt-4">
+                    <p className="font-black text-[12px] uppercase text-black">Contact Info</p>
+                    <p className="text-[10px] font-bold text-black">Tel: {workspace?.phone || 'N/A'}</p>
+                    <div className="pt-2">
                         <p className="text-[14px] font-black uppercase text-blue-800">Quote No: {quoteNo}</p>
-                        <p className="text-[11px] font-bold">Valid Until: {format(new Date(new Date(docSnapshot.generatedDate).setDate(new Date(docSnapshot.generatedDate).getDate() + 30)), "dd MMM yyyy")}</p>
+                        <p className="text-[11px] font-bold text-black opacity-50">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
                     </div>
                 </div>
             </header>
           )}
 
           {pageIdx === 0 && (
-            <section className="grid grid-cols-2 gap-8 mb-10">
-                <div className="p-6 rounded-2xl space-y-1.5 border-2 border-slate-100 shadow-sm bg-gray-50">
-                    <h3 className="font-black text-[12px] mb-3 uppercase text-blue-900 tracking-tight underline decoration-2 underline-offset-4">Quoted To</h3>
-                    <p className="font-black text-sm uppercase">{customer.name}</p>
-                    <p className="text-[11px] font-medium text-black/70 leading-tight">{customer.address || 'Nairobi, Kenya'}</p>
-                    <p className="text-[11px] font-black text-black/70">{customer.phone}</p>
+            <section className="grid grid-cols-2 gap-4 mb-6">
+                <div className="p-4 rounded-xl border bg-gray-50">
+                    <h3 className="font-black text-[10px] mb-2 uppercase text-blue-900 tracking-tight underline">Quoted To</h3>
+                    <p className="font-black text-sm uppercase text-black">{customer.name}</p>
+                    <p className="text-[11px] font-medium text-black opacity-70">{customer.address || 'Kenya'}</p>
+                    <p className="text-[11px] font-black text-black">{customer.phone}</p>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                    <div className="p-2 bg-slate-50 border rounded-lg border-black/5">
+                        <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest mb-0.5">Bank Settlement</p>
+                        <p className="text-[8px] font-black text-black">Bank DTB; NAME-MATESH TECHNOLOGIES</p>
+                        <p className="text-[8px] font-black text-black uppercase">ACC NO: 0084976001</p>
+                    </div>
+                    <div className="p-2 bg-slate-50 border rounded-lg border-black/5">
+                        <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest mb-0.5">Mobile Payment</p>
+                        <p className="text-[8px] font-black text-black">PAYBILL NO: 516600 | ACC NO: 5084975001</p>
+                    </div>
                 </div>
             </section>
           )}
 
           {pageIdx > 0 && (
             <div className="mb-6">
-                <p className="text-[11px] font-black uppercase opacity-40 tracking-widest">Quotation Continued: {quoteNo} - Page {pageIdx + 1}</p>
+                <p className="text-[11px] font-black uppercase opacity-40 tracking-widest text-black">Quotation Continued: {quoteNo} - Page {pageIdx + 1}</p>
             </div>
           )}
 
@@ -107,18 +114,17 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                     {pageItems.map((item: any, idx: number) => {
                         const unitPrice = item.price || item.unitPrice;
                         const rowSubtotal = item.quantity * unitPrice;
-                        // STRICT SEQUENTIAL NUMBERING
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
 
                         return (
                             <tr key={idx} className="border-b border-gray-100">
                                 <td className="p-4 align-top border-r border-gray-100">
-                                    <p className="font-black text-[13px] uppercase leading-tight">{itemNumber}. {item.name || item.description}</p>
+                                    <p className="font-black text-[13px] uppercase leading-tight text-black">{itemNumber}. {item.name || item.description}</p>
                                 </td>
-                                <td className="p-4 text-right text-[11px] font-bold border-r border-gray-100">{applyVat ? '16%' : '0%'}</td>
-                                <td className="p-4 text-right text-[11px] font-black border-r border-gray-100">{item.quantity}</td>
-                                <td className="p-4 text-right text-[11px] font-medium border-r border-gray-100">KES {formatCurrency(unitPrice)}</td>
-                                <td className="p-4 px-4 text-right text-[13px] font-black">{formatCurrency(rowSubtotal)}</td>
+                                <td className="p-4 text-right text-[11px] font-bold border-r border-gray-100 text-black">{applyVat ? '16%' : '0%'}</td>
+                                <td className="p-4 text-right text-[11px] font-black border-r border-gray-100 text-black">{item.quantity}</td>
+                                <td className="p-4 text-right text-[11px] font-medium border-r border-gray-100 text-black">KES {formatCurrency(unitPrice)}</td>
+                                <td className="p-4 px-4 text-right text-[13px] font-black text-black">{formatCurrency(rowSubtotal)}</td>
                             </tr>
                         );
                     })}
@@ -128,22 +134,18 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
             {pageIdx === pages.length - 1 && (
                 <div className="flex justify-between items-start mt-8">
                     <div className="max-w-[400px]">
-                        <p className="text-[11px] font-black uppercase text-black leading-relaxed border-l-4 border-black pl-4">Amount in words: {numberToWords(total)}</p>
-                        <div className="mt-10 space-y-3">
-                            <h4 className="text-[10px] font-black uppercase text-blue-900 underline underline-offset-4">Terms & Conditions</h4>
-                            <p className="text-[11px] leading-relaxed text-gray-600 font-medium">
-                                1. Validity: This quotation is valid for 30 days from the date of issuance.<br/>
-                                2. Delivery: Items are dispatched within 24 hours of full payment confirmation.
-                            </p>
+                        <p className="text-[11px] font-black uppercase text-black leading-relaxed border-l-4 border-black pl-4">Amount: {numberToWords(total)}</p>
+                        <div className="mt-10 space-y-2">
+                            <h4 className="text-[10px] font-black uppercase text-blue-900">Valid for 30 days</h4>
                         </div>
                     </div>
                     <div className="w-[350px] space-y-3">
                         <div className="flex justify-between items-center p-2 border-b border-black/10">
-                            <span className="font-bold opacity-60 uppercase text-[10px]">Net Quote Subtotal</span>
-                            <span className="font-black text-[13px]">KES {formatCurrency(subtotal || total)}</span>
+                            <span className="font-bold text-black opacity-60 uppercase text-[10px]">Quote Subtotal</span>
+                            <span className="font-black text-[13px] text-black">KES {formatCurrency(subtotal || total)}</span>
                         </div>
                         <div className="pt-4 border-t-4 border-black flex justify-between items-center px-2">
-                            <span className="text-[14px] font-black uppercase">Grand Total</span>
+                            <span className="text-[14px] font-black uppercase text-black">Grand Total</span>
                             <span className="text-3xl font-black text-blue-900 tracking-tighter">KES {formatCurrency(total)}</span>
                         </div>
                     </div>
@@ -151,9 +153,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
             )}
           </section>
 
-          {/* FOOTER */}
           <footer className="mt-auto pt-8 border-t-2 border-gray-200">
-             {/* BRANDED FOOTER - Only on Last Page */}
              {pageIdx === pages.length - 1 && (
                 <div className="text-center mb-4 space-y-1">
                     <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
@@ -161,8 +161,6 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                     <p className="text-[8px] font-bold text-black opacity-60">Phone: {workspace?.phone || 'N/A'} . Email: {workspace?.email || 'N/A'}</p>
                 </div>
              )}
-
-             {/* UNIVERSAL TRACKING - Every Page in Pure Black */}
              <div className="flex justify-between items-end">
                 <div className="text-[8px] font-black uppercase tracking-tighter text-black">
                     GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}

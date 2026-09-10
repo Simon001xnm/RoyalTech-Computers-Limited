@@ -14,7 +14,7 @@ export function RepairNotePdf({ document: docSnapshot }: { document: AppDocument
   if (!docSnapshot?.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
   const workspace = docSnapshot.data.workspace || cloudCompany;
   const { customer, laptop, details } = docSnapshot.data;
-  const primaryIndigo = "#1d4ed8"; // Professional Blue
+  const primaryIndigo = "#1d4ed8"; 
   const secondaryIndigo = "#f8fafc";
   
   const contactInfo = workspace?.phone || workspace?.email || 'Nairobi, Kenya';
@@ -29,8 +29,8 @@ export function RepairNotePdf({ document: docSnapshot }: { document: AppDocument
         <div className="space-y-2">
             <h1 className="text-2xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Repair Note</h1>
             <div className="space-y-0.5 text-[10px] font-medium text-black">
-                <p><span className="w-20 inline-block opacity-60">Job No</span> <span className="font-bold">{jobNo}</span></p>
-                <p><span className="w-20 inline-block opacity-60">In-Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
+                <p><span className="w-20 inline-block opacity-60 text-black">Job No</span> <span className="font-bold text-black">{jobNo}</span></p>
+                <p><span className="w-20 inline-block opacity-60 text-black">In-Date</span> <span className="font-bold text-black">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
             </div>
         </div>
         <div className="flex flex-col items-end">
@@ -45,13 +45,13 @@ export function RepairNotePdf({ document: docSnapshot }: { document: AppDocument
       <section className="grid grid-cols-2 gap-3 mb-6">
         <div className="p-3 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
             <h3 className="font-medium text-[12px] mb-1" style={{ color: primaryIndigo }}>Service Center</h3>
-            <p className="font-bold uppercase">{workspace?.name || 'The Business'}</p>
-            <p className="text-[9px] font-medium text-black/70">{workspace?.address || 'Kenya'}</p>
+            <p className="font-bold uppercase text-black">{workspace?.name || 'The Business'}</p>
+            <p className="text-[9px] font-medium text-black opacity-70">{workspace?.address || 'Kenya'}</p>
         </div>
-        <div className="p-3 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
-            <h3 className="font-medium text-[12px] mb-1" style={{ color: primaryIndigo }}>Customer</h3>
-            <p className="font-bold">{customer?.name || 'VALUED CLIENT'}</p>
-            <p className="text-[9px] font-medium text-black/70">{customer?.phone}</p>
+        <div className="p-3 rounded-lg space-y-0.5 border border-black/5">
+            <h3 className="font-medium text-[10px] mb-1 text-blue-900">Payment Instructions</h3>
+            <p className="text-[8px] font-black text-black">BANK: DTB - ACC: 0084976001</p>
+            <p className="text-[8px] font-black text-black">MPESA: PAYBILL: 516600 - ACC: 5084975001</p>
         </div>
       </section>
 
@@ -61,27 +61,27 @@ export function RepairNotePdf({ document: docSnapshot }: { document: AppDocument
             {laptop ? (
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <p className="text-[8px] uppercase opacity-50">Model</p>
-                        <p className="font-bold text-[10px]">{laptop.model}</p>
+                        <p className="text-[8px] uppercase opacity-50 text-black">Model</p>
+                        <p className="font-bold text-[10px] text-black">{laptop.model}</p>
                     </div>
                     <div>
-                        <p className="text-[8px] uppercase opacity-50">Serial Number</p>
-                        <p className="font-bold text-[10px] uppercase">{laptop.serialNumber}</p>
+                        <p className="text-[8px] uppercase opacity-50 text-black">Serial Number</p>
+                        <p className="font-bold text-[10px] uppercase text-black">{laptop.serialNumber}</p>
                     </div>
                 </div>
-            ) : <p className="italic opacity-50">No device linked.</p>}
+            ) : <p className="italic opacity-50 text-black">No device linked.</p>}
         </div>
 
         <div className="space-y-2">
-            <h4 className="text-[9px] font-black uppercase tracking-widest opacity-60">Reported Problem / Job Description</h4>
+            <h4 className="text-[9px] font-black uppercase tracking-widest opacity-60 text-black">Reported Problem / Job Description</h4>
             <div className="min-h-[150px] p-4 border-2 border-dashed rounded-xl bg-gray-50">
-                <p className="text-[10px] font-medium leading-relaxed">{details || 'No details provided.'}</p>
+                <p className="text-[10px] font-medium leading-relaxed text-black">{details || 'No details provided.'}</p>
             </div>
         </div>
 
         <div className="p-4 border rounded-xl space-y-2">
             <h4 className="text-[9px] font-black uppercase tracking-widest text-destructive">Disclaimer & Terms</h4>
-            <div className="grid grid-cols-1 gap-1 text-[8px] font-medium opacity-70 leading-tight">
+            <div className="grid grid-cols-1 gap-1 text-[8px] font-medium opacity-70 leading-tight text-black">
                 <p>1. BACKUP: Client must backup all data. We are not liable for data loss.</p>
                 <p>2. DIAGNOSTICS: Non-refundable fee may apply even if repairs are declined.</p>
                 <p>3. WARRANTY: 30 days warranty on parts replaced by us.</p>
@@ -92,18 +92,18 @@ export function RepairNotePdf({ document: docSnapshot }: { document: AppDocument
         <div className="mt-12 grid grid-cols-2 gap-10">
             <div className="space-y-4">
                 <div className="h-10 border-b border-black border-dotted"></div>
-                <p className="text-[9px] font-black uppercase text-center opacity-40">Client Sign</p>
+                <p className="text-[9px] font-black uppercase text-center opacity-40 text-black">Client Sign</p>
             </div>
             <div className="space-y-4">
                 <div className="h-10 border-b border-black border-dotted"></div>
-                <p className="text-[9px] font-black uppercase text-center opacity-40">Service Agent</p>
+                <p className="text-[9px] font-black uppercase text-center opacity-40 text-black">Service Agent</p>
             </div>
         </div>
       </section>
 
       <footer className="mt-auto pt-6 text-center border-t border-gray-100">
          <p className="text-[10px] font-bold text-black">
-            Goods once sold cannot be returned &bull; {contactInfo}
+            THIS DOCUMENT IS ELECTRONICALLY GENERATED &bull; {contactInfo}
          </p>
       </footer>
     </div>

@@ -16,7 +16,7 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
   
   const workspace = docSnapshot.data.workspace || cloudCompany;
   const { customer, items, details } = docSnapshot.data;
-  const primaryIndigo = "#1d4ed8"; // Professional Blue
+  const primaryIndigo = "#1d4ed8"; 
   const secondaryIndigo = "#f8fafc";
   
   const contactInfo = workspace?.phone || workspace?.email || 'Nairobi, Kenya';
@@ -32,8 +32,8 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
         <div className="space-y-2">
             <h1 className="text-2xl font-medium tracking-tight" style={{ color: primaryIndigo }}>Delivery Note</h1>
             <div className="space-y-0.5 text-[10px] font-medium text-black">
-                <p><span className="w-20 inline-block opacity-60">Number</span> <span className="font-bold">{workspace?.deliveryPrefix || 'DLV'}{deliveryNo}</span></p>
-                <p><span className="w-20 inline-block opacity-60">Date</span> <span className="font-bold">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
+                <p><span className="w-20 inline-block opacity-60 text-black">Number</span> <span className="font-bold text-black">{workspace?.deliveryPrefix || 'DLV'}{deliveryNo}</span></p>
+                <p><span className="w-20 inline-block opacity-60 text-black">Date</span> <span className="font-bold text-black">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
             </div>
         </div>
         <div className="flex flex-col items-end">
@@ -48,14 +48,12 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
       <section className="grid grid-cols-2 gap-3 mb-6">
         <div className="p-3 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
             <h3 className="font-medium text-[12px] mb-1" style={{ color: primaryIndigo }}>Dispatched From</h3>
-            <p className="font-bold uppercase">{workspace?.name || 'The Business'}</p>
-            <p className="text-[9px] font-medium text-black/70">{workspace?.address || 'Kenya'}</p>
+            <p className="font-bold uppercase text-black">{workspace?.name || 'The Business'}</p>
+            <p className="text-[9px] font-medium text-black opacity-70">{workspace?.address || 'Kenya'}</p>
         </div>
-        <div className="p-3 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
-            <h3 className="font-medium text-[12px] mb-1" style={{ color: primaryIndigo }}>Deliver To</h3>
-            <p className="font-bold">{customer?.name || 'VALUED CLIENT'}</p>
-            <p className="text-[9px] font-medium text-black/70">{customer?.address || 'Nairobi, Kenya'}</p>
-            <p className="text-[9px] font-medium text-black/70">{customer?.phone}</p>
+        <div className="p-3 rounded-lg border border-black/5 bg-slate-50 flex flex-col justify-center">
+            <p className="text-[8px] font-black text-black">BANK: DTB - ACC: 0084976001</p>
+            <p className="text-[8px] font-black text-black">MPESA: PAYBILL: 516600 | ACC: 5084975001</p>
         </div>
       </section>
 
@@ -72,10 +70,10 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
                 {items?.map((item: any, idx: number) => (
                     <tr key={idx} className="border-b border-gray-100">
                         <td className="py-3 px-3 align-top">
-                            <p className="font-bold text-[10px] uppercase">{item.description || item.name}</p>
+                            <p className="font-bold text-[10px] uppercase text-black">{item.description || item.name}</p>
                         </td>
-                        <td className="py-3 text-center text-[9px] font-mono uppercase">{item.serialNumber || 'N/A'}</td>
-                        <td className="py-3 px-3 text-right text-[9px] font-bold">{item.quantity}</td>
+                        <td className="py-3 text-center text-[9px] font-mono uppercase text-black">{item.serialNumber || 'N/A'}</td>
+                        <td className="py-3 px-3 text-right text-[9px] font-bold text-black">{item.quantity}</td>
                     </tr>
                 ))}
             </tbody>
@@ -83,29 +81,26 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
 
         {details && (
             <div className="mt-6 p-4 border rounded-xl bg-gray-50">
-                <h4 className="font-bold text-[9px] uppercase opacity-60 mb-2">Instructions / Notes</h4>
-                <p className="text-[10px] leading-relaxed">{details}</p>
+                <h4 className="font-bold text-[9px] uppercase opacity-60 mb-2 text-black">Instructions / Notes</h4>
+                <p className="text-[10px] leading-relaxed text-black">{details}</p>
             </div>
         )}
 
         <div className="mt-12 grid grid-cols-2 gap-10">
             <div className="space-y-6">
                 <div className="h-12 border-b border-black"></div>
-                <p className="text-[9px] font-black uppercase text-center opacity-40">Dispatched By (Sign & Stamp)</p>
+                <p className="text-[9px] font-black uppercase text-center opacity-40 text-black">Dispatched By (Sign & Stamp)</p>
             </div>
             <div className="space-y-6">
                 <div className="h-12 border-b border-black"></div>
-                <p className="text-[9px] font-black uppercase text-center opacity-40">Received By (Sign & Stamp)</p>
+                <p className="text-[9px] font-black uppercase text-center opacity-40 text-black">Received By (Sign & Stamp)</p>
             </div>
         </div>
       </section>
 
       <footer className="mt-auto pt-6 text-center border-t border-gray-100">
-         <p className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-2">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
-         <p className="text-[10px] font-bold text-black tracking-tight">
-            Goods once sold cannot be returned
-         </p>
-         <div className="space-y-1 text-[9px] font-bold text-gray-500 mt-4">
+         <p className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-2 text-black">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+         <div className="space-y-1 text-[9px] font-bold text-black opacity-50 mt-4">
             {website && <p>{website}</p>}
             <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
          </div>

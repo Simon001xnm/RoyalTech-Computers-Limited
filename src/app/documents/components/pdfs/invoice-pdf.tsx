@@ -15,7 +15,7 @@ import { useMemo } from 'react';
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 500;      // Branded Header + Compact Payment Info
+const HEADER_P1 = 520;      // Branded Header + Payment Info
 const HEADER_PX = 100;      // "Continued" header height
 const TABLE_HEADER = 40;    
 const FOOTER_RESERVE = 140;  
@@ -46,9 +46,13 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
     address: data.customerAddress || 'Nairobi, Kenya'
   };
 
-  const { subtotal = 0, total, previousBalance = 0, vat = 0 } = data;
-  const currentTotal = total || subtotal || 0;
-  const totalAmountDue = currentTotal + (Number(previousBalance) || 0);
+  const subtotal = Number(data.subtotal || 0);
+  const vat = Number(data.vat || 0);
+  const previousBalance = Number(data.previousBalance || 0);
+  const currentTotal = Number(data.total || (subtotal + vat));
+  const amountPaid = Number(data.amountPaid || 0);
+  const balanceToday = currentTotal - amountPaid;
+  const totalAmountDue = balanceToday + previousBalance;
 
   const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat("en-KE", {
@@ -115,19 +119,19 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                 </div>
                 
                 <div className="text-right w-[45%] space-y-0.5">
-                    <p className="text-[8px] font-bold leading-tight uppercase">{workspace?.address || 'Nairobi, Kenya'}</p>
-                    <p className="text-[8px] font-bold">Tel: {workspace?.phone || 'N/A'}</p>
-                    <p className="text-[8px] font-bold lowercase opacity-70">Email: {workspace?.email || 'N/A'}</p>
+                    <p className="text-[8px] font-bold leading-tight uppercase text-black">{workspace?.address || 'Nairobi, Kenya'}</p>
+                    <p className="text-[8px] font-bold text-black">Tel: {workspace?.phone || 'N/A'}</p>
+                    <p className="text-[8px] font-bold lowercase text-black opacity-70">Email: {workspace?.email || 'N/A'}</p>
                     <div className="pt-2">
                         <p className="text-[11px] font-black uppercase" style={{ color: primaryBlue }}>INVOICE NO: #{invoiceNo}</p>
-                        <p className="text-[8px] font-bold text-muted-foreground uppercase">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
+                        <p className="text-[8px] font-bold text-black opacity-50 uppercase">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
                     </div>
                 </div>
             </header>
           ) : (
             <div className="mb-4 border-b pb-2 flex justify-between items-end">
-                <p className="text-[10px] font-black uppercase opacity-40 tracking-widest">Invoice Continued: #{invoiceNo}</p>
-                <p className="text-[9px] font-black">Page {pageIdx + 1}</p>
+                <p className="text-[10px] font-black uppercase opacity-40 tracking-widest text-black">Invoice Continued: #{invoiceNo}</p>
+                <p className="text-[9px] font-black text-black">Page {pageIdx + 1}</p>
             </div>
           )}
 
@@ -135,7 +139,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             <>
               <div className="flex w-full mb-3 border border-black rounded-sm overflow-hidden">
                   <div className="w-[60%] border-r border-black py-1.5 bg-slate-50 flex items-center justify-center">
-                      <p className="text-[9px] font-black uppercase tracking-widest opacity-70">Remittance Advice</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-black opacity-70">Remittance Advice</p>
                   </div>
                   <div className="w-[40%] py-1.5 bg-blue-50 flex items-center justify-center">
                       <p className="text-[9px] font-black uppercase tracking-widest text-blue-900/60">Account Summary</p>
@@ -147,35 +151,35 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                       <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1">
                               <p className="text-[7px] font-black uppercase text-blue-800 tracking-widest">Billing From</p>
-                              <p className="text-[10px] font-black uppercase leading-tight">{workspace?.name || 'The Shop'}</p>
-                              <p className="text-[8px] font-medium opacity-50 uppercase leading-tight">{workspace?.address || 'Kenya'}</p>
+                              <p className="text-[10px] font-black uppercase leading-tight text-black">{workspace?.name || 'The Shop'}</p>
+                              <p className="text-[8px] font-medium text-black opacity-50 uppercase leading-tight">{workspace?.address || 'Kenya'}</p>
                           </div>
                           <div className="space-y-1">
                               <p className="text-[7px] font-black uppercase text-blue-800 tracking-widest">Billing To</p>
-                              <p className="text-[10px] font-black uppercase leading-tight">{customer.name}</p>
-                              <p className="text-[8px] font-medium opacity-50 uppercase leading-tight">{customer.address || 'Nairobi, Kenya'}</p>
-                              <p className="text-[8px] font-bold">{customer.phone}</p>
+                              <p className="text-[10px] font-black uppercase leading-tight text-black">{customer.name}</p>
+                              <p className="text-[8px] font-medium text-black opacity-50 uppercase leading-tight">{customer.address || 'Nairobi, Kenya'}</p>
+                              <p className="text-[8px] font-bold text-black">{customer.phone}</p>
                           </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 pt-1">
                         <div className="p-2 bg-slate-50 border rounded-md border-black/5">
                             <p className="text-[6px] font-black uppercase text-blue-900/40 tracking-widest mb-0.5">Bank Payment</p>
-                            <p className="text-[8px] font-black">Bank DTB; NAME-MATESH TECHNOLOGIES</p>
-                            <p className="text-[8px] font-black uppercase">ACC NO: 0084976001</p>
+                            <p className="text-[8px] font-black text-black">Bank DTB; NAME-MATESH TECHNOLOGIES</p>
+                            <p className="text-[8px] font-black uppercase text-black">ACC NO: 0084976001</p>
                         </div>
                         <div className="p-2 bg-slate-50 border rounded-md border-black/5">
                             <p className="text-[6px] font-black uppercase text-blue-900/40 tracking-widest mb-0.5">Lipan Na M-Pesa</p>
-                            <p className="text-[8px] font-black">PAYBILL NO: 516600</p>
-                            <p className="text-[8px] font-black">ACC NO: 5084975001</p>
+                            <p className="text-[8px] font-black text-black">PAYBILL NO: 516600</p>
+                            <p className="text-[8px] font-black text-black">ACC NO: 5084975001</p>
                         </div>
                       </div>
                   </div>
                   <div className="bg-blue-50/40 p-5 flex flex-col justify-center border-l border-black/5 rounded-r-lg">
-                      <p className="text-[9px] font-bold opacity-40 uppercase tracking-widest mb-0.5">Net Balance Due</p>
+                      <p className="text-[9px] font-bold text-black opacity-40 uppercase tracking-widest mb-0.5">Net Balance Due</p>
                       <p className="text-[24px] font-black tracking-tighter leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(totalAmountDue)}</p>
                       <div className="mt-2 pt-2 border-t border-blue-200">
-                         <p className="text-[8px] font-bold uppercase tracking-tight">Term: <span className="font-black">DUE ON RECEIPT</span></p>
+                         <p className="text-[8px] font-bold uppercase tracking-tight text-black">Term: <span className="font-black">DUE ON RECEIPT</span></p>
                       </div>
                   </div>
               </div>
@@ -203,18 +207,18 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
                         return (
                             <tr key={idx} className="border-b border-gray-100 last:border-0">
-                                <td className="p-2.5 text-[9px] font-black text-center opacity-20">
+                                <td className="p-2.5 text-[9px] font-black text-center text-black opacity-20">
                                     {itemNumber.toString().padStart(2, '0')}
                                 </td>
                                 <td className="p-2.5">
-                                    <p className="font-black uppercase leading-tight text-[10px] tracking-tight">{item.name || item.description}</p>
+                                    <p className="font-black uppercase leading-tight text-[10px] tracking-tight text-black">{item.name || item.description}</p>
                                     {item.serialNumber && (
                                         <p className="text-[7px] text-gray-400 font-mono mt-0.5 uppercase tracking-tighter">S/N: {item.serialNumber}</p>
                                     )}
                                 </td>
-                                <td className="p-2.5 text-center font-black text-[9px]">{qty}</td>
-                                <td className="p-2.5 text-right tabular-nums font-bold text-[9px] opacity-70">{formatCurrency(unitPrice)}</td>
-                                <td className="p-2.5 text-right tabular-nums font-black text-[10px]">{formatCurrency(rowTotal)}</td>
+                                <td className="p-2.5 text-center font-black text-[9px] text-black">{qty}</td>
+                                <td className="p-2.5 text-right tabular-nums font-bold text-[9px] text-black opacity-70">{formatCurrency(unitPrice)}</td>
+                                <td className="p-2.5 text-right tabular-nums font-black text-[10px] text-black">{formatCurrency(rowTotal)}</td>
                             </tr>
                         );
                     })}
@@ -233,20 +237,20 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                                     {numberToWords(currentTotal)}
                                 </p>
                             </div>
-                            <div className="text-[8px] font-medium text-muted-foreground italic max-w-[280px]">
+                            <div className="text-[8px] font-medium text-black italic max-w-[280px]">
                                 * All items remain property of {workspace?.name || 'the seller'} until the total balance is cleared.
                             </div>
                         </div>
                         
                         <div className="w-[300px] space-y-0">
                             <div className="flex justify-between items-center p-2.5 bg-slate-50/50 border-b border-white">
-                                <span className="font-bold opacity-40 uppercase text-[8px]">Invoice Subtotal</span>
-                                <span className="font-black text-[10px]">{formatCurrency(subtotal)}</span>
+                                <span className="font-bold text-black opacity-40 uppercase text-[8px]">Invoice Subtotal</span>
+                                <span className="font-black text-[10px] text-black">{formatCurrency(subtotal)}</span>
                             </div>
                             {vat > 0 && (
                                 <div className="flex justify-between items-center p-2.5 bg-slate-50/50 border-b border-white">
-                                    <span className="font-bold opacity-40 uppercase text-[8px]">Tax Amount (16%)</span>
-                                    <span className="font-black text-[10px]">{formatCurrency(vat)}</span>
+                                    <span className="font-bold text-black opacity-40 uppercase text-[8px]">Tax Amount (16%)</span>
+                                    <span className="font-black text-[10px] text-black">{formatCurrency(vat)}</span>
                                 </div>
                             )}
                             <div className="flex justify-between items-center p-2.5 bg-orange-50/30 border-b border-white">
