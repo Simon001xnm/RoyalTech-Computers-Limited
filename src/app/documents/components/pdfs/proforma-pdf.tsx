@@ -10,17 +10,17 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Detailed Dynamic Paginated Proforma Invoice
- * Updated with horizontal company name lock.
+ * Recalibrated for large branding and font sizes.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 320;      
-const HEADER_PX = 120;      
-const TABLE_HEADER = 45;    
-const FOOTER_RESERVE = 90;  
-const ROW_BASE = 40;        
-const SUMMARY_BLOCK = 260;   
+const HEADER_P1 = 420;      
+const HEADER_PX = 150;      
+const TABLE_HEADER = 50;    
+const FOOTER_RESERVE = 120;  
+const ROW_BASE = 44;        
+const SUMMARY_BLOCK = 280;   
 const CHARS_PER_LINE = 50;   
 
 export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -101,9 +101,9 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
         >
           {pageIdx === 0 ? (
             <header className="flex justify-between items-start mb-6 pb-6 border-b">
-                <div className="flex items-center gap-6 w-[75%]">
+                <div className="flex items-center gap-6 flex-1 overflow-hidden">
                   {workspace?.logoUrl ? (
-                      <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain" crossOrigin="anonymous" />
+                      <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain shrink-0" crossOrigin="anonymous" />
                   ) : (
                       <div className="h-24 w-24 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300 shrink-0">LOGO</div>
                   )}
@@ -114,7 +114,7 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                   </div>
                 </div>
                 
-                <div className="text-right w-[24%] space-y-1">
+                <div className="text-right ml-4 space-y-1 shrink-0">
                     <p className="text-[10px] font-bold leading-tight uppercase text-black">{workspace?.address || 'Nairobi, Kenya'}</p>
                     <p className="text-[10px] font-bold text-black">Tel: {workspace?.phone || 'N/A'}</p>
                     <div className="pt-2">
@@ -149,12 +149,12 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
 
                     <div className="grid grid-cols-2 gap-4 pt-2">
                       <div className="p-3 bg-slate-50 border rounded-lg border-black/5">
-                          <p className="text-[8px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Bank Payment</p>
+                          <p className="text-[8px] font-black uppercase text-blue-900/60 tracking-widest mb-1.5">Bank Payment</p>
                           <p className="text-[10px] font-black text-black leading-tight uppercase">Bank DTB; NAME-MATESH TECHNOLOGIES LIMITED</p>
                           <p className="text-[11px] font-black uppercase text-black">ACC NO: 0084976001</p>
                       </div>
                       <div className="p-3 bg-slate-50 border rounded-lg border-black/5">
-                          <p className="text-[8px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Lipan Na M-Pesa</p>
+                          <p className="text-[8px] font-black uppercase text-blue-900/60 tracking-widest mb-1.5">Lipan Na M-Pesa</p>
                           <p className="text-[10px] font-black text-black">PAYBILL NO: 516600</p>
                           <p className="text-[11px] font-black text-black">ACC NO: 5084975001</p>
                       </div>
