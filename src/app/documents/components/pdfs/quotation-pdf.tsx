@@ -9,17 +9,17 @@ import { numberToWords, cn } from "@/lib/utils";
 import { useMemo } from 'react';
 
 /**
- * @fileOverview High-Fidelity Dynamic Paginated Quotation
- * Updated with user-requested terms and payment details.
+ * @fileOverview High-Fidelity Detailed Dynamic Paginated Quotation
+ * designed to match the Invoice layout style.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 300;      // Slightly adjusted for payment details
+const HEADER_P1 = 260;      
 const HEADER_PX = 100;      
-const TABLE_HEADER = 50;    
-const FOOTER_RESERVE = 80;  // Adjusted for longer disclaimer
-const ROW_BASE = 36;        
+const TABLE_HEADER = 40;    
+const FOOTER_RESERVE = 80;  
+const ROW_BASE = 34;        
 const SUMMARY_BLOCK = 240;   
 const CHARS_PER_LINE = 55;   
 
@@ -41,13 +41,14 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
   
   const customer = data.customer || {
     name: data.customerName || 'VALUED CLIENT',
-    phone: '',
-    email: '',
-    address: 'Nairobi, Kenya'
+    phone: data.customerPhone || '',
+    email: data.customerEmail || '',
+    address: data.customerAddress || 'Nairobi, Kenya'
   };
 
   const subtotal = Number(data.subtotal || 0);
-  const total = Number(data.total || subtotal);
+  const vat = Number(data.vat || 0);
+  const total = Number(data.total || (subtotal + vat));
 
   const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat("en-KE", {
@@ -74,12 +75,13 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
         const lines = Math.max(1, Math.ceil(descText.length / CHARS_PER_LINE));
         const itemHeight = ROW_BASE + (lines > 1 ? (lines - 1) * 15 : 0);
 
-        const spaceNeeded = itemHeight + (isLastItem ? SUMMARY_BLOCK : 0);
+        const totalsSpace = isLastItem ? SUMMARY_BLOCK : 0;
+        const spaceNeeded = itemHeight + totalsSpace;
 
         if (currentHeightUsed + spaceNeeded > PAGE_HEIGHT && currentPageItems.length > 0) {
             calculatedPages.push(currentPageItems);
             currentPageItems = [item];
-            currentHeightUsed = HEADER_PX + TABLE_HEADER + FOOTER_RESERVE + itemHeight + (isLastItem ? SUMMARY_BLOCK : 0);
+            currentHeightUsed = HEADER_PX + TABLE_HEADER + FOOTER_RESERVE + itemHeight + totalsSpace;
         } else {
             currentPageItems.push(item);
             currentHeightUsed += itemHeight;
@@ -103,21 +105,21 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                   {workspace?.logoUrl ? (
                       <img src={workspace.logoUrl} alt="Logo" className="h-16 w-auto object-contain" crossOrigin="anonymous" />
                   ) : (
-                      <div className="h-10 w-10 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300 uppercase">LOGO</div>
+                      <div className="h-12 w-12 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
                   )}
                   <div>
                     <h1 className="text-[20px] font-black uppercase tracking-tighter leading-tight" style={{ color: primaryBlue }}>
-                      {workspace?.name || 'MATESH TECHNOLOGIES'}
+                      {workspace?.name || 'OFFICIAL BUSINESS'}
                     </h1>
                   </div>
                 </div>
                 
                 <div className="text-right w-[45%] space-y-0.5">
-                    <p className="text-[10px] font-black uppercase" style={{ color: primaryBlue }}>QUOTE: #{quoteNo}</p>
-                    <p className="text-[8px] font-bold text-black opacity-50 uppercase">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
-                    <div className="pt-1 text-[8px] font-bold leading-tight uppercase text-black">
-                        <p>{workspace?.address || 'Nairobi, Kenya'}</p>
-                        <p>Tel: {workspace?.phone || 'N/A'}</p>
+                    <p className="text-[8px] font-bold leading-tight uppercase text-black">{workspace?.address || 'Nairobi, Kenya'}</p>
+                    <p className="text-[8px] font-bold text-black">Tel: {workspace?.phone || 'N/A'}</p>
+                    <div className="pt-1">
+                        <p className="text-[10px] font-black uppercase" style={{ color: primaryBlue }}>QUOTATION NO: #{quoteNo}</p>
+                        <p className="text-[8px] font-bold text-black opacity-50 uppercase">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
                     </div>
                 </div>
             </header>
@@ -129,27 +131,36 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
           )}
 
           {pageIdx === 0 && (
-            <div className="grid grid-cols-[55%_45%] gap-4 mb-4">
-                <div className="space-y-3">
-                    <div className="p-3 bg-slate-50 border rounded-xl border-black/5 space-y-1">
-                        <p className="text-[7px] font-black uppercase text-blue-900/60 tracking-widest">Client Details</p>
-                        <p className="text-[10px] font-black uppercase tracking-tight text-black">{customer.name}</p>
-                        <p className="text-[8px] font-medium text-black opacity-50 uppercase">{customer.address || 'Kenya'}</p>
+            <div className="grid grid-cols-[60%_40%] gap-0 mb-4 border-b pb-4">
+                <div className="pr-8 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <p className="text-[7px] font-black uppercase text-blue-800 tracking-widest">Billing From</p>
+                            <p className="text-[9px] font-black uppercase leading-tight text-black">{workspace?.name || 'The Shop'}</p>
+                            <p className="text-[8px] font-medium text-black opacity-50 uppercase leading-tight">{workspace?.address || 'Kenya'}</p>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-[7px] font-black uppercase text-blue-800 tracking-widest">Billing To</p>
+                            <p className="text-[9px] font-black uppercase leading-tight text-black">{customer.name}</p>
+                            <p className="text-[8px] font-medium text-black opacity-50 uppercase leading-tight">{customer.address || 'Nairobi, Kenya'}</p>
+                            <p className="text-[8px] font-bold text-black">{customer.phone}</p>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="p-2 bg-slate-50 border rounded-lg border-black/5">
-                            <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest mb-0.5">Bank Payment</p>
-                            <p className="text-[8px] font-black text-black leading-tight">DTB: MATESH TECHNOLOGIES</p>
-                            <p className="text-[8px] font-black text-black uppercase tracking-tighter">ACC: 0084976001</p>
-                        </div>
-                        <div className="p-2 bg-slate-50 border rounded-lg border-black/5">
-                            <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest mb-0.5">Lipa Na M-Pesa</p>
-                            <p className="text-[8px] font-black text-black">PAYBILL: 516600</p>
-                            <p className="text-[8px] font-black text-black uppercase tracking-tighter">ACC: 5084975001</p>
-                        </div>
+
+                    <div className="grid grid-cols-2 gap-4 pt-1">
+                      <div className="p-2 bg-slate-50 border rounded-md border-black/5">
+                          <p className="text-[6px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Bank Payment</p>
+                          <p className="text-[8px] font-black text-black leading-tight uppercase">Bank DTB; NAME-MATESH TECHNOLOGIES</p>
+                          <p className="text-[9px] font-black uppercase text-black">ACC NO: 0084976001</p>
+                      </div>
+                      <div className="p-2 bg-slate-50 border rounded-md border-black/5">
+                          <p className="text-[6px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Lipan Na M-Pesa</p>
+                          <p className="text-[8px] font-black text-black">PAYBILL NO: 516600</p>
+                          <p className="text-[9px] font-black text-black">ACC NO: 5084975001</p>
+                      </div>
                     </div>
                 </div>
-                <div className="bg-blue-50/40 p-4 flex flex-col justify-center border border-black/5 rounded-2xl text-center">
+                <div className="bg-blue-50/40 p-4 flex flex-col justify-center border-l border-black/5 rounded-r-lg">
                     <p className="text-[9px] font-black text-black uppercase tracking-widest mb-1">Total Quote Value</p>
                     <div className="pb-2">
                         <p className="text-[22px] font-black tracking-tighter leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(total)}</p>
@@ -165,11 +176,11 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
             <table className="w-full border-collapse">
                 <thead>
                     <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>
-                        <th className="p-2 font-black text-[8px] uppercase w-12 text-center rounded-l-sm">Ref</th>
+                        <th className="p-2 font-black text-[8px] uppercase w-12 text-center">Ref</th>
                         <th className="p-2 font-black text-[8px] uppercase">Description & Specifications</th>
                         <th className="p-2 text-center font-black text-[8px] uppercase w-16">Qty</th>
                         <th className="p-2 text-right font-black text-[8px] uppercase w-28">Unit Price</th>
-                        <th className="p-2 text-right font-black text-[8px] uppercase w-32 rounded-r-sm">Total</th>
+                        <th className="p-2 text-right font-black text-[8px] uppercase w-32">Total</th>
                     </tr>
                 </thead>
                 <tbody>
