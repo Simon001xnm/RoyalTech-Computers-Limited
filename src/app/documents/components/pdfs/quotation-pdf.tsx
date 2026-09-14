@@ -67,10 +67,10 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
   const bizName = workspace?.name || 'MATESH TECHNOLOGIES LIMITED';
   const dynamicFontClass = useMemo(() => {
     const len = bizName.length;
-    if (len > 35) return 'text-[22px]';
-    if (len > 25) return 'text-[28px]';
-    if (len > 18) return 'text-[34px]';
-    return 'text-[40px]';
+    if (len > 35) return 'text-[16px]';
+    if (len > 25) return 'text-[22px]';
+    if (len > 18) return 'text-[28px]';
+    return 'text-[34px]';
   }, [bizName]);
 
   const pages = useMemo(() => {
