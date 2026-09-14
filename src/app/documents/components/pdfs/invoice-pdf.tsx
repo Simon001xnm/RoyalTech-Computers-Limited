@@ -10,16 +10,16 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview Compact High-Fidelity Dynamic Paginated Invoice
- * Optimized to maximize item density and resolve premature page breaking.
+ * Updated with user-requested invoice terms.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 260;      // Reduced height after removing Advice bar
-const HEADER_PX = 100;      // "Continued" header height
+const HEADER_P1 = 260;      
+const HEADER_PX = 100;      
 const TABLE_HEADER = 40;    
-const FOOTER_RESERVE = 60;  // Safety space at the bottom
-const ROW_BASE = 34;        // Tighter row base
+const FOOTER_RESERVE = 80;  
+const ROW_BASE = 34;        
 const SUMMARY_BLOCK = 240;   
 const CHARS_PER_LINE = 55;   
 
@@ -222,9 +222,9 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     <div className="flex justify-between items-start gap-8">
                         <div className="flex-1 space-y-3">
                             <div className="p-3 bg-slate-50 border rounded-lg">
-                                <p className="text-[7px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Amount in Words</p>
-                                <p className="font-black uppercase text-[10px] leading-relaxed italic text-blue-900">
-                                    {numberToWords(totalAmountDue)}
+                                <p className="text-[7px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Invoice Terms</p>
+                                <p className="font-bold text-[8.5px] leading-relaxed italic text-black">
+                                    Payment is due by the date stated on this invoice. Please quote the invoice number when making payment. Any additional charges, refunds, or adjustments are subject to the agreed terms.
                                 </p>
                             </div>
                             <div className="text-[8px] font-medium text-black italic max-w-[280px]">
@@ -258,7 +258,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
 
              {pageIdx === pages.length - 1 && (
                 <div className="text-center space-y-1 pb-2">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS RECEIPT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
                     <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
                     <p className="text-[9px] font-black text-black">
                         Phone: {workspace?.phone || '+254701694469'}. Email: {workspace?.email || 'mateshtechltd@gmail.com'}

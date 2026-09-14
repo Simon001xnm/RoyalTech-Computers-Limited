@@ -10,7 +10,7 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Dynamic Paginated Receipt
- * Calibrated for maximum density on page 1.
+ * Updated with user-requested receipt terms.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
@@ -18,7 +18,7 @@ const PAGE_HEIGHT = 1123;
 const HEADER_P1 = 280;      
 const HEADER_PX = 100;      
 const TABLE_HEADER = 40;
-const FOOTER_RESERVE = 60;  
+const FOOTER_RESERVE = 80;  
 const ROW_BASE = 36;        
 const SUMMARY_BLOCK = 240;   
 const CHARS_PER_LINE = 50;
@@ -155,14 +155,14 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                     </tr>
                 </thead>
                 <tbody>
-                    {pageItems.map((item: any, idx: number) => {
+                    {pageItems.map((item: any, i: number) => {
                         const unitRate = Number(item.sellingPrice || item.price || item.unitPrice || 0);
                         const qty = Number(item.quantity || 1);
                         const rowTotal = unitRate * qty;
-                        const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
+                        const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + i + 1;
 
                         return (
-                            <tr key={idx} className="border-b border-gray-100 last:border-0 h-10">
+                            <tr key={i} className="border-b border-gray-100 last:border-0 h-10">
                                 <td className="p-2">
                                     <p className="font-bold uppercase leading-tight text-[10px] text-black">
                                         {itemNumber.toString().padStart(2, '0')}. {item.name || item.description}
@@ -182,7 +182,13 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
              {pageIdx === pages.length - 1 && (
                 <div className="mb-4 flex flex-col gap-4">
                     <div className="flex justify-between items-start gap-8">
-                        <div className="flex-1 pt-1">
+                        <div className="flex-1 pt-1 space-y-4">
+                            <div className="p-3 bg-slate-50 border rounded-lg">
+                                <p className="text-[7px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Receipt Terms</p>
+                                <p className="text-[8.5px] font-bold text-black leading-relaxed italic">
+                                    This receipt confirms payment received for the transaction stated above. Please retain it as proof of payment. Any discrepancies should be reported to the business promptly.
+                                </p>
+                            </div>
                             <p className="font-black uppercase text-[9px] leading-relaxed text-black max-w-[350px]">
                                 Paid in words: <span className="font-bold underline underline-offset-4">{numberToWords(amountPaidToday)}</span>
                             </p>

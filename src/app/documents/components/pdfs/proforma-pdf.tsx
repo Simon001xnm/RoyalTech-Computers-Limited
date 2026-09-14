@@ -7,6 +7,11 @@ import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 import { numberToWords } from "@/lib/utils";
 
+/**
+ * @fileOverview High-Fidelity Dynamic Paginated Proforma Invoice
+ * Updated with user-requested proforma terms.
+ */
+
 const ITEMS_PER_PAGE_FIRST = 10;
 const ITEMS_PER_PAGE_OTHER = 18;
 
@@ -25,7 +30,6 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
   const { subtotal, vat, total, applyVat } = data;
   const formatCurrency = (v: number | undefined) => new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
   const primaryIndigo = "#1d4ed8";
-  const secondaryIndigo = "#f8fafc";
   
   const proformaNo = (docSnapshot.title || '').includes('#') 
     ? docSnapshot.title.split('#').pop() 
@@ -108,7 +112,7 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                 </thead>
                 <tbody>
                     {pageItems.map((item: any, idx: number) => {
-                        const rowSubtotal = item.quantity * (item.price || item.unitPrice);
+                        const rowSubtotal = item.quantity * (item.price || item.unitPrice || item.sellingPrice);
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
                         
                         return (
@@ -119,7 +123,7 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                                 </td>
                                 <td className="p-4 text-right text-[11px] font-bold border-r border-gray-100 text-black">{applyVat ? '16%' : '0%'}</td>
                                 <td className="p-4 text-right text-[11px] font-black border-r border-gray-100 text-black">{item.quantity}</td>
-                                <td className="p-4 text-right text-[11px] font-medium border-r border-gray-100 text-black">{formatCurrency(item.price || item.unitPrice)}</td>
+                                <td className="p-4 text-right text-[11px] font-medium border-r border-gray-100 text-black">{formatCurrency(item.price || item.unitPrice || item.sellingPrice)}</td>
                                 <td className="p-4 px-4 text-right text-[13px] font-black text-black">{formatCurrency(rowSubtotal)}</td>
                             </tr>
                         );
@@ -129,7 +133,13 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
 
             {pageIdx === pages.length - 1 && (
                 <div className="flex justify-between items-start mt-8">
-                    <div className="max-w-[380px]">
+                    <div className="max-w-[380px] space-y-4">
+                        <div className="p-3 bg-slate-50 border rounded-lg">
+                           <p className="text-[7px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Important Notice</p>
+                           <p className="text-[8.5px] font-bold text-black leading-relaxed italic">
+                               This proforma invoice is issued for payment and order confirmation purposes. Goods or services will be processed subject to payment confirmation and availability. Prices and taxes are as stated on this document.
+                           </p>
+                        </div>
                         <p className="text-[11px] font-black uppercase text-black leading-relaxed border-l-4 border-black pl-4">
                             Total (in words) : {numberToWords(total)}
                         </p>

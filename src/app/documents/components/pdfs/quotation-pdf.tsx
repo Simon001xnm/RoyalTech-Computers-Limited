@@ -10,15 +10,15 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Dynamic Paginated Quotation
- * Optimized to maximize item density and resolve premature page breaking.
+ * Updated with user-requested terms and payment details.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 280;      // Tighter Header
-const HEADER_PX = 100;      // "Continued" header height
+const HEADER_P1 = 300;      // Slightly adjusted for payment details
+const HEADER_PX = 100;      
 const TABLE_HEADER = 50;    
-const FOOTER_RESERVE = 60;  
+const FOOTER_RESERVE = 80;  // Adjusted for longer disclaimer
 const ROW_BASE = 36;        
 const SUMMARY_BLOCK = 240;   
 const CHARS_PER_LINE = 55;   
@@ -129,12 +129,24 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
           )}
 
           {pageIdx === 0 && (
-            <div className="grid grid-cols-[60%_40%] gap-4 mb-4">
-                <div className="space-y-4">
+            <div className="grid grid-cols-[55%_45%] gap-4 mb-4">
+                <div className="space-y-3">
                     <div className="p-3 bg-slate-50 border rounded-xl border-black/5 space-y-1">
                         <p className="text-[7px] font-black uppercase text-blue-900/60 tracking-widest">Client Details</p>
-                        <p className="text-[11px] font-black uppercase tracking-tight text-black">{customer.name}</p>
+                        <p className="text-[10px] font-black uppercase tracking-tight text-black">{customer.name}</p>
                         <p className="text-[8px] font-medium text-black opacity-50 uppercase">{customer.address || 'Kenya'}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="p-2 bg-slate-50 border rounded-lg border-black/5">
+                            <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest mb-0.5">Bank Payment</p>
+                            <p className="text-[8px] font-black text-black leading-tight">DTB: MATESH TECHNOLOGIES</p>
+                            <p className="text-[8px] font-black text-black uppercase tracking-tighter">ACC: 0084976001</p>
+                        </div>
+                        <div className="p-2 bg-slate-50 border rounded-lg border-black/5">
+                            <p className="text-[6px] font-black uppercase text-black opacity-40 tracking-widest mb-0.5">Lipa Na M-Pesa</p>
+                            <p className="text-[8px] font-black text-black">PAYBILL: 516600</p>
+                            <p className="text-[8px] font-black text-black uppercase tracking-tighter">ACC: 5084975001</p>
+                        </div>
                     </div>
                 </div>
                 <div className="bg-blue-50/40 p-4 flex flex-col justify-center border border-black/5 rounded-2xl text-center">
@@ -162,7 +174,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                 </thead>
                 <tbody>
                     {pageItems.map((item: any, idx: number) => {
-                        const unitPrice = Number(item.price || item.unitPrice || 0);
+                        const unitPrice = Number(item.price || item.unitPrice || item.sellingPrice || 0);
                         const qty = Number(item.quantity || 1);
                         const rowTotal = unitPrice * qty;
                         
@@ -192,15 +204,15 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                     <div className="flex justify-between items-start gap-8">
                         <div className="flex-1 space-y-3">
                             <div className="p-3 bg-slate-50 border rounded-lg">
-                                <p className="text-[7px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Amount in Words</p>
-                                <p className="font-black uppercase text-[10px] leading-relaxed italic text-blue-900">
-                                    {numberToWords(total)}
+                                <p className="text-[7px] font-black uppercase text-blue-900/40 tracking-widest mb-1">Terms & Validity</p>
+                                <p className="text-[8.5px] font-bold text-black leading-relaxed italic">
+                                    This quotation is valid for the period stated. Prices are subject to change after the validity period. Any additional work, products, or services requested may be charged separately. Acceptance of this quotation confirms agreement to the stated terms.
                                 </p>
                             </div>
                         </div>
                         
                         <div className="w-[300px] space-y-0">
-                            <div className="flex justify-between items-center p-2 bg-slate-50/50 border-b border-white">
+                            <div className="flex justify-between items-center p-2.5 bg-slate-50/50 border-b border-white">
                                 <span className="font-bold text-black opacity-40 uppercase text-[8px]">Quote Subtotal</span>
                                 <span className="font-black text-[10px] text-black">{formatCurrency(subtotal)}</span>
                             </div>

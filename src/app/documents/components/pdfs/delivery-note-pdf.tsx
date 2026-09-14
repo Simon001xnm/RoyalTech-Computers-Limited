@@ -6,6 +6,11 @@ import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useSaaS } from '@/components/saas/saas-provider';
 
+/**
+ * @fileOverview High-Fidelity Delivery Note PDF
+ * Updated with user-requested delivery terms.
+ */
+
 export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
@@ -19,7 +24,6 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
   const primaryIndigo = "#1d4ed8"; 
   const secondaryIndigo = "#f8fafc";
   
-  const contactInfo = workspace?.phone || workspace?.email || 'Nairobi, Kenya';
   const website = workspace?.website || "";
 
   const deliveryNo = (docSnapshot.title || '').includes('#') 
@@ -79,12 +83,20 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
             </tbody>
         </table>
 
-        {details && (
-            <div className="mt-6 p-4 border rounded-xl bg-gray-50">
-                <h4 className="font-bold text-[9px] uppercase opacity-60 mb-2 text-black">Instructions / Notes</h4>
-                <p className="text-[10px] leading-relaxed text-black">{details}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            {details && (
+                <div className="p-4 border rounded-xl bg-gray-50 h-fit">
+                    <h4 className="font-bold text-[9px] uppercase opacity-60 mb-2 text-black">Shipping Instructions</h4>
+                    <p className="text-[10px] leading-relaxed text-black">{details}</p>
+                </div>
+            )}
+            <div className="p-4 border rounded-xl bg-blue-50/30 h-fit">
+                <h4 className="font-black text-[9px] uppercase text-blue-900/60 mb-2">Delivery Agreement</h4>
+                <p className="text-[9px] font-bold text-black leading-relaxed italic">
+                    This document confirms delivery of the goods listed above. Please inspect the items upon delivery and report any shortages or damages before signing. This delivery note is not proof of payment.
+                </p>
             </div>
-        )}
+        </div>
 
         <div className="mt-12 grid grid-cols-2 gap-10">
             <div className="space-y-6">
