@@ -1087,11 +1087,6 @@ export default function DashboardPage() {
                     {isExporting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Download className="h-3 w-3 mr-2" />}
                     Download PDF
                 </Button>
-                <DialogClose asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                        <X className="h-4 w-4" />
-                    </Button>
-                </DialogClose>
             </div>
           </DialogHeader>
           <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-4 md:p-8">
