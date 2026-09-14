@@ -10,7 +10,7 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Detailed Dynamic Paginated Quotation
- * Recalibrated for large branding and font sizes with dynamic font scaling.
+ * Recalibrated for large branding and safe bottom margins.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
@@ -18,9 +18,9 @@ const PAGE_HEIGHT = 1123;
 const HEADER_P1 = 420;      
 const HEADER_PX = 150;      
 const TABLE_HEADER = 50;    
-const FOOTER_RESERVE = 120;  
+const FOOTER_RESERVE = 180; // Increased from 120
 const ROW_BASE = 44;        
-const SUMMARY_BLOCK = 280;   
+const SUMMARY_BLOCK = 350;  // Increased from 280
 const CHARS_PER_LINE = 50;   
 
 export function QuotationPdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -65,12 +65,13 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
   const primaryBlue = "#1e3a8a";
 
   const bizName = workspace?.name || 'MATESH TECHNOLOGIES LIMITED';
+  
   const dynamicFontClass = useMemo(() => {
     const len = bizName.length;
-    if (len > 35) return 'text-[16px]';
-    if (len > 25) return 'text-[22px]';
-    if (len > 18) return 'text-[28px]';
-    return 'text-[34px]';
+    if (len > 30) return 'text-[18px]';
+    if (len > 22) return 'text-[24px]';
+    if (len > 15) return 'text-[30px]';
+    return 'text-[36px]';
   }, [bizName]);
 
   const pages = useMemo(() => {
