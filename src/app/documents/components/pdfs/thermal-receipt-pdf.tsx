@@ -8,7 +8,7 @@ import { useSaaS } from "@/components/saas/saas-provider";
 
 /**
  * @fileOverview Professional Thermal Receipt (80mm)
- * Enhanced with larger font sizes for thermal paper.
+ * Enhanced with larger font sizes for thermal paper and company name.
  */
 export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -41,7 +41,7 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
-  const bizName = workspace?.name || liveCompany?.name || 'Matesh Technologies Limited';
+  const bizName = workspace?.name || liveCompany?.name || 'MATESH TECHNOLOGIES LIMITED';
 
   return (
     <div className="flex flex-col items-center bg-white p-0 overflow-visible">
@@ -49,7 +49,7 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
         
         {/* BRANDED HEADER */}
         <div className="text-center space-y-2 mb-3 w-full">
-          <h1 className="text-xl font-black uppercase leading-tight tracking-tighter pb-1">
+          <h1 className="text-[24px] font-black uppercase leading-none tracking-tighter pb-1">
             {bizName}
           </h1>
           <p className="text-[12px] font-black">*** OFFICIAL RECEIPT ***</p>

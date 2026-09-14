@@ -217,7 +217,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="mt-6 space-y-1">
-                <CardTitle className="text-2xl font-black uppercase tracking-tight leading-tight">
+                <CardTitle className="text-4xl font-black uppercase tracking-tighter leading-none">
                     {compData.name || 'Your Shop'}
                 </CardTitle>
                 <CardDescription className="font-bold text-[10px] uppercase tracking-widest text-primary">

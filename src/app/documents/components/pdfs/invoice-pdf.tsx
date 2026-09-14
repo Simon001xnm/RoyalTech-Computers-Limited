@@ -10,7 +10,7 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview Compact High-Fidelity Dynamic Paginated Invoice
- * Updated with larger font sizes and recalibrated pagination.
+ * Updated with larger company name and recalibrated pagination.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels) - Updated for larger fonts
@@ -112,7 +112,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                       <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
                   )}
                   <div>
-                    <h1 className="text-[24px] font-black uppercase tracking-tighter leading-tight" style={{ color: primaryBlue }}>
+                    <h1 className="text-[32px] font-black uppercase tracking-tighter leading-none" style={{ color: primaryBlue }}>
                       {workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}
                     </h1>
                   </div>

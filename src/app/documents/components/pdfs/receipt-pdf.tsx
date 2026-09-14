@@ -10,7 +10,7 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Detailed Dynamic Paginated Receipt
- * Updated with larger font sizes.
+ * Updated with larger font sizes and company name.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
@@ -112,7 +112,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                       <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
                   )}
                   <div>
-                    <h1 className="text-[24px] font-black uppercase tracking-tighter leading-tight" style={{ color: primaryBlue }}>
+                    <h1 className="text-[32px] font-black uppercase tracking-tighter leading-none" style={{ color: primaryBlue }}>
                       {workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}
                     </h1>
                     <p className="font-black text-[11px] mt-1 uppercase tracking-widest text-black" style={{ color: successGreen }}>Official Payment Receipt</p>

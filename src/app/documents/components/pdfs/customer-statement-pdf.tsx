@@ -36,7 +36,7 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
             <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
           )}
           <div className="space-y-0.5">
-            <h1 className="text-2xl font-black uppercase tracking-tighter" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}</h1>
+            <h1 className="text-3xl font-black uppercase tracking-tighter" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}</h1>
             <p className="font-bold text-[10px] opacity-70">Official Customer Statement</p>
           </div>
         </div>
