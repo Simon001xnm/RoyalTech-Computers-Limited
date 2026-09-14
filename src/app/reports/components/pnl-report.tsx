@@ -90,7 +90,7 @@ export function PnlReport({ data, dateRange }: PnlReportProps) {
       ledgerPages.push(unifiedLedger.slice(i, i + LEDGER_ITEMS_PER_PAGE));
   }
 
-  const companyName = company?.name || 'MATESH TECHNOLOGIES';
+  const companyName = company?.name || 'MATESH TECHNOLOGIES LIMITED';
   const jetBlack = "#000000";
   const primaryBlue = "#1e3a8a";
 

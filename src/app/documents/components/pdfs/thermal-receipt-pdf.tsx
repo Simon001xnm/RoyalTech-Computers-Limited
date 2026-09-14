@@ -41,7 +41,7 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
-  const bizName = workspace?.name || liveCompany?.name || 'Matesh Technologies';
+  const bizName = workspace?.name || liveCompany?.name || 'Matesh Technologies Limited';
 
   return (
     <div className="flex flex-col items-center bg-white p-0 overflow-visible">

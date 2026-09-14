@@ -113,7 +113,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                   )}
                   <div>
                     <h1 className="text-[20px] font-black uppercase tracking-tighter leading-tight" style={{ color: primaryBlue }}>
-                      {workspace?.name || 'OFFICIAL BUSINESS'}
+                      {workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}
                     </h1>
                   </div>
                 </div>
@@ -140,7 +140,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <p className="text-[7px] font-black uppercase text-blue-800 tracking-widest">Billing From</p>
-                            <p className="text-[9px] font-black uppercase leading-tight text-black">{workspace?.name || 'The Shop'}</p>
+                            <p className="text-[9px] font-black uppercase leading-tight text-black">{workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}</p>
                             <p className="text-[8px] font-medium text-black opacity-50 uppercase leading-tight">{workspace?.address || 'Kenya'}</p>
                         </div>
                         <div className="space-y-1">
@@ -154,7 +154,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     <div className="grid grid-cols-2 gap-4 pt-1">
                       <div className="p-2 bg-slate-50 border rounded-md border-black/5">
                           <p className="text-[6px] font-black uppercase text-blue-900/60 tracking-widest mb-1">Bank Payment</p>
-                          <p className="text-[8px] font-black text-black leading-tight uppercase">Bank DTB; NAME-MATESH TECHNOLOGIES</p>
+                          <p className="text-[8px] font-black text-black leading-tight uppercase">Bank DTB; NAME-MATESH TECHNOLOGIES LIMITED</p>
                           <p className="text-[9px] font-black uppercase text-black">ACC NO: 0084976001</p>
                       </div>
                       <div className="p-2 bg-slate-50 border rounded-md border-black/5">
@@ -259,7 +259,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
              {pageIdx === pages.length - 1 && (
                 <div className="text-center space-y-1 pb-2">
                     <p className="text-[9px] font-black uppercase tracking-widest text-black">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES'}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}</p>
                     <p className="text-[9px] font-black text-black">
                         Phone: {workspace?.phone || '+254701694469'}. Email: {workspace?.email || 'mateshtechltd@gmail.com'}
                     </p>
