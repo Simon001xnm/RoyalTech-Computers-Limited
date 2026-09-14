@@ -10,12 +10,12 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Detailed Dynamic Paginated Receipt
- * Updated with larger font sizes and company name.
+ * Updated with larger logo and company name.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;
-const HEADER_P1 = 300;      
+const HEADER_P1 = 320;      
 const HEADER_PX = 120;      
 const TABLE_HEADER = 45;
 const FOOTER_RESERVE = 90;  
@@ -104,22 +104,22 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden"
         >
           {pageIdx === 0 ? (
-            <header className="flex justify-between items-start mb-6 pb-4 border-b">
-                <div className="flex items-center gap-6 w-[55%]">
+            <header className="flex justify-between items-start mb-6 pb-6 border-b">
+                <div className="flex items-center gap-6 w-[70%]">
                   {workspace?.logoUrl ? (
-                      <img src={workspace.logoUrl} alt="Logo" className="h-20 w-auto object-contain" crossOrigin="anonymous" />
+                      <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain" crossOrigin="anonymous" />
                   ) : (
-                      <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
+                      <div className="h-24 w-24 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300">LOGO</div>
                   )}
-                  <div>
-                    <h1 className="text-[32px] font-black uppercase tracking-tighter leading-none" style={{ color: primaryBlue }}>
+                  <div className="flex-1">
+                    <h1 className="text-[38px] font-black uppercase tracking-tighter leading-[0.9] text-black" style={{ color: primaryBlue }}>
                       {workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}
                     </h1>
                     <p className="font-black text-[11px] mt-1 uppercase tracking-widest text-black" style={{ color: successGreen }}>Official Payment Receipt</p>
                   </div>
                 </div>
                 
-                <div className="text-right w-[40%] space-y-1">
+                <div className="text-right w-[28%] space-y-1">
                     <p className="text-[10px] font-bold leading-tight uppercase text-black">{workspace?.address || 'Nairobi, Kenya'}</p>
                     <p className="text-[10px] font-bold text-black">Tel: {workspace?.phone || 'N/A'}</p>
                     <div className="pt-2">

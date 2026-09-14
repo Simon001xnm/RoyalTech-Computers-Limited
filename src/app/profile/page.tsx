@@ -203,17 +203,17 @@ export default function ProfilePage() {
           <Card className="shadow-md overflow-hidden border-none ring-1 ring-black/5">
             <CardHeader className="items-center text-center bg-muted/20 pb-8">
               <div className="relative group cursor-pointer mt-4" onClick={() => logoInputRef.current?.click()}>
-                <Avatar className="h-28 w-28 border-4 border-white shadow-xl bg-white">
+                <Avatar className="h-40 w-40 border-4 border-white shadow-xl bg-white">
                   <AvatarImage 
                     src={compData.logoUrl || `https://picsum.photos/seed/${authUser?.uid}/128/128`} 
                     className="object-contain p-1"
                   />
-                  <AvatarFallback className="text-2xl font-black uppercase bg-primary text-primary-foreground">
+                  <AvatarFallback className="text-4xl font-black uppercase bg-primary text-primary-foreground">
                     {(compData.name || displayName || "CP").substring(0, 2)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="h-6 w-6 text-white" />
+                    <Camera className="h-8 w-8 text-white" />
                 </div>
               </div>
               <div className="mt-6 space-y-1">
