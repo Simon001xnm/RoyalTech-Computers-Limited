@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Download, Filter } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Download, Filter, DollarSign, Check } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem, User as AppUser } from "@/types";
 import {
   Table,
@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, addDoc, doc, getDocs, deleteDoc, writeBatch } from "firebase/firestore";
+import { collection, query, where, addDoc, doc, getDocs, deleteDoc, writeBatch, updateDoc } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -75,13 +75,19 @@ export function DocumentsClient() {
   const firestore = useFirestore();
   
   const [monthFilter, setMonthFilter] = useState<string>(format(new Date(), 'yyyy-MM'));
-  const [isGeneratingDelivery, setIsGeneratingDelivery] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [exportType, setExportType] = useState<'A4' | 'Thermal'>('A4');
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [docToDelete, setDocToDelete] = useState<AppDocument | null>(null);
+
+  // Payment Logging State
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+  const [targetInvoice, setTargetInvoice] = useState<AppDocument | null>(null);
 
   const profileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile } = useDoc<AppUser>(profileRef);
@@ -169,6 +175,119 @@ export function DocumentsClient() {
           return dateB - dateA;
       });
   }, [rawDocuments, monthFilter]);
+
+  const handleConvertToInvoice = async (originDoc: AppDocument) => {
+    if (!tenant || !user) return;
+    setIsGenerating(true);
+    try {
+        const timestamp = new Date().toISOString();
+        const typeCount = rawDocuments?.filter(d => d.type === 'Invoice').length || 0;
+        const docTitle = `Invoice #${String(typeCount + 1).padStart(3, '0')}`;
+
+        const batch = writeBatch(firestore);
+        const docRef = doc(collection(firestore, 'documents'));
+        
+        const invoiceData = {
+            ...originDoc.data,
+            type: 'Invoice',
+            title: docTitle,
+            generatedDate: timestamp,
+            status: 'Credit'
+        };
+
+        batch.set(docRef, {
+            tenantId: tenant.id,
+            type: 'Invoice',
+            title: docTitle,
+            generatedDate: timestamp,
+            relatedTo: originDoc.relatedTo,
+            data: invoiceData,
+            createdAt: timestamp,
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
+        });
+
+        const saleRef = doc(collection(firestore, 'sales_transactions'));
+        batch.set(saleRef, {
+            id: saleRef.id,
+            documentId: docRef.id,
+            tenantId: tenant.id,
+            date: timestamp,
+            customerId: originDoc.data?.customer?.id || 'walk-in',
+            customerName: originDoc.relatedTo,
+            items: originDoc.data?.items || [],
+            subtotal: originDoc.data?.subtotal || 0,
+            vatAmount: originDoc.data?.vat || 0,
+            total: originDoc.data?.total || 0,
+            amountPaid: 0,
+            balance: originDoc.data?.total || 0,
+            status: 'Credit',
+            paymentMethod: 'Credit',
+            createdAt: timestamp,
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
+        });
+
+        await batch.commit();
+        toast({ title: "Invoice Generated from Quote" });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: "Conversion Failed" });
+    } finally {
+        setIsGenerating(false);
+    }
+  };
+
+  const handleLogPayment = async () => {
+    if (!targetInvoice || !tenant || !user) return;
+    const amountToPay = parseFloat(paymentAmount);
+    if (isNaN(amountToPay) || amountToPay <= 0) {
+        toast({ variant: 'destructive', title: "Enter valid amount" });
+        return;
+    }
+
+    setIsSubmittingPayment(true);
+    try {
+        const salesRef = collection(firestore, 'sales_transactions');
+        const q = query(salesRef, where('documentId', '==', targetInvoice.id));
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+            toast({ variant: 'destructive', title: "Financial record not found" });
+            return;
+        }
+
+        const saleDoc = snap.docs[0];
+        const currentBal = Number(saleDoc.data().balance) || 0;
+        const currentPaid = Number(saleDoc.data().amountPaid) || 0;
+        
+        const deduct = Math.min(currentBal, amountToPay);
+        const newBal = currentBal - deduct;
+
+        await updateDoc(doc(firestore, 'sales_transactions', saleDoc.id), {
+            balance: newBal,
+            amountPaid: currentPaid + deduct,
+            status: newBal <= 0 ? 'Paid' : 'Partial',
+            updatedAt: new Date().toISOString()
+        });
+
+        await addDoc(collection(firestore, 'account_payments'), {
+            tenantId: tenant.id,
+            customerId: saleDoc.data().customerId,
+            saleId: saleDoc.id,
+            documentId: targetInvoice.id,
+            amount: deduct,
+            method: "Cash",
+            date: new Date().toISOString(),
+            recordedBy: { uid: user.uid, name: user.displayName }
+        });
+
+        toast({ title: "Payment Applied Successfully" });
+        setIsPaymentDialogOpen(false);
+        setPaymentAmount("");
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: "Action Failed" });
+    } finally {
+        setIsSubmittingPayment(false);
+    }
+  };
 
   const handleGenerateDocument = async (type: DocumentType) => {
     if (!tenant || !user) return;
@@ -289,7 +408,6 @@ export function DocumentsClient() {
         });
 
         if (pages.length === 0) {
-            // Fallback if not paginated
             const element = document.getElementById('pdf-preview-target');
             if (!element) throw new Error("Element not found");
             const canvas = await html2canvas(element, { scale: 3.5, useCORS: true, backgroundColor: "#ffffff", width: isThermal ? 302 : 794 });
@@ -297,7 +415,6 @@ export function DocumentsClient() {
             if (isThermal) pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 0.264583 / 3.5);
             else pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
         } else {
-            // Process every A4 page
             for (let i = 0; i < pages.length; i++) {
                 if (i > 0) pdf.addPage();
                 const canvas = await html2canvas(pages[i] as HTMLElement, {
@@ -335,6 +452,8 @@ export function DocumentsClient() {
         const msg = `Hello! Your ${d.type} (${d.title}) is ready. Thank you!`;
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
     },
+    onConvertToInvoice: handleConvertToInvoice,
+    onMarkPaid: (d) => { setTargetInvoice(d); setIsPaymentDialogOpen(true); }
   };
   
   const customColumns = useMemo(() => getDocumentColumns(columnActions), [columnActions]);
@@ -410,7 +529,7 @@ export function DocumentsClient() {
               </div>
           </CardHeader>
           <CardContent className="p-0 overflow-auto">
-            {docsLoading || isGeneratingDelivery ? (
+            {docsLoading || isGenerating ? (
                 <div className="p-12 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground flex items-center justify-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Checking Records...
@@ -442,6 +561,39 @@ export function DocumentsClient() {
             )}
           </CardContent>
       </Card>
+
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+          <DialogContent className="sm:max-w-md border-none shadow-2xl">
+              <DialogHeader>
+                  <DialogTitle className="text-xl font-black uppercase flex items-center gap-2">
+                      <DollarSign className="h-5 w-5 text-primary" />
+                      Record Payment
+                  </DialogTitle>
+                  <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">
+                      Applying payment to {targetInvoice?.title}
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="py-6 space-y-4">
+                  <div className="space-y-2">
+                      <p className="text-[10px] font-black uppercase text-muted-foreground">Amount Received (KES)</p>
+                      <Input 
+                        type="number" 
+                        value={paymentAmount} 
+                        onChange={e => setPaymentAmount(e.target.value)} 
+                        placeholder="0.00" 
+                        className="h-14 text-2xl font-black border-2 border-primary"
+                        autoFocus
+                      />
+                  </div>
+              </div>
+              <DialogFooter className="gap-2">
+                  <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)} className="font-bold h-12">Cancel</Button>
+                  <Button onClick={handleLogPayment} disabled={isSubmittingPayment} className="font-black uppercase tracking-widest h-12 px-8 shadow-lg">
+                      {isSubmittingPayment ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="mr-2 h-4 w-4" /> Save Payment</>}
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
        <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
         <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">

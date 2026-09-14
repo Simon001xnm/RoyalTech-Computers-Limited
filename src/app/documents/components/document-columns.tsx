@@ -4,7 +4,20 @@ import type { Document as AppDocument, DocumentType } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Download, FileText, ListChecks, Receipt, FileWarning, Truck, FilePlus2, ShoppingCart, MessageCircle, Trash2 } from "lucide-react";
+import { 
+    Download, 
+    FileText, 
+    ListChecks, 
+    Receipt, 
+    FileWarning, 
+    Truck, 
+    FilePlus2, 
+    ShoppingCart, 
+    MessageCircle, 
+    Trash2, 
+    RefreshCw, 
+    DollarSign 
+} from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -15,6 +28,8 @@ export interface DocumentColumnActions {
   onDelete?: (doc: AppDocument) => void;
   onWhatsApp?: (doc: AppDocument) => void;
   onGenerateDelivery?: (doc: AppDocument) => void;
+  onConvertToInvoice?: (doc: AppDocument) => void;
+  onMarkPaid?: (doc: AppDocument) => void;
 }
 
 const documentIcons: Record<DocumentType, React.ElementType> = {
@@ -75,12 +90,33 @@ export const getDocumentColumns = (actions: DocumentColumnActions): ColumnDef<Ap
         header: () => <div className="text-right">Actions</div>,
         cell: ({ row }) => {
             const doc = row.original;
-            // Delivery notes can be generated from sales docs
             const canGenerateDelivery = ['Invoice', 'Receipt'].includes(doc.type);
+            const canConvertToInvoice = doc.type === 'Quotation';
+            const canMarkPaid = doc.type === 'Invoice';
 
             return (
                 <div className="text-right flex items-center justify-end gap-2">
                     <TooltipProvider>
+                        {canConvertToInvoice && actions.onConvertToInvoice && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="icon" className="h-8 w-8 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => actions.onConvertToInvoice?.(doc)}>
+                                        <RefreshCw className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Convert to Invoice</TooltipContent>
+                            </Tooltip>
+                        )}
+                        {canMarkPaid && actions.onMarkPaid && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="icon" className="h-8 w-8 text-green-600 border-green-200 hover:bg-green-50" onClick={() => actions.onMarkPaid?.(doc)}>
+                                        <DollarSign className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Log Payment</TooltipContent>
+                            </Tooltip>
+                        )}
                         {canGenerateDelivery && actions.onGenerateDelivery && (
                             <Tooltip>
                                 <TooltipTrigger asChild>
