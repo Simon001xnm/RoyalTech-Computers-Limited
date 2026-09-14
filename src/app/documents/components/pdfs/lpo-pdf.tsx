@@ -15,7 +15,6 @@ export function LpoPdf({ document: docSnapshot }: { document: AppDocument }) {
   if (!docSnapshot?.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
   const workspace = docSnapshot.data.workspace || cloudCompany;
   const data = docSnapshot.data;
-  const supplier = data.supplier || { name: 'VENDOR / SUPPLIER', address: 'Kenya', email: '' };
   const { items, subtotal, total } = data;
   const formatCurrency = (v: number | undefined) => new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
   const primaryIndigo = "#1d4ed8";
@@ -49,7 +48,7 @@ export function LpoPdf({ document: docSnapshot }: { document: AppDocument }) {
       <section className="grid grid-cols-2 gap-3 mb-6">
         <div className="p-3 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
             <h3 className="font-medium text-[12px] mb-1" style={{ color: primaryIndigo }}>Deliver To</h3>
-            <p className="font-bold uppercase text-black">{workspace?.name || 'The Business'}</p>
+            <p className="font-bold uppercase text-black">{workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}</p>
             <p className="text-[9px] font-medium text-black opacity-70">{workspace?.address || 'Kenya'}</p>
         </div>
         <div className="p-3 rounded-lg border border-black/5 bg-slate-50 flex flex-col justify-center">
@@ -109,7 +108,7 @@ export function LpoPdf({ document: docSnapshot }: { document: AppDocument }) {
                 <p className="text-[9px] font-black uppercase text-center opacity-40 text-black">Approved By (Stamp & Sign)</p>
             </div>
             <div className="text-right space-y-2">
-                <p className="text-[9px] font-medium text-black">Authorized Signature for <span className="font-bold">{workspace?.name}</span></p>
+                <p className="text-[9px] font-medium text-black">Authorized Signature for <span className="font-bold">{workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}</span></p>
                 <p className="text-[8px] font-bold text-black opacity-50">{contactInfo}</p>
             </div>
       </footer>

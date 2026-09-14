@@ -20,7 +20,7 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
   if (!docSnapshot?.data) return <div className="p-10 text-center font-bold text-black border-4 border-black">Error: Document metadata is missing.</div>;
   
   const workspace = docSnapshot.data.workspace || cloudCompany;
-  const { customer, items, details } = docSnapshot.data;
+  const { items, details } = docSnapshot.data;
   const primaryIndigo = "#1d4ed8"; 
   const secondaryIndigo = "#f8fafc";
   
@@ -52,7 +52,7 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
       <section className="grid grid-cols-2 gap-3 mb-6">
         <div className="p-3 rounded-lg space-y-0.5" style={{ backgroundColor: secondaryIndigo }}>
             <h3 className="font-medium text-[12px] mb-1" style={{ color: primaryIndigo }}>Dispatched From</h3>
-            <p className="font-bold uppercase text-black">{workspace?.name || 'The Business'}</p>
+            <p className="font-bold uppercase text-black">{workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}</p>
             <p className="text-[9px] font-medium text-black opacity-70">{workspace?.address || 'Kenya'}</p>
         </div>
         <div className="p-3 rounded-lg border border-black/5 bg-slate-50 flex flex-col justify-center">
@@ -112,6 +112,7 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
 
       <footer className="mt-auto pt-6 text-center border-t border-gray-100">
          <p className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-2 text-black">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
+         <p className="text-[10px] font-bold uppercase tracking-widest mb-4" style={{ color: primaryIndigo }}>{workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}</p>
          <div className="space-y-1 text-[9px] font-bold text-black opacity-50 mt-4">
             {website && <p>{website}</p>}
             <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
