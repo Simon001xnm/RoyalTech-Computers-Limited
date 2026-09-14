@@ -179,7 +179,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                         <p className="text-[26px] font-black tracking-tighter leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(total)}</p>
                     </div>
                     <div className="mt-2 pt-3 border-t border-blue-200">
-                        <p className="text-[10px] font-bold uppercase tracking-tight text-black">Validity: <span className="font-black">30 DAYS</span></p>
+                        <p className="text-[10px] font-bold uppercase tracking-tight text-black">Validity: <span className="font-black">7 DAYS</span></p>
                     </div>
                 </div>
             </div>
