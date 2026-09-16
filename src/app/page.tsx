@@ -329,8 +329,9 @@ export default function DashboardPage() {
         const batch = writeBatch(firestore);
         const timestamp = new Date().toISOString();
 
-        const docRef = doc(collection(firestore, 'documents'));
-        const docTitle = `${posAction} #${Math.floor(Math.random() * 1000)}`;
+        // Sequential document logic
+        const typeCount = documents?.filter(d => d.type === posAction).length || 0;
+        const docTitle = `${posAction} #${String(typeCount + 1).padStart(3, '0')}`;
         
         const documentData = {
             tenantId: tenant.id,
@@ -360,6 +361,7 @@ export default function DashboardPage() {
             createdBy: { uid: user.uid, name: user.displayName || 'User' }
         };
 
+        const docRef = doc(collection(firestore, 'documents'));
         batch.set(docRef, documentData);
 
         if (posAction === 'Receipt' || posAction === 'Invoice') {

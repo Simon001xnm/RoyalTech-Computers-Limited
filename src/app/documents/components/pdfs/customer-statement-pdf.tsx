@@ -1,6 +1,6 @@
 'use client';
 
-import type { Document as AppDocument, Sale, Customer } from "@/types";
+import type { Sale, Customer } from "@/types";
 import { format } from "date-fns";
 
 interface CustomerStatementPdfProps {
@@ -101,7 +101,7 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
             <thead>
                 <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>
                     <th className="p-3 font-black text-[9px] border border-blue-900">DATE</th>
-                    <th className="p-3 font-black text-[9px] border border-blue-900">REFERENCE NUMBER (INV/RCT)</th>
+                    <th className="p-3 font-black text-[9px] border border-blue-900">REFERENCE NUMBER</th>
                     <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-28">INVOICED</th>
                     <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-28">PAID</th>
                     <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-32">BALANCE</th>
@@ -110,11 +110,24 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
             <tbody>
                 {sales.map((sale, idx) => {
                     const balance = (Number(sale.total) || 0) - (Number(sale.amountPaid) || 0);
+                    
+                    // Format the reference string precisely as "INVOICE NO: #077"
+                    let refString = sale.invoiceNumber || `REF: ${sale.id.slice(0,8).toUpperCase()}`;
+                    if (refString.toLowerCase().includes('invoice')) {
+                        const num = refString.split('#').pop();
+                        refString = `INVOICE NO: #${num}`;
+                    } else if (refString.toLowerCase().includes('receipt')) {
+                        const num = refString.split('#').pop();
+                        refString = `RECEIPT NO: #${num}`;
+                    } else {
+                        refString = refString.toUpperCase();
+                    }
+
                     return (
                         <tr key={sale.id} className="border-b border-gray-200 h-12">
                             <td className="p-3 font-medium">{format(new Date(sale.date), "dd/MM/yyyy")}</td>
                             <td className="p-3 font-black uppercase text-[10px]">
-                                {sale.invoiceNumber || `REF: ${sale.id.slice(0,8).toUpperCase()}`}
+                                {refString}
                             </td>
                             <td className="p-3 text-right tabular-nums font-medium">{formatCurrency(Number(sale.total) || 0)}</td>
                             <td className="p-3 text-right tabular-nums text-green-600 font-medium">{formatCurrency(Number(sale.amountPaid) || 0)}</td>
