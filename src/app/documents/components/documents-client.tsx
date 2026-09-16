@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, PlusCircle, Loader2, Download, Filter, DollarSign, Check } from "lucide-react";
+import { Trash2, PlusCircle, Loader2, Download, Filter, DollarSign, Check, X, Save } from "lucide-react";
 import type { DocumentType, Document as AppDocument, DocumentLineItem, User as AppUser } from "@/types";
 import {
   Table,
@@ -83,6 +83,9 @@ export function DocumentsClient() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [docToDelete, setDocToDelete] = useState<AppDocument | null>(null);
 
+  // Edit Mode State
+  const [editingDoc, setEditingDoc] = useState<AppDocument | null>(null);
+
   // Payment Logging State
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -118,6 +121,16 @@ export function DocumentsClient() {
   const [lineItems, setLineItems] = useState<DocumentLineItem[]>([{ description: '', quantity: 1, unitPrice: 0 }]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [isExporting, setIsExporting] = useState(false);
+
+  // Load existing data when editing
+  useEffect(() => {
+    if (editingDoc) {
+        setSelectedCustomerId(editingDoc.data?.customer?.id || '');
+        setApplyVat(editingDoc.data?.applyVat || false);
+        setLineItems(editingDoc.data?.items || [{ description: '', quantity: 1, unitPrice: 0 }]);
+        setActiveTab(editingDoc.type);
+    }
+  }, [editingDoc]);
 
   useEffect(() => {
     if (!selectedCustomerId || !tenant) {
@@ -291,14 +304,22 @@ export function DocumentsClient() {
 
   const handleGenerateDocument = async (type: DocumentType) => {
     if (!tenant || !user) return;
+    setIsGenerating(true);
 
-    const typeCount = rawDocuments?.filter(d => d.type === type).length || 0;
-    const seq = typeCount + 1;
-    const docTitle = `${type} #${String(seq).padStart(3, '0')}`;
+    const isEditing = !!editingDoc;
+    let docTitle = editingDoc?.title;
+    
+    if (!isEditing) {
+        const typeCount = rawDocuments?.filter(d => d.type === type).length || 0;
+        const seq = typeCount + 1;
+        docTitle = `${type} #${String(seq).padStart(3, '0')}`;
+    }
+
     let relatedTo = "N/A";
     
     const documentData: any = { 
         applyVat,
+        isEdited: isEditing,
         previousBalance: customerBalance, 
         workspace: workspaceProfile ? {
             name: workspaceProfile.name || '',
@@ -339,28 +360,41 @@ export function DocumentsClient() {
 
     try {
         const batch = writeBatch(firestore);
-        const docRef = doc(collection(firestore, 'documents'));
+        const docRef = isEditing ? doc(firestore, 'documents', editingDoc.id) : doc(collection(firestore, 'documents'));
         
-        batch.set(docRef, {
+        const mainDocData = {
             tenantId: tenant.id,
             type: type,
             title: docTitle,
-            generatedDate: timestamp,
+            generatedDate: isEditing ? editingDoc.generatedDate : timestamp,
             relatedTo: relatedTo,
             data: documentData,
-            createdAt: timestamp,
-            createdBy: { uid: user.uid, name: user.displayName || 'User' }
-        });
+            createdAt: isEditing ? editingDoc.createdAt : timestamp,
+            updatedAt: timestamp,
+            createdBy: isEditing ? editingDoc.createdBy : { uid: user.uid, name: user.displayName || 'User' }
+        };
+
+        batch.set(docRef, mainDocData);
 
         if (type === 'Invoice' || type === 'Receipt') {
-            const saleRef = doc(collection(firestore, 'sales_transactions'));
+            const salesRef = collection(firestore, 'sales_transactions');
             const saleStatus = type === 'Receipt' ? 'Paid' : 'Credit';
             
+            // Find existing sale if editing
+            let saleRef = doc(collection(firestore, 'sales_transactions'));
+            if (isEditing) {
+                const q = query(salesRef, where('documentId', '==', editingDoc.id));
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    saleRef = doc(firestore, 'sales_transactions', snap.docs[0].id);
+                }
+            }
+
             batch.set(saleRef, {
                 id: saleRef.id,
                 documentId: docRef.id,
                 tenantId: tenant.id,
-                date: timestamp,
+                date: isEditing ? editingDoc.generatedDate : timestamp,
                 customerId: selectedCustomerId || 'walk-in',
                 customerName: relatedTo,
                 items: validLineItems.map(i => ({ ...i, type: 'custom', id: crypto.randomUUID(), productId: 'custom', total: i.quantity * i.unitPrice, sellingPrice: i.unitPrice })),
@@ -371,18 +405,29 @@ export function DocumentsClient() {
                 balance: type === 'Receipt' ? 0 : (subtotal + vat),
                 status: saleStatus,
                 paymentMethod: type === 'Receipt' ? 'Cash' : 'Credit',
-                createdAt: timestamp,
-                createdBy: { uid: user.uid, name: user.displayName || 'User' }
+                createdAt: isEditing ? editingDoc.createdAt : timestamp,
+                updatedAt: timestamp,
+                createdBy: isEditing ? editingDoc.createdBy : { uid: user.uid, name: user.displayName || 'User' }
             });
         }
 
         await batch.commit();
-        toast({ title: "Paperwork Saved & Synced" });
-        setSelectedCustomerId('');
-        setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
+        toast({ title: isEditing ? "Document Updates Saved" : "Paperwork Saved & Synced" });
+        
+        // Reset form
+        handleCancelEdit();
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error Saving' });
+    } finally {
+        setIsGenerating(false);
     }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingDoc(null);
+    setSelectedCustomerId('');
+    setLineItems([{ description: '', quantity: 1, unitPrice: 0 }]);
+    setApplyVat(false);
   };
 
   const handleDownloadPdf = async (docToDownload: AppDocument, type: 'A4' | 'Thermal' = 'A4') => {
@@ -445,6 +490,7 @@ export function DocumentsClient() {
 
   const columnActions: DocumentColumnActions = { 
     onView: (d) => { setExportType('A4'); setSelectedDocument(d); setIsPdfPreviewOpen(true); }, 
+    onEdit: (d) => { setEditingDoc(d); window.scrollTo({ top: 0, behavior: 'smooth' }); },
     onDownload: handleDownloadPdf,
     onDelete: isAdmin ? (d) => setDocToDelete(d) : undefined,
     onWhatsApp: (d) => {
@@ -494,7 +540,7 @@ export function DocumentsClient() {
     <div className="space-y-6">
       <PageHeader title="Shop Paperwork" description="View and create documents for your clients." />
       
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DocumentType)} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => !editingDoc && setActiveTab(v as DocumentType)} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-8 h-auto p-1 bg-muted/50 border">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
           <TabsTrigger value="Invoice" className="font-black uppercase text-[8px] md:text-[9px] py-3">Invoice</TabsTrigger>
@@ -645,11 +691,28 @@ export function DocumentsClient() {
 
   function renderForm(type: DocumentType) {
     const showsItemEntry = ['Invoice', 'Proforma', 'Quotation', 'LPO', 'Receipt'].includes(type);
+    const isEditing = !!editingDoc;
+
     return (
-      <Card className="shadow-lg border-primary/10">
-        <CardHeader className="bg-primary/5 border-b">
-            <CardTitle className="text-lg font-black uppercase">Create {type.replace(/([A-Z])/g, ' $1').trim()}</CardTitle>
-            <CardDescription>Enter details below to create your paper.</CardDescription>
+      <Card className={cn(
+        "shadow-lg transition-all",
+        isEditing ? "border-amber-400 border-2 ring-4 ring-amber-50" : "border-primary/10"
+      )}>
+        <CardHeader className={cn(
+            "border-b flex flex-row items-center justify-between",
+            isEditing ? "bg-amber-50" : "bg-primary/5"
+        )}>
+            <div>
+                <CardTitle className="text-lg font-black uppercase">
+                    {isEditing ? "Modifying Data" : `Create ${type.replace(/([A-Z])/g, ' $1').trim()}`}
+                </CardTitle>
+                <CardDescription>
+                    {isEditing ? `You are editing ${editingDoc.title}` : "Enter details below to create your paper."}
+                </CardDescription>
+            </div>
+            {isEditing && (
+                <Badge className="bg-amber-600 text-white font-black uppercase text-[10px] h-6">Edit Mode Active</Badge>
+            )}
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -701,9 +764,22 @@ export function DocumentsClient() {
             </div>
           )}
         </CardContent>
-        <CardFooter className="bg-muted/10 border-t py-4">
-            <Button onClick={() => handleGenerateDocument(type)} className="w-full sm:w-auto ml-auto font-black uppercase" disabled={docsLoading}>
-                Save and Sync Dashboard
+        <CardFooter className="bg-muted/10 border-t py-4 gap-3 flex flex-col sm:flex-row justify-end">
+            {isEditing && (
+                <Button variant="outline" onClick={handleCancelEdit} className="w-full sm:w-auto font-bold">
+                    <X className="mr-2 h-4 w-4" /> Cancel Edit
+                </Button>
+            )}
+            <Button 
+                onClick={() => handleGenerateDocument(type)} 
+                className={cn(
+                    "w-full sm:w-auto font-black uppercase shadow-lg",
+                    isEditing ? "bg-amber-600 hover:bg-amber-700" : ""
+                )} 
+                disabled={docsLoading || isGenerating}
+            >
+                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isEditing ? <Save className="mr-2 h-4 w-4" /> : null)}
+                {isEditing ? "Save Modified Data" : "Save and Sync Dashboard"}
             </Button>
         </CardFooter>
       </Card>

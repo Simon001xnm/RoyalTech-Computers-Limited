@@ -16,7 +16,8 @@ import {
     MessageCircle, 
     Trash2, 
     RefreshCw, 
-    DollarSign 
+    DollarSign,
+    Edit3
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -24,6 +25,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 export interface DocumentColumnActions {
   onView: (doc: AppDocument) => void;
+  onEdit: (doc: AppDocument) => void;
   onDownload: (doc: AppDocument) => void;
   onDelete?: (doc: AppDocument) => void;
   onWhatsApp?: (doc: AppDocument) => void;
@@ -57,8 +59,11 @@ export const getDocumentColumns = (actions: DocumentColumnActions): ColumnDef<Ap
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Badge variant="secondary" className="flex items-center justify-center w-10 h-10 p-0">
+                            <Badge variant="secondary" className="flex items-center justify-center w-10 h-10 p-0 relative">
                                 <Icon className="h-5 w-5" />
+                                {doc.data?.isEdited && (
+                                    <Badge className="absolute -top-1 -right-1 h-3 px-1 text-[6px] bg-red-600 border-none font-black animate-pulse">ED</Badge>
+                                )}
                             </Badge>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -73,7 +78,14 @@ export const getDocumentColumns = (actions: DocumentColumnActions): ColumnDef<Ap
     {
         accessorKey: "title",
         header: "Title",
-        cell: ({ row }) => <span className="font-medium">{row.original.title}</span>,
+        cell: ({ row }) => (
+            <div className="flex flex-col">
+                <span className="font-bold text-sm uppercase">{row.original.title}</span>
+                {row.original.data?.isEdited && (
+                    <span className="text-[8px] font-black text-red-600 uppercase tracking-widest mt-0.5 animate-pulse">● System Edited</span>
+                )}
+            </div>
+        ),
     },
     {
         accessorKey: "relatedTo",
@@ -93,10 +105,21 @@ export const getDocumentColumns = (actions: DocumentColumnActions): ColumnDef<Ap
             const canGenerateDelivery = ['Invoice', 'Receipt'].includes(doc.type);
             const canConvertToInvoice = doc.type === 'Quotation';
             const canMarkPaid = doc.type === 'Invoice';
+            const isEditable = ['Invoice', 'Receipt', 'Quotation', 'Proforma'].includes(doc.type);
 
             return (
                 <div className="text-right flex items-center justify-end gap-2">
                     <TooltipProvider>
+                        {isEditable && (
+                             <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="icon" className="h-8 w-8 text-amber-600 border-amber-200 hover:bg-amber-50" onClick={() => actions.onEdit(doc)}>
+                                        <Edit3 className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Edit Document Data</TooltipContent>
+                            </Tooltip>
+                        )}
                         {canConvertToInvoice && actions.onConvertToInvoice && (
                             <Tooltip>
                                 <TooltipTrigger asChild>
