@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -331,11 +330,12 @@ export default function DashboardPage() {
         const timestamp = new Date().toISOString();
 
         const docRef = doc(collection(firestore, 'documents'));
+        const docTitle = `${posAction} #${Math.floor(Math.random() * 1000)}`;
         
         const documentData = {
             tenantId: tenant.id,
             type: posAction,
-            title: `${posAction} #${Math.floor(Math.random() * 1000)}`,
+            title: docTitle,
             generatedDate: timestamp,
             relatedTo: selectedCustomer.name,
             data: { 
@@ -369,6 +369,7 @@ export default function DashboardPage() {
                 date: timestamp,
                 customerId: selectedCustomer.id,
                 customerName: selectedCustomer.name,
+                invoiceNumber: docTitle, // Storing for statement reference
                 items: cart.map(i => ({ ...i, productId: i.id, type: 'asset' })),
                 subtotal,
                 vatAmount,

@@ -228,6 +228,7 @@ export function DocumentsClient() {
             date: timestamp,
             customerId: originDoc.data?.customer?.id || 'walk-in',
             customerName: originDoc.relatedTo,
+            invoiceNumber: docTitle, // Tracking user-friendly reference
             items: originDoc.data?.items || [],
             subtotal: originDoc.data?.subtotal || 0,
             vatAmount: originDoc.data?.vat || 0,
@@ -398,6 +399,7 @@ export function DocumentsClient() {
                 date: isEditing ? editingDoc.generatedDate : timestamp,
                 customerId: selectedCustomerId || 'walk-in',
                 customerName: relatedTo,
+                invoiceNumber: docTitle, // Storing for statement identification
                 items: validLineItems.map(i => ({ ...i, type: 'custom', id: crypto.randomUUID(), productId: 'custom', total: i.quantity * i.unitPrice, sellingPrice: i.unitPrice })),
                 subtotal,
                 vatAmount: vat,

@@ -117,7 +117,7 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
                             <td className="p-3 font-mono font-bold text-[9px]">#{sale.id.slice(0,8).toUpperCase()}</td>
                             <td className="p-3">
                                 <p className="font-bold uppercase leading-normal">
-                                    {sale.items?.map(i => i.name).join(", ") || "Sales Transaction"}
+                                    {sale.invoiceNumber || `TXN: ${sale.id.slice(0,8).toUpperCase()}`}
                                 </p>
                             </td>
                             <td className="p-3 text-right tabular-nums font-medium">{formatCurrency(Number(sale.total) || 0)}</td>

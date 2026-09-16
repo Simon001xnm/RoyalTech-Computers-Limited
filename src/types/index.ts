@@ -129,6 +129,7 @@ export interface Sale extends Auditable {
     date: string;
     customerId: string;
     customerName: string;
+    invoiceNumber?: string; // Added to track doc title in ledger
     items: SaleItem[];
     subtotal: number;
     discount: number;

@@ -205,6 +205,7 @@ export function PosClient() {
             date: timestamp,
             customerId: selectedCustomer.id,
             customerName: selectedCustomer.name,
+            invoiceNumber: docTitle, // Storing for statement identification
             items: cart.map(item => ({...item, type: 'asset'})),
             subtotal,
             vatAmount,
