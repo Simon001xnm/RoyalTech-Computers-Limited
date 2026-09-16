@@ -101,24 +101,20 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
             <thead>
                 <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>
                     <th className="p-3 font-black text-[9px] border border-blue-900">DATE</th>
-                    <th className="p-3 font-black text-[9px] border border-blue-900">REFERENCE</th>
-                    <th className="p-3 font-black text-[9px] border border-blue-900">DESCRIPTION</th>
-                    <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-24">INVOICED</th>
-                    <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-24">PAID</th>
-                    <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-28">BALANCE</th>
+                    <th className="p-3 font-black text-[9px] border border-blue-900">REFERENCE NUMBER (INV/RCT)</th>
+                    <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-28">INVOICED</th>
+                    <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-28">PAID</th>
+                    <th className="p-3 text-right font-black text-[9px] border border-blue-900 w-32">BALANCE</th>
                 </tr>
             </thead>
             <tbody>
                 {sales.map((sale, idx) => {
                     const balance = (Number(sale.total) || 0) - (Number(sale.amountPaid) || 0);
                     return (
-                        <tr key={sale.id} className="border-b border-gray-200">
+                        <tr key={sale.id} className="border-b border-gray-200 h-12">
                             <td className="p-3 font-medium">{format(new Date(sale.date), "dd/MM/yyyy")}</td>
-                            <td className="p-3 font-mono font-bold text-[9px]">#{sale.id.slice(0,8).toUpperCase()}</td>
-                            <td className="p-3">
-                                <p className="font-bold uppercase leading-normal">
-                                    {sale.invoiceNumber || `TXN: ${sale.id.slice(0,8).toUpperCase()}`}
-                                </p>
+                            <td className="p-3 font-black uppercase text-[10px]">
+                                {sale.invoiceNumber || `REF: ${sale.id.slice(0,8).toUpperCase()}`}
                             </td>
                             <td className="p-3 text-right tabular-nums font-medium">{formatCurrency(Number(sale.total) || 0)}</td>
                             <td className="p-3 text-right tabular-nums text-green-600 font-medium">{formatCurrency(Number(sale.amountPaid) || 0)}</td>
@@ -127,7 +123,7 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
                     );
                 })}
                 {sales.length === 0 && (
-                    <tr><td colSpan={6} className="p-10 text-center italic opacity-30">No transaction records for this period.</td></tr>
+                    <tr><td colSpan={5} className="p-10 text-center italic opacity-30">No transaction records for this period.</td></tr>
                 )}
             </tbody>
         </table>
