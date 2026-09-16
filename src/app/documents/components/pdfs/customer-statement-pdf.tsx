@@ -111,23 +111,27 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
                 {sales.map((sale, idx) => {
                     const balance = (Number(sale.total) || 0) - (Number(sale.amountPaid) || 0);
                     
-                    // Format the reference string precisely as "INVOICE NO: #077"
-                    let refString = sale.invoiceNumber || `REF: ${sale.id.slice(0,8).toUpperCase()}`;
-                    if (refString.toLowerCase().includes('invoice')) {
-                        const num = refString.split('#').pop();
-                        refString = `INVOICE NO: #${num}`;
-                    } else if (refString.toLowerCase().includes('receipt')) {
-                        const num = refString.split('#').pop();
-                        refString = `RECEIPT NO: #${num}`;
+                    // Format the reference string precisely as requested: "INVOICE NO: #077"
+                    let refString = sale.invoiceNumber || "";
+                    let displayRef = "N/A";
+
+                    if (refString) {
+                        const isReceipt = refString.toLowerCase().includes('receipt');
+                        const prefix = isReceipt ? "RECEIPT NO: #" : "INVOICE NO: #";
+                        // Extract numeric part after '#'
+                        const parts = refString.split('#');
+                        const num = parts.length > 1 ? parts[1].trim() : refString.replace(/\D/g, '');
+                        displayRef = `${prefix}${num.padStart(3, '0')}`;
                     } else {
-                        refString = refString.toUpperCase();
+                        // Intelligent Fallback for older records
+                        displayRef = `REF: ${sale.id.slice(0, 8).toUpperCase()}`;
                     }
 
                     return (
                         <tr key={sale.id} className="border-b border-gray-200 h-12">
                             <td className="p-3 font-medium">{format(new Date(sale.date), "dd/MM/yyyy")}</td>
                             <td className="p-3 font-black uppercase text-[10px]">
-                                {refString}
+                                {displayRef}
                             </td>
                             <td className="p-3 text-right tabular-nums font-medium">{formatCurrency(Number(sale.total) || 0)}</td>
                             <td className="p-3 text-right tabular-nums text-green-600 font-medium">{formatCurrency(Number(sale.amountPaid) || 0)}</td>

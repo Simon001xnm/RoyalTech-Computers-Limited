@@ -348,6 +348,7 @@ export default function DashboardPage() {
                 balance: posAction === 'Receipt' ? 0 : cartTotal,
                 customer: selectedCustomer,
                 applyVat,
+                invoiceNumber: docTitle, // Tracking user-friendly reference for statements
                 paymentMethod: posAction === 'Quotation' ? 'N/A' : paymentMode,
                 workspace: workspaceProfile ? {
                     name: workspaceProfile.name || '',
