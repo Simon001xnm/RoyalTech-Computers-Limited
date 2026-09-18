@@ -10,7 +10,7 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Detailed Dynamic Paginated Proforma Invoice
- * Updated with a 12-item single-page threshold.
+ * Updated with a 12-item single-page threshold and explicit VAT display.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
@@ -18,9 +18,9 @@ const PAGE_HEIGHT = 1123;
 const HEADER_P1 = 380;      
 const HEADER_PX = 150;      
 const TABLE_HEADER = 50;    
-const FOOTER_RESERVE = 140; 
+const FOOTER_RESERVE = 180; 
 const ROW_BASE = 44;        
-const SUMMARY_BLOCK = 300;  
+const SUMMARY_BLOCK = 350;  
 const CHARS_PER_LINE = 50;   
 
 export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -75,7 +75,6 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
   }, [bizName]);
 
   const pages = useMemo(() => {
-    // RULE: If 12 or fewer items, keep on one page
     if (items.length <= 12) {
         return [items];
     }
@@ -250,7 +249,7 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                             </div>
                             {vat > 0 && (
                                 <div className="flex justify-between items-center p-3 bg-slate-50/50 border-b border-white">
-                                    <span className="font-bold text-black opacity-50 uppercase text-[10px]">Tax Amount (16%)</span>
+                                    <span className="font-bold text-black opacity-50 uppercase text-[10px]">Tax Amount (16% VAT)</span>
                                     <span className="font-black text-[12px] text-black">{formatCurrency(vat)}</span>
                                 </div>
                             )}

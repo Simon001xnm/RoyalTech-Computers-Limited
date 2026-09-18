@@ -8,7 +8,7 @@ import { useSaaS } from "@/components/saas/saas-provider";
 
 /**
  * @fileOverview Professional Thermal Receipt (80mm)
- * Enhanced with larger font sizes for thermal paper and company name.
+ * Enhanced with larger font sizes and explicit VAT display.
  */
 export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -111,6 +111,16 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
         {/* TOTALS */}
         <div className="w-full space-y-2.5 mb-5 border-t border-black pt-3">
           <div className="flex justify-between py-0.5">
+            <span className="uppercase font-bold">SUBTOTAL:</span>
+            <span className="font-black text-[12px]">{formatCurrency(subtotal)}</span>
+          </div>
+          {vat > 0 && (
+            <div className="flex justify-between py-0.5">
+              <span className="uppercase font-bold">VAT (16%):</span>
+              <span className="font-black text-[12px]">{formatCurrency(vat)}</span>
+            </div>
+          )}
+          <div className="flex justify-between py-1 border-t border-black border-dotted mt-1 pt-1">
             <span className="uppercase font-bold">TOTAL TODAY:</span>
             <span className="font-black text-[12px]">{formatCurrency(todayTotal)}</span>
           </div>

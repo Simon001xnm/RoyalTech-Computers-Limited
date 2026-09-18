@@ -10,7 +10,7 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Detailed Dynamic Paginated Receipt
- * Updated with a 12-item single-page threshold.
+ * Updated with a 12-item single-page threshold and explicit VAT display.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
@@ -18,9 +18,9 @@ const PAGE_HEIGHT = 1123;
 const HEADER_P1 = 380;      
 const HEADER_PX = 150;      
 const TABLE_HEADER = 50;
-const FOOTER_RESERVE = 140; 
+const FOOTER_RESERVE = 180; 
 const ROW_BASE = 44;        
-const SUMMARY_BLOCK = 300;  
+const SUMMARY_BLOCK = 350;  
 const CHARS_PER_LINE = 50;
 
 export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -80,7 +80,6 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
   }, [bizName]);
 
   const pages = useMemo(() => {
-    // RULE: If 12 or fewer items, keep on one page
     if (items.length <= 12) {
         return [items];
     }
@@ -253,9 +252,15 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                         
                         <div className="w-[350px] space-y-0">
                             <div className="flex justify-between items-center p-3 bg-slate-50/50 border-b border-white">
-                                <span className="font-bold text-black opacity-50 uppercase text-[10px]">Transaction Subtotal</span>
+                                <span className="font-bold text-black opacity-50 uppercase text-[10px]">Net Subtotal</span>
                                 <span className="font-black text-[12px] text-black">{formatCurrency(subtotal)}</span>
                             </div>
+                            {vat > 0 && (
+                                <div className="flex justify-between items-center p-3 bg-slate-50/50 border-b border-white">
+                                    <span className="font-bold text-black opacity-50 uppercase text-[10px]">Tax Amount (16% VAT)</span>
+                                    <span className="font-black text-[12px] text-black">{formatCurrency(vat)}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between items-center p-3 bg-[#f0fdf4] border-b border-white">
                                 <span className="font-bold text-green-800/60 uppercase text-[10px]">Amount Paid Today</span>
                                 <span className="font-black text-green-800 text-[12px]">{formatCurrency(amountPaidToday)}</span>
