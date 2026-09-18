@@ -10,17 +10,17 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Detailed Dynamic Paginated Receipt
- * Recalibrated for large branding and safe bottom margins.
+ * Updated with a 12-item single-page threshold.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;
-const HEADER_P1 = 420;      
+const HEADER_P1 = 380;      
 const HEADER_PX = 150;      
 const TABLE_HEADER = 50;
-const FOOTER_RESERVE = 180; // Increased from 120
+const FOOTER_RESERVE = 140; 
 const ROW_BASE = 44;        
-const SUMMARY_BLOCK = 350;  // Increased from 280
+const SUMMARY_BLOCK = 300;  
 const CHARS_PER_LINE = 50;
 
 export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -80,6 +80,11 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
   }, [bizName]);
 
   const pages = useMemo(() => {
+    // RULE: If 12 or fewer items, keep on one page
+    if (items.length <= 12) {
+        return [items];
+    }
+
     const calculatedPages: any[][] = [];
     let currentPageItems: any[] = [];
     let currentHeightUsed = HEADER_P1 + TABLE_HEADER + FOOTER_RESERVE;
