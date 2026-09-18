@@ -10,17 +10,17 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview Compact High-Fidelity Dynamic Paginated Invoice
- * Updated with a 12-item single-page threshold and explicit VAT display.
+ * Updated with a 7-item single-page threshold and increased margins for clean presentation.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 380;      
+const HEADER_P1 = 450;      // Space for large logo + billing info
 const HEADER_PX = 150;      
 const TABLE_HEADER = 50;    
-const FOOTER_RESERVE = 180; 
+const FOOTER_RESERVE = 200; // Safe bottom margin
 const ROW_BASE = 44;        
-const SUMMARY_BLOCK = 350;  
+const SUMMARY_BLOCK = 400;  // Space for totals + terms
 const CHARS_PER_LINE = 50;   
 
 export function InvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -79,7 +79,8 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
   }, [bizName]);
 
   const pages = useMemo(() => {
-    if (items.length <= 12) {
+    // SINGLE PAGE RULE: Up to 7 items fit perfectly with summary on one page
+    if (items.length <= 7) {
         return [items];
     }
 
@@ -193,7 +194,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
             </div>
           )}
 
-          <div className="flex-grow overflow-hidden flex flex-col">
+          <div className="flex-grow overflow-hidden flex flex-col pb-12">
             <table className="w-full border-collapse">
                 <thead>
                     <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>

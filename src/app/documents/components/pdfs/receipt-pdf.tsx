@@ -10,17 +10,17 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Detailed Dynamic Paginated Receipt
- * Updated with a 12-item single-page threshold and explicit VAT display.
+ * Updated with a 7-item single-page threshold and explicit VAT display.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;
-const HEADER_P1 = 380;      
+const HEADER_P1 = 450;      
 const HEADER_PX = 150;      
 const TABLE_HEADER = 50;
-const FOOTER_RESERVE = 180; 
+const FOOTER_RESERVE = 200; 
 const ROW_BASE = 44;        
-const SUMMARY_BLOCK = 350;  
+const SUMMARY_BLOCK = 400;  
 const CHARS_PER_LINE = 50;
 
 export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -80,7 +80,8 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
   }, [bizName]);
 
   const pages = useMemo(() => {
-    if (items.length <= 12) {
+    // SINGLE PAGE RULE: Up to 7 items fit perfectly with summary on one page
+    if (items.length <= 7) {
         return [items];
     }
 
@@ -194,7 +195,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
             </div>
           )}
 
-          <div className="flex-grow overflow-hidden flex flex-col">
+          <div className="flex-grow overflow-hidden flex flex-col pb-12">
             <table className="w-full border-collapse">
                 <thead>
                     <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>

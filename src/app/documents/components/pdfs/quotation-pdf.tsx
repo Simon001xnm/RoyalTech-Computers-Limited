@@ -10,17 +10,17 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Detailed Dynamic Paginated Quotation
- * Updated with a 12-item single-page threshold and explicit VAT display.
+ * Updated with a 7-item single-page threshold and increased margins for clean presentation.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 380;      
+const HEADER_P1 = 450;      
 const HEADER_PX = 150;      
 const TABLE_HEADER = 50;    
-const FOOTER_RESERVE = 180; 
+const FOOTER_RESERVE = 200; 
 const ROW_BASE = 44;        
-const SUMMARY_BLOCK = 350;  
+const SUMMARY_BLOCK = 400;  
 const CHARS_PER_LINE = 50;   
 
 export function QuotationPdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -75,7 +75,8 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
   }, [bizName]);
 
   const pages = useMemo(() => {
-    if (items.length <= 12) {
+    // SINGLE PAGE RULE: Up to 7 items fit perfectly with summary on one page
+    if (items.length <= 7) {
         return [items];
     }
 
@@ -189,7 +190,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
             </div>
           )}
 
-          <div className="flex-grow overflow-hidden flex flex-col">
+          <div className="flex-grow overflow-hidden flex flex-col pb-12">
             <table className="w-full border-collapse">
                 <thead>
                     <tr className="text-left text-white" style={{ backgroundColor: primaryBlue }}>
@@ -237,6 +238,9 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                                     This quotation is valid for the period stated. Prices are subject to change after the validity period. Any additional work, products, or services requested may be charged separately. Acceptance of this quotation confirms agreement to the stated terms.
                                 </p>
                             </div>
+                            <p className="font-black uppercase text-[10px] leading-relaxed text-black max-w-[380px]">
+                                Amount in words: <span className="font-bold underline underline-offset-4">{numberToWords(total)}</span>
+                            </p>
                         </div>
                         
                         <div className="w-[350px] space-y-0">
