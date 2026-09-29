@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -128,7 +129,15 @@ export function DocumentsClient() {
     if (editingDoc) {
         setSelectedCustomerId(editingDoc.data?.customer?.id || '');
         setApplyVat(editingDoc.data?.applyVat || false);
-        setLineItems(editingDoc.data?.items || [{ description: '', quantity: 1, unitPrice: 0 }]);
+        
+        // Normalize items to prevent undefined values during transition
+        const normalizedItems = (editingDoc.data?.items || []).map((item: any) => ({
+            description: item.description ?? item.name ?? '',
+            quantity: item.quantity ?? 1,
+            unitPrice: item.unitPrice ?? item.sellingPrice ?? 0
+        }));
+        
+        setLineItems(normalizedItems.length > 0 ? normalizedItems : [{ description: '', quantity: 1, unitPrice: 0 }]);
         setActiveTab(editingDoc.type);
     }
   }, [editingDoc]);
@@ -359,7 +368,7 @@ export function DocumentsClient() {
         relatedTo = selectedCustomer.alias ? `${selectedCustomer.alias} (${selectedCustomer.name})` : selectedCustomer.name;
     }
 
-    const validLineItems = lineItems.filter(item => item.description.trim() !== '' && item.quantity > 0 && item.unitPrice > 0);
+    const validLineItems = lineItems.filter(item => (item.description || '').trim() !== '' && (item.quantity || 0) > 0 && (item.unitPrice || 0) > 0);
     documentData.items = validLineItems;
     const subtotal = validLineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
     const vat = applyVat ? subtotal * VAT_RATE : 0;
@@ -643,7 +652,7 @@ export function DocumentsClient() {
                       <p className="text-[10px] font-black uppercase text-muted-foreground">Amount Received (KES)</p>
                       <Input 
                         type="number" 
-                        value={paymentAmount} 
+                        value={paymentAmount ?? ''} 
                         onChange={e => setPaymentAmount(e.target.value)} 
                         placeholder="0.00" 
                         className="h-14 text-2xl font-black border-2 border-primary"
@@ -737,7 +746,7 @@ export function DocumentsClient() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <Label className="text-[10px] font-black uppercase opacity-60">Pick Client</Label>
-                <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId}>
+                <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId ?? ''}>
                   <SelectTrigger className="h-11"><SelectValue placeholder="Pick a name..." /></SelectTrigger>
                   <SelectContent>
                     {customers?.map(c => (
