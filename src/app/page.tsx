@@ -36,7 +36,8 @@ import {
     Landmark,
     Lock as LockIcon,
     Truck,
-    UserPlus
+    UserPlus,
+    ShieldAlert
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -65,6 +66,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import type { DateRange } from 'react-day-picker';
 import {
   useReactTable,
@@ -643,6 +645,16 @@ export default function DashboardPage() {
             </div>
         }
       />
+
+      <Alert variant="destructive" className="bg-red-50 border-red-600 border-2 text-red-900 mb-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-700">
+          <ShieldAlert className="h-6 w-6 text-red-600" />
+          <AlertTitle className="text-xl font-black uppercase tracking-tight">System Warning: Free Mode Expiring 1st October</AlertTitle>
+          <AlertDescription className="text-sm font-bold leading-relaxed mt-2">
+            Your shop subscription is scheduled to expire on <span className="font-black underline">October 1st, 2026</span>. 
+            Note that all shop data, customer ledgers, and financial documents will be <span className="font-black underline">PERMANENTLY DELETED</span> if you opt to cancel your subscription or allow it to lapse.
+            Please upgrade now via Shop Settings to secure your workspace records.
+          </AlertDescription>
+      </Alert>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {stats.lowStockCount > 0 && (
