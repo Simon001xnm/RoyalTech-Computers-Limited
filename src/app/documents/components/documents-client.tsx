@@ -133,6 +133,7 @@ export function DocumentsClient() {
     }
   }, [editingDoc]);
 
+  // Recalculate Brought Forward balance (excluding current document if editing)
   useEffect(() => {
     if (!selectedCustomerId || !tenant) {
       setCustomerBalance(0);
@@ -148,7 +149,15 @@ export function DocumentsClient() {
           where('customerId', '==', selectedCustomerId)
         );
         const snap = await getDocs(q);
-        const totalBalance = snap.docs.reduce((acc, doc) => acc + (doc.data().balance || 0), 0);
+        
+        // Sum balances while excluding the document being edited to prevent double counting
+        const totalBalance = snap.docs.reduce((acc, saleDoc) => {
+            if (editingDoc && saleDoc.data().documentId === editingDoc.id) {
+                return acc;
+            }
+            return acc + (saleDoc.data().balance || 0);
+        }, 0);
+        
         setCustomerBalance(totalBalance);
       } catch (e) {
         console.error("Balance fetch error:", e);
@@ -156,7 +165,7 @@ export function DocumentsClient() {
     };
 
     fetchBalance();
-  }, [selectedCustomerId, tenant, firestore]);
+  }, [selectedCustomerId, tenant, firestore, editingDoc]);
 
   const availableMonths = useMemo(() => {
     if (!rawDocuments) return [];
@@ -228,7 +237,7 @@ export function DocumentsClient() {
             date: timestamp,
             customerId: originDoc.data?.customer?.id || 'walk-in',
             customerName: originDoc.relatedTo,
-            invoiceNumber: docTitle, // Tracking user-friendly reference
+            invoiceNumber: docTitle,
             items: originDoc.data?.items || [],
             subtotal: originDoc.data?.subtotal || 0,
             vatAmount: originDoc.data?.vat || 0,
@@ -356,7 +365,8 @@ export function DocumentsClient() {
     const vat = applyVat ? subtotal * VAT_RATE : 0;
     documentData.subtotal = subtotal;
     documentData.vat = vat;
-    documentData.total = subtotal + vat;
+    const currentDocTotal = subtotal + vat;
+    documentData.total = currentDocTotal;
 
     const timestamp = new Date().toISOString();
 
@@ -380,17 +390,24 @@ export function DocumentsClient() {
 
         if (type === 'Invoice' || type === 'Receipt') {
             const salesRef = collection(firestore, 'sales_transactions');
-            const saleStatus = type === 'Receipt' ? 'Paid' : 'Credit';
             
-            // Find existing sale if editing
+            // Find existing sale to preserve historical payments
             let saleRef = doc(collection(firestore, 'sales_transactions'));
+            let existingAmountPaid = 0;
+
             if (isEditing) {
                 const q = query(salesRef, where('documentId', '==', editingDoc.id));
                 const snap = await getDocs(q);
                 if (!snap.empty) {
-                    saleRef = doc(firestore, 'sales_transactions', snap.docs[0].id);
+                    const saleDoc = snap.docs[0];
+                    saleRef = doc(firestore, 'sales_transactions', saleDoc.id);
+                    existingAmountPaid = Number(saleDoc.data().amountPaid) || 0;
                 }
             }
+
+            const newAmountPaid = type === 'Receipt' ? currentDocTotal : existingAmountPaid;
+            const newBalance = Math.max(0, currentDocTotal - newAmountPaid);
+            const saleStatus = newBalance <= 0 ? 'Paid' : (newAmountPaid > 0 ? 'Partial' : 'Credit');
 
             batch.set(saleRef, {
                 id: saleRef.id,
@@ -399,13 +416,13 @@ export function DocumentsClient() {
                 date: isEditing ? editingDoc.generatedDate : timestamp,
                 customerId: selectedCustomerId || 'walk-in',
                 customerName: relatedTo,
-                invoiceNumber: docTitle, // Storing for statement identification
+                invoiceNumber: docTitle,
                 items: validLineItems.map(i => ({ ...i, type: 'custom', id: crypto.randomUUID(), productId: 'custom', total: i.quantity * i.unitPrice, sellingPrice: i.unitPrice })),
                 subtotal,
                 vatAmount: vat,
-                total: subtotal + vat,
-                amountPaid: type === 'Receipt' ? (subtotal + vat) : 0,
-                balance: type === 'Receipt' ? 0 : (subtotal + vat),
+                total: currentDocTotal,
+                amountPaid: newAmountPaid,
+                balance: newBalance,
                 status: saleStatus,
                 paymentMethod: type === 'Receipt' ? 'Cash' : 'Credit',
                 createdAt: isEditing ? editingDoc.createdAt : timestamp,
@@ -417,7 +434,6 @@ export function DocumentsClient() {
         await batch.commit();
         toast({ title: isEditing ? "Document Updates Saved" : "Paperwork Saved & Synced" });
         
-        // Reset form
         handleCancelEdit();
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error Saving' });
