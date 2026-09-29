@@ -15,28 +15,39 @@ import Link from 'next/link';
 
 /**
  * @fileOverview High-Impact Subscription Expiry Reminder
- * Triggered globally to warn users about the Oct 1st deadline and data deletion risk.
+ * Triggered globally to warn users about the Oct 1st deadline.
+ * Recurrence: reappears every 4 hours after dismissal.
  */
 export function SubscriptionReminder() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    // We use sessionStorage to show it once per session (per tab open/refresh)
-    // so it doesn't block every single click, but remains highly visible.
-    const hasSeen = sessionStorage.getItem('subscription_reminder_seen');
-    if (!hasSeen) {
+    const lastDismissed = localStorage.getItem('subscription_reminder_dismissed_at');
+    const FOUR_HOURS = 4 * 60 * 60 * 1000; // 14,400,000 milliseconds
+    
+    const shouldShow = () => {
+      if (!lastDismissed) return true;
+      const timestamp = parseInt(lastDismissed, 10);
+      if (isNaN(timestamp)) return true;
+      return Date.now() - timestamp > FOUR_HOURS;
+    };
+
+    if (shouldShow()) {
       const timer = setTimeout(() => setOpen(true), 1500);
       return () => clearTimeout(timer);
     }
   }, []);
 
   const handleDismiss = () => {
-    sessionStorage.setItem('subscription_reminder_seen', 'true');
+    localStorage.setItem('subscription_reminder_dismissed_at', Date.now().toString());
     setOpen(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) handleDismiss();
+      setOpen(isOpen);
+    }}>
       <DialogContent className="sm:max-w-md border-none shadow-2xl ring-4 ring-destructive/10 no-print">
         <DialogHeader className="space-y-4">
           <div className="mx-auto bg-destructive/10 w-16 h-16 rounded-full flex items-center justify-center animate-pulse">
