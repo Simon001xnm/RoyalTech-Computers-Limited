@@ -66,7 +66,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import type { DateRange } from 'react-day-picker';
 import {
   useReactTable,
@@ -646,15 +645,26 @@ export default function DashboardPage() {
         }
       />
 
-      <Alert variant="destructive" className="bg-red-50 border-red-600 border-2 text-red-900 mb-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-700">
-          <ShieldAlert className="h-6 w-6 text-red-600" />
-          <AlertTitle className="text-xl font-black uppercase tracking-tight">System Warning: Free Mode Expiring 1st October</AlertTitle>
-          <AlertDescription className="text-sm font-bold leading-relaxed mt-2">
-            Your shop subscription is scheduled to expire on <span className="font-black underline">October 1st, 2026</span>. 
-            Note that all shop data, customer ledgers, and financial documents will be <span className="font-black underline">PERMANENTLY DELETED</span> if you opt to cancel your subscription or allow it to lapse.
-            Please upgrade now via Shop Settings to secure your workspace records.
-          </AlertDescription>
-      </Alert>
+      {/* PERSISTENT SUBSCRIPTION WARNING CONTAINER */}
+      <Card className="border-red-600 border-2 bg-red-50/50 shadow-xl overflow-hidden mb-6 animate-in fade-in slide-in-from-top-4 duration-700">
+        <CardContent className="p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 md:gap-10">
+          <div className="bg-red-100 p-4 rounded-full shrink-0">
+            <ShieldAlert className="h-10 w-10 text-red-600 animate-pulse" />
+          </div>
+          <div className="flex-grow space-y-3 text-center md:text-left">
+            <h2 className="text-2xl font-black uppercase tracking-tight text-red-900 leading-none">Free Mode Expiring 1st October</h2>
+            <p className="text-sm font-bold text-red-800 leading-relaxed max-w-3xl">
+                Your shop subscription is scheduled to expire on <span className="font-black underline">October 1st, 2026</span>. 
+                System Policy: All shop data, customer ledgers, and financial documents will be <span className="font-black">PERMANENTLY DELETED</span> if you opt to cancel your subscription or allow it to lapse.
+            </p>
+          </div>
+          <div className="shrink-0 w-full md:w-auto">
+            <Button asChild className="w-full md:w-auto h-14 px-8 font-black uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg transition-all active:scale-95">
+                <Link href="/profile">Upgrade Now</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {stats.lowStockCount > 0 && (
