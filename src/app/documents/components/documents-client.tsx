@@ -770,9 +770,9 @@ export function DocumentsClient() {
                         <TableBody>
                             {lineItems.map((item, index) => (
                                 <TableRow key={index}>
-                                    <TableCell><Input className="h-9 border-none bg-transparent" placeholder="e.g. Laptop" value={item.description} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
-                                    <TableCell><Input type="number" className="h-9 border-none bg-transparent" value={item.quantity} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
-                                    <TableCell><Input type="number" className="h-9 border-none bg-transparent" value={item.unitPrice} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
+                                    <TableCell><Input className="h-9 border-none bg-transparent" placeholder="e.g. Laptop" value={item.description ?? ''} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
+                                    <TableCell><Input type="number" className="h-9 border-none bg-transparent" value={item.quantity ?? ''} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
+                                    <TableCell><Input type="number" className="h-9 border-none bg-transparent" value={item.unitPrice ?? ''} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
                                     <TableCell><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter((_, i) => i !== index))} disabled={lineItems.length === 1}><Trash2 className="h-4 w-4 text-destructive/50" /></Button></TableCell>
                                 </TableRow>
                             ))}
