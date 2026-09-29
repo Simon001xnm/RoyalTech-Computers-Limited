@@ -40,27 +40,30 @@ export function SidebarNav() {
 
   if (isUserLoading || isProfileLoading) {
     return (
-        <SidebarMenu className="p-2">
-            {Array.from({ length: 5 }).map((_, i) => <SidebarMenuSkeleton key={i} />)}
-        </SidebarMenu>
+        <div className="p-4 space-y-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-12 bg-muted/20 rounded-xl animate-pulse" />
+            ))}
+        </div>
     );
   }
 
   if (!user) return null;
   
   return (
-    <div className="flex flex-col h-full">
-      <SidebarMenu>
+    <div className="flex flex-col h-full px-3 py-6">
+      <SidebarMenu className="gap-3">
         {permittedNavItems.map((item) => (
           <SidebarMenuItem key={item.href}>
             <Link href={item.href} legacyBehavior passHref>
               <SidebarMenuButton
                 isActive={pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))}
                 tooltip={{ children: item.label, side: "right", align: "center" }}
-                className="justify-start relative"
+                className="justify-start relative font-bold"
+                size="default"
               >
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
+                <item.icon className="h-5 w-5 shrink-0" />
+                <span className="uppercase text-[11px] tracking-tight">{item.label}</span>
               </SidebarMenuButton>
             </Link>
           </SidebarMenuItem>

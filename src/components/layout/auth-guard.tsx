@@ -45,10 +45,10 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-md no-print">
-        <SidebarHeader className="h-24 flex items-center justify-center p-0">
+      <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-2xl no-print">
+        <SidebarHeader className="h-28 flex items-center justify-center p-0 border-b bg-sidebar-accent/5">
             <Link href="/" className="flex items-center justify-center w-full">
-                 <div className="transition-all hover:scale-110 active:scale-95">
+                 <div className="transition-all hover:scale-110 active:scale-95 bg-white p-3 rounded-[20px] shadow-lg border-4 border-primary/10">
                     <img 
                         src="/images__9_-removebg-preview.png" 
                         className="h-12 w-12 object-contain" 
@@ -57,25 +57,33 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 </div>
             </Link>
         </SidebarHeader>
-        <SidebarContent>
+        <SidebarContent className="bg-sidebar/95">
             <SidebarNav />
         </SidebarContent>
-        <SidebarSeparator />
-        <SidebarFooter className="p-4">
-            <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
-                <Button onClick={handleLogout} variant="ghost" size="icon" className="text-sidebar-foreground/70 hover:text-sidebar-foreground" aria-label="Exit Shop">
-                    <LogOut className="h-5 w-5"/>
+        <SidebarSeparator className="opacity-50" />
+        <SidebarFooter className="p-4 bg-sidebar/95">
+            <div className="flex flex-col gap-2">
+                <Button 
+                    onClick={handleLogout} 
+                    variant="ghost" 
+                    className="w-full h-12 justify-start gap-4 px-4 text-sidebar-foreground/70 hover:text-red-500 hover:bg-red-500/5 rounded-xl group-data-[collapsible=icon]:px-3" 
+                    aria-label="Exit Shop"
+                >
+                    <LogOut className="h-5 w-5 shrink-0" />
+                    <span className="text-[11px] font-black uppercase tracking-widest group-data-[collapsible=icon]:hidden">Exit Area</span>
                 </Button>
-                <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Exit Shop</span>
+                <div className="flex flex-col items-center justify-center pt-4 opacity-20 group-data-[collapsible=icon]:hidden">
+                    <p className="text-[8px] font-black uppercase tracking-[0.3em]">Matesh v3.26</p>
+                </div>
             </div>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="min-h-screen">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6 no-print">
           <div className="flex items-center gap-4">
-            <SidebarTrigger />
+            <SidebarTrigger className="h-10 w-10" />
             <Link href="/" className="flex items-center gap-2 font-bold text-lg md:hidden">
-                <div className="bg-primary p-1 rounded-md">
+                <div className="bg-primary p-1.5 rounded-lg shadow-sm">
                     <Building2 className="h-4 w-4 text-white" />
                 </div>
                 <span className="font-black uppercase tracking-tighter">{company?.name || APP_NAME}</span>
