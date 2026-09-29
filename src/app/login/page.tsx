@@ -3,22 +3,30 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignIn, initiatePasswordReset } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Eye, EyeOff, Zap } from 'lucide-react';
-import Image from 'next/image';
-import placeholderImages from '@/app/lib/placeholder-images.json';
+import { Loader2, Eye, EyeOff, Quote } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const quotes = [
+  { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" },
+  { text: "Your time is limited, so don't waste it living someone else's life.", author: "Steve Jobs" },
+  { text: "If you really look closely, most overnight successes took a long time.", author: "Steve Jobs" },
+  { text: "Business opportunities are like buses, there's always another one coming.", author: "Richard Branson" },
+  { text: "Success is not final; failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+  { text: "Don't be afraid to give up the good to go for the great.", author: "John D. Rockefeller" },
+  { text: "I find that the harder I work, the more luck I seem to have.", author: "Thomas Jefferson" },
+  { text: "Opportunities don't happen. You create them.", author: "Chris Grosser" },
+  { text: "Try not to become a man of success. Rather become a man of value.", author: "Albert Einstein" },
+  { text: "It's not about ideas. It's about making ideas happen.", author: "Scott Belsky" },
+  { text: "The best way to predict the future is to create it.", author: "Peter Drucker" },
+  { text: "Quality means doing it right when no one is looking.", author: "Henry Ford" }
+];
 
 /**
- * @fileOverview High-Fidelity Landscape Login Page
- * Redesigned to match geometric split-pane reference.
- * Specific Dimensions:
- * - Desktop: 700 x 400 px
- * - Premium: 650 x 380 px
- * - Compact: 600 x 350 px
+ * @fileOverview High-Fidelity Landscape Login Page with Entrepreneur Quotes
  */
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -26,6 +34,7 @@ export default function LoginPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
 
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
@@ -37,6 +46,13 @@ export default function LoginPage() {
       router.push('/');
     }
   }, [user, isUserLoading, router]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentQuoteIndex((prev) => (prev + 1) % quotes.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -82,63 +98,83 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#f0f2f5] p-4 font-sans">
-      {/* 
-          CONTAINER DIMENSIONS (Landscape):
-          Default: 320x400 (Portrait for mobile)
-          Compact: 600x350 (Landscape sm)
-          Premium: 650x380 (Landscape md)
-          Desktop: 700x400 (Landscape lg+)
-      */}
-      <div className="w-full max-w-[320px] min-h-[400px] sm:max-w-[600px] sm:min-h-[350px] md:max-w-[650px] md:min-h-[380px] lg:max-w-[700px] lg:min-h-[400px] flex flex-col sm:flex-row rounded-[32px] border-none shadow-[0_30px_100px_rgba(0,0,0,0.15)] overflow-hidden animate-in fade-in zoom-in-95 duration-700 bg-white relative transition-all">
+      <div className="w-full max-w-[320px] min-h-[400px] sm:max-w-[650px] sm:min-h-[450px] md:max-w-[800px] md:min-h-[500px] lg:max-w-[900px] lg:min-h-[550px] flex flex-col sm:flex-row rounded-[40px] border-none shadow-[0_30px_100px_rgba(0,0,0,0.15)] overflow-hidden animate-in fade-in zoom-in-95 duration-700 bg-white relative transition-all">
         
-        {/* Left Side: Geometric Decorative Branding */}
-        <div className="w-full sm:w-[45%] bg-gradient-to-br from-[#3b49df] via-[#6366f1] to-[#a855f7] p-8 text-white flex flex-col justify-between relative overflow-hidden shrink-0">
+        {/* Left Side: Quotes & Branding */}
+        <div className="w-full sm:w-[50%] bg-gradient-to-br from-[#3b49df] via-[#6366f1] to-[#a855f7] p-10 text-white flex flex-col justify-between relative overflow-hidden shrink-0">
              
             {/* Geometric Shapes Layer */}
             <div className="absolute inset-0 z-0 pointer-events-none">
-                {/* Sphere 1 */}
                 <div className="absolute top-[-20%] left-[-10%] w-40 h-40 rounded-full bg-white/10 blur-xl" />
-                {/* Sphere 2 */}
                 <div className="absolute bottom-[15%] left-[5%] w-32 h-32 rounded-full bg-gradient-to-br from-white/30 to-transparent shadow-2xl" />
-                {/* Small Sphere Top */}
                 <div className="absolute top-[10%] right-[15%] w-20 h-20 rounded-full bg-gradient-to-br from-white/20 to-transparent shadow-lg" />
-                {/* Rounded Bar 1 */}
                 <div className="absolute top-[20%] left-[-20%] w-[300px] h-20 bg-gradient-to-r from-orange-400/30 to-transparent rounded-full rotate-[35deg]" />
-                {/* Rounded Bar 2 */}
                 <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-24 bg-gradient-to-l from-purple-400/20 to-transparent rounded-full rotate-[-45deg]" />
             </div>
 
             <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-4">
-                    <div className="bg-white/20 p-1.5 rounded-full">
-                        <div className="w-3 h-3 border-2 border-white rounded-full" />
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="bg-white/20 p-2 rounded-2xl backdrop-blur-md">
+                        <div className="w-4 h-4 border-2 border-white rounded-full" />
                     </div>
                     <h2 className="text-sm font-black tracking-tight uppercase leading-tight">
-                        MATESH TECHNOLOGIES LIMITED
+                        MATESH TECHNOLOGIES
                     </h2>
                 </div>
-                <p className="text-[9px] font-bold opacity-60 uppercase tracking-widest">Shop Workspace</p>
+                <p className="text-[10px] font-bold opacity-60 uppercase tracking-[0.2em]">Shop Workspace</p>
             </div>
 
-            <div className="relative z-10">
+            {/* DYNAMIC QUOTE SLIDER */}
+            <div className="relative z-10 my-8">
+                <div key={currentQuoteIndex} className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                    <Quote className="h-10 w-10 text-white/20 mb-6" />
+                    <h3 className="text-xl md:text-2xl font-black leading-tight tracking-tight mb-4">
+                        "{quotes[currentQuoteIndex].text}"
+                    </h3>
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-[2px] bg-orange-400" />
+                        <p className="text-xs font-black uppercase tracking-widest text-orange-400">
+                            {quotes[currentQuoteIndex].author}
+                        </p>
+                    </div>
+                </div>
+                
+                {/* SLIDE INDICATORS */}
+                <div className="flex gap-1.5 mt-10">
+                    {quotes.map((_, i) => (
+                        <div 
+                            key={i} 
+                            className={cn(
+                                "h-1 rounded-full transition-all duration-500",
+                                i === currentQuoteIndex ? "w-8 bg-white" : "w-2 bg-white/20"
+                            )} 
+                        />
+                    ))}
+                </div>
+            </div>
+
+            <div className="relative z-10 flex justify-between items-end">
                 <p className="text-[8px] font-black uppercase tracking-[0.3em] opacity-40">
-                    Matesh Version 3.26
+                    Version 3.26
                 </p>
+                <div className="bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/10">
+                    <p className="text-[7px] font-bold uppercase tracking-widest">Enterprise Secured</p>
+                </div>
             </div>
         </div>
 
-        {/* Right Side: Login Form Area */}
-        <div className="flex-1 bg-white relative flex flex-col items-center justify-center p-8 z-10">
-            {/* Decorative Dots Top Right */}
-            <div className="absolute top-6 right-8 flex gap-2">
+        {/* Right Side: Login Form */}
+        <div className="flex-1 bg-white relative flex flex-col items-center justify-center p-8 md:p-12 z-10">
+            <div className="absolute top-8 right-10 flex gap-2">
                 <div className="w-2 h-2 rounded-full bg-indigo-200" />
                 <div className="w-2 h-2 rounded-full bg-indigo-300" />
                 <div className="w-2 h-2 rounded-full bg-indigo-400" />
             </div>
 
-            <div className="w-full max-w-[260px] space-y-6">
-                <div className="text-center space-y-1">
-                    <h1 className="text-3xl font-black tracking-tight text-[#1a1a1a]">LOGIN</h1>
+            <div className="w-full max-w-[280px] space-y-8">
+                <div className="text-center space-y-2">
+                    <h1 className="text-4xl font-black tracking-tighter text-[#1a1a1a] uppercase">Login</h1>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Welcome Back</p>
                 </div>
 
                 <div className="space-y-4">
@@ -146,10 +182,10 @@ export default function LoginPage() {
                         <div className="space-y-1">
                             <Input 
                                 type="email" 
-                                placeholder="Username" 
+                                placeholder="Email Address" 
                                 value={email} 
                                 onChange={(e) => setEmail(e.target.value)} 
-                                className="h-10 rounded-full bg-[#f4f7fe] border-none px-6 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/30 text-xs" 
+                                className="h-12 rounded-2xl bg-[#f4f7fe] border-none px-6 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/30 text-xs" 
                             />
                         </div>
                         <div className="space-y-1">
@@ -159,14 +195,14 @@ export default function LoginPage() {
                                     placeholder="Password"
                                     value={password} 
                                     onChange={(e) => setPassword(e.target.value)} 
-                                    className="h-10 rounded-full bg-[#f4f7fe] border-none px-6 pr-10 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/30 text-xs" 
+                                    className="h-12 rounded-2xl bg-[#f4f7fe] border-none px-6 pr-12 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/30 text-xs" 
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
                                     className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-primary transition-colors"
                                 >
-                                    {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </button>
                             </div>
                         </div>
@@ -177,7 +213,7 @@ export default function LoginPage() {
                             type="button" 
                             onClick={handleForgotPassword}
                             disabled={isResetting}
-                            className="text-[9px] font-bold text-muted-foreground/60 hover:text-primary transition-colors"
+                            className="text-[10px] font-black text-muted-foreground/60 hover:text-primary transition-colors uppercase tracking-tight"
                         >
                             Forgot Password?
                         </button>
@@ -186,12 +222,18 @@ export default function LoginPage() {
                     <div className="pt-2">
                         <Button 
                             onClick={handleSignIn} 
-                            className="w-full h-10 text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg transition-all active:scale-95 bg-gradient-to-r from-[#6366f1] to-[#a855f7] text-white border-none" 
+                            className="w-full h-12 text-[11px] font-black uppercase tracking-widest rounded-2xl shadow-xl transition-all active:scale-95 bg-gradient-to-r from-[#6366f1] to-[#a855f7] text-white border-none" 
                             disabled={isProcessing}
                         >
-                            {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'LOGIN'}
+                            {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Enter Workspace'}
                         </Button>
                     </div>
+                </div>
+                
+                <div className="pt-4 text-center">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                        Secured Shop Node
+                    </p>
                 </div>
             </div>
         </div>
