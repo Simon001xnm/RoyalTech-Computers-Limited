@@ -16,6 +16,7 @@ import type { User as AppUser, Company } from '@/types';
 import { logger } from '@/lib/logger';
 import { NotificationCenter } from '@/components/layout/notification-center';
 import { Separator } from '@/components/ui/separator';
+import { SubscriptionReminder } from './subscription-reminder';
 
 const AUTH_PATHS = ['/login', '/signup'];
 
@@ -143,6 +144,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
           </div>
         </header>
         <main className="flex-1 p-4 md:p-6 lg:p-8">
+          <SubscriptionReminder />
           {children}
         </main>
       </SidebarInset>
