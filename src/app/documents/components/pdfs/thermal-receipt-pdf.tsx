@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument } from "@/types";
@@ -131,23 +132,27 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
         </div>
 
         {/* STATEMENT SECTION */}
-        <div className="w-full p-3 bg-gray-50 border border-black/10 rounded-sm space-y-2 mb-8">
-          <p className="text-[9px] font-black uppercase text-center opacity-60">Account Statement Summary</p>
-          <div className="flex justify-between text-[10px]">
-            <span>Brought Forward:</span>
-            <span>{formatCurrency(previousBalance)}</span>
-          </div>
-          {balanceToday > 0 && (
-            <div className="flex justify-between text-[10px] text-red-600 font-bold">
-              <span>Unpaid Today:</span>
-              <span>{formatCurrency(balanceToday)}</span>
+        {(previousBalance > 0 || balanceToday > 0) && (
+            <div className="w-full p-3 bg-gray-50 border border-black/10 rounded-sm space-y-2 mb-8">
+            <p className="text-[9px] font-black uppercase text-center opacity-60">Account Statement Summary</p>
+            {previousBalance > 0 && (
+                <div className="flex justify-between text-[10px]">
+                    <span>Brought Forward:</span>
+                    <span>{formatCurrency(previousBalance)}</span>
+                </div>
+            )}
+            {balanceToday > 0 && (
+                <div className="flex justify-between text-[10px] text-red-600 font-bold">
+                <span>Unpaid Today:</span>
+                <span>{formatCurrency(balanceToday)}</span>
+                </div>
+            )}
+            <div className="flex justify-between text-[12px] font-black border-t border-black/20 pt-2">
+                <span>NET TOTAL DUE:</span>
+                <span>KES {formatCurrency(totalAccountBalance)}</span>
             </div>
-          )}
-          <div className="flex justify-between text-[12px] font-black border-t border-black/20 pt-2">
-            <span>NET TOTAL DUE:</span>
-            <span>KES {formatCurrency(totalAccountBalance)}</span>
-          </div>
-        </div>
+            </div>
+        )}
 
         {/* FOOTER */}
         <div className="text-center space-y-3 mb-3 w-full pt-2">

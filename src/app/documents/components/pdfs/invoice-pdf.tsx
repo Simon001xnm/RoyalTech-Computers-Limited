@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument } from "@/types";
@@ -261,10 +262,12 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                                     <span className="font-black text-[12px] text-black">{formatCurrency(vat)}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between items-center p-3 bg-orange-50/30 border-b border-white">
-                                <span className="font-bold text-orange-800/60 uppercase text-[10px]">Brought Forward</span>
-                                <span className="font-black text-orange-800 text-[12px]">{formatCurrency(previousBalance)}</span>
-                            </div>
+                            {previousBalance > 0 && (
+                                <div className="flex justify-between items-center p-3 bg-orange-50/30 border-b border-white">
+                                    <span className="font-bold text-orange-800/60 uppercase text-[10px]">Brought Forward</span>
+                                    <span className="font-black text-orange-800 text-[12px]">{formatCurrency(previousBalance)}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between items-center p-5 bg-blue-900 text-white shadow-xl mt-1 rounded-sm">
                                 <span className="text-[13px] font-black uppercase tracking-tighter">Net Amount Due</span>
                                 <span className="font-black tracking-tight text-[22px]">KES {formatCurrency(totalAmountDue)}</span>

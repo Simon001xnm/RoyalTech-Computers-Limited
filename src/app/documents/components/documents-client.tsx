@@ -602,7 +602,7 @@ export function DocumentsClient() {
                 </div>
               </div>
           </CardHeader>
-          <CardContent className="p-0 overflow-auto">
+          <CardContent className="p-0">
             {docsLoading || isGenerating ? (
                 <div className="p-12 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground flex items-center justify-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />

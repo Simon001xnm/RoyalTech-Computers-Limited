@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Document as AppDocument } from "@/types";
@@ -266,10 +267,12 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                                 <span className="font-bold text-green-800/60 uppercase text-[10px]">Amount Paid Today</span>
                                 <span className="font-black text-green-800 text-[12px]">{formatCurrency(amountPaidToday)}</span>
                             </div>
-                            <div className="flex justify-between items-center p-5 bg-blue-900 text-white shadow-xl mt-1 rounded-sm">
-                                <span className="text-[13px] font-black uppercase tracking-tighter">Total Account Debt</span>
-                                <span className="font-black tracking-tight text-[22px]">KES {formatCurrency(totalAccountDebt)}</span>
-                            </div>
+                            {totalAccountDebt > 0 && (
+                                <div className="flex justify-between items-center p-5 bg-blue-900 text-white shadow-xl mt-1 rounded-sm">
+                                    <span className="text-[13px] font-black uppercase tracking-tighter">Total Account Debt</span>
+                                    <span className="font-black tracking-tight text-[22px]">KES {formatCurrency(totalAccountDebt)}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
