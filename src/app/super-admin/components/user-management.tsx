@@ -23,6 +23,15 @@ import { useFirestore } from '@/firebase';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type PaginationState,
+} from "@tanstack/react-table";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 interface UserManagementProps {
     users: User[];
@@ -48,6 +57,10 @@ export function UserManagement({ users, companies }: UserManagementProps) {
     const [newPass, setNewPass] = useState("");
     const [isSavingPass, setIsSavingPass] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [pagination, setPagination] = useState<PaginationState>({
+        pageIndex: 0,
+        pageSize: 10,
+    });
 
     const filtered = useMemo(() => {
         return users.filter(u => 
@@ -114,6 +127,101 @@ export function UserManagement({ users, companies }: UserManagementProps) {
         }
     };
 
+    const columns = useMemo<ColumnDef<User>[]>(() => [
+        {
+            accessorKey: "name",
+            header: "Account Identity",
+            cell: ({ row }) => {
+                const user = row.original;
+                return (
+                    <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 group-hover:bg-primary group-hover:text-white transition-colors">
+                            <UserIcon className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <p className="font-black uppercase text-sm tracking-tight text-white">{user.name || 'Anonymous'}</p>
+                            <p className="text-[10px] text-white/40 font-bold">{user.email}</p>
+                        </div>
+                    </div>
+                );
+            }
+        },
+        {
+            accessorKey: "role",
+            header: "Global Role",
+            cell: ({ row }) => (
+                <Badge variant={row.original.role === 'super_admin' ? 'destructive' : 'secondary'} className="text-[8px] font-black uppercase tracking-widest h-5 border-none">
+                    {row.original.role}
+                </Badge>
+            )
+        },
+        {
+            accessorKey: "createdAt",
+            header: "Enrollment Date",
+            cell: ({ row }) => (
+                <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase">
+                    <Calendar className="h-3 w-3 opacity-30" />
+                    {row.original.createdAt ? format(parseISO(row.original.createdAt), 'dd MMM yyyy') : '--'}
+                </div>
+            )
+        },
+        {
+            id: "tenantCount",
+            header: "Silos",
+            cell: ({ row }) => (
+                <div className="flex justify-center">
+                    <Badge variant="outline" className="text-[10px] font-black h-6 min-w-[30px] justify-center bg-transparent border-white/10 text-white/60">
+                        {(row.original.tenantIds || []).length}
+                    </Badge>
+                </div>
+            )
+        },
+        {
+            accessorKey: "status",
+            header: "Status",
+            cell: ({ row }) => (
+                <div className="flex items-center gap-1.5">
+                    <div className={`h-1.5 w-1.5 rounded-full ${row.original.status === 'suspended' ? 'bg-red-500' : (row.original.status === 'invited' ? 'bg-blue-500' : 'bg-green-500')}`} />
+                    <span className="text-[9px] font-black uppercase opacity-40">{row.original.status || 'Active'}</span>
+                </div>
+            )
+        },
+        {
+            id: "actions",
+            header: () => <div className="text-right pr-4">Ops</div>,
+            cell: ({ row }) => (
+                <div className="text-right pr-4">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-white/40 hover:text-white hover:bg-white/10">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 border-white/10 bg-[#1a1a1a] text-white shadow-2xl">
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Identity Control</DropdownMenuLabel>
+                            <DropdownMenuItem className="text-xs font-bold py-2 focus:bg-white/5 focus:text-white cursor-pointer" onClick={() => setResetUser(row.original)}>
+                                <Key className="h-3.5 w-3.5 mr-2 text-primary" /> Set Access Password
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-white/5" />
+                            <DropdownMenuItem className="text-xs font-bold text-destructive py-2 focus:bg-destructive/10 focus:text-destructive cursor-pointer" onClick={() => setUserToDelete(row.original)}>
+                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete Account Forever
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            )
+        }
+    ], []);
+
+    const table = useReactTable({
+        data: filtered,
+        columns,
+        state: { pagination },
+        onPaginationChange: setPagination,
+        getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+    });
+
     return (
         <>
         <Card className="border-none ring-1 ring-white/5 shadow-2xl bg-[#141414] text-white overflow-hidden">
@@ -129,7 +237,7 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                             <Input 
                                 placeholder="Search accounts..." 
                                 value={search}
-                                onChange={e => setSearch(e.target.value)}
+                                onChange={e => setSearchTerm(e.target.value)}
                                 className="pl-10 h-11 w-full md:w-64 bg-white/5 border-white/10 text-white placeholder:text-white/20 shadow-sm"
                             />
                         </div>
@@ -142,76 +250,39 @@ export function UserManagement({ users, companies }: UserManagementProps) {
             <CardContent className="p-0">
                 <Table>
                     <TableHeader className="bg-white/[0.05] border-white/5">
-                        <TableRow className="border-white/5 hover:bg-transparent">
-                            <TableHead className="text-[10px] font-black uppercase py-4 pl-8 text-white/40">Account Identity</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase py-4 text-white/40">Global Role</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase py-4 text-white/40">Enrollment Date</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase py-4 text-center text-white/40">Silos</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase py-4 text-white/40">Status</TableHead>
-                            <TableHead className="text-right pr-8 text-[10px] font-black uppercase py-4 text-white/40">Ops</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filtered.map(user => (
-                            <TableRow key={user.id} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
-                                <TableCell className="pl-8 py-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 group-hover:bg-primary group-hover:text-white transition-colors">
-                                            <UserIcon className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <p className="font-black uppercase text-sm tracking-tight text-white">{user.name || 'Anonymous'}</p>
-                                            <p className="text-[10px] text-white/40 font-bold">{user.email}</p>
-                                        </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant={user.role === 'super_admin' ? 'destructive' : 'secondary'} className="text-[8px] font-black uppercase tracking-widest h-5 border-none">
-                                        {user.role}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase">
-                                        <Calendar className="h-3 w-3 opacity-30" />
-                                        {user.createdAt ? format(parseISO(user.createdAt), 'dd MMM yyyy') : '--'}
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                    <div className="flex justify-center">
-                                        <Badge variant="outline" className="text-[10px] font-black h-6 min-w-[30px] justify-center bg-transparent border-white/10 text-white/60">
-                                            {(user.tenantIds || []).length}
-                                        </Badge>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className={`h-1.5 w-1.5 rounded-full ${user.status === 'suspended' ? 'bg-red-500' : (user.status === 'invited' ? 'bg-blue-500' : 'bg-green-500')}`} />
-                                        <span className="text-[9px] font-black uppercase opacity-40">{user.status || 'Active'}</span>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right pr-8">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-white/40 hover:text-white hover:bg-white/10">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-56 border-white/10 bg-[#1a1a1a] text-white shadow-2xl">
-                                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Identity Control</DropdownMenuLabel>
-                                            <DropdownMenuItem className="text-xs font-bold py-2 focus:bg-white/5 focus:text-white cursor-pointer" onClick={() => setResetUser(user)}>
-                                                <Key className="h-3.5 w-3.5 mr-2 text-primary" /> Set Access Password
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator className="bg-white/5" />
-                                            <DropdownMenuItem className="text-xs font-bold text-destructive py-2 focus:bg-destructive/10 focus:text-destructive cursor-pointer" onClick={() => setUserToDelete(user)}>
-                                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete Account Forever
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
+                        {table.getHeaderGroups().map(headerGroup => (
+                            <TableRow key={headerGroup.id} className="border-white/5 hover:bg-transparent">
+                                {headerGroup.headers.map(header => (
+                                    <TableHead key={header.id} className="text-[10px] font-black uppercase py-4 text-white/40">
+                                        {flexRender(header.column.columnDef.header, header.getContext())}
+                                    </TableHead>
+                                ))}
                             </TableRow>
                         ))}
+                    </TableHeader>
+                    <TableBody>
+                        {table.getRowModel().rows.length ? (
+                            table.getRowModel().rows.map(row => (
+                                <TableRow key={row.id} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
+                                    {row.getVisibleCells().map(cell => (
+                                        <TableCell key={cell.id} className="py-4">
+                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow className="hover:bg-transparent">
+                                <TableCell colSpan={columns.length} className="p-24 text-center text-white/20 uppercase font-black text-[10px] tracking-[0.4em]">
+                                    No identity records found
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table>
+                <div className="bg-white/[0.02] border-t border-white/5">
+                    <DataTablePagination table={table} />
+                </div>
             </CardContent>
         </Card>
 
