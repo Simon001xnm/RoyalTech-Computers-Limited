@@ -62,11 +62,8 @@ export default function OurStoryPage() {
           </div>
 
           <div className="p-8 bg-primary/5 rounded-3xl border border-primary/10 text-center space-y-4">
-             <h4 className="text-sm font-black uppercase tracking-widest text-primary">Ready to join the story?</h4>
-             <p className="text-xs text-muted-foreground font-medium max-w-sm mx-auto">Start your own shop node today and experience the evolution of business management.</p>
-             <div className="pt-2">
-                <button className="h-10 px-8 bg-primary text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-lg active:scale-95 transition-all">Get Started Free</button>
-             </div>
+             <h4 className="text-sm font-black uppercase tracking-widest text-primary">Experience the evolution</h4>
+             <p className="text-xs text-muted-foreground font-medium max-w-sm mx-auto">Our platform continues to grow alongside the businesses we serve, providing unparalleled stability and professional tools.</p>
           </div>
         </div>
       </section>
