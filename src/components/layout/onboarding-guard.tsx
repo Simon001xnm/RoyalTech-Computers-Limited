@@ -123,6 +123,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
   if (!user || isPublic) return <>{children}</>;
   
+  // Skip onboarding for Super Admin
   if (userProfile?.role === 'super_admin') return <>{children}</>;
 
   if (userProfile && !userProfile.tenantId && (!userProfile.tenantIds || userProfile.tenantIds.length === 0)) {

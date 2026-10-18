@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, addDoc, getDocs } from 'firebase/firestore';
 import { 
     Globe, 
     Building2, 
@@ -16,23 +16,37 @@ import {
     Search,
     RefreshCw,
     Database,
-    Zap
+    Zap,
+    PlusCircle,
+    Building
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CompanyManagement } from './company-management';
 import { UserManagement } from './user-management';
 import { Badge } from '@/components/ui/badge';
-import type { User as AppUser } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import type { User as AppUser, Company } from '@/types';
 
-/**
- * @fileOverview Super Admin Control Node
- * The primary system controller for platform-wide business oversight.
- */
 export function SuperAdminClient() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false);
+  const [isSavingComp, setIsSavingComp] = useState(false);
+  const [newCompData, setNewCompData] = useState({
+      name: '',
+      email: '',
+      phone: '',
+      businessType: 'retail'
+  });
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile, isLoading: profileLoading } = useDoc<AppUser>(userProfileRef);
@@ -55,6 +69,30 @@ export function SuperAdminClient() {
         activeNodes: companies.filter(c => c.status === 'active').length
     };
   }, [companies, allUsers, allSales]);
+
+  const handleAddCompany = async () => {
+      if (!newCompData.name || !newCompData.email) return;
+      setIsSavingComp(true);
+      try {
+          const compId = crypto.randomUUID();
+          await setDoc(doc(firestore, 'companies', compId), {
+              ...newCompData,
+              id: compId,
+              tenantId: compId,
+              status: 'active',
+              plan: 'legacy_pro',
+              createdAt: new Date().toISOString(),
+              createdBy: { uid: user?.uid, name: profile?.name || 'System' }
+          });
+          toast({ title: "Company Node Deployed" });
+          setIsAddCompanyOpen(false);
+          setNewCompData({ name: '', email: '', phone: '', businessType: 'retail' });
+      } catch (e) {
+          toast({ variant: 'destructive', title: "Deployment Failed" });
+      } finally {
+          setIsSavingComp(false);
+      }
+  };
 
   if (profileLoading || compsLoading || usersLoading || salesLoading) {
       return (
@@ -88,8 +126,11 @@ export function SuperAdminClient() {
         description="Global workspace oversight and multi-tenant management."
         actions={
             <div className="flex items-center gap-3">
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-9 px-4 font-black uppercase tracking-widest flex items-center gap-2">
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin-slow" /> System Online
+                <Button onClick={() => setIsAddCompanyOpen(true)} className="h-10 px-6 font-black uppercase text-[10px] tracking-widest shadow-xl">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Deploy New Node
+                </Button>
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-10 px-4 font-black uppercase tracking-widest flex items-center gap-2">
+                    <RefreshCw className="h-3.5 w-3.5" /> System Online
                 </Badge>
             </div>
         }
@@ -112,10 +153,6 @@ export function SuperAdminClient() {
                 <Users className="h-3.5 w-3.5 mr-2" />
                 Global User Directory
               </TabsTrigger>
-              <TabsTrigger value="intelligence" className="px-8 font-black uppercase text-[10px] tracking-widest h-full rounded-xl data-[state=active]:shadow-lg">
-                <Zap className="h-3.5 w-3.5 mr-2" />
-                Platform Logic
-              </TabsTrigger>
           </TabsList>
 
           <TabsContent value="companies" className="animate-in fade-in duration-500">
@@ -125,22 +162,49 @@ export function SuperAdminClient() {
           <TabsContent value="users" className="animate-in fade-in duration-500">
               <UserManagement users={allUsers || []} companies={companies || []} />
           </TabsContent>
-
-          <TabsContent value="intelligence" className="animate-in fade-in duration-500">
-              <Card className="border-none ring-1 ring-black/5 shadow-2xl bg-primary/5">
-                  <CardHeader className="bg-white/50 backdrop-blur border-b p-8">
-                      <CardTitle className="text-xl font-black uppercase tracking-tight">Core Infrastructure Rules</CardTitle>
-                      <CardDescription>Automated scaling and data encryption standards.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-20 text-center space-y-4">
-                      <Lock className="h-16 w-16 mx-auto mb-2 opacity-10" />
-                      <p className="font-black uppercase tracking-[0.3em] text-[10px] opacity-30 max-w-xs mx-auto">
-                        Logic modification is restricted to the primary infrastructure architect.
-                      </p>
-                  </CardContent>
-              </Card>
-          </TabsContent>
       </Tabs>
+
+      <Dialog open={isAddCompanyOpen} onOpenChange={setIsAddCompanyOpen}>
+          <DialogContent className="sm:max-w-md border-none shadow-2xl">
+              <DialogHeader>
+                  <DialogTitle className="text-2xl font-black uppercase flex items-center gap-2">
+                      <Building className="h-6 w-6 text-primary" />
+                      Deploy Workspace
+                  </DialogTitle>
+                  <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">
+                      Initializing a new business node in the cluster.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="py-6 space-y-4">
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase">Business Name</Label>
+                      <Input value={newCompData.name} onChange={e => setNewCompData({...newCompData, name: e.target.value})} placeholder="e.g. Acme Corp" className="h-11 font-bold" />
+                  </div>
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase">Admin Email</Label>
+                      <Input value={newCompData.email} onChange={e => setNewCompData({...newCompData, email: e.target.value})} placeholder="office@company.com" className="h-11" />
+                  </div>
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase">Business Type</Label>
+                      <Select onValueChange={v => setNewCompData({...newCompData, businessType: v})} value={newCompData.businessType}>
+                          <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="retail">Retail / Hardware</SelectItem>
+                              <SelectItem value="tech">Computers & IT</SelectItem>
+                              <SelectItem value="hospitality">Restaurant / Hotel</SelectItem>
+                              <SelectItem value="service">General Services</SelectItem>
+                          </SelectContent>
+                      </Select>
+                  </div>
+              </div>
+              <DialogFooter className="gap-2">
+                  <Button variant="outline" onClick={() => setIsAddCompanyOpen(false)} className="h-12 font-bold">Cancel</Button>
+                  <Button onClick={handleAddCompany} disabled={isSavingComp || !newCompData.name} className="h-12 px-10 font-black uppercase tracking-widest shadow-xl">
+                      {isSavingComp ? <Loader2 className="h-4 w-4 animate-spin" /> : "Execute Deployment"}
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }

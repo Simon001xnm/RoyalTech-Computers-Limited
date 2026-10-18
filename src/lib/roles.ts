@@ -28,16 +28,18 @@ export const getPermittedNavItems = (user?: User | null, company?: Company | nul
     const permissions = user?.permissions || [];
     const bizType = (company?.businessType || 'retail') as BusinessCategory;
     
-    // Base filter: Check business type compatibility
+    // 1. Super Admin: Infrastructure Focus Only
+    if (role === 'super_admin') {
+        return [
+            { id: 'super_admin', href: '/super-admin', label: 'Platform Control', icon: require('lucide-react').Globe },
+        ]; 
+    }
+
+    // Base filter for standard roles: Check business type compatibility
     let items = NAV_ITEMS.filter(item => {
         if (!item.businessTypes) return true; 
         return item.businessTypes.includes(bizType);
     });
-
-    // 1. Super Admin: Full platform access
-    if (role === 'super_admin') {
-        return items; 
-    }
 
     // 2. Workspace Admin: Access to all permitted shop modules
     if (role === 'admin') {

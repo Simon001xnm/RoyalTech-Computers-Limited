@@ -6,6 +6,7 @@ import { collection, query, where, doc, writeBatch, getDocs, addDoc } from 'fire
 import { useSaaS } from '@/components/saas/saas-provider';
 import { PageHeader } from '@/components/layout/page-header';
 import { SummaryCard } from '@/components/dashboard/summary-card';
+import { useRouter } from 'next/navigation';
 import { 
     AlertTriangle, 
     ArrowUpRight, 
@@ -83,7 +84,7 @@ import { ProformaInvoicePdf } from "./documents/components/pdfs/proforma-pdf";
 import { QuotationPdf } from "./documents/components/pdfs/quotation-pdf";
 import { DeliveryNotePdf } from "./documents/components/pdfs/delivery-note-pdf";
 import { useToast } from "@/hooks/use-toast";
-import type { Document as AppDocument, DocumentType } from "@/types";
+import type { Document as AppDocument, DocumentType, User as AppUser } from "@/types";
 import {
     BarChart,
     Bar,
@@ -112,6 +113,17 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const router = useRouter();
+
+  // Role check for Super Admin Redirection
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
+
+  useEffect(() => {
+    if (userProfile?.role === 'super_admin') {
+        router.push('/super-admin');
+    }
+  }, [userProfile, router]);
   
   const [filter, setFilter] = useState<TimeFilter>('month');
   const [ledgerSearch, setLedgerSearch] = useState('');
@@ -349,7 +361,7 @@ export default function DashboardPage() {
                 balance: posAction === 'Receipt' ? 0 : cartTotal,
                 customer: selectedCustomer,
                 applyVat,
-                invoiceNumber: docTitle, // Tracking user-friendly reference for statements
+                invoiceNumber: docTitle, 
                 paymentMethod: posAction === 'Quotation' ? 'N/A' : paymentMode,
                 workspace: workspaceProfile ? {
                     name: workspaceProfile.name || '',
@@ -373,7 +385,7 @@ export default function DashboardPage() {
                 date: timestamp,
                 customerId: selectedCustomer.id,
                 customerName: selectedCustomer.name,
-                invoiceNumber: docTitle, // Storing for statement reference
+                invoiceNumber: docTitle, 
                 items: cart.map(i => ({ ...i, productId: i.id, type: 'asset' })),
                 subtotal,
                 vatAmount,
@@ -595,8 +607,12 @@ export default function DashboardPage() {
 
   const formatKes = (val: number) => new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
 
-  if (salesLoading || stockLoading || expLoading || docsLoading) {
+  if (salesLoading || stockLoading || expLoading || docsLoading || isProfileLoading) {
       return <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground">Checking Shop Records...</div>;
+  }
+
+  if (userProfile?.role === 'super_admin') {
+      return null; // Redirect logic will handle this
   }
 
   if (!stats) return null;
@@ -744,7 +760,6 @@ export default function DashboardPage() {
                 </div>
             </CardHeader>
             <CardContent className="p-4 flex-grow flex flex-col gap-5 overflow-hidden">
-                {/* 1. Action */}
                 <div className="space-y-2">
                     <Label className="text-[8px] font-black uppercase opacity-50">1. Select Document Type</Label>
                     <div className="grid grid-cols-3 gap-2">
@@ -772,7 +787,6 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* 2. Customer */}
                 <div className="space-y-2">
                     <Label className={cn("text-[8px] font-black uppercase opacity-50", !posAction && "text-destructive")}>
                         2. Identify Customer {!posAction && "(Unlock Step 1 First)"}
@@ -821,7 +835,6 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* 3. Add Products */}
                 <div className="space-y-2">
                     <Label className={cn("text-[8px] font-black uppercase opacity-50", !selectedCustomer && "text-destructive")}>
                         3. Add Items to Cart {!selectedCustomer && "(Unlock Step 2 First)"}
@@ -906,7 +919,6 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* 4. Options */}
                 <div className="space-y-3 pt-2 border-t">
                     <div className="flex items-center justify-between">
                         <Label className="text-[8px] font-black uppercase opacity-50">4. Finalize Details</Label>
@@ -962,7 +974,6 @@ export default function DashboardPage() {
           </Card>
       </div>
 
-      {/* NEW ITEM CONFIGURATION DIALOG */}
       <Dialog open={!!configuringProduct} onOpenChange={(open) => !open && setConfiguringProduct(null)}>
         <DialogContent className="sm:max-w-md border-none shadow-2xl">
             <DialogHeader>
@@ -1015,7 +1026,6 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* NEW CUSTOMER DIALOG */}
       <Dialog open={isNewCustomerOpen} onOpenChange={setIsNewCustomerOpen}>
         <DialogContent className="sm:max-w-md border-none shadow-2xl">
             <DialogHeader>

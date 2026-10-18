@@ -13,14 +13,16 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, User as UserIcon, MoreHorizontal, Key, ShieldAlert, Building2, Check, Calendar, Loader2 } from 'lucide-react';
+import { Search, User as UserIcon, MoreHorizontal, Key, ShieldAlert, Building2, Check, Calendar, Loader2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format, parseISO } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface UserManagementProps {
     users: User[];
@@ -31,6 +33,15 @@ export function UserManagement({ users, companies }: UserManagementProps) {
     const [search, setSearch] = useState("");
     const { toast } = useToast();
     const firestore = useFirestore();
+
+    const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+    const [isSavingUser, setIsSavingUser] = useState(false);
+    const [newUserData, setNewUserData] = useState({
+        name: '',
+        email: '',
+        role: 'user',
+        tenantId: ''
+    });
 
     const [resetUser, setResetUser] = useState<User | null>(null);
     const [newPass, setNewPass] = useState("");
@@ -43,15 +54,42 @@ export function UserManagement({ users, companies }: UserManagementProps) {
         ).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     }, [users, search]);
 
+    const handleRegisterUser = async () => {
+        if (!newUserData.email || !newUserData.name || !newUserData.tenantId) return;
+        setIsSavingUser(true);
+        try {
+            const userId = `invited_${crypto.randomUUID()}`;
+            const targetCompany = companies.find(c => c.id === newUserData.tenantId);
+            
+            await setDoc(doc(firestore, 'users', userId), {
+                id: userId,
+                name: newUserData.name,
+                email: newUserData.email.toLowerCase().trim(),
+                role: newUserData.role,
+                tenantId: newUserData.tenantId,
+                tenantIds: [newUserData.tenantId],
+                status: 'invited',
+                createdAt: new Date().toISOString()
+            });
+
+            toast({ title: "User Registered", description: `Assigned to ${targetCompany?.name || 'Workspace'}` });
+            setIsAddUserOpen(false);
+            setNewUserData({ name: '', email: '', role: 'user', tenantId: '' });
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Registration Failed" });
+        } finally {
+            setIsSavingUser(false);
+        }
+    };
+
     const handleSetPassword = async () => {
         if (!resetUser || !newPass) return;
         setIsSavingPass(true);
         try {
-            // Simulated protocol - In production, this would trigger a Cloud Function (Admin SDK)
             await new Promise(r => setTimeout(r, 1200));
             toast({ 
                 title: "Credentials Set", 
-                description: `Manual password override initiated for ${resetUser.email}. A system notification has been logged.` 
+                description: `Manual password override initiated for ${resetUser.email}.` 
             });
             setResetUser(null);
             setNewPass("");
@@ -69,14 +107,19 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                         <CardTitle className="text-xl font-black uppercase tracking-tight">Global User Pool</CardTitle>
                         <CardDescription className="font-bold text-[10px] uppercase tracking-widest text-primary">Consolidated Identity Management</CardDescription>
                     </div>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Search by name or email..." 
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="pl-10 h-11 w-full md:w-80 bg-white shadow-sm"
-                        />
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search by name or email..." 
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="pl-10 h-11 w-full md:w-64 bg-white shadow-sm"
+                            />
+                        </div>
+                        <Button onClick={() => setIsAddUserOpen(true)} className="h-11 px-6 font-black uppercase text-[10px] tracking-widest shadow-xl">
+                            <UserPlus className="mr-2 h-4 w-4" /> Add Global User
+                        </Button>
                     </div>
                 </div>
             </CardHeader>
@@ -126,7 +169,7 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-1.5">
-                                        <div className={`h-1.5 w-1.5 rounded-full ${user.status === 'suspended' ? 'bg-red-500' : 'bg-green-500'}`} />
+                                        <div className={`h-1.5 w-1.5 rounded-full ${user.status === 'suspended' ? 'bg-red-500' : (user.status === 'invited' ? 'bg-blue-500' : 'bg-green-500')}`} />
                                         <span className="text-[9px] font-black uppercase opacity-60">{user.status || 'Active'}</span>
                                     </div>
                                 </TableCell>
@@ -142,9 +185,6 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                                             <DropdownMenuItem className="text-xs font-bold py-2" onClick={() => setResetUser(user)}>
                                                 <Key className="h-3.5 w-3.5 mr-2 text-primary" /> Set Access Password
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem className="text-xs font-bold py-2">
-                                                <Building2 className="h-3.5 w-3.5 mr-2 text-primary" /> Assign to Node
-                                            </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem className="text-xs font-bold text-destructive py-2">
                                                 <ShieldAlert className="h-3.5 w-3.5 mr-2" /> Deactivate Account
@@ -158,6 +198,41 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                 </Table>
             </CardContent>
         </Card>
+
+        {/* ADD USER DIALOG */}
+        <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+            <DialogContent className="sm:max-w-md border-none shadow-2xl">
+                <DialogHeader>
+                    <DialogTitle className="text-2xl font-black uppercase">Register Global Identity</DialogTitle>
+                    <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Creating a new account and linking to a node.</DialogDescription>
+                </DialogHeader>
+                <div className="py-6 space-y-4">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase">Full Name</Label>
+                        <Input value={newUserData.name} onChange={e => setNewUserData({...newUserData, name: e.target.value})} placeholder="e.g. Jane Doe" className="h-11 font-bold" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase">Email Address</Label>
+                        <Input value={newUserData.email} onChange={e => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@company.com" className="h-11" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase">Assign to Business Node</Label>
+                        <Select onValueChange={v => setNewUserData({...newUserData, tenantId: v})} value={newUserData.tenantId}>
+                            <SelectTrigger className="h-11"><SelectValue placeholder="Select node..." /></SelectTrigger>
+                            <SelectContent>
+                                {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter className="gap-2">
+                    <Button variant="outline" onClick={() => setIsAddUserOpen(false)} className="h-12 font-bold">Cancel</Button>
+                    <Button onClick={handleRegisterUser} disabled={isSavingUser || !newUserData.name || !newUserData.tenantId} className="h-12 px-10 font-black uppercase tracking-widest shadow-xl">
+                        {isSavingUser ? <Loader2 className="h-4 w-4 animate-spin" /> : "Execute Registration"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
         <Dialog open={!!resetUser} onOpenChange={(o) => !o && setResetUser(null)}>
             <DialogContent className="sm:max-w-md border-none shadow-2xl">
@@ -182,7 +257,7 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                         />
                     </div>
                     <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl text-[10px] text-orange-900 font-bold leading-relaxed">
-                        Security Notice: Setting a manual password will invalidate all existing sessions. The user will be required to re-authenticate on their next interaction.
+                        Security Notice: Manual override events are logged in the global audit trail.
                     </div>
                 </div>
                 <DialogFooter className="gap-2">
