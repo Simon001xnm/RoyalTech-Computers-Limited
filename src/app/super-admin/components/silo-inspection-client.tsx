@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { 
@@ -24,7 +24,8 @@ import {
     FileCheck,
     BarChart3,
     Search,
-    Download
+    Download,
+    Circle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,13 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
     const firestore = useFirestore();
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState("overview");
+    const [now, setNow] = useState(new Date());
+
+    // Update 'now' every minute to refresh Online/Offline status
+    useEffect(() => {
+        const interval = setInterval(() => setNow(new Date()), 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     const companyRef = useMemoFirebase(() => doc(firestore, 'companies', companyId), [firestore, companyId]);
     const { data: company, isLoading: companyLoading } = useDoc<Company>(companyRef);
@@ -88,12 +96,16 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                 moduleInteractions[mod] = (moduleInteractions[mod] || 0) + 1;
             });
 
+            const lastActive = userLogs[0]?.timestamp;
+            const isOnline = lastActive ? (now.getTime() - parseISO(lastActive).getTime() < 5 * 60 * 1000) : false;
+
             return {
                 ...user,
                 totalMinutes,
                 downloads: downloads.length,
                 downloadLogs: downloads,
-                lastActive: userLogs[0]?.timestamp,
+                lastActive,
+                isOnline,
                 interactions: userLogs.length,
                 moduleInteractions,
                 recentLogs: userLogs.slice(0, 50)
@@ -105,7 +117,7 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
             totalDownloads: exportLogs.length,
             overallInteractions: sortedLogs.length
         };
-    }, [users, sortedLogs, exportLogs]);
+    }, [users, sortedLogs, exportLogs, now]);
 
     const selectedUser = useMemo(() => {
         return metrics?.userMetrics.find(u => u.id === selectedUserId);
@@ -132,6 +144,13 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                             <div className="flex items-center gap-3">
                                 <h1 className="text-3xl font-black uppercase tracking-tighter">{selectedUser.name}</h1>
                                 <Badge className="bg-primary text-white font-black uppercase text-[10px] px-3 h-6">OPERATOR RESUME</Badge>
+                                <div className={cn(
+                                    "flex items-center gap-1.5 px-3 h-6 rounded-full border text-[9px] font-black uppercase tracking-widest",
+                                    selectedUser.isOnline ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
+                                )}>
+                                    <div className={cn("h-1.5 w-1.5 rounded-full", selectedUser.isOnline ? "bg-green-500 animate-pulse" : "bg-red-500")} />
+                                    {selectedUser.isOnline ? 'Active Now' : 'Offline'}
+                                </div>
                             </div>
                             <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.3em] mt-1">{company?.name} &bull; {selectedUser.email}</p>
                         </div>
@@ -141,8 +160,14 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     <Card className="lg:col-span-1 bg-[#141414] border-white/5 shadow-2xl h-fit">
                         <CardHeader className="text-center pb-8 border-b border-white/5">
-                            <div className="h-24 w-24 bg-primary/10 rounded-full flex items-center justify-center border-4 border-white/5 mx-auto mb-4">
+                            <div className="h-24 w-24 bg-primary/10 rounded-full flex items-center justify-center border-4 border-white/5 mx-auto mb-4 relative">
                                 <Users className="h-10 w-10 text-primary" />
+                                <div className={cn(
+                                    "absolute bottom-0 right-1 w-6 h-6 rounded-full border-4 border-[#141414] flex items-center justify-center",
+                                    selectedUser.isOnline ? "bg-green-500" : "bg-red-500"
+                                )}>
+                                    {selectedUser.isOnline && <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-20" />}
+                                </div>
                             </div>
                             <CardTitle className="text-lg font-black uppercase text-white">{selectedUser.name}</CardTitle>
                             <Badge variant="outline" className="mt-2 h-5 text-[8px] font-black uppercase border-white/20 text-white/40">{selectedUser.role}</Badge>
@@ -332,67 +357,50 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                 </TabsContent>
 
                 <TabsContent value="staff" className="space-y-6 animate-in fade-in duration-500">
-                    <div className="grid gap-6">
+                    <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                         {metrics?.userMetrics.map(u => (
                             <Card 
                                 key={u.id} 
-                                className="bg-[#141414] border-white/5 shadow-2xl overflow-hidden group hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
+                                className="bg-[#141414] border-white/5 shadow-2xl overflow-hidden group hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer relative"
                                 onClick={() => setSelectedUserId(u.id)}
                             >
-                                <CardHeader className="bg-white/[0.02] border-b border-white/5 p-6">
+                                <div className={cn(
+                                    "absolute top-0 left-0 w-1 h-full",
+                                    u.isOnline ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" : "bg-red-500 opacity-20"
+                                )} />
+                                
+                                <CardHeader className="bg-white/[0.02] border-b border-white/5 p-6 pb-4">
                                     <div className="flex justify-between items-start">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-12 w-12 bg-white/5 rounded-full flex items-center justify-center border border-white/10 group-hover:bg-primary/20 group-hover:border-primary/50 transition-colors">
-                                                <Users className="h-6 w-6 text-white/40 group-hover:text-primary transition-colors" />
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 bg-white/5 rounded-full flex items-center justify-center border border-white/10 group-hover:bg-primary/20 group-hover:border-primary/50 transition-colors relative">
+                                                <Users className="h-5 w-5 text-white/40 group-hover:text-primary transition-colors" />
+                                                {u.isOnline && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-[#141414] animate-pulse" />}
                                             </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <CardTitle className="text-lg font-black uppercase tracking-tight text-white">{u.name || 'Anonymous Operator'}</CardTitle>
-                                                    <Badge className="bg-primary/20 text-primary border-none text-[7px] font-black uppercase px-2 h-4">OPERATOR ACTIVE</Badge>
-                                                </div>
-                                                <div className="flex items-center gap-3 mt-1">
-                                                    <Badge variant="secondary" className="text-[7px] font-black uppercase h-4 px-1.5">{u.role}</Badge>
-                                                    <span className="text-[10px] font-bold text-white/20">{u.email}</span>
-                                                </div>
+                                            <div className="overflow-hidden">
+                                                <CardTitle className="text-sm font-black uppercase tracking-tight text-white truncate">{u.name || 'Anonymous'}</CardTitle>
+                                                <p className="text-[9px] text-white/30 truncate">{u.email}</p>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-[8px] font-black uppercase text-white/20 mb-1">Presence Time</p>
-                                            <div className="flex items-center gap-2 text-primary">
-                                                <Clock className="h-3 w-3" />
-                                                <span className="text-lg font-black tracking-tight">{Math.floor(u.totalMinutes / 60)}h {u.totalMinutes % 60}m</span>
-                                            </div>
-                                        </div>
+                                        <Badge className={cn(
+                                            "text-[7px] font-black uppercase px-2 h-4 border-none",
+                                            u.isOnline ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
+                                        )}>
+                                            {u.isOnline ? 'Online' : 'Offline'}
+                                        </Badge>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="p-8">
-                                    <div className="grid grid-cols-4 gap-4">
-                                        <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl text-center">
-                                            <MousePointer2 className="h-4 w-4 mx-auto mb-2 text-primary opacity-40" />
-                                            <p className="text-lg font-black">{u.interactions}</p>
-                                            <p className="text-[8px] font-black uppercase opacity-20">Interactions</p>
-                                        </div>
-                                        <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl text-center">
-                                            <DownloadCloud className="h-4 w-4 mx-auto mb-2 text-blue-500 opacity-40" />
-                                            <p className="text-lg font-black">{u.downloads}</p>
-                                            <p className="text-[8px] font-black uppercase opacity-20">Exports</p>
-                                        </div>
-                                        <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl text-center">
-                                            <Activity className="h-4 w-4 mx-auto mb-2 text-green-500 opacity-40" />
-                                            <p className="text-xs font-black uppercase">{u.lastActive ? format(parseISO(u.lastActive), 'dd MMM') : '--'}</p>
-                                            <p className="text-[8px] font-black uppercase opacity-20">Last Active</p>
-                                        </div>
-                                        <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl text-center">
-                                            <LayoutDashboard className="h-4 w-4 mx-auto mb-2 text-purple-500 opacity-40" />
-                                            <p className="text-lg font-black">{Object.keys(u.moduleInteractions).length}</p>
-                                            <p className="text-[8px] font-black uppercase opacity-20">Modules Touched</p>
-                                        </div>
+                                <CardContent className="p-6 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[8px] font-black uppercase text-white/20">Presence Time</span>
+                                        <span className="text-[10px] font-black text-primary">{Math.floor(u.totalMinutes / 60)}h {u.totalMinutes % 60}m</span>
                                     </div>
-                                    <div className="flex justify-center pt-6">
-                                        <Button variant="ghost" className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 group-hover:text-primary group-hover:bg-primary/5 transition-all w-full h-12 rounded-2xl border border-dashed border-white/5">
-                                            Open Intelligence Resume <ArrowRight className="ml-2 h-3 w-3" />
-                                        </Button>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[8px] font-black uppercase text-white/20">System Load</span>
+                                        <span className="text-[10px] font-black text-white">{u.interactions} Events</span>
                                     </div>
+                                    <Button variant="ghost" className="w-full h-8 text-[8px] font-black uppercase tracking-widest text-white/20 group-hover:text-white group-hover:bg-white/5 border border-dashed border-white/5 rounded-lg transition-all">
+                                        Analyze Resume <ChevronRight className="ml-1 h-3 w-3" />
+                                    </Button>
                                 </CardContent>
                             </Card>
                         ))}
@@ -450,7 +458,7 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                             </div>
                         </CardHeader>
                         <CardContent className="p-0">
-                            <ScrollArea className="h-[700px]">
+                            <ScrollArea className="h-[600px]">
                                 <div className="divide-y divide-white/5">
                                     {sortedLogs.map((log: any, idx: number) => (
                                         <div key={idx} className="p-4 hover:bg-white/[0.03] transition-colors group">

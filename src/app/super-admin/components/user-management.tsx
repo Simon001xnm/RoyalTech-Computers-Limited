@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { User, Company } from '@/types';
 import { 
     Table, 
@@ -25,7 +25,8 @@ import {
     Loader2, 
     UserPlus, 
     Trash2,
-    ArrowUpDown
+    ArrowUpDown,
+    Radio
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -33,7 +34,7 @@ import { format, parseISO } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
-import { doc, updateDoc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, deleteDoc, writeBatch, collection, query, limit, getDocs, orderBy } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -49,6 +50,7 @@ import {
   type RowSelectionState,
 } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { cn } from '@/lib/utils';
 
 interface UserManagementProps {
     users: User[];
@@ -59,6 +61,7 @@ export function UserManagement({ users, companies }: UserManagementProps) {
     const [search, setSearch] = useState("");
     const { toast } = useToast();
     const firestore = useFirestore();
+    const [now, setNow] = useState(new Date());
 
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [isSavingUser, setIsSavingUser] = useState(false);
@@ -78,6 +81,34 @@ export function UserManagement({ users, companies }: UserManagementProps) {
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
     const [sorting, setSorting] = useState<SortingState>([]);
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+    const [userLastSeen, setUserLastSeen] = useState<Record<string, string>>({});
+
+    // Refesh Online state every 60s
+    useEffect(() => {
+        const interval = setInterval(() => setNow(new Date()), 60000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Fetch last activity for all visible users
+    useEffect(() => {
+        const fetchRecentActivity = async () => {
+            try {
+                const logsRef = collection(firestore, 'platform_logs');
+                const q = query(logsRef, orderBy('timestamp', 'desc'), limit(100));
+                const snap = await getDocs(q);
+                const activityMap: Record<string, string> = {};
+                snap.docs.forEach(d => {
+                    const data = d.data();
+                    if (data.userId && !activityMap[data.userId]) {
+                        activityMap[data.userId] = data.timestamp;
+                    }
+                });
+                setUserLastSeen(prev => ({ ...prev, ...activityMap }));
+            } catch (e) {}
+        };
+        fetchRecentActivity();
+    }, [firestore, pagination.pageIndex]);
 
     const filtered = useMemo(() => {
         return users.filter(u => 
@@ -181,13 +212,25 @@ export function UserManagement({ users, companies }: UserManagementProps) {
             ),
             cell: ({ row }) => {
                 const user = row.original;
+                const lastSeen = userLastSeen[user.id];
+                const isOnline = lastSeen ? (now.getTime() - parseISO(lastSeen).getTime() < 5 * 60 * 1000) : false;
+
                 return (
                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 group-hover:bg-primary group-hover:text-white transition-colors">
-                            <UserIcon className="h-5 w-5" />
+                        <div className="relative">
+                            <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 group-hover:bg-primary group-hover:text-white transition-colors">
+                                <UserIcon className="h-5 w-5" />
+                            </div>
+                            <div className={cn(
+                                "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#141414]",
+                                isOnline ? "bg-green-500 animate-pulse" : "bg-red-500"
+                            )} />
                         </div>
                         <div>
-                            <p className="font-black uppercase text-sm tracking-tight text-white">{user.name || 'Anonymous'}</p>
+                            <div className="flex items-center gap-2">
+                                <p className="font-black uppercase text-sm tracking-tight text-white">{user.name || 'Anonymous'}</p>
+                                {isOnline && <Badge className="bg-green-500/10 text-green-500 border-none text-[6px] h-3 px-1 uppercase font-black">Online</Badge>}
+                            </div>
                             <p className="text-[10px] text-white/40 font-bold">{user.email}</p>
                         </div>
                     </div>
@@ -264,7 +307,7 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                 </div>
             )
         }
-    ], [companies]);
+    ], [companies, userLastSeen, now]);
 
     const table = useReactTable({
         data: filtered,
