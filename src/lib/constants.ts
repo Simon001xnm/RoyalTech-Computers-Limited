@@ -39,6 +39,7 @@ export interface NavItem {
 /**
  * SIMPLE NAVIGATION
  * Using basic English for all users.
+ * Note: 'super_admin' (Platform Control) removed from sidebar to keep it separate from daily operations.
  */
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', href: '/', label: 'Main Dashboard', icon: LayoutDashboard },
@@ -58,7 +59,6 @@ export const NAV_ITEMS: NavItem[] = [
   
   // ADMIN & TOOLS
   { id: 'admin', href: '/admin', label: 'Shop Analysis', icon: ShieldCheck },
-  { id: 'super_admin', href: '/super-admin', label: 'Platform Control', icon: Globe },
   { id: 'users', href: '/users', label: 'Staff Members', icon: UserCog },
   { id: 'settings', href: '/profile', label: 'Shop Settings', icon: Settings },
 ];

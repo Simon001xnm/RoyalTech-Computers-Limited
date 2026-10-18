@@ -7,8 +7,9 @@ import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignIn, initiatePasswordReset } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Eye, EyeOff, Quote } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Quote, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 const quotes = [
   { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" },
@@ -235,6 +236,17 @@ export default function LoginPage() {
                         Secured Shop Node
                     </p>
                 </div>
+            </div>
+
+            {/* DISCRETE SYSTEM ACCESS PORTAL - "Far" from the form */}
+            <div className="absolute bottom-8 text-center w-full">
+                <Link 
+                    href="/super-admin" 
+                    className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/20 hover:text-primary transition-colors"
+                >
+                    <ShieldCheck className="h-2 w-2" />
+                    System Portal
+                </Link>
             </div>
         </div>
       </div>

@@ -17,7 +17,8 @@ import {
     Building2,
     Lock,
     ArrowRight,
-    Globe
+    Globe,
+    Zap
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
@@ -31,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { logger } from "@/lib/logger";
+import Link from 'next/link';
 
 export default function ProfilePage() {
   const { user: authUser, isUserLoading } = useUser();
@@ -187,6 +189,7 @@ export default function ProfilePage() {
   }
 
   const isAdmin = userProfile.role === 'admin' || userProfile.role === 'super_admin';
+  const isSuperAdmin = userProfile.role === 'super_admin';
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20">
@@ -221,7 +224,7 @@ export default function ProfilePage() {
                     <Badge className="capitalize px-4 h-7 text-[10px] font-black tracking-widest uppercase">
                         {userProfile.role} Account
                     </Badge>
-                    {userProfile.role === 'super_admin' && (
+                    {isSuperAdmin && (
                         <Badge variant="outline" className="bg-destructive/5 text-destructive border-destructive/20 h-7 px-3 text-[10px] font-black uppercase tracking-widest">
                             <Globe className="h-3 w-3 mr-1.5" /> Platform Admin
                         </Badge>
@@ -292,6 +295,28 @@ export default function ProfilePage() {
           </Card>
 
           <SaaSUsageMeters />
+          
+          {/* SUPER ADMIN PORTAL LINK - "Far" from normal navigation */}
+          {isSuperAdmin && (
+              <Card className="border-2 border-dashed border-red-200 bg-red-50/30 overflow-hidden shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                  <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2 text-red-600">
+                          <ShieldCheck className="h-4 w-4" />
+                          <CardTitle className="text-xs font-black uppercase tracking-widest">Platform Control Node</CardTitle>
+                      </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <p className="text-[10px] font-bold text-red-800 leading-relaxed italic">
+                          Infrastructure oversight and global tenant management is restricted to authorized platform controllers.
+                      </p>
+                      <Button asChild variant="destructive" className="w-full h-11 font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+                          <Link href="/super-admin">
+                              <Globe className="mr-2 h-4 w-4" /> Enter Control Layer
+                          </Link>
+                      </Button>
+                  </CardContent>
+              </Card>
+          )}
         </div>
 
         <div className="space-y-8">
