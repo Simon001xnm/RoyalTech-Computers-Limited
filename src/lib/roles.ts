@@ -32,7 +32,7 @@ export const getPermittedNavItems = (user?: User | null, company?: Company | nul
     if (role === 'super_admin') {
         const { 
             LayoutDashboard, 
-            Building2, 
+            Share2, 
             Users, 
             CreditCard, 
             Headset, 
@@ -43,7 +43,7 @@ export const getPermittedNavItems = (user?: User | null, company?: Company | nul
 
         return [
             { id: 'master_dashboard', href: '/super-admin', label: 'Master Dashboard', icon: LayoutDashboard },
-            { id: 'master_companies', href: '/super-admin/companies', label: 'Business Nodes', icon: Building2 },
+            { id: 'master_data_flow', href: '/super-admin/data-flow', label: 'Data Flow', icon: Share2 },
             { id: 'master_users', href: '/super-admin/users', label: 'Identity Pool', icon: Users },
             { id: 'master_billing', href: '/super-admin/finance', label: 'Revenue Node', icon: CreditCard },
             { id: 'master_support', href: '/super-admin/support', label: 'Support Desk', icon: Headset },
@@ -53,23 +53,19 @@ export const getPermittedNavItems = (user?: User | null, company?: Company | nul
         ]; 
     }
 
-    // Base filter for standard roles: Check business type compatibility
+    // Base filter for standard roles
     let items = NAV_ITEMS.filter(item => {
         if (!item.businessTypes) return true; 
         return item.businessTypes.includes(bizType);
     });
 
-    // 2. Workspace Admin: Access to all permitted shop modules
     if (role === 'admin') {
         return items.filter(i => i.id !== 'super_admin');
     }
     
-    // 3. Standard User: Respect granular permissions
     const alwaysAllowedHrefs = ['/'];
-    
     return items.filter(item => {
         if (alwaysAllowedHrefs.includes(item.href)) return true;
-        // Specifically block management modules for non-admins
         if (item.id === 'super_admin' || item.id === 'users' || item.id === 'settings') return false;
         return permissions.includes(item.id);
     });

@@ -11,7 +11,8 @@ import {
     UserCog,
     Wallet,
     ShieldCheck,
-    Globe
+    Globe,
+    Share2
 } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
@@ -39,7 +40,6 @@ export interface NavItem {
 /**
  * SIMPLE NAVIGATION
  * Using basic English for all users.
- * Note: 'super_admin' (Platform Control) removed from sidebar to keep it separate from daily operations.
  */
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', href: '/', label: 'Main Dashboard', icon: LayoutDashboard },
