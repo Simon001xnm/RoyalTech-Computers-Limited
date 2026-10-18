@@ -31,7 +31,8 @@ import {
     Trash2,
     ArrowRight,
     Send,
-    Check
+    Check,
+    User as UserIcon
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -82,6 +83,7 @@ export function SuperAdminClient() {
   // Support State
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [targetNode, setTargetNode] = useState('all');
+  const [targetUser, setTargetUser] = useState('all');
   const [messageSubject, setMessageSubject] = useState('');
   const [messageBody, setMessageBody] = useState('');
   const [messagePriority, setMessagePriority] = useState('info');
@@ -103,6 +105,11 @@ export function SuperAdminClient() {
   const { data: allUsers, isLoading: usersLoading } = useCollection(allUsersQuery);
   const { data: allLogs, isLoading: logsLoading } = useCollection(logsQuery);
   const { data: supportThreads, isLoading: supportLoading } = useCollection(supportQuery);
+
+  const filteredTargetUsers = useMemo(() => {
+    if (targetNode === 'all' || !allUsers) return [];
+    return allUsers.filter(u => u.tenantIds?.includes(targetNode) || u.tenantId === targetNode);
+  }, [targetNode, allUsers]);
 
   const stats = useMemo(() => {
     if (!companies || !allUsers || !allLogs) return null;
@@ -165,6 +172,7 @@ export function SuperAdminClient() {
         for (const tId of targets) {
             await addDoc(collection(firestore, 'notifications'), {
                 tenantId: tId,
+                targetUserId: targetUser, // 'all' or specific UID
                 subject: messageSubject,
                 message: messageBody,
                 priority: messagePriority,
@@ -182,6 +190,7 @@ export function SuperAdminClient() {
         setIsComposeOpen(false);
         setMessageSubject('');
         setMessageBody('');
+        setTargetUser('all');
     } catch (e: any) {
         toast({ variant: 'destructive', title: "Broadcast Failed" });
     } finally {
@@ -202,7 +211,7 @@ export function SuperAdminClient() {
                   message: replyText,
                   timestamp: new Date().toISOString()
               }),
-              read: false, // Reset read status for the tenant so they see the new reply
+              read: false, 
               updatedAt: new Date().toISOString()
           });
 
@@ -459,8 +468,8 @@ export function SuperAdminClient() {
               <div className="py-6 space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-white/60">Target Logic</Label>
-                        <Select value={targetNode} onValueChange={setTargetNode}>
+                        <Label className="text-[10px] font-black uppercase text-white/60">Target Node</Label>
+                        <Select value={targetNode} onValueChange={(v) => { setTargetNode(v); setTargetUser('all'); }}>
                             <SelectTrigger className="h-11 bg-white/5 border-white/10">
                                 <SelectValue placeholder="Target Node..." />
                             </SelectTrigger>
@@ -471,18 +480,37 @@ export function SuperAdminClient() {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-white/60">Priority Matrix</Label>
-                        <Select value={messagePriority} onValueChange={setMessagePriority}>
+                        <Label className="text-[10px] font-black uppercase text-white/60">Target Operator</Label>
+                        <Select value={targetUser} onValueChange={setTargetUser} disabled={targetNode === 'all'}>
                             <SelectTrigger className="h-11 bg-white/5 border-white/10">
-                                <SelectValue />
+                                <SelectValue placeholder={targetNode === 'all' ? "All Staff" : "Select Staff..."} />
                             </SelectTrigger>
                             <SelectContent className="bg-[#141414] border-white/10 text-white">
-                                <SelectItem value="info">Information (Blue)</SelectItem>
-                                <SelectItem value="important">Important (Purple)</SelectItem>
-                                <SelectItem value="alert">Critical Alert (Red)</SelectItem>
+                                <SelectItem value="all">All Shop Staff</SelectItem>
+                                {filteredTargetUsers.map(u => (
+                                    <SelectItem key={u.id} value={u.id}>
+                                        <div className="flex items-center gap-2">
+                                            <UserIcon className="h-3 w-3 opacity-40" />
+                                            <span>{u.name}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                       </div>
+                  </div>
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-white/60">Priority Matrix</Label>
+                      <Select value={messagePriority} onValueChange={setMessagePriority}>
+                          <SelectTrigger className="h-11 bg-white/5 border-white/10">
+                              <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#141414] border-white/10 text-white">
+                              <SelectItem value="info">Information (Blue)</SelectItem>
+                              <SelectItem value="important">Important (Purple)</SelectItem>
+                              <SelectItem value="alert">Critical Alert (Red)</SelectItem>
+                          </SelectContent>
+                      </Select>
                   </div>
                   <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-white/60">Alert Subject</Label>

@@ -34,6 +34,7 @@ import { Input } from '@/components/ui/input';
 /**
  * @fileOverview Synchronized Notification Center
  * Handles real-time alerts, unread counts, and bi-directional support replies.
+ * Updated to support user-specific directed notifications.
  */
 export function NotificationCenter() {
   const { user } = useUser();
@@ -57,15 +58,20 @@ export function NotificationCenter() {
   const { data: rawNotifications, isLoading } = useCollection(notificationsQuery);
 
   const notifications = useMemo(() => {
-    if (!rawNotifications) return [];
-    // Only show notifications for this node. (userId filter optional if node-wide is intended)
+    if (!rawNotifications || !user) return [];
+    
+    // Filter out notifications targeted at other specific users
     return rawNotifications
+        .filter(n => {
+            if (!n.targetUserId || n.targetUserId === 'all') return true;
+            return n.targetUserId === user.uid;
+        })
         .sort((a, b) => {
             const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
             const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
             return dateB - dateA;
         });
-  }, [rawNotifications]);
+  }, [rawNotifications, user]);
 
   const unreadCount = notifications.filter(n => !n.read).length || 0;
 
@@ -84,7 +90,7 @@ export function NotificationCenter() {
     try {
         const docRef = doc(firestore, 'notifications', id);
         await updateDoc(docRef, {
-            priority: 'alert', // Boost priority so super admin sees the user's response
+            priority: 'alert', 
             replies: arrayUnion({
                 userId: user?.uid,
                 userName: user?.displayName || user?.email,
@@ -182,9 +188,14 @@ export function NotificationCenter() {
                             </div>
                             <div className="space-y-1 flex-grow overflow-hidden">
                                 <div className="flex items-center justify-between gap-2">
-                                    <p className={cn("text-sm font-bold truncate", !notif.read && "text-primary uppercase")}>
-                                        {notif.subject}
-                                    </p>
+                                    <div className="flex items-center gap-2 overflow-hidden">
+                                        <p className={cn("text-sm font-bold truncate", !notif.read && "text-primary uppercase")}>
+                                            {notif.subject}
+                                        </p>
+                                        {notif.targetUserId && notif.targetUserId !== 'all' && (
+                                            <Badge variant="outline" className="text-[6px] font-black uppercase h-3 px-1 border-primary/20 text-primary">Private</Badge>
+                                        )}
+                                    </div>
                                     <span className="text-[10px] font-medium text-muted-foreground shrink-0">
                                         {notif.createdAt ? format(parseISO(notif.createdAt), 'MMM d') : 'Just now'}
                                     </span>
