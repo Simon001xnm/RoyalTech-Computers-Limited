@@ -222,6 +222,12 @@ export default function LoginPage() {
                             {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Enter Workspace'}
                         </Button>
                     </div>
+
+                    <div className="pt-2 text-center">
+                        <p className="text-[10px] font-bold text-muted-foreground">
+                            Don't have an account? <Link href="/signup" className="text-primary font-black uppercase tracking-widest hover:underline">Sign up</Link>
+                        </p>
+                    </div>
                 </div>
                 
                 <div className="pt-4 text-center">
@@ -248,7 +254,7 @@ export default function LoginPage() {
                                 <Info className="h-3 w-3 mt-0.5 text-primary" />
                                 <p className="leading-relaxed">
                                     Master Login: use admin@businesshub.co.ke.<br/>
-                                    If this is your first time, please Sign Up first to set your password.
+                                    First time? Please <Link href="/signup" className="underline">Sign Up</Link> first to set your password.
                                 </p>
                            </div>
                         </TooltipContent>
