@@ -13,6 +13,7 @@ export const roleDescriptions: Record<Role, string> = {
 
 /**
  * MASTER KEYS: Emails that automatically get Super Admin role.
+ * Logging in with these emails grants global infrastructure control.
  */
 export const MASTER_KEYS = [
     "admin@businesshub.co.ke",
@@ -35,7 +36,7 @@ export const getPermittedNavItems = (user?: User | null, company?: Company | nul
 
     // 1. Super Admin: Full platform access
     if (role === 'super_admin') {
-        return items; // Logic in constants.ts hides/shows super_admin item
+        return items; 
     }
 
     // 2. Workspace Admin: Access to all permitted shop modules
