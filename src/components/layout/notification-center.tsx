@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, updateDoc, doc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, updateDoc, doc, writeBatch, arrayUnion } from 'firebase/firestore';
 import { 
     Bell, 
     BellRing, 
@@ -10,7 +10,9 @@ import {
     AlertTriangle, 
     ShieldCheck, 
     MailOpen, 
-    Trash2 
+    Trash2,
+    Send,
+    Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,10 +29,10 @@ import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useSaaS } from '@/components/saas/saas-provider';
+import { Input } from '@/components/ui/input';
 
 /**
- * @fileOverview Notification Center
- * Optimized to avoid technical jargon for simple English understanding.
+ * @fileOverview Notification Center with Reply Bridge
  */
 export function NotificationCenter() {
   const { user } = useUser();
@@ -38,6 +40,10 @@ export function NotificationCenter() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [isSendingReply, setIsSendingMessage] = useState(false);
 
   const notificationsQuery = useMemoFirebase(() => {
     if (!user || !tenant) return null;
@@ -68,6 +74,32 @@ export function NotificationCenter() {
         read: true, 
         updatedAt: new Date().toISOString() 
     });
+  };
+
+  const handleSendReply = async (id: string) => {
+    if (!replyText.trim() || isSendingReply) return;
+    setIsSendingMessage(true);
+
+    try {
+        const docRef = doc(firestore, 'notifications', id);
+        await updateDoc(docRef, {
+            priority: 'alert', // Boost priority so super admin sees it
+            replies: arrayUnion({
+                userId: user?.uid,
+                userName: user?.displayName || user?.email,
+                message: replyText,
+                timestamp: new Date().toISOString()
+            }),
+            updatedAt: new Date().toISOString()
+        });
+        toast({ title: "Reply Sent to Support" });
+        setReplyText('');
+        setReplyingTo(null);
+    } catch (e) {
+        toast({ variant: 'destructive', title: "Failed to send reply" });
+    } finally {
+        setIsSendingMessage(false);
+    }
   };
 
   const handleClearAll = async () => {
@@ -125,7 +157,7 @@ export function NotificationCenter() {
             )}
           </div>
           <SheetDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Messages from the shop manager
+            Support bridge to platform controllers
           </SheetDescription>
         </SheetHeader>
         
@@ -138,8 +170,8 @@ export function NotificationCenter() {
                     <div 
                         key={notif.id} 
                         className={cn(
-                            "p-5 transition-all cursor-pointer group hover:bg-muted/30",
-                            notif.read ? "opacity-50" : "bg-primary/5 border-l-4 border-l-primary"
+                            "p-5 transition-all group",
+                            notif.read ? "bg-white" : "bg-primary/5 border-l-4 border-l-primary"
                         )}
                         onClick={() => !notif.read && handleMarkAsRead(notif.id)}
                     >
@@ -156,15 +188,55 @@ export function NotificationCenter() {
                                         {notif.createdAt ? format(parseISO(notif.createdAt), 'MMM d, p') : 'Just now'}
                                     </span>
                                 </div>
-                                <p className="text-xs text-muted-foreground leading-relaxed pt-1 line-clamp-3">
+                                <p className="text-xs text-muted-foreground leading-relaxed pt-1">
                                     {notif.message}
                                 </p>
-                                <div className="pt-3 flex items-center gap-2">
-                                    <Badge variant="secondary" className="text-[8px] font-black uppercase py-0 px-2 h-4 border-none opacity-80">
-                                        REF: {notif.id.slice(0, 8)}
-                                    </Badge>
-                                    {!notif.read && (
-                                        <Badge variant="default" className="text-[8px] font-black uppercase py-0 px-2 h-4 animate-pulse">NEW</Badge>
+                                
+                                {notif.replies && notif.replies.map((reply: any, idx: number) => (
+                                    <div key={idx} className="mt-3 p-3 bg-white border rounded-xl shadow-sm">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-[9px] font-black uppercase text-primary">{reply.userName}</span>
+                                            <span className="text-[8px] opacity-40">{format(parseISO(reply.timestamp), 'HH:mm')}</span>
+                                        </div>
+                                        <p className="text-[11px] font-medium leading-tight">{reply.message}</p>
+                                    </div>
+                                ))}
+
+                                <div className="pt-4 flex items-center justify-between">
+                                    <div className="flex gap-2">
+                                        <Badge variant="secondary" className="text-[8px] font-black uppercase py-0 px-2 h-4 border-none opacity-80">
+                                            REF: {notif.id.slice(0, 8)}
+                                        </Badge>
+                                        {!notif.read && (
+                                            <Badge variant="default" className="text-[8px] font-black uppercase py-0 px-2 h-4 animate-pulse">NEW</Badge>
+                                        )}
+                                    </div>
+                                    
+                                    {replyingTo === notif.id ? (
+                                        <div className="flex w-full mt-4 gap-2 animate-in slide-in-from-bottom-2 duration-300">
+                                            <Input 
+                                                autoFocus 
+                                                placeholder="Enter message..." 
+                                                value={replyText} 
+                                                onChange={e => setReplyText(e.target.value)}
+                                                className="h-8 text-xs flex-1"
+                                            />
+                                            <Button size="icon" className="h-8 w-8" onClick={() => handleSendReply(notif.id)} disabled={isSendingReply}>
+                                                {isSendingReply ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-7 text-[8px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setReplyingTo(notif.id);
+                                            }}
+                                        >
+                                            Reply to Support
+                                        </Button>
                                     )}
                                 </div>
                             </div>
@@ -179,7 +251,7 @@ export function NotificationCenter() {
                 </div>
                 <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Inbox Empty</p>
                 <p className="text-xs text-muted-foreground mt-2 max-w-[200px] mx-auto">
-                    You have no new messages at this time.
+                    No active support messages or system alerts.
                 </p>
             </div>
           )}
@@ -187,7 +259,7 @@ export function NotificationCenter() {
         
         <div className="p-4 border-t bg-muted/30 text-center">
             <p className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter opacity-50">
-                saved to internet &bull; shop is connected
+                active secure bridge &bull; shop node {tenant?.id?.slice(0,8)}
             </p>
         </div>
       </SheetContent>

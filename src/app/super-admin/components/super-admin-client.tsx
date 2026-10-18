@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc, setDoc, deleteDoc, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, addDoc, limit, orderBy, updateDoc } from 'firebase/firestore';
 import { 
     Globe, 
     Share2, 
@@ -29,7 +29,9 @@ import {
     History,
     MessageSquare,
     Trash2,
-    ArrowRight
+    ArrowRight,
+    Send,
+    Check
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -61,6 +63,7 @@ import {
 import { format, parseISO, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
 
 export function SuperAdminClient() {
   const { user } = useUser();
@@ -76,16 +79,26 @@ export function SuperAdminClient() {
       businessType: 'retail'
   });
 
+  // Support State
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [targetNode, setTargetNode] = useState('all');
+  const [messageSubject, setMessageSubject] = useState('');
+  const [messageBody, setMessageBody] = useState('');
+  const [messagePriority, setMessagePriority] = useState('info');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile, isLoading: profileLoading } = useDoc<AppUser>(userProfileRef);
 
   const companiesQuery = useMemoFirebase(() => collection(firestore, 'companies'), [firestore]);
   const allUsersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
   const logsQuery = useMemoFirebase(() => query(collection(firestore, 'platform_logs'), orderBy('timestamp', 'desc'), limit(100)), [firestore]);
+  const supportQuery = useMemoFirebase(() => query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc'), limit(50)), [firestore]);
 
   const { data: companies, isLoading: compsLoading } = useCollection(companiesQuery);
   const { data: allUsers, isLoading: usersLoading } = useCollection(allUsersQuery);
   const { data: allLogs, isLoading: logsLoading } = useCollection(logsQuery);
+  const { data: supportThreads, isLoading: supportLoading } = useCollection(supportQuery);
 
   const stats = useMemo(() => {
     if (!companies || !allUsers || !allLogs) return null;
@@ -131,9 +144,54 @@ export function SuperAdminClient() {
       }
   };
 
+  const handleSendSupport = async () => {
+    if (!messageSubject || !messageBody || isSendingMessage) return;
+    setIsSendingMessage(true);
+
+    try {
+        const timestamp = new Date().toISOString();
+        const targets = targetNode === 'all' ? companies?.map(c => c.id) || [] : [targetNode];
+
+        for (const tId of targets) {
+            await addDoc(collection(firestore, 'notifications'), {
+                tenantId: tId,
+                subject: messageSubject,
+                message: messageBody,
+                priority: messagePriority,
+                read: false,
+                type: 'system',
+                senderId: 'platform_admin',
+                senderName: 'Platform Support',
+                createdAt: timestamp,
+                updatedAt: timestamp
+            });
+        }
+
+        toast({ title: "Alert Sent Successfully" });
+        setIsComposeOpen(false);
+        setMessageSubject('');
+        setMessageBody('');
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: "Broadcast Failed" });
+    } finally {
+        setIsSendingMessage(false);
+    }
+  };
+
+  const handleResolveSupport = async (id: string) => {
+      try {
+          await updateDoc(doc(firestore, 'notifications', id), {
+              priority: 'info',
+              resolved: true,
+              updatedAt: new Date().toISOString()
+          });
+          toast({ title: "Support Ticket Resolved" });
+      } catch (e) {}
+  };
+
   const formatKes = (val: number) => new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
 
-  if (profileLoading || compsLoading || usersLoading || logsLoading) {
+  if (profileLoading || compsLoading || usersLoading || logsLoading || supportLoading) {
       return (
         <div className="flex h-screen flex-col items-center justify-center space-y-4 bg-[#0a0a0a]">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -250,19 +308,142 @@ export function SuperAdminClient() {
                 </Tabs>
             </div>
             <div className="space-y-8">
-                <Card className="bg-[#141414] border-white/5 shadow-2xl">
-                    <CardHeader className="pb-4"><CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2"><MessageSquare className="h-3 w-3" /> Complaints & Support</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/5 space-y-3">
-                            <div className="flex justify-between items-center"><Badge className="bg-blue-600 text-[7px] font-black uppercase">NEW COMPLAINT</Badge><span className="text-[8px] font-bold opacity-30 uppercase">8 mins ago</span></div>
-                            <p className="text-[11px] font-bold text-white leading-relaxed">"Printer not connecting to the thermal output in Matesh Node."</p>
-                            <div className="pt-2 flex justify-end"><Button variant="outline" size="sm" className="h-7 text-[8px] font-black uppercase border-white/10">Reply to Owner</Button></div>
+                <Card className="bg-[#141414] border-white/5 shadow-2xl h-full flex flex-col overflow-hidden">
+                    <CardHeader className="bg-white/[0.03] p-5 border-b border-white/5">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                    <MessageSquare className="h-3.5 w-3.5" />
+                                    Complaints & Support
+                                </CardTitle>
+                                <CardDescription className="text-[9px] font-bold uppercase opacity-30 mt-1">Cross-Tenant Bridge</CardDescription>
+                            </div>
+                            <Button onClick={() => setIsComposeOpen(true)} variant="outline" size="sm" className="h-8 text-[8px] font-black uppercase border-white/10 hover:bg-white/5">
+                                <Send className="h-3 w-3 mr-1.5" /> Compose Alert
+                            </Button>
                         </div>
+                    </CardHeader>
+                    <CardContent className="p-0 flex-grow">
+                        <ScrollArea className="h-[600px]">
+                            <div className="divide-y divide-white/5">
+                                {supportThreads && supportThreads.map(thread => (
+                                    <div key={thread.id} className={cn(
+                                        "p-5 hover:bg-white/[0.03] transition-all",
+                                        thread.priority === 'alert' ? "bg-red-500/5" : ""
+                                    )}>
+                                        <div className="flex justify-between items-start gap-4">
+                                            <div className="space-y-2 flex-grow overflow-hidden">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge className={cn(
+                                                        "text-[7px] font-black uppercase h-4 px-1.5 border-none",
+                                                        thread.priority === 'alert' ? "bg-red-600" : "bg-blue-600"
+                                                    )}>{thread.priority}</Badge>
+                                                    <span className="text-[8px] font-black text-white/20 uppercase truncate">
+                                                        NODE: {companies?.find(c => c.id === thread.tenantId)?.name || thread.tenantId?.slice(0, 8)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs font-black uppercase tracking-tight text-white/90 truncate">{thread.subject}</p>
+                                                <p className="text-[10px] text-white/40 leading-relaxed line-clamp-2">{thread.message}</p>
+                                                
+                                                {thread.replies && thread.replies.length > 0 && (
+                                                    <div className="mt-4 p-3 bg-white/[0.02] rounded-xl border border-white/5 space-y-2">
+                                                        <p className="text-[8px] font-black uppercase text-primary">Recent Reply</p>
+                                                        <p className="text-[10px] font-bold text-white/60">{thread.replies[thread.replies.length-1].message}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col items-end gap-3 shrink-0">
+                                                <span className="text-[8px] font-bold text-white/10 uppercase">{format(parseISO(thread.createdAt), 'dd MMM')}</span>
+                                                {!thread.resolved ? (
+                                                    <Button onClick={() => handleResolveSupport(thread.id)} variant="ghost" size="icon" className="h-8 w-8 text-green-500/30 hover:text-green-500">
+                                                        <Check className="h-4 w-4" />
+                                                    </Button>
+                                                ) : (
+                                                    <Badge variant="outline" className="text-[7px] font-black border-green-500/20 text-green-500/50">RESOLVED</Badge>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {(!supportThreads || supportThreads.length === 0) && (
+                                    <div className="py-24 text-center opacity-20">
+                                        <Headset className="h-12 w-12 mx-auto mb-4" />
+                                        <p className="text-[10px] font-black uppercase tracking-[0.4em]">No active support tickets</p>
+                                    </div>
+                                )}
+                            </div>
+                        </ScrollArea>
                     </CardContent>
                 </Card>
             </div>
         </div>
       </div>
+
+      <Dialog open={isComposeOpen} onOpenChange={setIsComposeOpen}>
+          <DialogContent className="sm:max-w-lg bg-[#141414] border-white/10 text-white shadow-[0_0_100px_rgba(0,0,0,0.5)]">
+              <DialogHeader>
+                  <DialogTitle className="text-2xl font-black uppercase flex items-center gap-3">
+                      <Send className="h-6 w-6 text-primary" />
+                      Dispatch Node Alert
+                  </DialogTitle>
+                  <DialogDescription className="text-white/40 font-bold text-[10px] uppercase tracking-widest">Bridging communication with business silos.</DialogDescription>
+              </DialogHeader>
+              <div className="py-6 space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-white/60">Target Logic</Label>
+                        <Select value={targetNode} onValueChange={setTargetNode}>
+                            <SelectTrigger className="h-11 bg-white/5 border-white/10">
+                                <SelectValue placeholder="Target Node..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#141414] border-white/10 text-white">
+                                <SelectItem value="all">Platform Broadcast (All)</SelectItem>
+                                {companies?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-white/60">Priority Matrix</Label>
+                        <Select value={messagePriority} onValueChange={setMessagePriority}>
+                            <SelectTrigger className="h-11 bg-white/5 border-white/10">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#141414] border-white/10 text-white">
+                                <SelectItem value="info">Information (Blue)</SelectItem>
+                                <SelectItem value="important">Important (Purple)</SelectItem>
+                                <SelectItem value="alert">Critical Alert (Red)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                      </div>
+                  </div>
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-white/60">Alert Subject</Label>
+                      <Input 
+                        value={messageSubject} 
+                        onChange={e => setMessageSubject(e.target.value)} 
+                        placeholder="e.g. Scheduled Maintenance" 
+                        className="h-11 font-bold bg-white/5 border-white/10"
+                      />
+                  </div>
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-white/60">Communication Payload</Label>
+                      <Textarea 
+                        value={messageBody} 
+                        onChange={e => setMessageBody(e.target.value)} 
+                        placeholder="Enter the detailed message..." 
+                        rows={5}
+                        className="bg-white/5 border-white/10 font-medium"
+                      />
+                  </div>
+              </div>
+              <DialogFooter className="gap-2">
+                  <Button variant="outline" onClick={() => setIsComposeOpen(false)} className="h-12 px-6 font-bold bg-transparent border-white/10 hover:bg-white/5">Cancel</Button>
+                  <Button onClick={handleSendSupport} disabled={isSendingMessage || !messageSubject} className="h-12 px-10 font-black uppercase tracking-widest shadow-xl bg-primary text-white">
+                      {isSendingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : "Transmit Alert"}
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
       <Dialog open={isAddCompanyOpen} onOpenChange={setIsAddCompanyOpen}>
           <DialogContent className="sm:max-w-md bg-[#141414] border-white/10 text-white shadow-[0_0_100px_rgba(0,0,0,0.5)]">
