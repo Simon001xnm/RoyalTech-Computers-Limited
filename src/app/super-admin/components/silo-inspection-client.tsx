@@ -21,12 +21,16 @@ import {
     ArrowRight,
     ChevronRight,
     FileText,
-    FileCheck
+    FileCheck,
+    BarChart3,
+    Search,
+    Download
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRouter } from 'next/navigation';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -40,13 +44,12 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
     const router = useRouter();
     const firestore = useFirestore();
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState("overview");
 
     const companyRef = useMemoFirebase(() => doc(firestore, 'companies', companyId), [firestore, companyId]);
     const { data: company, isLoading: companyLoading } = useDoc<Company>(companyRef);
 
     const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users'), where('tenantIds', 'array-contains', companyId)), [firestore, companyId]);
-    
-    // REMOVED orderBy to fix [failed-precondition] index error
     const logsQuery = useMemoFirebase(() => query(
         collection(firestore, 'platform_logs'), 
         where('tenantId', '==', companyId)
@@ -59,6 +62,10 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
         if (!rawLogs) return [];
         return [...rawLogs].sort((a, b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime());
     }, [rawLogs]);
+
+    const exportLogs = useMemo(() => {
+        return sortedLogs.filter(l => l.event.toLowerCase().includes('download') || l.event.toLowerCase().includes('export') || l.event.toLowerCase().includes('pdf'));
+    }, [sortedLogs]);
 
     const metrics = useMemo(() => {
         if (!users || !sortedLogs) return null;
@@ -95,10 +102,10 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
 
         return {
             userMetrics: userMetrics.sort((a,b) => (b.interactions || 0) - (a.interactions || 0)),
-            totalDownloads: sortedLogs.filter(l => l.event.toLowerCase().includes('download')).length,
+            totalDownloads: exportLogs.length,
             overallInteractions: sortedLogs.length
         };
-    }, [users, sortedLogs]);
+    }, [users, sortedLogs, exportLogs]);
 
     const selectedUser = useMemo(() => {
         return metrics?.userMetrics.find(u => u.id === selectedUserId);
@@ -108,7 +115,7 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
         return (
             <div className="flex h-screen flex-col items-center justify-center bg-[#0a0a0a] text-white">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                <p className="text-[10px] font-black uppercase tracking-widest mt-4 animate-pulse">Syncing Silo Intelligence...</p>
+                <p className="text-[10px] font-black uppercase tracking-widest mt-4 animate-pulse">Establishing Secure Silo Link...</p>
             </div>
         );
     }
@@ -146,11 +153,12 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                                 <p className="text-2xl font-black text-primary">{Math.floor(selectedUser.totalMinutes / 60)}h {selectedUser.totalMinutes % 60}m</p>
                             </div>
                             <div className="space-y-1">
-                                <p className="text-[8px] font-black uppercase text-white/20 tracking-widest">Global Rank</p>
-                                <p className="text-sm font-bold">NODE POWER OPERATOR</p>
+                                <p className="text-[8px] font-black uppercase text-white/20 tracking-widest">System Load</p>
+                                <p className="text-2xl font-black text-white">{selectedUser.interactions}</p>
+                                <p className="text-[8px] font-bold text-white/10 uppercase">Total User Interactions</p>
                             </div>
                             <div className="pt-4 space-y-4">
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 border-b border-white/5 pb-2">Capability Penetration</p>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 border-b border-white/5 pb-2">Capability Usage</p>
                                 {Object.entries(selectedUser.moduleInteractions).map(([mod, count]) => (
                                     <div key={mod} className="flex justify-between items-center text-[10px] font-bold uppercase">
                                         <span className="text-white/60">{mod}</span>
@@ -173,8 +181,9 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                             <Card className="bg-[#141414] border-white/5 p-6 space-y-4">
                                 <div className="p-2 bg-green-500/10 rounded-lg w-fit text-green-500"><Activity className="h-5 w-5" /></div>
                                 <div>
-                                    <p className="text-[10px] font-black uppercase text-white/20">System Load</p>
-                                    <p className="text-2xl font-black">{selectedUser.interactions}</p>
+                                    <p className="text-[10px] font-black uppercase text-white/20">Action Velocity</p>
+                                    <p className="text-2xl font-black">{(selectedUser.interactions / Math.max(1, selectedUser.totalMinutes)).toFixed(1)}</p>
+                                    <p className="text-[8px] font-bold text-white/10 uppercase">Events per minute</p>
                                 </div>
                             </Card>
                             <Card className="bg-[#141414] border-white/5 p-6 space-y-4">
@@ -190,7 +199,7 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                             <CardHeader className="bg-white/[0.02] border-b border-white/5 p-5">
                                 <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
                                     <History className="h-4 w-4" />
-                                    Operator Activity Resume
+                                    Operator Interaction Stream
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
@@ -200,7 +209,10 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                                             <div key={idx} className="p-5 hover:bg-white/[0.03] transition-colors group">
                                                 <div className="flex justify-between items-start gap-6">
                                                     <div className="flex items-start gap-4">
-                                                        <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
+                                                        <div className={cn(
+                                                            "mt-1 h-2 w-2 rounded-full shrink-0",
+                                                            log.event.toLowerCase().includes('download') ? "bg-blue-500 animate-pulse" : "bg-primary"
+                                                        )} />
                                                         <div className="space-y-1">
                                                             <p className="text-sm font-bold text-white/80">{log.event}</p>
                                                             <div className="flex items-center gap-3">
@@ -210,7 +222,7 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                                                         </div>
                                                     </div>
                                                     {log.event.toLowerCase().includes('download') && (
-                                                        <Badge className="bg-blue-600 text-[8px] font-black uppercase border-none px-2 h-5">EXPORT DETECTED</Badge>
+                                                        <Badge className="bg-blue-600 text-[8px] font-black uppercase border-none px-2 h-5">EXPORT LOGGED</Badge>
                                                     )}
                                                 </div>
                                             </div>
@@ -246,19 +258,80 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                         <p className="text-xl font-black">{metrics?.overallInteractions || 0}</p>
                     </div>
                     <div className="bg-white/5 px-6 py-3 rounded-2xl border border-white/10 text-center">
-                        <p className="text-[8px] font-black uppercase text-white/20 mb-0.5">Global Downloads</p>
+                        <p className="text-[8px] font-black uppercase text-white/20 mb-0.5">Total Exports</p>
                         <p className="text-xl font-black">{metrics?.totalDownloads || 0}</p>
                     </div>
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-8">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        Staff Interaction Profiles
-                    </h3>
-                    
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="bg-white/5 p-1.5 border border-white/10 mb-8 h-14 rounded-2xl w-fit">
+                    <TabsTrigger value="overview" className="px-8 font-black uppercase text-[10px] tracking-widest h-full rounded-xl data-[state=active]:bg-white data-[state=active]:text-black">
+                        <Zap className="h-3.5 w-3.5 mr-2" /> Intelligence Node
+                    </TabsTrigger>
+                    <TabsTrigger value="staff" className="px-8 font-black uppercase text-[10px] tracking-widest h-full rounded-xl data-[state=active]:bg-white data-[state=active]:text-black">
+                        <Users className="h-3.5 w-3.5 mr-2" /> Operator Pool
+                    </TabsTrigger>
+                    <TabsTrigger value="exports" className="px-8 font-black uppercase text-[10px] tracking-widest h-full rounded-xl data-[state=active]:bg-white data-[state=active]:text-black">
+                        <Download className="h-3.5 w-3.5 mr-2" /> Export Registry
+                    </TabsTrigger>
+                    <TabsTrigger value="ledger" className="px-8 font-black uppercase text-[10px] tracking-widest h-full rounded-xl data-[state=active]:bg-white data-[state=active]:text-black">
+                        <History className="h-3.5 w-3.5 mr-2" /> Audit Ledger
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="space-y-8 animate-in fade-in duration-500">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <Card className="bg-[#141414] border-white/5 p-8 flex items-center justify-between">
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black uppercase text-white/20 tracking-widest">Active Staff</p>
+                                <p className="text-4xl font-black text-white">{users?.length || 0}</p>
+                            </div>
+                            <div className="bg-primary/10 p-4 rounded-2xl text-primary"><Users className="h-8 w-8" /></div>
+                        </Card>
+                        <Card className="bg-[#141414] border-white/5 p-8 flex items-center justify-between">
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black uppercase text-white/20 tracking-widest">Data Intensity</p>
+                                <p className="text-4xl font-black text-white">{metrics?.overallInteractions || 0}</p>
+                            </div>
+                            <div className="bg-blue-500/10 p-4 rounded-2xl text-blue-500"><Activity className="h-8 w-8" /></div>
+                        </Card>
+                        <Card className="bg-[#141414] border-white/5 p-8 flex items-center justify-between border-b-4 border-primary">
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black uppercase text-white/20 tracking-widest">Silo Deployment</p>
+                                <p className="text-xl font-black text-white">{company?.createdAt ? format(parseISO(company.createdAt), 'dd MMM yyyy') : '--'}</p>
+                            </div>
+                            <div className="bg-green-500/10 p-4 rounded-2xl text-green-500"><ShieldCheck className="h-8 w-8" /></div>
+                        </Card>
+                    </div>
+
+                    <Card className="bg-[#141414] border-white/5 shadow-2xl overflow-hidden">
+                        <CardHeader className="bg-white/[0.02] border-b border-white/5 p-6">
+                            <CardTitle className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                <Activity className="h-4 w-4" />
+                                Real-time Action Stream
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="divide-y divide-white/5">
+                                {sortedLogs.slice(0, 10).map((log: any, idx: number) => (
+                                    <div key={idx} className="p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                                            <div>
+                                                <p className="text-sm font-bold text-white/80">{log.event}</p>
+                                                <p className="text-[9px] font-black uppercase text-white/20">{log.module}</p>
+                                            </div>
+                                        </div>
+                                        <span className="text-[10px] font-mono text-white/10">{format(parseISO(log.timestamp), 'HH:mm:ss')}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="staff" className="space-y-6 animate-in fade-in duration-500">
                     <div className="grid gap-6">
                         {metrics?.userMetrics.map(u => (
                             <Card 
@@ -275,7 +348,7 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <CardTitle className="text-lg font-black uppercase tracking-tight text-white">{u.name || 'Anonymous Operator'}</CardTitle>
-                                                    <Badge className="bg-primary/20 text-primary border-none text-[7px] font-black uppercase px-2 h-4 opacity-0 group-hover:opacity-100 transition-opacity">VIEW RESUME</Badge>
+                                                    <Badge className="bg-primary/20 text-primary border-none text-[7px] font-black uppercase px-2 h-4">OPERATOR ACTIVE</Badge>
                                                 </div>
                                                 <div className="flex items-center gap-3 mt-1">
                                                     <Badge variant="secondary" className="text-[7px] font-black uppercase h-4 px-1.5">{u.role}</Badge>
@@ -292,7 +365,7 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                                         </div>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="p-8 space-y-8">
+                                <CardContent className="p-8">
                                     <div className="grid grid-cols-4 gap-4">
                                         <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl text-center">
                                             <MousePointer2 className="h-4 w-4 mx-auto mb-2 text-primary opacity-40" />
@@ -307,45 +380,88 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                                         <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl text-center">
                                             <Activity className="h-4 w-4 mx-auto mb-2 text-green-500 opacity-40" />
                                             <p className="text-xs font-black uppercase">{u.lastActive ? format(parseISO(u.lastActive), 'dd MMM') : '--'}</p>
-                                            <p className="text-[8px] font-black uppercase opacity-20">Last Seen</p>
+                                            <p className="text-[8px] font-black uppercase opacity-20">Last Active</p>
                                         </div>
                                         <div className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl text-center">
                                             <LayoutDashboard className="h-4 w-4 mx-auto mb-2 text-purple-500 opacity-40" />
                                             <p className="text-lg font-black">{Object.keys(u.moduleInteractions).length}</p>
-                                            <p className="text-[8px] font-black uppercase opacity-20">Modules</p>
+                                            <p className="text-[8px] font-black uppercase opacity-20">Modules Touched</p>
                                         </div>
                                     </div>
-                                    <div className="flex justify-center pt-2">
-                                        <Button variant="ghost" className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 group-hover:text-primary group-hover:bg-primary/5 transition-all w-full h-10 rounded-xl">
-                                            Open Detailed Audit Resume <ArrowRight className="ml-2 h-3 w-3" />
+                                    <div className="flex justify-center pt-6">
+                                        <Button variant="ghost" className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 group-hover:text-primary group-hover:bg-primary/5 transition-all w-full h-12 rounded-2xl border border-dashed border-white/5">
+                                            Open Intelligence Resume <ArrowRight className="ml-2 h-3 w-3" />
                                         </Button>
                                     </div>
                                 </CardContent>
                             </Card>
                         ))}
                     </div>
-                </div>
+                </TabsContent>
 
-                <div className="space-y-8">
-                    <Card className="bg-[#141414] border-white/5 shadow-2xl overflow-hidden sticky top-10">
-                        <CardHeader className="bg-white/[0.02] border-b border-white/5">
-                            <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                <History className="h-3 w-3" />
-                                Global Silo Stream
+                <TabsContent value="exports" className="animate-in fade-in duration-500">
+                    <Card className="bg-[#141414] border-white/5 shadow-2xl overflow-hidden">
+                        <CardHeader className="bg-white/[0.02] border-b border-white/5 p-6">
+                            <CardTitle className="text-sm font-black uppercase tracking-widest text-blue-500 flex items-center gap-2">
+                                <DownloadCloud className="h-4 w-4" />
+                                Document Extraction History
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                             <ScrollArea className="h-[600px]">
                                 <div className="divide-y divide-white/5">
-                                    {sortedLogs.slice(0, 100).map((log: any, idx: number) => (
-                                        <div key={idx} className="p-4 hover:bg-white/[0.03] transition-colors cursor-pointer group">
-                                            <div className="flex items-start gap-3">
-                                                <div className="mt-1 h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
-                                                <div className="space-y-1 overflow-hidden">
+                                    {exportLogs.length > 0 ? exportLogs.map((log: any, idx: number) => (
+                                        <div key={idx} className="p-6 hover:bg-white/[0.03] transition-colors flex items-center justify-between gap-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-10 w-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">
+                                                    <FileText className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-white/90">{log.event}</p>
+                                                    <div className="flex items-center gap-3 mt-1">
+                                                        <span className="text-[9px] font-black uppercase text-white/20">OPERATOR: {metrics?.userMetrics.find(u => u.id === log.userId)?.name || 'Unknown'}</span>
+                                                        <span className="text-[9px] font-bold text-white/10 uppercase tracking-widest">{format(parseISO(log.timestamp), 'dd MMM yyyy, HH:mm')}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <Badge variant="outline" className="border-blue-500/20 text-blue-400 bg-blue-500/5 h-6 text-[8px] font-black uppercase px-3">VERIFIED EXTRACT</Badge>
+                                        </div>
+                                    )) : (
+                                        <div className="p-20 text-center opacity-20 uppercase font-black text-[10px] tracking-[0.4em]">No document extractions logged</div>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="ledger" className="animate-in fade-in duration-500">
+                    <Card className="bg-[#141414] border-white/5 shadow-2xl overflow-hidden">
+                        <CardHeader className="bg-white/[0.02] border-b border-white/5 p-6 flex flex-row items-center justify-between">
+                            <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                <History className="h-4 w-4" />
+                                Global Silo Stream
+                            </CardTitle>
+                            <div className="flex items-center gap-4">
+                                <div className="relative">
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-white/20" />
+                                    <input className="h-8 pl-8 pr-4 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold uppercase text-white placeholder:text-white/20 w-48" placeholder="Search events..." />
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <ScrollArea className="h-[700px]">
+                                <div className="divide-y divide-white/5">
+                                    {sortedLogs.map((log: any, idx: number) => (
+                                        <div key={idx} className="p-4 hover:bg-white/[0.03] transition-colors group">
+                                            <div className="flex items-start gap-4">
+                                                <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                                                <div className="space-y-1 flex-grow overflow-hidden">
                                                     <p className="text-[11px] font-bold text-white/80 line-clamp-2">{log.event}</p>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[8px] font-black uppercase text-primary">{log.module}</span>
-                                                        <span className="text-[8px] font-bold text-white/10 uppercase">{format(parseISO(log.timestamp), 'HH:mm:ss')}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <Badge variant="secondary" className="text-[7px] font-black uppercase h-4 px-1.5">{log.module}</Badge>
+                                                        <span className="text-[8px] font-black uppercase text-white/10">{metrics?.userMetrics.find(u => u.id === log.userId)?.name || 'System'}</span>
+                                                        <span className="text-[8px] font-bold text-white/10 uppercase ml-auto">{format(parseISO(log.timestamp), 'dd MMM, HH:mm:ss')}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -355,8 +471,8 @@ export function SiloInspectionClient({ companyId }: SiloInspectionClientProps) {
                             </ScrollArea>
                         </CardContent>
                     </Card>
-                </div>
-            </div>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }
