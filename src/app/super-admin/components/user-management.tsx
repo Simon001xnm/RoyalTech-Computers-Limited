@@ -13,23 +13,40 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, User as UserIcon, MoreHorizontal, Key, ShieldAlert, Building2, Check, Calendar, Loader2, UserPlus, Trash2 } from 'lucide-react';
+import { 
+    Search, 
+    User as UserIcon, 
+    MoreHorizontal, 
+    Key, 
+    ShieldAlert, 
+    Building2, 
+    Check, 
+    Calendar, 
+    Loader2, 
+    UserPlus, 
+    Trash2,
+    ArrowUpDown
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format, parseISO } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
-import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   useReactTable,
   getCoreRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
   flexRender,
   type ColumnDef,
   type PaginationState,
+  type SortingState,
+  type RowSelectionState,
 } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
@@ -53,20 +70,20 @@ export function UserManagement({ users, companies }: UserManagementProps) {
     });
 
     const [resetUser, setResetUser] = useState<User | null>(null);
-    const [userToDelete, setUserToDelete] = useState<User | null>(null);
+    const [usersToDelete, setUsersToDelete] = useState<User[]>([]);
     const [newPass, setNewPass] = useState("");
     const [isSavingPass, setIsSavingPass] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [pagination, setPagination] = useState<PaginationState>({
-        pageIndex: 0,
-        pageSize: 10,
-    });
+    
+    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+    const [sorting, setSorting] = useState<SortingState>([]);
+    const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
     const filtered = useMemo(() => {
         return users.filter(u => 
             u.name?.toLowerCase().includes(search.toLowerCase()) ||
             u.email.toLowerCase().includes(search.toLowerCase())
-        ).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        );
     }, [users, search]);
 
     const handleRegisterUser = async () => {
@@ -97,13 +114,18 @@ export function UserManagement({ users, companies }: UserManagementProps) {
         }
     };
 
-    const handleDeleteUser = async () => {
-        if (!userToDelete) return;
+    const handleDeleteUsers = async () => {
+        if (usersToDelete.length === 0) return;
         setIsDeleting(true);
         try {
-            await deleteDoc(doc(firestore, 'users', userToDelete.id));
-            toast({ title: "Account Purged Permanently" });
-            setUserToDelete(null);
+            const batch = writeBatch(firestore);
+            for (const u of usersToDelete) {
+                batch.delete(doc(firestore, 'users', u.id));
+            }
+            await batch.commit();
+            toast({ title: usersToDelete.length > 1 ? "Accounts Purged" : "Account Purged" });
+            setUsersToDelete([]);
+            setRowSelection({});
         } catch (e) {
             toast({ variant: 'destructive', title: "Delete Failed" });
         } finally {
@@ -129,8 +151,34 @@ export function UserManagement({ users, companies }: UserManagementProps) {
 
     const columns = useMemo<ColumnDef<User>[]>(() => [
         {
+            id: "select",
+            header: ({ table }) => (
+                <Checkbox
+                    checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                    aria-label="Select all"
+                    className="border-white/20 data-[state=checked]:bg-primary"
+                />
+            ),
+            cell: ({ row }) => (
+                <Checkbox
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(value) => row.toggleSelected(!!value)}
+                    aria-label="Select row"
+                    className="border-white/20 data-[state=checked]:bg-primary"
+                />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+        },
+        {
             accessorKey: "name",
-            header: "Account Identity",
+            header: ({ column }) => (
+                <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:text-white p-0 font-black uppercase text-[10px]">
+                    Account Identity
+                    <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+            ),
             cell: ({ row }) => {
                 const user = row.original;
                 return (
@@ -147,22 +195,27 @@ export function UserManagement({ users, companies }: UserManagementProps) {
             }
         },
         {
+            accessorKey: "createdAt",
+            header: ({ column }) => (
+                <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:text-white p-0 font-black uppercase text-[10px]">
+                    Enrollment
+                    <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+            ),
+            cell: ({ row }) => (
+                <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase">
+                    <Calendar className="h-3 w-3 opacity-30" />
+                    {row.original.createdAt ? format(parseISO(row.original.createdAt), 'dd MMM yy') : '--'}
+                </div>
+            )
+        },
+        {
             accessorKey: "role",
             header: "Global Role",
             cell: ({ row }) => (
                 <Badge variant={row.original.role === 'super_admin' ? 'destructive' : 'secondary'} className="text-[8px] font-black uppercase tracking-widest h-5 border-none">
                     {row.original.role}
                 </Badge>
-            )
-        },
-        {
-            accessorKey: "createdAt",
-            header: "Enrollment Date",
-            cell: ({ row }) => (
-                <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase">
-                    <Calendar className="h-3 w-3 opacity-30" />
-                    {row.original.createdAt ? format(parseISO(row.original.createdAt), 'dd MMM yyyy') : '--'}
-                </div>
             )
         },
         {
@@ -203,7 +256,7 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                                 <Key className="h-3.5 w-3.5 mr-2 text-primary" /> Set Access Password
                             </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-white/5" />
-                            <DropdownMenuItem className="text-xs font-bold text-destructive py-2 focus:bg-destructive/10 focus:text-destructive cursor-pointer" onClick={() => setUserToDelete(row.original)}>
+                            <DropdownMenuItem className="text-xs font-bold text-destructive py-2 focus:bg-destructive/10 focus:text-destructive cursor-pointer" onClick={() => setUsersToDelete([row.original])}>
                                 <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete Account Forever
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -211,16 +264,21 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                 </div>
             )
         }
-    ], []);
+    ], [companies]);
 
     const table = useReactTable({
         data: filtered,
         columns,
-        state: { pagination },
+        state: { pagination, sorting, rowSelection },
         onPaginationChange: setPagination,
+        onSortingChange: setSorting,
+        onRowSelectionChange: setRowSelection,
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
+        getSortedRowModel: getSortedRowModel(),
     });
+
+    const selectedCount = Object.keys(rowSelection).length;
 
     return (
         <>
@@ -232,8 +290,22 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                         <CardDescription className="font-bold text-[10px] uppercase tracking-widest text-primary">Consolidated User Repository</CardDescription>
                     </div>
                     <div className="flex items-center gap-3">
+                        {selectedCount > 0 && (
+                            <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                className="h-9 px-4 font-black uppercase text-[10px] tracking-widest animate-in fade-in zoom-in-95"
+                                onClick={() => {
+                                    const selectedUsers = table.getSelectedRowModel().rows.map(r => r.original);
+                                    setUsersToDelete(selectedUsers);
+                                }}
+                            >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                Purge {selectedCount} Identities
+                            </Button>
+                        )}
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/20" />
                             <Input 
                                 placeholder="Search accounts..." 
                                 value={search}
@@ -346,13 +418,13 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                 <DialogFooter className="gap-2">
                     <Button variant="outline" onClick={() => setResetUser(null)} className="h-12 px-6 font-bold bg-transparent border-white/10">Cancel</Button>
                     <Button onClick={handleSetPassword} disabled={isSavingPass || !newPass} className="h-12 px-10 font-black uppercase tracking-widest shadow-xl bg-primary hover:bg-primary/90">
-                        {isSavingPass ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="mr-2 h-4 w-4" /> Apply Credentials</>}
+                        {isSavingPass ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><Check className="mr-2 h-4 w-4" /> Apply Credentials</>}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
 
-        <Dialog open={!!userToDelete} onOpenChange={(o) => !o && setUserToDelete(null)}>
+        <Dialog open={usersToDelete.length > 0} onOpenChange={(o) => !o && setUsersToDelete([])}>
             <DialogContent className="sm:max-w-md bg-[#141414] border-white/10 text-white">
                 <DialogHeader>
                     <DialogTitle className="text-xl font-black uppercase text-destructive flex items-center gap-2">
@@ -360,12 +432,17 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                         Nuclear Delete Access
                     </DialogTitle>
                     <DialogDescription className="font-medium text-white/60 pt-2">
-                        Are you absolutely sure? This will PERMANENTLY remove <strong>{userToDelete?.email}</strong> and their global profile. This cannot be undone.
+                        {usersToDelete.length > 1 ? (
+                            <>Are you absolutely sure? This will PERMANENTLY remove <span className="text-white font-black">{usersToDelete.length} identities</span> and their global profiles.</>
+                        ) : (
+                            <>Are you absolutely sure? This will PERMANENTLY remove <strong>{usersToDelete[0]?.email}</strong> and their global profile.</>
+                        )}
+                        This action cannot be undone and will block all associated access immediately.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter className="gap-2 mt-6">
-                    <Button variant="outline" onClick={() => setUserToDelete(null)} className="h-12 font-bold bg-transparent border-white/10">Cancel</Button>
-                    <Button onClick={handleDeleteUser} disabled={isDeleting} variant="destructive" className="h-12 px-10 font-black uppercase tracking-widest shadow-xl">
+                    <Button variant="outline" onClick={() => setUsersToDelete([])} className="h-12 font-bold bg-transparent border-white/10">Cancel</Button>
+                    <Button onClick={handleDeleteUsers} disabled={isDeleting} variant="destructive" className="h-12 px-10 font-black uppercase tracking-widest shadow-xl">
                         {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Forever"}
                     </Button>
                 </DialogFooter>

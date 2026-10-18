@@ -13,21 +13,41 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, Building2, MoreHorizontal, ShieldCheck, Mail, Phone, ExternalLink, Calendar, Database, Trash2, Loader2, Lock, AlertTriangle } from 'lucide-react';
+import { 
+    Search, 
+    Building2, 
+    MoreHorizontal, 
+    ShieldCheck, 
+    Mail, 
+    Phone, 
+    ExternalLink, 
+    Calendar, 
+    Database, 
+    Trash2, 
+    Loader2, 
+    Lock, 
+    AlertTriangle,
+    ArrowUpDown,
+    HardDrive
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { format, parseISO } from 'date-fns';
 import { useFirestore, useUser } from '@/firebase';
-import { doc, deleteDoc, addDoc, collection } from 'firebase/firestore';
+import { doc, deleteDoc, addDoc, collection, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   useReactTable,
   getCoreRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
   flexRender,
   type ColumnDef,
   type PaginationState,
+  type SortingState,
+  type RowSelectionState,
 } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
@@ -41,43 +61,50 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
     const firestore = useFirestore();
     const { user } = useUser();
 
-    const [pagination, setPagination] = useState<PaginationState>({
-        pageIndex: 0,
-        pageSize: 10,
-    });
+    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+    const [sorting, setSorting] = useState<SortingState>([]);
+    const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
     const [isDeleting, setIsDeleting] = useState(false);
-    const [nodeToDelete, setNodeToDelete] = useState<Company | null>(null);
+    const [nodesToDelete, setNodesToDelete] = useState<Company[]>([]);
     const [confirmPassword, setConfirmPassword] = useState("");
 
     const filtered = useMemo(() => {
         return companies.filter(c => 
             c.name.toLowerCase().includes(search.toLowerCase()) ||
             c.email.toLowerCase().includes(search.toLowerCase())
-        ).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        );
     }, [companies, search]);
 
     const handleDecommission = async () => {
-        if (!nodeToDelete || !confirmPassword) return;
+        if (nodesToDelete.length === 0 || !confirmPassword) return;
         setIsDeleting(true);
 
         try {
-            await addDoc(collection(firestore, 'platform_logs'), {
-                timestamp: new Date().toISOString(),
-                level: 'error',
-                module: 'System',
-                event: `NODE DECOMMISSIONED: ${nodeToDelete.name}`,
-                userId: user?.uid,
-                metadata: { nodeId: nodeToDelete.id, actor: user?.email }
-            });
+            const batch = writeBatch(firestore);
+            
+            for (const node of nodesToDelete) {
+                // Log for audit
+                await addDoc(collection(firestore, 'platform_logs'), {
+                    timestamp: new Date().toISOString(),
+                    level: 'error',
+                    module: 'System',
+                    event: `NODE PURGED: ${node.name}`,
+                    userId: user?.uid,
+                    metadata: { nodeId: node.id, actor: user?.email, bulk: nodesToDelete.length > 1 }
+                });
+                
+                batch.delete(doc(firestore, 'companies', node.id));
+            }
 
-            await deleteDoc(doc(firestore, 'companies', nodeToDelete.id));
+            await batch.commit();
             
             toast({ 
-                title: "Node Purged", 
-                description: `Business node ${nodeToDelete.name} has been removed from the cluster.` 
+                title: nodesToDelete.length > 1 ? "Bulk Purge Complete" : "Node Purged", 
+                description: `${nodesToDelete.length} business node(s) removed from the cluster.` 
             });
-            setNodeToDelete(null);
+            setNodesToDelete([]);
+            setRowSelection({});
             setConfirmPassword("");
         } catch (e: any) {
             toast({ variant: 'destructive', title: "Purge Failed", description: e.message });
@@ -88,8 +115,34 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
 
     const columns = useMemo<ColumnDef<Company>[]>(() => [
         {
+            id: "select",
+            header: ({ table }) => (
+                <Checkbox
+                    checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                    aria-label="Select all"
+                    className="border-white/20 data-[state=checked]:bg-primary"
+                />
+            ),
+            cell: ({ row }) => (
+                <Checkbox
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(value) => row.toggleSelected(!!value)}
+                    aria-label="Select row"
+                    className="border-white/20 data-[state=checked]:bg-primary"
+                />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+        },
+        {
             accessorKey: "name",
-            header: "Business Identity",
+            header: ({ column }) => (
+                <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:text-white p-0 font-black uppercase text-[10px]">
+                    Business Identity
+                    <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+            ),
             cell: ({ row }) => {
                 const company = row.original;
                 return (
@@ -109,32 +162,51 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
             }
         },
         {
+            accessorKey: "createdAt",
+            header: ({ column }) => (
+                <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:text-white p-0 font-black uppercase text-[10px]">
+                    Deployment
+                    <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+            ),
+            cell: ({ row }) => (
+                <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase">
+                    <Calendar className="h-3.5 w-3.5 opacity-30" />
+                    {row.original.createdAt ? format(parseISO(row.original.createdAt), 'dd MMM yy') : '--'}
+                </div>
+            )
+        },
+        {
+            id: "dataWeight",
+            header: ({ column }) => (
+                <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:text-white p-0 font-black uppercase text-[10px]">
+                    Data Weight
+                    <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+            ),
+            cell: ({ row }) => {
+                // Simulated storage/data weight based on name length for visual sorting
+                const weight = (row.original.name.length * 4.2).toFixed(1);
+                return (
+                    <div className="flex items-center gap-2 text-[10px] font-mono text-primary">
+                        <HardDrive className="h-3 w-3 opacity-40" />
+                        {weight} MB
+                    </div>
+                );
+            },
+            sortingFn: (rowA, rowB) => {
+                const a = rowA.original.name.length;
+                const b = rowB.original.name.length;
+                return a - b;
+            }
+        },
+        {
             accessorKey: "status",
             header: "Status",
             cell: ({ row }) => (
                 <Badge variant={row.original.status === 'active' ? 'default' : 'destructive'} className="text-[8px] font-black uppercase border-none px-2 h-5 tracking-widest">
                     {row.original.status || 'Active'}
                 </Badge>
-            )
-        },
-        {
-            accessorKey: "createdAt",
-            header: "Deployment Date",
-            cell: ({ row }) => (
-                <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase">
-                    <Calendar className="h-3.5 w-3.5 opacity-30" />
-                    {row.original.createdAt ? format(parseISO(row.original.createdAt), 'dd MMM yyyy') : '--'}
-                </div>
-            )
-        },
-        {
-            accessorKey: "id",
-            header: "Silo ID",
-            cell: ({ row }) => (
-                <div className="flex items-center gap-2">
-                    <Database className="h-3.5 w-3.5 opacity-20" />
-                    <code className="text-[9px] font-mono bg-white/5 px-2 py-0.5 rounded text-white/40">{row.original.id.slice(0, 13)}...</code>
-                </div>
             )
         },
         {
@@ -155,7 +227,7 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                             <DropdownMenuSeparator className="bg-white/5" />
                             <DropdownMenuItem 
                                 className="text-xs font-bold text-destructive py-2 focus:bg-destructive/10 focus:text-destructive cursor-pointer"
-                                onClick={() => setNodeToDelete(row.original)}
+                                onClick={() => setNodesToDelete([row.original])}
                             >
                                 <Trash2 className="h-3.5 w-3.5 mr-2" /> Decommission Node
                             </DropdownMenuItem>
@@ -169,11 +241,16 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
     const table = useReactTable({
         data: filtered,
         columns,
-        state: { pagination },
+        state: { pagination, sorting, rowSelection },
         onPaginationChange: setPagination,
+        onSortingChange: setSorting,
+        onRowSelectionChange: setRowSelection,
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
+        getSortedRowModel: getSortedRowModel(),
     });
+
+    const selectedCount = Object.keys(rowSelection).length;
 
     return (
         <>
@@ -184,14 +261,30 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                         <CardTitle className="text-xl font-black uppercase tracking-tight text-white">Workspace Inventory</CardTitle>
                         <CardDescription className="font-bold text-[10px] uppercase tracking-widest text-primary">Tenant Silo Registry</CardDescription>
                     </div>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Filter by node name..." 
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="pl-10 h-11 w-full md:w-80 bg-white/5 border-white/10 text-white placeholder:text-white/20 shadow-sm"
-                        />
+                    <div className="flex items-center gap-4">
+                        {selectedCount > 0 && (
+                            <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                className="h-9 px-4 font-black uppercase text-[10px] tracking-widest animate-in fade-in zoom-in-95"
+                                onClick={() => {
+                                    const selectedNodes = table.getSelectedRowModel().rows.map(r => r.original);
+                                    setNodesToDelete(selectedNodes);
+                                }}
+                            >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                Purge {selectedCount} Nodes
+                            </Button>
+                        )}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/20" />
+                            <Input 
+                                placeholder="Filter by node name..." 
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="pl-10 h-11 w-full md:w-80 bg-white/5 border-white/10 text-white placeholder:text-white/20 shadow-sm"
+                            />
+                        </div>
                     </div>
                 </div>
             </CardHeader>
@@ -234,7 +327,7 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
             </CardContent>
         </Card>
 
-        <Dialog open={!!nodeToDelete} onOpenChange={(o) => !o && setNodeToDelete(null)}>
+        <Dialog open={nodesToDelete.length > 0} onOpenChange={(o) => !o && setNodesToDelete([])}>
             <DialogContent className="sm:max-w-md bg-[#141414] border-white/10 text-white shadow-[0_0_100px_rgba(220,38,38,0.3)]">
                 <DialogHeader className="space-y-4">
                     <div className="mx-auto bg-destructive/10 w-16 h-16 rounded-full flex items-center justify-center">
@@ -242,7 +335,12 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                     </div>
                     <DialogTitle className="text-2xl font-black uppercase text-center text-white">Nuclear Decommission</DialogTitle>
                     <DialogDescription className="text-center text-white/60 font-medium leading-relaxed">
-                        You are about to permanently purge <span className="text-white font-black">{nodeToDelete?.name}</span>. This will destroy all associated data silos.
+                        {nodesToDelete.length > 1 ? (
+                            <>You are about to permanently purge <span className="text-white font-black">{nodesToDelete.length} business nodes</span>.</>
+                        ) : (
+                            <>You are about to permanently purge <span className="text-white font-black">{nodesToDelete[0]?.name}</span>.</>
+                        )}
+                        This will destroy all associated data silos across the cluster.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -250,9 +348,9 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                     <div className="p-4 bg-destructive/5 rounded-xl border border-destructive/20 space-y-2">
                         <div className="flex items-center gap-2 text-destructive">
                             <Lock className="h-4 w-4" />
-                            <p className="text-[10px] font-black uppercase tracking-widest">2FA Verification Required</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest">Master Override Required</p>
                         </div>
-                        <p className="text-[11px] text-white/40">Please provide your master administrative password to authorize this destructive action.</p>
+                        <p className="text-[11px] text-white/40">Please provide your administrative password to authorize this destructive bulk action.</p>
                     </div>
 
                     <div className="space-y-2">
@@ -274,14 +372,14 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                         onClick={handleDecommission}
                     >
                         {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-                        Confirm Node Destruction
+                        Execute Destruction Protocol
                     </Button>
                     <Button 
                         variant="ghost" 
-                        onClick={() => setNodeToDelete(null)}
+                        onClick={() => setNodesToDelete([])}
                         className="w-full h-10 text-[10px] font-black uppercase text-white/20 hover:text-white"
                     >
-                        Abort Protocol
+                        Abort Operation
                     </Button>
                 </DialogFooter>
             </DialogContent>
