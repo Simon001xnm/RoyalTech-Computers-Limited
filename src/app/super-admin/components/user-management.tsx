@@ -13,14 +13,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, User as UserIcon, MoreHorizontal, Key, ShieldAlert, Building2, Check, Calendar, Loader2, UserPlus } from 'lucide-react';
+import { Search, User as UserIcon, MoreHorizontal, Key, ShieldAlert, Building2, Check, Calendar, Loader2, UserPlus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format, parseISO } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
-import { doc, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -44,8 +44,10 @@ export function UserManagement({ users, companies }: UserManagementProps) {
     });
 
     const [resetUser, setResetUser] = useState<User | null>(null);
+    const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [newPass, setNewPass] = useState("");
     const [isSavingPass, setIsSavingPass] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const filtered = useMemo(() => {
         return users.filter(u => 
@@ -82,6 +84,20 @@ export function UserManagement({ users, companies }: UserManagementProps) {
         }
     };
 
+    const handleDeleteUser = async () => {
+        if (!userToDelete) return;
+        setIsDeleting(true);
+        try {
+            await deleteDoc(doc(firestore, 'users', userToDelete.id));
+            toast({ title: "Account Purged Permanently" });
+            setUserToDelete(null);
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Delete Failed" });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const handleSetPassword = async () => {
         if (!resetUser || !newPass) return;
         setIsSavingPass(true);
@@ -100,69 +116,69 @@ export function UserManagement({ users, companies }: UserManagementProps) {
 
     return (
         <>
-        <Card className="border-none ring-1 ring-black/5 shadow-2xl bg-white overflow-hidden">
-            <CardHeader className="bg-muted/10 p-6 border-b">
+        <Card className="border-none ring-1 ring-white/5 shadow-2xl bg-[#141414] text-white overflow-hidden">
+            <CardHeader className="bg-white/[0.02] p-6 border-b border-white/5">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <CardTitle className="text-xl font-black uppercase tracking-tight">Global User Pool</CardTitle>
-                        <CardDescription className="font-bold text-[10px] uppercase tracking-widest text-primary">Consolidated Identity Management</CardDescription>
+                        <CardTitle className="text-xl font-black uppercase tracking-tight text-white">Identity Pool</CardTitle>
+                        <CardDescription className="font-bold text-[10px] uppercase tracking-widest text-primary">Consolidated User Repository</CardDescription>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                                placeholder="Search by name or email..." 
+                                placeholder="Search accounts..." 
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
-                                className="pl-10 h-11 w-full md:w-64 bg-white shadow-sm"
+                                className="pl-10 h-11 w-full md:w-64 bg-white/5 border-white/10 text-white placeholder:text-white/20 shadow-sm"
                             />
                         </div>
-                        <Button onClick={() => setIsAddUserOpen(true)} className="h-11 px-6 font-black uppercase text-[10px] tracking-widest shadow-xl">
-                            <UserPlus className="mr-2 h-4 w-4" /> Add Global User
+                        <Button onClick={() => setIsAddUserOpen(true)} className="h-11 px-6 font-black uppercase text-[10px] tracking-widest shadow-xl bg-white text-black hover:bg-white/90">
+                            <UserPlus className="mr-2 h-4 w-4" /> Add User
                         </Button>
                     </div>
                 </div>
             </CardHeader>
             <CardContent className="p-0">
                 <Table>
-                    <TableHeader className="bg-muted/30">
-                        <TableRow>
-                            <TableHead className="text-[10px] font-black uppercase py-4 pl-8">Account Identity</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase py-4">Global Role</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase py-4">Enrollment Date</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase py-4 text-center">Linked Nodes</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase py-4">Status</TableHead>
-                            <TableHead className="text-right pr-8 text-[10px] font-black uppercase py-4">Ops</TableHead>
+                    <TableHeader className="bg-white/[0.05] border-white/5">
+                        <TableRow className="border-white/5 hover:bg-transparent">
+                            <TableHead className="text-[10px] font-black uppercase py-4 pl-8 text-white/40">Account Identity</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase py-4 text-white/40">Global Role</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase py-4 text-white/40">Enrollment Date</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase py-4 text-center text-white/40">Silos</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase py-4 text-white/40">Status</TableHead>
+                            <TableHead className="text-right pr-8 text-[10px] font-black uppercase py-4 text-white/40">Ops</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filtered.map(user => (
-                            <TableRow key={user.id} className="hover:bg-muted/5 transition-colors group">
+                            <TableRow key={user.id} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
                                 <TableCell className="pl-8 py-4">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-10 w-10 bg-primary/5 rounded-full flex items-center justify-center border border-primary/10 group-hover:bg-primary group-hover:text-white transition-colors">
+                                        <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 group-hover:bg-primary group-hover:text-white transition-colors">
                                             <UserIcon className="h-5 w-5" />
                                         </div>
                                         <div>
-                                            <p className="font-black uppercase text-sm tracking-tight">{user.name || 'Anonymous'}</p>
-                                            <p className="text-[10px] text-muted-foreground font-bold">{user.email}</p>
+                                            <p className="font-black uppercase text-sm tracking-tight text-white">{user.name || 'Anonymous'}</p>
+                                            <p className="text-[10px] text-white/40 font-bold">{user.email}</p>
                                         </div>
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant={user.role === 'super_admin' ? 'destructive' : 'secondary'} className="text-[8px] font-black uppercase tracking-widest h-5">
+                                    <Badge variant={user.role === 'super_admin' ? 'destructive' : 'secondary'} className="text-[8px] font-black uppercase tracking-widest h-5 border-none">
                                         {user.role}
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
-                                    <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase">
+                                    <div className="flex items-center gap-2 text-[10px] font-bold text-white/60 uppercase">
                                         <Calendar className="h-3 w-3 opacity-30" />
                                         {user.createdAt ? format(parseISO(user.createdAt), 'dd MMM yyyy') : '--'}
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-center">
                                     <div className="flex justify-center">
-                                        <Badge variant="outline" className="text-[10px] font-black h-6 min-w-[30px] justify-center bg-white border-2">
+                                        <Badge variant="outline" className="text-[10px] font-black h-6 min-w-[30px] justify-center bg-transparent border-white/10 text-white/60">
                                             {(user.tenantIds || []).length}
                                         </Badge>
                                     </div>
@@ -170,24 +186,24 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                                 <TableCell>
                                     <div className="flex items-center gap-1.5">
                                         <div className={`h-1.5 w-1.5 rounded-full ${user.status === 'suspended' ? 'bg-red-500' : (user.status === 'invited' ? 'bg-blue-500' : 'bg-green-500')}`} />
-                                        <span className="text-[9px] font-black uppercase opacity-60">{user.status || 'Active'}</span>
+                                        <span className="text-[9px] font-black uppercase opacity-40">{user.status || 'Active'}</span>
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right pr-8">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-white/40 hover:text-white hover:bg-white/10">
                                                 <MoreHorizontal className="h-4 w-4" />
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-56 border-none shadow-2xl">
+                                        <DropdownMenuContent align="end" className="w-56 border-white/10 bg-[#1a1a1a] text-white shadow-2xl">
                                             <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Identity Control</DropdownMenuLabel>
-                                            <DropdownMenuItem className="text-xs font-bold py-2" onClick={() => setResetUser(user)}>
+                                            <DropdownMenuItem className="text-xs font-bold py-2 focus:bg-white/5 focus:text-white cursor-pointer" onClick={() => setResetUser(user)}>
                                                 <Key className="h-3.5 w-3.5 mr-2 text-primary" /> Set Access Password
                                             </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem className="text-xs font-bold text-destructive py-2">
-                                                <ShieldAlert className="h-3.5 w-3.5 mr-2" /> Deactivate Account
+                                            <DropdownMenuSeparator className="bg-white/5" />
+                                            <DropdownMenuItem className="text-xs font-bold text-destructive py-2 focus:bg-destructive/10 focus:text-destructive cursor-pointer" onClick={() => setUserToDelete(user)}>
+                                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete Account Forever
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -201,69 +217,88 @@ export function UserManagement({ users, companies }: UserManagementProps) {
 
         {/* ADD USER DIALOG */}
         <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-            <DialogContent className="sm:max-w-md border-none shadow-2xl">
+            <DialogContent className="sm:max-w-md bg-[#141414] border-white/10 text-white shadow-[0_0_100px_rgba(0,0,0,0.5)]">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-black uppercase">Register Global Identity</DialogTitle>
-                    <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Creating a new account and linking to a node.</DialogDescription>
+                    <DialogTitle className="text-2xl font-black uppercase text-white">Register Global Identity</DialogTitle>
+                    <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-white/30">Creating a new account and linking to a node.</DialogDescription>
                 </DialogHeader>
                 <div className="py-6 space-y-4">
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase">Full Name</Label>
-                        <Input value={newUserData.name} onChange={e => setNewUserData({...newUserData, name: e.target.value})} placeholder="e.g. Jane Doe" className="h-11 font-bold" />
+                        <Label className="text-[10px] font-black uppercase text-white/60">Full Name</Label>
+                        <Input value={newUserData.name} onChange={e => setNewUserData({...newUserData, name: e.target.value})} placeholder="e.g. Jane Doe" className="h-11 font-bold bg-white/5 border-white/10 text-white" />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase">Email Address</Label>
-                        <Input value={newUserData.email} onChange={e => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@company.com" className="h-11" />
+                        <Label className="text-[10px] font-black uppercase text-white/60">Email Address</Label>
+                        <Input value={newUserData.email} onChange={e => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@company.com" className="h-11 bg-white/5 border-white/10 text-white" />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase">Assign to Business Node</Label>
+                        <Label className="text-[10px] font-black uppercase text-white/60">Assign to Business Node</Label>
                         <Select onValueChange={v => setNewUserData({...newUserData, tenantId: v})} value={newUserData.tenantId}>
-                            <SelectTrigger className="h-11"><SelectValue placeholder="Select node..." /></SelectTrigger>
-                            <SelectContent>
+                            <SelectTrigger className="h-11 bg-white/5 border-white/10"><SelectValue placeholder="Select node..." /></SelectTrigger>
+                            <SelectContent className="bg-[#141414] border-white/10 text-white">
                                 {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
                 <DialogFooter className="gap-2">
-                    <Button variant="outline" onClick={() => setIsAddUserOpen(false)} className="h-12 font-bold">Cancel</Button>
-                    <Button onClick={handleRegisterUser} disabled={isSavingUser || !newUserData.name || !newUserData.tenantId} className="h-12 px-10 font-black uppercase tracking-widest shadow-xl">
+                    <Button variant="outline" onClick={() => setIsAddUserOpen(false)} className="h-12 font-bold bg-transparent border-white/10 hover:bg-white/5">Cancel</Button>
+                    <Button onClick={handleRegisterUser} disabled={isSavingUser || !newUserData.name || !newUserData.tenantId} className="h-12 px-10 font-black uppercase tracking-widest shadow-xl bg-primary hover:bg-primary/90 text-white">
                         {isSavingUser ? <Loader2 className="h-4 w-4 animate-spin" /> : "Execute Registration"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
 
+        {/* SET PASSWORD DIALOG */}
         <Dialog open={!!resetUser} onOpenChange={(o) => !o && setResetUser(null)}>
-            <DialogContent className="sm:max-w-md border-none shadow-2xl">
+            <DialogContent className="sm:max-w-md bg-[#141414] border-white/10 text-white">
                 <DialogHeader className="space-y-3">
                     <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center">
                         <Key className="h-6 w-6 text-primary" />
                     </div>
                     <DialogTitle className="text-xl font-black uppercase tracking-tight">Manual Credential Set</DialogTitle>
-                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-white/30">
                         Updating login credentials for: {resetUser?.email}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-6 space-y-4">
                     <div className="space-y-2">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground">New Access Password</p>
+                        <p className="text-[10px] font-black uppercase text-white/60">New Access Password</p>
                         <Input 
                             type="password" 
                             value={newPass}
                             onChange={e => setNewPass(e.target.value)}
                             placeholder="Enter secure password..."
-                            className="h-12 font-bold text-lg border-2 border-primary/20 focus-visible:ring-primary/10"
+                            className="h-12 font-bold text-lg bg-white/5 border-white/10"
                         />
-                    </div>
-                    <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl text-[10px] text-orange-900 font-bold leading-relaxed">
-                        Security Notice: Manual override events are logged in the global audit trail.
                     </div>
                 </div>
                 <DialogFooter className="gap-2">
-                    <Button variant="outline" onClick={() => setResetUser(null)} className="h-12 px-6 font-bold">Cancel</Button>
-                    <Button onClick={handleSetPassword} disabled={isSavingPass || !newPass} className="h-12 px-10 font-black uppercase tracking-widest shadow-xl">
+                    <Button variant="outline" onClick={() => setResetUser(null)} className="h-12 px-6 font-bold bg-transparent border-white/10">Cancel</Button>
+                    <Button onClick={handleSetPassword} disabled={isSavingPass || !newPass} className="h-12 px-10 font-black uppercase tracking-widest shadow-xl bg-primary hover:bg-primary/90">
                         {isSavingPass ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="mr-2 h-4 w-4" /> Apply Credentials</>}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        {/* DELETE USER CONFIRMATION */}
+        <Dialog open={!!userToDelete} onOpenChange={(o) => !o && setUserToDelete(null)}>
+            <DialogContent className="sm:max-w-md bg-[#141414] border-white/10 text-white">
+                <DialogHeader>
+                    <DialogTitle className="text-xl font-black uppercase text-destructive flex items-center gap-2">
+                        <Trash2 className="h-5 w-5" />
+                        Nuclear Delete Access
+                    </DialogTitle>
+                    <DialogDescription className="font-medium text-white/60 pt-2">
+                        Are you absolutely sure? This will PERMANENTLY remove <strong>{userToDelete?.email}</strong> and their global profile. This cannot be undone.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 mt-6">
+                    <Button variant="outline" onClick={() => setUserToDelete(null)} className="h-12 font-bold bg-transparent border-white/10">Cancel</Button>
+                    <Button onClick={handleDeleteUser} disabled={isDeleting} variant="destructive" className="h-12 px-10 font-black uppercase tracking-widest shadow-xl">
+                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Forever"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

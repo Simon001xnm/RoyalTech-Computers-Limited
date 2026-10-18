@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -11,7 +10,7 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { useToast } from '@/hooks/use-toast';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, getDocs, addDoc } from 'firebase/firestore';
 import { ReceiptPdf } from '@/app/documents/components/pdfs/receipt-pdf';
 import { ThermalReceiptPdf } from '@/app/documents/components/pdfs/thermal-receipt-pdf';
 import { Input } from '@/components/ui/input';
@@ -95,7 +94,6 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             if (!element) throw new Error("Export target not found");
 
             const isThermal = type === 'Thermal';
-            // INDUSTRIAL ASPECT LOCK: 794px width fixed
             const canvas = await html2canvas(element, { 
                 scale: 3.5, 
                 useCORS: true,
@@ -119,6 +117,18 @@ export function RecentSales({ onViewReceipt }: RecentSalesProps) {
             
             const initials = TYPE_INITIALS[docToDownload.type] || 'DOC';
             pdf.save(`${initials}_${(docToDownload.relatedTo || 'VAL').slice(0, 3).toUpperCase()}.pdf`);
+            
+            // LOG DOWNLOAD FOR MASTER AUDIT
+            await addDoc(collection(firestore, 'platform_logs'), {
+                timestamp: new Date().toISOString(),
+                level: 'business',
+                module: 'POS',
+                event: `Document Downloaded: ${docToDownload.title}`,
+                userId: user?.uid,
+                tenantId: tenant?.id,
+                metadata: { type: docToDownload.type, exportType: type }
+            });
+
             toast({ title: "Document Saved" });
         } catch (e) {
             toast({ variant: 'destructive', title: "Export Failed" });

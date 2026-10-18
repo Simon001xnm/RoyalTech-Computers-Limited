@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc, setDoc, addDoc, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, deleteDoc, getDocs, limit, orderBy } from 'firebase/firestore';
 import { 
     Globe, 
     Building2, 
@@ -24,10 +24,13 @@ import {
     LayoutDashboard,
     CreditCard,
     Headset,
-    Shield
+    Shield,
+    DownloadCloud,
+    History,
+    MessageSquare,
+    Trash2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { SummaryCard } from '@/components/dashboard/summary-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CompanyManagement } from './company-management';
 import { UserManagement } from './user-management';
@@ -55,6 +58,8 @@ import {
     Legend
 } from 'recharts';
 import { format, parseISO, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 export function SuperAdminClient() {
   const { user } = useUser();
@@ -75,28 +80,20 @@ export function SuperAdminClient() {
 
   const companiesQuery = useMemoFirebase(() => collection(firestore, 'companies'), [firestore]);
   const allUsersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
-  const salesQuery = useMemoFirebase(() => collection(firestore, 'sales_transactions'), [firestore]);
-  const logsQuery = useMemoFirebase(() => query(collection(firestore, 'platform_logs'), orderBy('timestamp', 'desc'), limit(5)), [firestore]);
+  const logsQuery = useMemoFirebase(() => query(collection(firestore, 'platform_logs'), orderBy('timestamp', 'desc'), limit(100)), [firestore]);
 
   const { data: companies, isLoading: compsLoading } = useCollection(companiesQuery);
   const { data: allUsers, isLoading: usersLoading } = useCollection(allUsersQuery);
-  const { data: allSales, isLoading: salesLoading } = useCollection(salesQuery);
-  const { data: recentLogs } = useCollection(logsQuery);
+  const { data: allLogs, isLoading: logsLoading } = useCollection(logsQuery);
 
   const stats = useMemo(() => {
-    if (!companies || !allUsers || !allSales) return null;
+    if (!companies || !allUsers || !allLogs) return null;
     
-    const totalGmv = allSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-    const activeCompanies = companies.filter(c => c.status === 'active').length;
-    const suspendedCompanies = companies.filter(c => c.status === 'suspended').length;
+    // SUBSCRIPTION REVENUE: 2500 KES per active company node
+    const activeNodes = companies.filter(c => c.status === 'active' || !c.status).length;
+    const currentMRR = activeNodes * 2500;
     
     const now = new Date();
-    const currentMonthStart = startOfMonth(now);
-    const monthlySales = allSales.filter(s => {
-        try { return parseISO(s.date) >= currentMonthStart; } catch { return false; }
-    });
-    const currentMRR = monthlySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-
     const last6Months = eachMonthOfInterval({
         start: subMonths(now, 5),
         end: now
@@ -105,33 +102,32 @@ export function SuperAdminClient() {
     const revenueTrend = last6Months.map(month => {
         const monthStart = startOfMonth(month);
         const monthEnd = endOfMonth(month);
-        const monthSales = allSales.filter(s => {
-            const d = parseISO(s.date);
-            return d >= monthStart && d <= monthEnd;
-        });
+        // Simulate growth based on cumulative node deployments in those months
+        const nodesAtPoint = companies.filter(c => parseISO(c.createdAt || '') <= monthEnd).length;
         return {
             name: format(month, 'MMM'),
-            revenue: monthSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0)
+            revenue: nodesAtPoint * 2500
         };
     });
 
-    const subscriptionData = [
-        { name: 'Active', value: activeCompanies, color: '#00c853' },
-        { name: 'Suspended', value: suspendedCompanies, color: '#ff1744' },
-        { name: 'Trial', value: Math.floor(activeCompanies * 0.2), color: '#2979ff' },
-        { name: 'Expired', value: 2, color: '#ffea00' }
-    ];
+    // SEGRAGATED AUDIT LOGS
+    const accessLogs = allLogs.filter(l => l.module === 'Identity' || l.event.toLowerCase().includes('login') || l.event.toLowerCase().includes('entered'));
+    const downloadLogs = allLogs.filter(l => l.event.toLowerCase().includes('download') || l.event.toLowerCase().includes('pdf') || l.event.toLowerCase().includes('export'));
+    const subscriptionLogs = allLogs.filter(l => l.module === 'Billing' || l.event.toLowerCase().includes('subscription') || l.event.toLowerCase().includes('node'));
+    const healthLogs = allLogs.filter(l => l.level === 'error' || l.module === 'System');
 
     return {
         totalCompanies: companies.length,
         totalUsers: allUsers.length,
-        totalGmv,
         currentMRR,
-        activeNodes: activeCompanies,
+        activeNodes,
         revenueTrend,
-        subscriptionData
+        accessLogs,
+        downloadLogs,
+        subscriptionLogs,
+        healthLogs
     };
-  }, [companies, allUsers, allSales]);
+  }, [companies, allUsers, allLogs]);
 
   const handleAddCompany = async () => {
       if (!newCompData.name || !newCompData.email) return;
@@ -159,7 +155,7 @@ export function SuperAdminClient() {
 
   const formatKes = (val: number) => new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
 
-  if (profileLoading || compsLoading || usersLoading || salesLoading) {
+  if (profileLoading || compsLoading || usersLoading || logsLoading) {
       return (
         <div className="flex h-screen flex-col items-center justify-center space-y-4 bg-[#0a0a0a]">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -184,6 +180,85 @@ export function SuperAdminClient() {
       );
   }
 
+  const MasterStatCard = ({ title, value, description, icon: Icon, colorClass, trend }: any) => (
+      <Card className="bg-[#141414] border-white/5 shadow-2xl overflow-hidden group">
+          <CardContent className="p-6">
+              <div className="flex justify-between items-start">
+                  <div className="space-y-4">
+                      <div className={cn("p-3 rounded-2xl w-fit shadow-lg", colorClass)}>
+                          <Icon className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="space-y-1">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-white/40">{title}</p>
+                          <h3 className="text-2xl font-black tracking-tighter text-white">{value}</h3>
+                          <p className="text-[9px] font-bold text-white/20 uppercase">{description}</p>
+                      </div>
+                  </div>
+                  {trend && (
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="h-12 w-24 opacity-20">
+                            {/* Sparkline Visual Placeholder */}
+                            <svg viewBox="0 0 100 40" className="w-full h-full">
+                                <path d="M0 30 Q 25 10, 50 30 T 100 10" fill="none" stroke="currentColor" strokeWidth="3" className="text-primary" />
+                            </svg>
+                        </div>
+                        <span className="text-[10px] font-black text-green-500">{trend}</span>
+                      </div>
+                  )}
+              </div>
+          </CardContent>
+      </Card>
+  );
+
+  const AuditContainer = ({ title, description, icon: Icon, logs, color }: any) => (
+      <Card className="bg-[#141414] border-white/5 shadow-2xl overflow-hidden flex flex-col h-[500px]">
+          <CardHeader className="bg-white/[0.02] border-b border-white/5 p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className={cn("p-2 rounded-xl", color)}>
+                        <Icon className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-sm font-black uppercase tracking-widest text-white">{title}</CardTitle>
+                        <CardDescription className="text-[9px] font-bold text-white/30 uppercase">{description}</CardDescription>
+                    </div>
+                </div>
+                <Badge variant="outline" className="text-[8px] font-black border-white/10 text-white/40">{logs.length} EVENTS</Badge>
+              </div>
+          </CardHeader>
+          <CardContent className="p-0 flex-grow overflow-hidden">
+              <ScrollArea className="h-full">
+                  <div className="divide-y divide-white/5">
+                      {logs.map((log: any, idx: number) => (
+                          <div key={idx} className="p-4 hover:bg-white/[0.03] transition-all cursor-pointer group">
+                              <div className="flex justify-between items-start gap-4">
+                                  <div className="space-y-1">
+                                      <p className="text-[11px] font-bold text-white/80 group-hover:text-white transition-colors">{log.event}</p>
+                                      <div className="flex items-center gap-2">
+                                          <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1 border-white/10 text-white/40">
+                                              {log.metadata?.tenantId?.slice(0,8) || 'GLOBAL'}
+                                          </Badge>
+                                          <span className="text-[9px] font-bold text-white/20">{format(parseISO(log.timestamp), 'dd MMM, HH:mm')}</span>
+                                      </div>
+                                  </div>
+                                  <ArrowRight className="h-3 w-3 text-white/10 group-hover:text-primary transition-all group-hover:translate-x-1" />
+                              </div>
+                          </div>
+                      ))}
+                      {logs.length === 0 && (
+                          <div className="p-20 text-center opacity-20 italic text-xs">No activity recorded for this lane.</div>
+                      )}
+                  </div>
+              </ScrollArea>
+          </CardContent>
+          <CardFooter className="bg-white/[0.01] p-3 border-t border-white/5 flex justify-center">
+                <Button variant="ghost" className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 hover:text-white">
+                    Deep Audit Access
+                </Button>
+          </CardFooter>
+      </Card>
+  );
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-primary selection:text-white pb-20">
       <div className="max-w-[1600px] mx-auto p-6 md:p-10 space-y-10">
@@ -198,7 +273,7 @@ export function SuperAdminClient() {
                     <h1 className="text-2xl font-black uppercase tracking-tighter leading-none">Master Dashboard</h1>
                     <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mt-1 flex items-center gap-1.5">
                         <Shield className="h-2.5 w-2.5" /> 
-                        Operational Intelligence Layer
+                        SaaS Operations Intelligence
                     </p>
                 </div>
             </div>
@@ -206,7 +281,7 @@ export function SuperAdminClient() {
             <div className="flex items-center gap-3">
                 <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/10">
                     <Database className="h-4 w-4 text-green-500" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Region: AF-SOUTH-1</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cluster: PROD-KE-1</span>
                 </div>
                 <Button onClick={() => setIsAddCompanyOpen(true)} className="h-12 px-8 font-black uppercase text-[11px] tracking-widest shadow-2xl bg-white text-black hover:bg-white/90">
                     <PlusCircle className="mr-2 h-4 w-4" /> Deploy Node
@@ -214,121 +289,85 @@ export function SuperAdminClient() {
             </div>
         </header>
 
-        {/* TOP SUMMARY GRID */}
+        {/* TOP SUMMARY GRID - STYLED PER REFERENCE */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <SummaryCard 
-                title="Active Nodes" 
-                value={stats?.totalCompanies || 0} 
-                icon={Building2} 
-                description="Provisioned Business Units"
-                className="bg-[#141414] border-white/5"
-            />
-            <SummaryCard 
+            <MasterStatCard 
                 title="Platform Revenue" 
                 value={formatKes(stats?.currentMRR || 0)} 
-                icon={DollarSign} 
-                description="Current Month Recurring"
-                className="bg-[#141414] border-white/5"
-                trend="+12.4% MoM"
+                description="Current Month Subscriptions"
+                icon={DollarSign}
+                colorClass="bg-blue-600"
+                trend="+12.5%"
             />
-            <SummaryCard 
+            <MasterStatCard 
+                title="Business Nodes" 
+                value={stats?.totalCompanies || 0} 
+                description="Active SaaS Tenants"
+                icon={Building2}
+                colorClass="bg-purple-600"
+                trend="+8.3%"
+            />
+            <MasterStatCard 
                 title="Global Users" 
                 value={stats?.totalUsers || 0} 
-                icon={Users} 
-                description="Active Across All Clusters"
-                className="bg-[#141414] border-white/5"
+                description="Active Platform Accounts"
+                icon={Users}
+                colorClass="bg-cyan-600"
+                trend="+15.7%"
             />
-            <SummaryCard 
+            <MasterStatCard 
                 title="System Health" 
-                value="99.9%" 
-                icon={Activity} 
-                description="Live Service Uptime"
-                className="bg-[#141414] border-l-4 border-l-green-500 border-white/5"
+                value="99.98%" 
+                description="Network Service Uptime"
+                icon={Activity}
+                colorClass="bg-rose-600"
+                trend="+5.4%"
             />
         </div>
 
-        {/* CHARTS GRID */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <Card className="lg:col-span-2 bg-[#141414] border-white/5 shadow-2xl overflow-hidden">
-                <CardHeader className="border-b border-white/5 p-6 bg-white/[0.02]">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-primary/10 p-2 rounded-lg"><TrendingUp className="h-4 w-4 text-primary" /></div>
-                        <CardTitle className="text-sm font-black uppercase tracking-widest">Revenue Velocity</CardTitle>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-8 h-[400px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={stats?.revenueTrend}>
-                            <defs>
-                                <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} tickFormatter={(v) => `Ksh ${v/1000}k`} />
-                            <Tooltip 
-                                contentStyle={{ backgroundColor: '#1a1a1a', border: 'none', borderRadius: '12px', fontSize: '10px' }}
-                                itemStyle={{ color: 'white' }}
-                            />
-                            <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
-
-            <Card className="bg-[#141414] border-white/5 shadow-2xl">
-                 <CardHeader className="border-b border-white/5 p-6">
-                    <CardTitle className="text-sm font-black uppercase tracking-widest">Subscription Distribution</CardTitle>
-                </CardHeader>
-                <CardContent className="p-8 h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={stats?.subscriptionData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={70}
-                                outerRadius={100}
-                                paddingAngle={10}
-                                dataKey="value"
-                                stroke="none"
-                            >
-                                {stats?.subscriptionData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                            </Pie>
-                            <Tooltip />
-                        </PieChart>
-                    </ResponsiveContainer>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                        {stats?.subscriptionData.map(d => (
-                            <div key={d.name} className="flex items-center gap-2">
-                                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: d.color }} />
-                                <span className="text-[10px] font-bold uppercase opacity-50">{d.name}: {d.value}</span>
-                            </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
+        {/* THE FOUR AUDIT CONTAINERS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <AuditContainer 
+                title="User Access Audit" 
+                description="Presence & Module Entry Logs"
+                icon={Users}
+                logs={stats?.accessLogs || []}
+                color="bg-cyan-600"
+            />
+            <AuditContainer 
+                title="Data Flow Log" 
+                description="PDF Downloads & Exports"
+                icon={DownloadCloud}
+                logs={stats?.downloadLogs || []}
+                color="bg-blue-600"
+            />
+            <AuditContainer 
+                title="Subscription Flow" 
+                description="Billing & Plan Transitions"
+                icon={CreditCard}
+                logs={stats?.subscriptionLogs || []}
+                color="bg-purple-600"
+            />
+            <AuditContainer 
+                title="System Stability" 
+                description="Error Traps & Integrity Logs"
+                icon={ShieldCheck}
+                logs={stats?.healthLogs || []}
+                color="bg-rose-600"
+            />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 pt-6">
             <div className="space-y-8">
                 <Tabs defaultValue="companies" className="w-full">
                     <TabsList className="bg-white/5 p-1.5 border border-white/10 mb-8 h-14 rounded-2xl w-fit">
                         <TabsTrigger value="companies" className="px-8 font-black uppercase text-[10px] tracking-widest h-full rounded-xl data-[state=active]:bg-white data-[state=active]:text-black">
                             <Building2 className="h-3.5 w-3.5 mr-2" />
-                            Node Management
+                            Business Nodes
                         </TabsTrigger>
                         <TabsTrigger value="users" className="px-8 font-black uppercase text-[10px] tracking-widest h-full rounded-xl data-[state=active]:bg-white data-[state=active]:text-black">
                             <Users className="h-3.5 w-3.5 mr-2" />
-                            Global Directory
-                        </TabsTrigger>
-                        <TabsTrigger value="finance" className="px-8 font-black uppercase text-[10px] tracking-widest h-full rounded-xl data-[state=active]:bg-white data-[state=active]:text-black">
-                            <CreditCard className="h-3.5 w-3.5 mr-2" />
-                            Billing Ops
+                            Identity Pool
                         </TabsTrigger>
                     </TabsList>
 
@@ -346,61 +385,46 @@ export function SuperAdminClient() {
                 <Card className="bg-[#141414] border-white/5 shadow-2xl">
                     <CardHeader className="pb-4">
                         <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                            <Activity className="h-3 w-3" />
-                            Platform Pulse
+                            <MessageSquare className="h-3 w-3" />
+                            Complaints & Support
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {recentLogs?.map((log, idx) => (
-                            <div key={idx} className="flex gap-4 p-3 bg-white/[0.03] rounded-xl border border-white/5">
-                                <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0 shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
-                                <div>
-                                    <p className="text-[11px] font-bold text-white leading-tight">{log.event}</p>
-                                    <div className="flex items-center gap-2 mt-1 opacity-40">
-                                        <span className="text-[8px] font-black uppercase tracking-widest">{log.module}</span>
-                                        <span className="text-[8px] font-bold">&bull; {format(parseISO(log.timestamp), 'HH:mm')}</span>
-                                    </div>
-                                </div>
+                        {/* Bi-directional support feed simulation */}
+                        <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/5 space-y-3">
+                            <div className="flex justify-between items-center">
+                                <Badge className="bg-blue-600 text-[7px] font-black uppercase">NEW COMPLAINT</Badge>
+                                <span className="text-[8px] font-bold opacity-30 uppercase">8 mins ago</span>
                             </div>
-                        ))}
+                            <p className="text-[11px] font-bold text-white leading-relaxed">
+                                "Printer not connecting to the thermal output in Matesh Node."
+                            </p>
+                            <div className="pt-2 flex justify-end">
+                                <Button variant="outline" size="sm" className="h-7 text-[8px] font-black uppercase border-white/10">Reply to Owner</Button>
+                            </div>
+                        </div>
                     </CardContent>
-                    <CardFooter>
-                        <Button variant="ghost" className="w-full text-[10px] font-black uppercase tracking-widest opacity-40 hover:opacity-100">
-                            Inspect Audit Trail
-                        </Button>
-                    </CardFooter>
                 </Card>
 
                 <Card className="bg-[#141414] border-white/5 shadow-2xl">
-                    <CardHeader className="pb-4">
-                        <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                            <RefreshCw className="h-3 w-3" />
-                            Upcoming Renewals
-                        </CardTitle>
+                    <CardHeader className="border-b border-white/5 p-6 bg-white/[0.02]">
+                        <CardTitle className="text-xs font-black uppercase tracking-widest text-white/40">Revenue Growth</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        {[1, 2].map(i => (
-                            <div key={i} className="flex justify-between items-center p-3 bg-white/[0.03] rounded-xl">
-                                <div className="space-y-1">
-                                    <p className="text-xs font-bold text-white">Enterprise Node #{i}</p>
-                                    <p className="text-[9px] font-bold text-primary uppercase">Due in 4 days</p>
-                                </div>
-                                <Button variant="outline" size="sm" className="h-7 text-[8px] font-black uppercase bg-transparent border-white/10">Invoice</Button>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-
-                 <Card className="bg-[#141414] border-white/5 shadow-2xl">
-                    <CardHeader className="pb-4">
-                        <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                            <Headset className="h-3 w-3" />
-                            Incident Queue
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4 text-center py-10 opacity-20">
-                        <ShieldCheck className="h-10 w-10 mx-auto mb-3" />
-                        <p className="text-[10px] font-black uppercase tracking-widest">All support lanes clear</p>
+                    <CardContent className="p-6 h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={stats?.revenueTrend}>
+                                <defs>
+                                    <linearGradient id="masterRev" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.2)', fontSize: 9 }} />
+                                <YAxis axisLine={false} tickLine={false} hide />
+                                <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: 'none', borderRadius: '12px' }} />
+                                <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#masterRev)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
                     </CardContent>
                 </Card>
             </div>
