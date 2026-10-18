@@ -2,10 +2,10 @@
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier } from '@/types/saas';
 import { useToast } from '@/hooks/use-toast';
-import type { User as AppUser } from '@/types';
+import type { User as AppUser, Company } from '@/types';
 
 const DEFAULT_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   free: { id: 'plan_free', name: 'Standard Workspace', tier: 'free', maxAssets: 50, maxSalesPerMonth: 100, enableBranding: false, enableTracking: false, priceMonthly: 0, currency: 'KES' },
@@ -22,6 +22,8 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   
   const [cachedTenantId, setCachedTenantId] = useState<string | null>(null);
+  const [availableWorkspaces, setAvailableWorkspaces] = useState<Company[]>([]);
+  const [isWorkspacesLoading, setIsWorkspacesLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -40,7 +42,31 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     effectiveTenantId ? doc(firestore, 'companies', effectiveTenantId) : null,
     [firestore, effectiveTenantId]
   );
-  const { data: activeCompany, isLoading: isCompanyLoading } = useDoc(companyRef);
+  const { data: activeCompany, isLoading: isCompanyLoading } = useDoc<any>(companyRef);
+
+  // Fetch all workspaces the user has access to
+  useEffect(() => {
+    if (!userProfile?.tenantIds || userProfile.tenantIds.length === 0) {
+        setAvailableWorkspaces([]);
+        return;
+    }
+
+    const fetchWorkspaces = async () => {
+        setIsWorkspacesLoading(true);
+        try {
+            const q = query(collection(firestore, 'companies'), where('id', 'in', userProfile.tenantIds));
+            const snap = await getDocs(q);
+            const workspaces = snap.docs.map(d => ({ ...d.data(), id: d.id } as Company));
+            setAvailableWorkspaces(workspaces);
+        } catch (e) {
+            console.error("Workspace fetch error:", e);
+        } finally {
+            setIsWorkspacesLoading(false);
+        }
+    };
+
+    fetchWorkspaces();
+  }, [userProfile?.tenantIds, firestore]);
 
   useEffect(() => {
     if (userProfile?.tenantId) {
@@ -74,7 +100,8 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     try {
         await updateDoc(userRef, { tenantId: newTenantId });
         localStorage.setItem('rcl_last_tenant_id', newTenantId);
-        toast({ title: 'Workspace Switched' });
+        toast({ title: 'Workspace Switched', description: `Welcome to the new business node.` });
+        // Optional: window.location.href = '/' to force a full data refresh
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Switch Failed' });
     }
@@ -84,11 +111,11 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     tenant: tenantData,
     plan: activePlan,
     usage: usageStats,
-    isLoading: isUserLoading || isProfileLoading || (!!effectiveTenantId && isCompanyLoading),
+    isLoading: isUserLoading || isProfileLoading || (!!effectiveTenantId && isCompanyLoading) || isWorkspacesLoading,
     isLegacyUser: activePlan?.tier === 'legacy_pro' || userProfile?.role === 'super_admin',
-    availableWorkspaces: [] as any,
+    availableWorkspaces,
     switchTenant
-  }), [tenantData, activePlan, usageStats, isUserLoading, isProfileLoading, isCompanyLoading, userProfile?.role, effectiveTenantId]);
+  }), [tenantData, activePlan, usageStats, isUserLoading, isProfileLoading, isCompanyLoading, isWorkspacesLoading, userProfile?.role, effectiveTenantId, availableWorkspaces]);
 
   return (
     <SaaSContext.Provider value={contextValue}>

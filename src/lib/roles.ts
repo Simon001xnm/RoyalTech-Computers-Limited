@@ -2,13 +2,22 @@ import type { NavItem, BusinessCategory } from '@/lib/constants';
 import { NAV_ITEMS } from '@/lib/constants';
 import type { User, Company } from '@/types';
 
-export const USER_ROLES = ['admin', 'user'] as const;
+export const USER_ROLES = ['super_admin', 'admin', 'user'] as const;
 export type Role = typeof USER_ROLES[number];
 
 export const roleDescriptions: Record<Role, string> = {
-    admin: "Shop Owner. Full access to business data and settings.",
+    super_admin: "Platform Controller. Full access to all companies and global users.",
+    admin: "Shop Owner. Full access to business data and settings for their workspace.",
     user: "Staff Member. Restricted module access for daily operations.",
 };
+
+/**
+ * MASTER KEYS: Emails that automatically get Super Admin role.
+ */
+export const MASTER_KEYS = [
+    "admin@businesshub.co.ke",
+    "developer@matesh.co.ke"
+];
 
 /**
  * Filter navigation items based on user role and granular permissions.
@@ -24,18 +33,23 @@ export const getPermittedNavItems = (user?: User | null, company?: Company | nul
         return item.businessTypes.includes(bizType);
     });
 
-    // 1. Workspace Admin: Access to all permitted modules
-    if (role === 'admin' || role === 'super_admin') {
-        return items;
+    // 1. Super Admin: Full platform access
+    if (role === 'super_admin') {
+        return items; // Logic in constants.ts hides/shows super_admin item
+    }
+
+    // 2. Workspace Admin: Access to all permitted shop modules
+    if (role === 'admin') {
+        return items.filter(i => i.id !== 'super_admin');
     }
     
-    // 2. Standard User: Respect granular permissions
+    // 3. Standard User: Respect granular permissions
     const alwaysAllowedHrefs = ['/'];
     
     return items.filter(item => {
         if (alwaysAllowedHrefs.includes(item.href)) return true;
         // Specifically block management modules for non-admins
-        if (item.href === '/users' || item.href === '/profile') return false;
+        if (item.id === 'super_admin' || item.id === 'users' || item.id === 'settings') return false;
         return permissions.includes(item.id);
     });
 };

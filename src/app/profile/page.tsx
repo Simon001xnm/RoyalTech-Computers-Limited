@@ -15,7 +15,9 @@ import {
     DownloadCloud, 
     ShieldCheck,
     Building2,
-    Lock
+    Lock,
+    ArrowRight,
+    Globe
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
@@ -32,7 +34,7 @@ import { logger } from "@/lib/logger";
 
 export default function ProfilePage() {
   const { user: authUser, isUserLoading } = useUser();
-  const { tenant } = useSaaS();
+  const { tenant, availableWorkspaces, switchTenant } = useSaaS();
   const firestore = useFirestore();
   const { toast } = useToast();
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -64,6 +66,7 @@ export default function ProfilePage() {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isSwitching, setIsSwitching] = useState<string | null>(null);
 
   const userRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
   const { data: userProfile } = useDoc<any>(userRef);
@@ -111,6 +114,16 @@ export default function ProfilePage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSwitch = async (id: string) => {
+      if (id === tenant?.id) return;
+      setIsSwitching(id);
+      try {
+          await switchTenant(id);
+      } finally {
+          setIsSwitching(null);
+      }
   };
 
   const handleDataExport = async (type: 'inventory' | 'customers' | 'sales' | 'leases') => {
@@ -175,25 +188,6 @@ export default function ProfilePage() {
 
   const isAdmin = userProfile.role === 'admin' || userProfile.role === 'super_admin';
 
-  if (!isAdmin) {
-    return (
-        <div className="flex h-[80vh] flex-col items-center justify-center p-8 text-center space-y-6">
-            <div className="bg-destructive/10 p-6 rounded-full">
-                <Lock className="h-12 w-12 text-destructive" />
-            </div>
-            <div className="max-w-md space-y-2">
-                <h1 className="text-2xl font-black uppercase tracking-tight">Access Restricted</h1>
-                <p className="text-muted-foreground leading-relaxed">
-                    Shop branding and configuration tools are reserved for account administrators.
-                </p>
-            </div>
-            <Button asChild variant="outline" className="font-bold">
-                <a href="/">Return to Command Center</a>
-            </Button>
-        </div>
-    );
-  }
-
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20">
       <PageHeader title="Shop Settings" description="Configure branding and high-fidelity generation standards." />
@@ -223,9 +217,16 @@ export default function ProfilePage() {
                 <CardDescription className="font-bold text-[10px] uppercase tracking-widest text-primary">
                     Administrator: {displayName}
                 </CardDescription>
-                <Badge className="mt-4 capitalize px-4 h-7 text-[10px] font-black tracking-widest uppercase">
-                    {userProfile.role} Account
-                </Badge>
+                <div className="flex items-center justify-center gap-2 mt-4">
+                    <Badge className="capitalize px-4 h-7 text-[10px] font-black tracking-widest uppercase">
+                        {userProfile.role} Account
+                    </Badge>
+                    {userProfile.role === 'super_admin' && (
+                        <Badge variant="outline" className="bg-destructive/5 text-destructive border-destructive/20 h-7 px-3 text-[10px] font-black uppercase tracking-widest">
+                            <Globe className="h-3 w-3 mr-1.5" /> Platform Admin
+                        </Badge>
+                    )}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-6 border-t space-y-4">
@@ -238,136 +239,204 @@ export default function ProfilePage() {
                </div>
             </CardContent>
           </Card>
+
+          <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden">
+            <CardHeader className="bg-muted/10 border-b py-3 px-5">
+                <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                    <Building2 className="h-3 w-3 text-primary" />
+                    My Workspaces
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+                <div className="divide-y">
+                    {availableWorkspaces.map(ws => (
+                        <div 
+                            key={ws.id} 
+                            className={cn(
+                                "p-4 flex items-center justify-between group transition-all",
+                                tenant?.id === ws.id ? "bg-primary/5" : "hover:bg-muted/30"
+                            )}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8 rounded-lg">
+                                    <AvatarImage src={ws.logoUrl} className="object-contain" />
+                                    <AvatarFallback className="text-[8px] font-black">{ws.name.substring(0,2)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="text-xs font-black uppercase tracking-tight leading-none">{ws.name}</p>
+                                    {tenant?.id === ws.id ? (
+                                        <Badge variant="outline" className="h-4 px-1 text-[7px] font-black border-primary text-primary bg-white mt-1">CURRENT</Badge>
+                                    ) : (
+                                        <p className="text-[8px] font-bold text-muted-foreground uppercase mt-1">Switch to Node</p>
+                                    )}
+                                </div>
+                            </div>
+                            {tenant?.id !== ws.id && (
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100"
+                                    onClick={() => handleSwitch(ws.id)}
+                                    disabled={!!isSwitching}
+                                >
+                                    {isSwitching === ws.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                                </Button>
+                            )}
+                        </div>
+                    ))}
+                    {availableWorkspaces.length === 0 && (
+                        <div className="p-8 text-center opacity-20"><p className="text-[10px] font-black uppercase">No other nodes linked.</p></div>
+                    )}
+                </div>
+            </CardContent>
+          </Card>
+
           <SaaSUsageMeters />
         </div>
 
         <div className="space-y-8">
-          {company && (
-            <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden">
-                <CardHeader className="bg-muted/10 border-b p-8">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-black p-3 rounded-2xl shadow-lg">
-                            <Settings2 className="h-6 w-6 text-white" />
+          {!isAdmin ? (
+               <div className="flex flex-col items-center justify-center p-20 text-center space-y-6 bg-muted/20 rounded-3xl border-4 border-dashed">
+                <div className="bg-destructive/10 p-6 rounded-full">
+                    <Lock className="h-12 w-12 text-destructive" />
+                </div>
+                <div className="max-w-md space-y-2">
+                    <h1 className="text-2xl font-black uppercase tracking-tight">Management Restricted</h1>
+                    <p className="text-muted-foreground leading-relaxed">
+                        Shop branding and configuration tools are reserved for account administrators. Please contact your shop owner to update business information.
+                    </p>
+                </div>
+            </div>
+          ) : (
+            <>
+              {company && (
+                <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden">
+                    <CardHeader className="bg-muted/10 border-b p-8">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-black p-3 rounded-2xl shadow-lg">
+                                <Settings2 className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-2xl font-black uppercase tracking-tighter">Identity & Logic</CardTitle>
+                                <CardDescription>Workspace branding and document standards.</CardDescription>
+                            </div>
                         </div>
-                        <div>
-                            <CardTitle className="text-2xl font-black uppercase tracking-tighter">Identity & Logic</CardTitle>
-                            <CardDescription>Workspace branding and document standards.</CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-4 h-14 bg-muted/30 rounded-none border-b p-0">
-                            <TabsTrigger value="profile" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Branding</TabsTrigger>
-                            <TabsTrigger value="contact" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Contact</TabsTrigger>
-                            <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Standards</TabsTrigger>
-                            <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest text-primary">Backups</TabsTrigger>
-                        </TabsList>
-                        
-                        <div className="p-8">
-                            <TabsContent value="profile" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
-                                <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-12">
-                                    <div className="space-y-4">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Identity Logo</Label>
-                                        <div className="w-full aspect-square border-2 border-black border-dashed rounded-2xl flex items-center justify-center cursor-pointer overflow-hidden relative group shadow-inner bg-white" onClick={() => logoInputRef.current?.click()}>
-                                            {compData.logoUrl ? <img src={compData.logoUrl} className="w-full h-full object-contain p-2" alt="logo" /> : <ImageIcon className="h-8 w-8 text-muted-foreground" />}
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><Upload className="text-white h-6 w-6" /></div>
-                                        </div>
-                                        <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
-                                        <p className="text-[8px] text-center font-bold text-muted-foreground uppercase">This logo appears on all documents and profile icons.</p>
-                                    </div>
-                                    <div className="space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Business Name</Label><Input value={compData.name} onChange={e => handleInputChange('name', e.target.value)} className="h-11 font-bold" /></div>
-                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Shop Category</Label>
-                                                <Select onValueChange={v => handleInputChange('businessType', v)} value={compData.businessType}>
-                                                    <SelectTrigger className="h-11 font-bold"><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="retail">Retail / Hardware</SelectItem>
-                                                        <SelectItem value="sacco">SACCO / Financial</SelectItem>
-                                                        <SelectItem value="hospitality">Restaurant / Hotel</SelectItem>
-                                                        <SelectItem value="barber">Barber / Salon</SelectItem>
-                                                        <SelectItem value="tech">Computers & IT</SelectItem>
-                                                        <SelectItem value="service">General Services</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                            <TabsList className="grid w-full grid-cols-4 h-14 bg-muted/30 rounded-none border-b p-0">
+                                <TabsTrigger value="profile" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Branding</TabsTrigger>
+                                <TabsTrigger value="contact" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Contact</TabsTrigger>
+                                <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Standards</TabsTrigger>
+                                <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest text-primary">Backups</TabsTrigger>
+                            </TabsList>
+                            
+                            <div className="p-8">
+                                <TabsContent value="profile" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
+                                    <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-12">
+                                        <div className="space-y-4">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Identity Logo</Label>
+                                            <div className="w-full aspect-square border-2 border-black border-dashed rounded-2xl flex items-center justify-center cursor-pointer overflow-hidden relative group shadow-inner bg-white" onClick={() => logoInputRef.current?.click()}>
+                                                {compData.logoUrl ? <img src={compData.logoUrl} className="w-full h-full object-contain p-2" alt="logo" /> : <ImageIcon className="h-8 w-8 text-muted-foreground" />}
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><Upload className="text-white h-6 w-6" /></div>
                                             </div>
-                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Brand Primary Color</Label><div className="flex gap-2"><Input type="color" value={compData.primaryColor} onChange={e => handleInputChange('primaryColor', e.target.value)} className="w-12 h-11 p-1" /><Input value={compData.primaryColor} onChange={e => handleInputChange('primaryColor', e.target.value)} className="h-11 font-mono" /></div></div>
-                                            <div className="space-y-2"><Label className="text-[10px] font-black uppercase">VAT Rate (%)</Label><Input type="number" value={compData.vatRate} onChange={e => handleInputChange('vatRate', Number(e.target.value))} className="h-11 font-bold" /></div>
+                                            <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                                            <p className="text-[8px] text-center font-bold text-muted-foreground uppercase">This logo appears on all documents and profile icons.</p>
+                                        </div>
+                                        <div className="space-y-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Business Name</Label><Input value={compData.name} onChange={e => handleInputChange('name', e.target.value)} className="h-11 font-bold" /></div>
+                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Shop Category</Label>
+                                                    <Select onValueChange={v => handleInputChange('businessType', v)} value={compData.businessType}>
+                                                        <SelectTrigger className="h-11 font-bold"><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="retail">Retail / Hardware</SelectItem>
+                                                            <SelectItem value="sacco">SACCO / Financial</SelectItem>
+                                                            <SelectItem value="hospitality">Restaurant / Hotel</SelectItem>
+                                                            <SelectItem value="barber">Barber / Salon</SelectItem>
+                                                            <SelectItem value="tech">Computers & IT</SelectItem>
+                                                            <SelectItem value="service">General Services</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Brand Primary Color</Label><div className="flex gap-2"><Input type="color" value={compData.primaryColor} onChange={e => handleInputChange('primaryColor', e.target.value)} className="w-12 h-11 p-1" /><Input value={compData.primaryColor} onChange={e => handleInputChange('primaryColor', e.target.value)} className="h-11 font-mono" /></div></div>
+                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">VAT Rate (%)</Label><Input type="number" value={compData.vatRate} onChange={e => handleInputChange('vatRate', Number(e.target.value))} className="h-11 font-bold" /></div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </TabsContent>
+                                </TabsContent>
 
-                            <TabsContent value="contact" className="mt-0 space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Email</Label><Input value={compData.email} onChange={e => handleInputChange('email', e.target.value)} className="h-11" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Primary Phone</Label><Input value={compData.phone} onChange={e => handleInputChange('phone', e.target.value)} className="h-11" /></div>
-                                    <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase">Head Office Address</Label><Input value={compData.address} onChange={e => handleInputChange('address', e.target.value)} className="h-11" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Website</Label><Input value={compData.website} onChange={e => handleInputChange('website', e.target.value)} className="h-11" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">KRA PIN / Tax ID</Label><Input value={compData.taxPin} onChange={e => handleInputChange('taxPin', e.target.value)} className="h-11 font-mono uppercase" /></div>
-                                </div>
-                            </TabsContent>
+                                <TabsContent value="contact" className="mt-0 space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Email</Label><Input value={compData.email} onChange={e => handleInputChange('email', e.target.value)} className="h-11" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Primary Phone</Label><Input value={compData.phone} onChange={e => handleInputChange('phone', e.target.value)} className="h-11" /></div>
+                                        <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase">Head Office Address</Label><Input value={compData.address} onChange={e => handleInputChange('address', e.target.value)} className="h-11" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Website</Label><Input value={compData.website} onChange={e => handleInputChange('website', e.target.value)} className="h-11" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">KRA PIN / Tax ID</Label><Input value={compData.taxPin} onChange={e => handleInputChange('taxPin', e.target.value)} className="h-11 font-mono uppercase" /></div>
+                                    </div>
+                                </TabsContent>
 
-                            <TabsContent value="documents" className="mt-0 space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-black/5 rounded-2xl border border-black/10">
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Invoice Prefix</Label><Input value={compData.invoicePrefix} onChange={e => handleInputChange('invoicePrefix', e.target.value)} className="h-11 font-black" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Receipt Prefix</Label><Input value={compData.receiptPrefix} onChange={e => handleInputChange('receiptPrefix', e.target.value)} className="h-11 font-black" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Quotation Prefix</Label><Input value={compData.quotePrefix} onChange={e => handleInputChange('quotePrefix', e.target.value)} className="h-11 font-black" /></div>
-                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Delivery Prefix</Label><Input value={compData.deliveryPrefix} onChange={e => handleInputChange('deliveryPrefix', e.target.value)} className="h-11 font-black" /></div>
-                                </div>
-                            </TabsContent>
+                                <TabsContent value="documents" className="mt-0 space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-black/5 rounded-2xl border border-black/10">
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Invoice Prefix</Label><Input value={compData.invoicePrefix} onChange={e => handleInputChange('invoicePrefix', e.target.value)} className="h-11 font-black" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Receipt Prefix</Label><Input value={compData.receiptPrefix} onChange={e => handleInputChange('receiptPrefix', e.target.value)} className="h-11 font-black" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Quotation Prefix</Label><Input value={compData.quotePrefix} onChange={e => handleInputChange('quotePrefix', e.target.value)} className="h-11 font-black" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Delivery Prefix</Label><Input value={compData.deliveryPrefix} onChange={e => handleInputChange('deliveryPrefix', e.target.value)} className="h-11 font-black" /></div>
+                                    </div>
+                                </TabsContent>
 
-                            <TabsContent value="data" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
-                                        <CardHeader className="bg-primary/5 py-4">
-                                            <CardTitle className="text-sm font-black uppercase tracking-widest">Inventory Log</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="pt-6">
-                                            <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('inventory')} disabled={!!isExporting}>
-                                                {isExporting === 'inventory' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} CSV Export
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
+                                <TabsContent value="data" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
+                                            <CardHeader className="bg-primary/5 py-4">
+                                                <CardTitle className="text-sm font-black uppercase tracking-widest">Inventory Log</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="pt-6">
+                                                <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('inventory')} disabled={!!isExporting}>
+                                                    {isExporting === 'inventory' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} CSV Export
+                                                </Button>
+                                            </CardContent>
+                                        </Card>
 
-                                    <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
-                                        <CardHeader className="bg-primary/5 py-4">
-                                            <CardTitle className="text-sm font-black uppercase tracking-widest">CRM Directory</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="pt-6">
-                                            <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('customers')} disabled={!!isExporting}>
-                                                {isExporting === 'customers' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} CSV Export
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            </TabsContent>
-                        </div>
-                    </Tabs>
-                </CardContent>
-                <CardFooter className="justify-end bg-muted/10 border-t p-8">
-                    <Button onClick={handleSaveCompany} disabled={isSaving} className="h-14 px-10 font-black uppercase tracking-widest shadow-xl border-2 border-black hover:bg-black hover:text-white transition-all">
-                        {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} 
-                        Sync Settings
-                    </Button>
-                </CardFooter>
-            </Card>
-          )}
+                                        <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
+                                            <CardHeader className="bg-primary/5 py-4">
+                                                <CardTitle className="text-sm font-black uppercase tracking-widest">CRM Directory</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="pt-6">
+                                                <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('customers')} disabled={!!isExporting}>
+                                                    {isExporting === 'customers' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} CSV Export
+                                                </Button>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                </TabsContent>
+                            </div>
+                        </Tabs>
+                    </CardContent>
+                    <CardFooter className="justify-end bg-muted/10 border-t p-8">
+                        <Button onClick={handleSaveCompany} disabled={isSaving} className="h-14 px-10 font-black uppercase tracking-widest shadow-xl border-2 border-black hover:bg-black hover:text-white transition-all">
+                            {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} 
+                            Sync Settings
+                        </Button>
+                    </CardFooter>
+                </Card>
+              )}
 
-          <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden">
-            <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight">Security</CardTitle></CardHeader>
-            <CardContent className="p-8 space-y-4">
-              <p className="text-sm text-muted-foreground leading-relaxed">System identity protection is active. Multi-tenant isolation ensures your business verification data and API secrets are inaccessible to other nodes.</p>
-              <div className="flex items-center gap-4 p-6 bg-black/5 rounded-2xl border border-black/20">
-                  <ShieldCheck className="h-10 w-10 text-black opacity-50" />
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-black uppercase tracking-widest">Cryptographic Isolation</p>
-                    <p className="text-[10px] text-muted-foreground font-mono">NODE-ID: {tenant?.id}</p>
+              <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden">
+                <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight">Security</CardTitle></CardHeader>
+                <CardContent className="p-8 space-y-4">
+                  <p className="text-sm text-muted-foreground leading-relaxed">System identity protection is active. Multi-tenant isolation ensures your business verification data and API secrets are inaccessible to other nodes.</p>
+                  <div className="flex items-center gap-4 p-6 bg-black/5 rounded-2xl border border-black/20">
+                      <ShieldCheck className="h-10 w-10 text-black opacity-50" />
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-black uppercase tracking-widest">Cryptographic Isolation</p>
+                        <p className="text-[10px] text-muted-foreground font-mono">NODE-ID: {tenant?.id}</p>
+                      </div>
                   </div>
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       </div>
     </div>

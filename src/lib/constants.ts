@@ -10,7 +10,8 @@ import {
     LineChart,
     UserCog,
     Wallet,
-    ShieldCheck
+    ShieldCheck,
+    Globe
 } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
@@ -57,6 +58,7 @@ export const NAV_ITEMS: NavItem[] = [
   
   // ADMIN & TOOLS
   { id: 'admin', href: '/admin', label: 'Shop Analysis', icon: ShieldCheck },
+  { id: 'super_admin', href: '/super-admin', label: 'Platform Control', icon: Globe },
   { id: 'users', href: '/users', label: 'Staff Members', icon: UserCog },
   { id: 'settings', href: '/profile', label: 'Shop Settings', icon: Settings },
 ];

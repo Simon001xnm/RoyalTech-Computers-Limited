@@ -71,7 +71,7 @@ export interface User {
   email: string;
   name?: string;
   phone?: string;
-  role: 'admin' | 'user' | 'super_admin';
+  role: 'super_admin' | 'admin' | 'user';
   tenantId?: string;
   tenantIds?: string[]; 
   permissions?: string[]; 
