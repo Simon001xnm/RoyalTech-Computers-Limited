@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -91,7 +90,6 @@ export function SuperAdminClient() {
     const activeCompanies = companies.filter(c => c.status === 'active').length;
     const suspendedCompanies = companies.filter(c => c.status === 'suspended').length;
     
-    // Monthly Recurring Revenue calculation logic
     const now = new Date();
     const currentMonthStart = startOfMonth(now);
     const monthlySales = allSales.filter(s => {
@@ -99,7 +97,6 @@ export function SuperAdminClient() {
     });
     const currentMRR = monthlySales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
 
-    // Chart Data Generation
     const last6Months = eachMonthOfInterval({
         start: subMonths(now, 5),
         end: now
@@ -191,17 +188,17 @@ export function SuperAdminClient() {
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-primary selection:text-white pb-20">
       <div className="max-w-[1600px] mx-auto p-6 md:p-10 space-y-10">
         
-        {/* TOP NAV / LOGO AREA */}
+        {/* MASTER DASHBOARD HEADER */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-primary rounded-2xl shadow-[0_0_30px_rgba(var(--primary),0.3)]">
-                    <Globe className="h-8 w-8 text-white" />
+                    <LayoutDashboard className="h-8 w-8 text-white" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-black uppercase tracking-tighter leading-none">Nexora Platform</h1>
+                    <h1 className="text-2xl font-black uppercase tracking-tighter leading-none">Master Dashboard</h1>
                     <p className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mt-1 flex items-center gap-1.5">
                         <Shield className="h-2.5 w-2.5" /> 
-                        Infrastructure Control Layer
+                        Operational Intelligence Layer
                     </p>
                 </div>
             </div>
@@ -252,7 +249,6 @@ export function SuperAdminClient() {
 
         {/* CHARTS GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* MAIN REVENUE CHART */}
             <Card className="lg:col-span-2 bg-[#141414] border-white/5 shadow-2xl overflow-hidden">
                 <CardHeader className="border-b border-white/5 p-6 bg-white/[0.02]">
                     <div className="flex items-center gap-3">
@@ -282,7 +278,6 @@ export function SuperAdminClient() {
                 </CardContent>
             </Card>
 
-            {/* SUBSCRIPTION SPLIT PIE */}
             <Card className="bg-[#141414] border-white/5 shadow-2xl">
                  <CardHeader className="border-b border-white/5 p-6">
                     <CardTitle className="text-sm font-black uppercase tracking-widest">Subscription Distribution</CardTitle>
@@ -319,7 +314,6 @@ export function SuperAdminClient() {
             </Card>
         </div>
 
-        {/* MANAGEMENT INTERFACE */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8">
             <div className="space-y-8">
                 <Tabs defaultValue="companies" className="w-full">
@@ -348,9 +342,7 @@ export function SuperAdminClient() {
                 </Tabs>
             </div>
 
-            {/* SECONDARY SIDEBAR: ACTIVITY & TASKS */}
             <div className="space-y-8">
-                {/* SYSTEM INTEGRITY FEED */}
                 <Card className="bg-[#141414] border-white/5 shadow-2xl">
                     <CardHeader className="pb-4">
                         <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
@@ -379,7 +371,6 @@ export function SuperAdminClient() {
                     </CardFooter>
                 </Card>
 
-                {/* UPCOMING TASKS / RENEWALS */}
                 <Card className="bg-[#141414] border-white/5 shadow-2xl">
                     <CardHeader className="pb-4">
                         <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
@@ -400,7 +391,6 @@ export function SuperAdminClient() {
                     </CardContent>
                 </Card>
 
-                 {/* SUPPORT QUEUE */}
                  <Card className="bg-[#141414] border-white/5 shadow-2xl">
                     <CardHeader className="pb-4">
                         <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
@@ -417,7 +407,6 @@ export function SuperAdminClient() {
         </div>
       </div>
 
-      {/* DEPLOYMENT DIALOG */}
       <Dialog open={isAddCompanyOpen} onOpenChange={setIsAddCompanyOpen}>
           <DialogContent className="sm:max-w-md bg-[#141414] border-white/10 text-white shadow-[0_0_100px_rgba(0,0,0,0.5)]">
               <DialogHeader>
