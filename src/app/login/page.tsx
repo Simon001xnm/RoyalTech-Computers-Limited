@@ -7,9 +7,10 @@ import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignIn, initiatePasswordReset } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Eye, EyeOff, Quote, ShieldCheck } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Quote, ShieldCheck, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const quotes = [
   { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" },
@@ -26,9 +27,6 @@ const quotes = [
   { text: "Quality means doing it right when no one is looking.", author: "Henry Ford" }
 ];
 
-/**
- * @fileOverview High-Fidelity Landscape Login Page with Entrepreneur Quotes
- */
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -101,10 +99,8 @@ export default function LoginPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-[#f0f2f5] p-4 font-sans">
       <div className="w-full max-w-[320px] min-h-[400px] sm:max-w-[650px] sm:min-h-[450px] md:max-w-[800px] md:min-h-[500px] lg:max-w-[900px] lg:min-h-[550px] flex flex-col sm:flex-row rounded-[40px] border-none shadow-[0_30px_100px_rgba(0,0,0,0.15)] overflow-hidden animate-in fade-in zoom-in-95 duration-700 bg-white relative transition-all">
         
-        {/* Left Side: Quotes & Branding */}
         <div className="w-full sm:w-[50%] bg-gradient-to-br from-[#3b49df] via-[#6366f1] to-[#a855f7] p-10 text-white flex flex-col justify-between relative overflow-hidden shrink-0">
              
-            {/* Geometric Shapes Layer */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <div className="absolute top-[-20%] left-[-10%] w-40 h-40 rounded-full bg-white/10 blur-xl" />
                 <div className="absolute bottom-[15%] left-[5%] w-32 h-32 rounded-full bg-gradient-to-br from-white/30 to-transparent shadow-2xl" />
@@ -125,7 +121,6 @@ export default function LoginPage() {
                 <p className="text-[10px] font-bold opacity-60 uppercase tracking-[0.2em]">Shop Workspace</p>
             </div>
 
-            {/* DYNAMIC QUOTE SLIDER */}
             <div className="relative z-10 my-8">
                 <div key={currentQuoteIndex} className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
                     <Quote className="h-10 w-10 text-white/20 mb-6" />
@@ -140,7 +135,6 @@ export default function LoginPage() {
                     </div>
                 </div>
                 
-                {/* SLIDE INDICATORS */}
                 <div className="flex gap-1.5 mt-10">
                     {quotes.map((_, i) => (
                         <div 
@@ -164,7 +158,6 @@ export default function LoginPage() {
             </div>
         </div>
 
-        {/* Right Side: Login Form */}
         <div className="flex-1 bg-white relative flex flex-col items-center justify-center p-8 md:p-12 z-10">
             <div className="absolute top-8 right-10 flex gap-2">
                 <div className="w-2 h-2 rounded-full bg-indigo-200" />
@@ -238,15 +231,29 @@ export default function LoginPage() {
                 </div>
             </div>
 
-            {/* DISCRETE SYSTEM ACCESS PORTAL - "Far" from the form */}
             <div className="absolute bottom-8 text-center w-full">
-                <Link 
-                    href="/super-admin" 
-                    className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/20 hover:text-primary transition-colors"
-                >
-                    <ShieldCheck className="h-2 w-2" />
-                    System Portal
-                </Link>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Link 
+                                href="/super-admin" 
+                                className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/20 hover:text-primary transition-colors"
+                            >
+                                <ShieldCheck className="h-2 w-2" />
+                                System Portal
+                            </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="bg-black text-white text-[10px] font-bold uppercase p-3 border-none rounded-xl shadow-2xl">
+                           <div className="flex items-start gap-2">
+                                <Info className="h-3 w-3 mt-0.5 text-primary" />
+                                <p className="leading-relaxed">
+                                    Master Login: use admin@businesshub.co.ke.<br/>
+                                    If this is your first time, please Sign Up first to set your password.
+                                </p>
+                           </div>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </div>
         </div>
       </div>
