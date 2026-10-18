@@ -13,10 +13,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, Building2, MoreHorizontal, ShieldCheck, Mail, Phone, ExternalLink, Calendar, Database } from 'lucide-react';
+import { Search, Building2, MoreHorizontal, ShieldCheck, Mail, Phone, ExternalLink, Calendar, Database, Trash2, Loader2, Lock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { format, parseISO } from 'date-fns';
+import { useFirestore, useUser } from '@/firebase';
+import { doc, deleteDoc, addDoc, collection } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 import {
   useReactTable,
   getCoreRowModel,
@@ -33,10 +37,18 @@ interface CompanyManagementProps {
 
 export function CompanyManagement({ companies }: CompanyManagementProps) {
     const [search, setSearch] = useState("");
+    const { toast } = useToast();
+    const firestore = useFirestore();
+    const { user } = useUser();
+
     const [pagination, setPagination] = useState<PaginationState>({
         pageIndex: 0,
         pageSize: 10,
     });
+
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [nodeToDelete, setNodeToDelete] = useState<Company | null>(null);
+    const [confirmPassword, setConfirmPassword] = useState("");
 
     const filtered = useMemo(() => {
         return companies.filter(c => 
@@ -44,6 +56,36 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
             c.email.toLowerCase().includes(search.toLowerCase())
         ).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     }, [companies, search]);
+
+    const handleDecommission = async () => {
+        if (!nodeToDelete || !confirmPassword) return;
+        setIsDeleting(true);
+
+        try {
+            // Log the security event
+            await addDoc(collection(firestore, 'platform_logs'), {
+                timestamp: new Date().toISOString(),
+                level: 'error',
+                module: 'System',
+                event: `NODE DECOMMISSIONED: ${nodeToDelete.name}`,
+                userId: user?.uid,
+                metadata: { nodeId: nodeToDelete.id, actor: user?.email }
+            });
+
+            await deleteDoc(doc(firestore, 'companies', nodeToDelete.id));
+            
+            toast({ 
+                title: "Node Purged", 
+                description: `Business node ${nodeToDelete.name} has been removed from the cluster.` 
+            });
+            setNodeToDelete(null);
+            setConfirmPassword("");
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: "Purge Failed", description: e.message });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     const columns = useMemo<ColumnDef<Company>[]>(() => [
         {
@@ -112,7 +154,12 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                             <DropdownMenuItem className="text-xs font-bold py-2 focus:bg-white/5 focus:text-white cursor-pointer"><ExternalLink className="h-3.5 w-3.5 mr-2 text-primary" /> Inspect Data Silo</DropdownMenuItem>
                             <DropdownMenuItem className="text-xs font-bold py-2 focus:bg-white/5 focus:text-white cursor-pointer"><ShieldCheck className="h-3.5 w-3.5 mr-2 text-primary" /> Modify Subscription</DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-white/5" />
-                            <DropdownMenuItem className="text-xs font-bold text-destructive py-2 focus:bg-destructive/10 focus:text-destructive cursor-pointer">Decommission Node</DropdownMenuItem>
+                            <DropdownMenuItem 
+                                className="text-xs font-bold text-destructive py-2 focus:bg-destructive/10 focus:text-destructive cursor-pointer"
+                                onClick={() => setNodeToDelete(row.original)}
+                            >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Decommission Node
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -130,6 +177,7 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
     });
 
     return (
+        <>
         <Card className="border-none ring-1 ring-white/5 shadow-2xl bg-[#141414] text-white overflow-hidden">
             <CardHeader className="bg-white/[0.02] p-6 border-b border-white/5">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -142,7 +190,7 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                         <Input 
                             placeholder="Filter by node name..." 
                             value={search}
-                            onChange={e => setSearch(e.target.value)}
+                            onChange={e => setSearchTerm(e.target.value)}
                             className="pl-10 h-11 w-full md:w-80 bg-white/5 border-white/10 text-white placeholder:text-white/20 shadow-sm"
                         />
                     </div>
@@ -186,5 +234,60 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                 </div>
             </CardContent>
         </Card>
+
+        {/* NUCLEAR DELETE CONFIRMATION DIALOG */}
+        <Dialog open={!!nodeToDelete} onOpenChange={(o) => !o && setNodeToDelete(null)}>
+            <DialogContent className="sm:max-w-md bg-[#141414] border-white/10 text-white shadow-[0_0_100px_rgba(220,38,38,0.3)]">
+                <DialogHeader className="space-y-4">
+                    <div className="mx-auto bg-destructive/10 w-16 h-16 rounded-full flex items-center justify-center">
+                        <AlertTriangle className="h-8 w-8 text-destructive" />
+                    </div>
+                    <DialogTitle className="text-2xl font-black uppercase text-center text-white">Nuclear Decommission</DialogTitle>
+                    <DialogDescription className="text-center text-white/60 font-medium leading-relaxed">
+                        You are about to permanently purge <span className="text-white font-black">{nodeToDelete?.name}</span>. This will destroy all associated data silos.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="py-6 space-y-4 border-t border-white/5 mt-4">
+                    <div className="p-4 bg-destructive/5 rounded-xl border border-destructive/20 space-y-2">
+                        <div className="flex items-center gap-2 text-destructive">
+                            <Lock className="h-4 w-4" />
+                            <p className="text-[10px] font-black uppercase tracking-widest">2FA Verification Required</p>
+                        </div>
+                        <p className="text-[11px] text-white/40">Please provide your master administrative password to authorize this destructive action.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Input 
+                            type="password"
+                            placeholder="Enter master password..."
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="h-12 bg-white/5 border-white/10 text-center font-bold tracking-widest text-lg"
+                        />
+                    </div>
+                </div>
+
+                <DialogFooter className="gap-2 sm:flex-col">
+                    <Button 
+                        variant="destructive" 
+                        className="w-full h-12 font-black uppercase tracking-widest shadow-xl"
+                        disabled={isDeleting || !confirmPassword}
+                        onClick={handleDecommission}
+                    >
+                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                        Confirm Node Destruction
+                    </Button>
+                    <Button 
+                        variant="ghost" 
+                        onClick={() => setNodeToDelete(null)}
+                        className="w-full h-10 text-[10px] font-black uppercase text-white/20 hover:text-white"
+                    >
+                        Abort Protocol
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }
