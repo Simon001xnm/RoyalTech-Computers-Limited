@@ -237,7 +237,7 @@ export function UserManagement({ users, companies }: UserManagementProps) {
                             <Input 
                                 placeholder="Search accounts..." 
                                 value={search}
-                                onChange={e => setSearchTerm(e.target.value)}
+                                onChange={e => setSearch(e.target.value)}
                                 className="pl-10 h-11 w-full md:w-64 bg-white/5 border-white/10 text-white placeholder:text-white/20 shadow-sm"
                             />
                         </div>
@@ -286,7 +286,6 @@ export function UserManagement({ users, companies }: UserManagementProps) {
             </CardContent>
         </Card>
 
-        {/* ADD USER DIALOG */}
         <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
             <DialogContent className="sm:max-w-md bg-[#141414] border-white/10 text-white shadow-[0_0_100px_rgba(0,0,0,0.5)]">
                 <DialogHeader>
@@ -321,7 +320,6 @@ export function UserManagement({ users, companies }: UserManagementProps) {
             </DialogContent>
         </Dialog>
 
-        {/* SET PASSWORD DIALOG */}
         <Dialog open={!!resetUser} onOpenChange={(o) => !o && setResetUser(null)}>
             <DialogContent className="sm:max-w-md bg-[#141414] border-white/10 text-white">
                 <DialogHeader className="space-y-3">
@@ -354,7 +352,6 @@ export function UserManagement({ users, companies }: UserManagementProps) {
             </DialogContent>
         </Dialog>
 
-        {/* DELETE USER CONFIRMATION */}
         <Dialog open={!!userToDelete} onOpenChange={(o) => !o && setUserToDelete(null)}>
             <DialogContent className="sm:max-w-md bg-[#141414] border-white/10 text-white">
                 <DialogHeader>

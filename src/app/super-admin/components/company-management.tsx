@@ -62,7 +62,6 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
         setIsDeleting(true);
 
         try {
-            // Log the security event
             await addDoc(collection(firestore, 'platform_logs'), {
                 timestamp: new Date().toISOString(),
                 level: 'error',
@@ -190,7 +189,7 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                         <Input 
                             placeholder="Filter by node name..." 
                             value={search}
-                            onChange={e => setSearchTerm(e.target.value)}
+                            onChange={e => setSearch(e.target.value)}
                             className="pl-10 h-11 w-full md:w-80 bg-white/5 border-white/10 text-white placeholder:text-white/20 shadow-sm"
                         />
                     </div>
@@ -235,7 +234,6 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
             </CardContent>
         </Card>
 
-        {/* NUCLEAR DELETE CONFIRMATION DIALOG */}
         <Dialog open={!!nodeToDelete} onOpenChange={(o) => !o && setNodeToDelete(null)}>
             <DialogContent className="sm:max-w-md bg-[#141414] border-white/10 text-white shadow-[0_0_100px_rgba(220,38,38,0.3)]">
                 <DialogHeader className="space-y-4">
