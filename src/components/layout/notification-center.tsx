@@ -47,7 +47,7 @@ export function NotificationCenter() {
   const [isSendingReply, setIsSendingReply] = useState(false);
 
   const notificationsQuery = useMemoFirebase(() => {
-    if (!user || !tenant) return null;
+    if (!user || !tenant?.id) return null;
     return query(
       collection(firestore, 'notifications'),
       where('tenantId', '==', tenant.id)
@@ -58,14 +58,14 @@ export function NotificationCenter() {
 
   const notifications = useMemo(() => {
     if (!rawNotifications) return [];
+    // Only show notifications for this node. (userId filter optional if node-wide is intended)
     return rawNotifications
-        .filter(n => !n.userId || n.userId === user?.uid)
         .sort((a, b) => {
             const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
             const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
             return dateB - dateA;
         });
-  }, [rawNotifications, user?.uid]);
+  }, [rawNotifications]);
 
   const unreadCount = notifications.filter(n => !n.read).length || 0;
 

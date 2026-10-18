@@ -156,6 +156,12 @@ export function SuperAdminClient() {
         const timestamp = new Date().toISOString();
         const targets = targetNode === 'all' ? companies?.map(c => c.id) || [] : [targetNode];
 
+        if (targets.length === 0) {
+            toast({ variant: 'destructive', title: "No targets found" });
+            setIsSendingMessage(false);
+            return;
+        }
+
         for (const tId of targets) {
             await addDoc(collection(firestore, 'notifications'), {
                 tenantId: tId,
@@ -172,7 +178,7 @@ export function SuperAdminClient() {
             });
         }
 
-        toast({ title: "Alert Sent Successfully" });
+        toast({ title: "Alert Sent Successfully", description: `Dispatched to ${targets.length} node(s).` });
         setIsComposeOpen(false);
         setMessageSubject('');
         setMessageBody('');
@@ -196,7 +202,7 @@ export function SuperAdminClient() {
                   message: replyText,
                   timestamp: new Date().toISOString()
               }),
-              read: false, // Reset read status for the tenant
+              read: false, // Reset read status for the tenant so they see the new reply
               updatedAt: new Date().toISOString()
           });
 
