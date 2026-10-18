@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc, setDoc, addDoc, limit, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, addDoc, limit, orderBy, updateDoc, arrayUnion } from 'firebase/firestore';
 import { 
     Globe, 
     Share2, 
@@ -87,6 +87,10 @@ export function SuperAdminClient() {
   const [messagePriority, setMessagePriority] = useState('info');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
+
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile, isLoading: profileLoading } = useDoc<AppUser>(userProfileRef);
 
@@ -162,6 +166,7 @@ export function SuperAdminClient() {
                 type: 'system',
                 senderId: 'platform_admin',
                 senderName: 'Platform Support',
+                replies: [],
                 createdAt: timestamp,
                 updatedAt: timestamp
             });
@@ -176,6 +181,33 @@ export function SuperAdminClient() {
     } finally {
         setIsSendingMessage(false);
     }
+  };
+
+  const handleSendReply = async (notifId: string) => {
+      if (!replyText.trim() || isSendingReply) return;
+      setIsSendingReply(true);
+
+      try {
+          const docRef = doc(firestore, 'notifications', notifId);
+          await updateDoc(docRef, {
+              replies: arrayUnion({
+                  userId: 'platform_admin',
+                  userName: 'Platform Controller',
+                  message: replyText,
+                  timestamp: new Date().toISOString()
+              }),
+              read: false, // Reset read status for the tenant
+              updatedAt: new Date().toISOString()
+          });
+
+          toast({ title: "Response Dispatched" });
+          setReplyText('');
+          setReplyingTo(null);
+      } catch (e: any) {
+          toast({ variant: 'destructive', title: "Reply Failed" });
+      } finally {
+          setIsSendingReply(false);
+      }
   };
 
   const handleResolveSupport = async (id: string) => {
@@ -201,7 +233,7 @@ export function SuperAdminClient() {
   }
 
   if (profile?.role !== 'super_admin') {
-      return <div className="flex h-screen items-center justify-center text-white bg-black">DENIED</div>;
+      return <div className="flex h-screen items-center justify-center text-white bg-black font-black">UNAUTHORIZED ACCESS ATTEMPT LOGGED</div>;
   }
 
   const MasterStatCard = ({ title, value, description, icon: Icon, colorClass, trend }: any) => (
@@ -345,11 +377,41 @@ export function SuperAdminClient() {
                                                 <p className="text-xs font-black uppercase tracking-tight text-white/90 truncate">{thread.subject}</p>
                                                 <p className="text-[10px] text-white/40 leading-relaxed line-clamp-2">{thread.message}</p>
                                                 
-                                                {thread.replies && thread.replies.length > 0 && (
-                                                    <div className="mt-4 p-3 bg-white/[0.02] rounded-xl border border-white/5 space-y-2">
-                                                        <p className="text-[8px] font-black uppercase text-primary">Recent Reply</p>
-                                                        <p className="text-[10px] font-bold text-white/60">{thread.replies[thread.replies.length-1].message}</p>
+                                                {thread.replies && thread.replies.map((reply: any, idx: number) => (
+                                                    <div key={idx} className="mt-4 p-3 bg-white/[0.02] rounded-xl border border-white/5 space-y-2">
+                                                        <div className="flex justify-between items-center">
+                                                            <p className="text-[8px] font-black uppercase text-primary">{reply.userName}</p>
+                                                            <p className="text-[7px] font-bold text-white/20">{format(parseISO(reply.timestamp), 'HH:mm')}</p>
+                                                        </div>
+                                                        <p className="text-[10px] font-bold text-white/60">{reply.message}</p>
                                                     </div>
+                                                ))}
+
+                                                {replyingTo === thread.id ? (
+                                                    <div className="mt-4 flex gap-2 animate-in slide-in-from-top-2 duration-300">
+                                                        <Input 
+                                                            autoFocus
+                                                            placeholder="Type response..." 
+                                                            value={replyText} 
+                                                            onChange={e => setReplyText(e.target.value)}
+                                                            className="h-8 text-[10px] bg-white/5 border-white/10"
+                                                        />
+                                                        <Button size="icon" className="h-8 w-8" onClick={() => handleSendReply(thread.id)} disabled={isSendingReply || !replyText.trim()}>
+                                                            {isSendingReply ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setReplyingTo(null)}>
+                                                            <Trash2 className="h-3 w-3 text-white/20" />
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className="h-7 mt-2 text-[8px] font-black uppercase tracking-widest text-primary hover:bg-primary/10"
+                                                        onClick={() => setReplyingTo(thread.id)}
+                                                    >
+                                                        Respond to Node
+                                                    </Button>
                                                 )}
                                             </div>
                                             <div className="flex flex-col items-end gap-3 shrink-0">

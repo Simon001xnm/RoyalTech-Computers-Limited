@@ -32,7 +32,8 @@ import { useSaaS } from '@/components/saas/saas-provider';
 import { Input } from '@/components/ui/input';
 
 /**
- * @fileOverview Notification Center with Reply Bridge
+ * @fileOverview Synchronized Notification Center
+ * Handles real-time alerts, unread counts, and bi-directional support replies.
  */
 export function NotificationCenter() {
   const { user } = useUser();
@@ -43,7 +44,7 @@ export function NotificationCenter() {
 
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
-  const [isSendingReply, setIsSendingMessage] = useState(false);
+  const [isSendingReply, setIsSendingReply] = useState(false);
 
   const notificationsQuery = useMemoFirebase(() => {
     if (!user || !tenant) return null;
@@ -78,12 +79,12 @@ export function NotificationCenter() {
 
   const handleSendReply = async (id: string) => {
     if (!replyText.trim() || isSendingReply) return;
-    setIsSendingMessage(true);
+    setIsSendingReply(true);
 
     try {
         const docRef = doc(firestore, 'notifications', id);
         await updateDoc(docRef, {
-            priority: 'alert', // Boost priority so super admin sees it
+            priority: 'alert', // Boost priority so super admin sees the user's response
             replies: arrayUnion({
                 userId: user?.uid,
                 userName: user?.displayName || user?.email,
@@ -98,7 +99,7 @@ export function NotificationCenter() {
     } catch (e) {
         toast({ variant: 'destructive', title: "Failed to send reply" });
     } finally {
-        setIsSendingMessage(false);
+        setIsSendingReply(false);
     }
   };
 
@@ -134,7 +135,7 @@ export function NotificationCenter() {
             <>
               <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
               <BellRing className="h-5 w-5 text-primary relative z-10" />
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] border-2 border-background bg-primary text-primary-foreground shadow-sm">
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] border-2 border-background bg-primary text-primary-foreground shadow-sm font-black">
                 {unreadCount}
               </Badge>
             </>
@@ -163,15 +164,15 @@ export function NotificationCenter() {
         
         <ScrollArea className="flex-grow">
           {isLoading ? (
-             <div className="p-12 text-center text-muted-foreground animate-pulse">Checking messages...</div>
+             <div className="p-12 text-center text-muted-foreground animate-pulse font-black uppercase text-[10px] tracking-widest">Syncing Inbox...</div>
           ) : notifications.length > 0 ? (
             <div className="divide-y divide-muted/40">
                 {notifications.map(notif => (
                     <div 
                         key={notif.id} 
                         className={cn(
-                            "p-5 transition-all group",
-                            notif.read ? "bg-white" : "bg-primary/5 border-l-4 border-l-primary"
+                            "p-5 transition-all group border-l-4",
+                            notif.read ? "bg-white border-l-transparent" : "bg-primary/5 border-l-primary"
                         )}
                         onClick={() => !notif.read && handleMarkAsRead(notif.id)}
                     >
@@ -181,11 +182,11 @@ export function NotificationCenter() {
                             </div>
                             <div className="space-y-1 flex-grow overflow-hidden">
                                 <div className="flex items-center justify-between gap-2">
-                                    <p className={cn("text-sm font-bold truncate", !notif.read && "text-primary")}>
+                                    <p className={cn("text-sm font-bold truncate", !notif.read && "text-primary uppercase")}>
                                         {notif.subject}
                                     </p>
                                     <span className="text-[10px] font-medium text-muted-foreground shrink-0">
-                                        {notif.createdAt ? format(parseISO(notif.createdAt), 'MMM d, p') : 'Just now'}
+                                        {notif.createdAt ? format(parseISO(notif.createdAt), 'MMM d') : 'Just now'}
                                     </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground leading-relaxed pt-1">
@@ -202,41 +203,48 @@ export function NotificationCenter() {
                                     </div>
                                 ))}
 
-                                <div className="pt-4 flex items-center justify-between">
-                                    <div className="flex gap-2">
-                                        <Badge variant="secondary" className="text-[8px] font-black uppercase py-0 px-2 h-4 border-none opacity-80">
-                                            REF: {notif.id.slice(0, 8)}
-                                        </Badge>
-                                        {!notif.read && (
-                                            <Badge variant="default" className="text-[8px] font-black uppercase py-0 px-2 h-4 animate-pulse">NEW</Badge>
+                                <div className="pt-4 flex flex-col gap-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex gap-2">
+                                            <Badge variant="secondary" className="text-[8px] font-black uppercase py-0 px-2 h-4 border-none opacity-80">
+                                                REF: {notif.id.slice(0, 8)}
+                                            </Badge>
+                                            {!notif.read && (
+                                                <Badge variant="default" className="text-[8px] font-black uppercase py-0 px-2 h-4 animate-pulse">NEW</Badge>
+                                            )}
+                                        </div>
+                                        
+                                        {replyingTo !== notif.id && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-7 text-[8px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setReplyingTo(notif.id);
+                                                }}
+                                            >
+                                                Reply to Support
+                                            </Button>
                                         )}
                                     </div>
-                                    
-                                    {replyingTo === notif.id ? (
-                                        <div className="flex w-full mt-4 gap-2 animate-in slide-in-from-bottom-2 duration-300">
+
+                                    {replyingTo === notif.id && (
+                                        <div className="flex w-full gap-2 animate-in slide-in-from-bottom-2 duration-300" onClick={(e) => e.stopPropagation()}>
                                             <Input 
                                                 autoFocus 
-                                                placeholder="Enter message..." 
+                                                placeholder="Type your reply..." 
                                                 value={replyText} 
                                                 onChange={e => setReplyText(e.target.value)}
-                                                className="h-8 text-xs flex-1"
+                                                className="h-9 text-xs flex-1 bg-white border-2 border-primary/20"
                                             />
-                                            <Button size="icon" className="h-8 w-8" onClick={() => handleSendReply(notif.id)} disabled={isSendingReply}>
+                                            <Button size="icon" className="h-9 w-9 shadow-lg" onClick={() => handleSendReply(notif.id)} disabled={isSendingReply || !replyText.trim()}>
                                                 {isSendingReply ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                                             </Button>
+                                            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setReplyingTo(null)}>
+                                                <Info className="h-4 w-4 rotate-45 opacity-40" />
+                                            </Button>
                                         </div>
-                                    ) : (
-                                        <Button 
-                                            variant="ghost" 
-                                            size="sm" 
-                                            className="h-7 text-[8px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setReplyingTo(notif.id);
-                                            }}
-                                        >
-                                            Reply to Support
-                                        </Button>
                                     )}
                                 </div>
                             </div>
