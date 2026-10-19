@@ -45,9 +45,9 @@ export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps)
         
         <div className="flex items-center gap-4 lg:gap-6">
           <div className="hidden lg:flex items-center gap-8 text-[11px] font-black uppercase tracking-widest mr-4">
-            <Link href="/#products" className={cn("transition-colors", isDark ? "text-white/60 hover:text-white" : "text-black/60 hover:text-black")}>Products</Link>
+            <Link href="/#products" className={cn("transition-colors", isDark ? "text-white/60 hover:text-white" : "text-black/60 hover:text-black")}>What it does</Link>
             <Link href="/company/about" className={cn("transition-colors", isDark ? "text-white/60 hover:text-white" : "text-black/60 hover:text-black")}>Solutions</Link>
-            <Link href="/support/contact" className={cn("transition-colors", isDark ? "text-white/60 hover:text-white" : "text-black/60 hover:text-black")}>Contact</Link>
+            <Link href="/support/contact" className={cn("transition-colors", isDark ? "text-white/60 hover:text-white" : "text-black/60 hover:text-black")}>Contact Us</Link>
           </div>
           
           <div className="flex items-center gap-2">
