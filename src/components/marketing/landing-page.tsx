@@ -71,20 +71,6 @@ export function LandingPage() {
                         alt="Shop Dashboard" 
                         className="rounded-[32px] w-full h-auto shadow-inner border border-[#eab308]/10" 
                     />
-                    <div className="absolute bottom-10 right-10 p-6 bg-[#1a1a1a] text-white rounded-3xl shadow-2xl w-56 animate-float border border-white/5">
-                        <p className="text-[10px] font-bold uppercase opacity-60 mb-2">Our Network</p>
-                        <p className="text-2xl font-black tracking-tighter text-[#eab308]">9 Countries</p>
-                        <div className="mt-4 pt-4 border-t border-white/10 flex flex-col gap-1">
-                            <span className="text-[8px] font-black uppercase opacity-40 tracking-widest text-white">East • West • South Africa</span>
-                            <div className="flex justify-between items-center">
-                                <span className="text-[7px] font-bold uppercase text-white/30">System Active</span>
-                                <div className="flex gap-1">
-                                    <div className="h-2 w-2 rounded-full bg-[#eab308]/40" />
-                                    <div className="h-2 w-2 rounded-full bg-[#eab308] animate-pulse" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
