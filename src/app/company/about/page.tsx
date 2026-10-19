@@ -34,7 +34,7 @@ export default function AboutPage() {
                 </div>
             </div>
             <div className="aspect-square bg-muted rounded-3xl overflow-hidden shadow-sm border ring-8 ring-muted/20">
-                <img src="https://picsum.photos/seed/evolution/600/600" alt="evolution" className="w-full h-full object-cover" />
+                <img src="/e67446fc8d42269a84b386aa69931b34.jpg" alt="evolution" className="w-full h-full object-cover" />
             </div>
           </div>
 

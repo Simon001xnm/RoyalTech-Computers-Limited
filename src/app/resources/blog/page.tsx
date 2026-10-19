@@ -22,7 +22,11 @@ export default function BlogPage() {
             {[1, 2, 3].map(i => (
                 <div key={i} className="group cursor-pointer">
                     <div className="aspect-video bg-muted rounded-xl mb-3 overflow-hidden border border-black/5 shadow-sm">
-                        <img src={`https://picsum.photos/seed/blog${i}/500/300`} alt="blog" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img 
+                          src={i % 2 === 0 ? "/e67446fc8d42269a84b386aa69931b34.jpg" : "/ChatGPT Image Aug 7, 2026, 10_09_14 PM.png"} 
+                          alt="blog" 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                        />
                     </div>
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-1.5 text-[8px] font-black uppercase text-primary">

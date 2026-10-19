@@ -67,7 +67,7 @@ export function LandingPage() {
                 <div className="absolute -inset-4 bg-gradient-to-tr from-[#eab308]/20 to-transparent rounded-full blur-3xl opacity-30" />
                 <div className="relative p-2 rounded-[40px] shadow-2xl ring-1 ring-[#eab308]/10 overflow-hidden bg-muted/20">
                     <img 
-                        src="https://picsum.photos/seed/dashboardv3/1200/900" 
+                        src="/ChatGPT Image Aug 7, 2026, 10_09_14 PM.png" 
                         alt="Shop Dashboard" 
                         className="rounded-[32px] w-full h-auto shadow-inner border border-[#eab308]/10" 
                     />
