@@ -442,7 +442,7 @@ export function DocumentsClient() {
                 paymentMethod: type === 'Receipt' ? 'Cash' : 'Credit',
                 createdAt: isEditing ? editingDoc.createdAt : timestamp,
                 updatedAt: timestamp,
-                createdBy: iisEditing ? editingDoc.createdBy : { uid: user.uid, name: user.displayName || 'User' }
+                createdBy: isEditing ? editingDoc.createdBy : { uid: user.uid, name: user.displayName || 'User' }
             });
         }
 
@@ -669,7 +669,7 @@ export function DocumentsClient() {
               <DialogFooter className="gap-2">
                   <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)} className="font-bold h-12">Cancel</Button>
                   <Button onClick={handleLogPayment} disabled={isSubmittingPayment} className="font-black uppercase tracking-widest h-12 px-8 shadow-lg">
-                      {isSubmittingPayment ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="mr-2 h-4 w-4" /> Save Payment</>}
+                      {isSubmittingPayment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Save Payment
                   </Button>
               </DialogFooter>
           </DialogContent>
@@ -810,7 +810,7 @@ export function DocumentsClient() {
                     "w-full sm:w-auto font-black uppercase shadow-lg",
                     isEditing ? "bg-amber-600 hover:bg-amber-700" : ""
                 )} 
-                disabled={docsLoading || iisGenerating}
+                disabled={docsLoading || isGenerating}
             >
                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isEditing ? <Save className="mr-2 h-4 w-4" /> : null)}
                 {isEditing ? "Save Modified Data" : "Save and Sync Dashboard"}
