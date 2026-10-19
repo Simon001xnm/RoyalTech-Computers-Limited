@@ -45,7 +45,7 @@ export const getPermittedNavItems = (user?: User | null, company?: Company | nul
             { id: 'master_dashboard', href: '/super-admin', label: 'Master Dashboard', icon: LayoutDashboard },
             { id: 'master_data_flow', href: '/super-admin/data-flow', label: 'Data Flow', icon: Share2 },
             { id: 'master_users', href: '/super-admin/users', label: 'Identity Pool', icon: Users },
-            { id: 'master_billing', href: '/super-admin/finance', label: 'Revenue Node', icon: CreditCard },
+            { id: 'master_billing', href: '/super-admin/finance', label: 'Revenue', icon: CreditCard },
             { id: 'master_support', href: '/super-admin/support', label: 'Support Desk', icon: Headset },
             { id: 'master_audit', href: '/super-admin/audit', label: 'Security Logs', icon: ShieldAlert },
             { id: 'master_health', href: '/super-admin/health', label: 'System Health', icon: Activity },
