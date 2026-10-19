@@ -99,23 +99,23 @@ export default function LoginPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-[#f0f2f5] p-4 font-sans">
       <div className="w-full max-w-[320px] min-h-[400px] sm:max-w-[650px] sm:min-h-[450px] md:max-w-[800px] md:min-h-[500px] lg:max-w-[900px] lg:min-h-[550px] flex flex-col sm:flex-row rounded-[40px] border-none shadow-[0_30px_100px_rgba(0,0,0,0.15)] overflow-hidden animate-in fade-in zoom-in-95 duration-700 bg-white relative transition-all">
         
-        <div className="w-full sm:w-[50%] bg-gradient-to-br from-[#3b49df] via-[#6366f1] to-[#a855f7] p-10 text-white flex flex-col justify-between relative overflow-hidden shrink-0">
+        <div className="w-full sm:w-[50%] bg-black p-10 text-white flex flex-col justify-between relative overflow-hidden shrink-0">
              
             <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-40 h-40 rounded-full bg-white/10 blur-xl" />
-                <div className="absolute bottom-[15%] left-[5%] w-32 h-32 rounded-full bg-gradient-to-br from-white/30 to-transparent shadow-2xl" />
-                <div className="absolute top-[10%] right-[15%] w-20 h-20 rounded-full bg-gradient-to-br from-white/20 to-transparent shadow-lg" />
-                <div className="absolute top-[20%] left-[-20%] w-[300px] h-20 bg-gradient-to-r from-orange-400/30 to-transparent rounded-full rotate-[35deg]" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-24 bg-gradient-to-l from-purple-400/20 to-transparent rounded-full rotate-[-45deg]" />
+                <div className="absolute top-[-20%] left-[-10%] w-40 h-40 rounded-full bg-white/5 blur-xl" />
+                <div className="absolute bottom-[15%] left-[5%] w-32 h-32 rounded-full bg-gradient-to-br from-white/10 to-transparent shadow-2xl" />
+                <div className="absolute top-[10%] right-[15%] w-20 h-20 rounded-full bg-gradient-to-br from-white/10 to-transparent shadow-lg" />
+                <div className="absolute top-[20%] left-[-20%] w-[300px] h-20 bg-gradient-to-r from-[#eab308]/20 to-transparent rounded-full rotate-[35deg]" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-24 bg-gradient-to-l from-[#eab308]/10 to-transparent rounded-full rotate-[-45deg]" />
             </div>
 
             <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="bg-white/20 p-2 rounded-2xl backdrop-blur-md">
-                        <div className="w-4 h-4 border-2 border-white rounded-full" />
+                    <div className="bg-[#eab308] p-2 rounded-2xl shadow-lg">
+                        <div className="w-4 h-4 border-2 border-black rounded-full" />
                     </div>
                     <h2 className="text-sm font-black tracking-tight uppercase leading-tight">
-                        MATESH TECHNOLOGIES
+                        BUSINESS HUB
                     </h2>
                 </div>
                 <p className="text-[10px] font-bold opacity-60 uppercase tracking-[0.2em]">Shop Workspace</p>
@@ -123,13 +123,13 @@ export default function LoginPage() {
 
             <div className="relative z-10 my-8">
                 <div key={currentQuoteIndex} className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                    <Quote className="h-10 w-10 text-white/20 mb-6" />
+                    <Quote className="h-10 w-10 text-white/10 mb-6" />
                     <h3 className="text-xl md:text-2xl font-black leading-tight tracking-tight mb-4">
                         "{quotes[currentQuoteIndex].text}"
                     </h3>
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-[2px] bg-orange-400" />
-                        <p className="text-xs font-black uppercase tracking-widest text-orange-400">
+                        <div className="w-8 h-[2px] bg-[#eab308]" />
+                        <p className="text-xs font-black uppercase tracking-widest text-[#eab308]">
                             {quotes[currentQuoteIndex].author}
                         </p>
                     </div>
@@ -141,7 +141,7 @@ export default function LoginPage() {
                             key={i} 
                             className={cn(
                                 "h-1 rounded-full transition-all duration-500",
-                                i === currentQuoteIndex ? "w-8 bg-white" : "w-2 bg-white/20"
+                                i === currentQuoteIndex ? "w-8 bg-[#eab308]" : "w-2 bg-white/20"
                             )} 
                         />
                     ))}
@@ -152,17 +152,17 @@ export default function LoginPage() {
                 <p className="text-[8px] font-black uppercase tracking-[0.3em] opacity-40">
                     Version 3.26
                 </p>
-                <div className="bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/10">
-                    <p className="text-[7px] font-bold uppercase tracking-widest">Enterprise Secured</p>
+                <div className="bg-[#eab308]/10 px-3 py-1.5 rounded-full backdrop-blur-sm border border-[#eab308]/20">
+                    <p className="text-[7px] font-bold uppercase tracking-widest text-[#eab308]">Enterprise Secured</p>
                 </div>
             </div>
         </div>
 
         <div className="flex-1 bg-white relative flex flex-col items-center justify-center p-8 md:p-12 z-10">
             <div className="absolute top-8 right-10 flex gap-2">
-                <div className="w-2 h-2 rounded-full bg-indigo-200" />
-                <div className="w-2 h-2 rounded-full bg-indigo-300" />
-                <div className="w-2 h-2 rounded-full bg-indigo-400" />
+                <div className="w-2 h-2 rounded-full bg-yellow-100" />
+                <div className="w-2 h-2 rounded-full bg-yellow-200" />
+                <div className="w-2 h-2 rounded-full bg-[#eab308]" />
             </div>
 
             <div className="w-full max-w-[280px] space-y-8">
@@ -179,7 +179,7 @@ export default function LoginPage() {
                                 placeholder="Email Address" 
                                 value={email} 
                                 onChange={(e) => setEmail(e.target.value)} 
-                                className="h-12 rounded-2xl bg-[#f4f7fe] border-none px-6 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/30 text-xs" 
+                                className="h-12 rounded-2xl bg-[#f4f7fe] border-none px-6 focus-visible:ring-2 focus-visible:ring-[#eab308]/20 font-bold placeholder:text-muted-foreground/30 text-xs" 
                             />
                         </div>
                         <div className="space-y-1">
@@ -189,12 +189,12 @@ export default function LoginPage() {
                                     placeholder="Password"
                                     value={password} 
                                     onChange={(e) => setPassword(e.target.value)} 
-                                    className="h-12 rounded-2xl bg-[#f4f7fe] border-none px-6 pr-12 focus-visible:ring-2 focus-visible:ring-primary/20 font-bold placeholder:text-muted-foreground/30 text-xs" 
+                                    className="h-12 rounded-2xl bg-[#f4f7fe] border-none px-6 pr-12 focus-visible:ring-2 focus-visible:ring-[#eab308]/20 font-bold placeholder:text-muted-foreground/30 text-xs" 
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-primary transition-colors"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-[#eab308] transition-colors"
                                 >
                                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </button>
@@ -207,7 +207,7 @@ export default function LoginPage() {
                             type="button" 
                             onClick={handleForgotPassword}
                             disabled={isResetting}
-                            className="text-[10px] font-black text-muted-foreground/60 hover:text-primary transition-colors uppercase tracking-tight"
+                            className="text-[10px] font-black text-muted-foreground/60 hover:text-[#eab308] transition-colors uppercase tracking-tight"
                         >
                             Forgot Password?
                         </button>
@@ -216,7 +216,7 @@ export default function LoginPage() {
                     <div className="pt-2">
                         <Button 
                             onClick={handleSignIn} 
-                            className="w-full h-12 text-[11px] font-black uppercase tracking-widest rounded-2xl shadow-xl transition-all active:scale-95 bg-gradient-to-r from-[#6366f1] to-[#a855f7] text-white border-none" 
+                            className="w-full h-12 text-[11px] font-black uppercase tracking-widest rounded-2xl shadow-xl transition-all active:scale-95 bg-[#eab308] text-black hover:bg-[#d97706] border-none" 
                             disabled={isProcessing}
                         >
                             {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Enter Workspace'}
@@ -225,7 +225,7 @@ export default function LoginPage() {
 
                     <div className="pt-2 text-center">
                         <p className="text-[10px] font-bold text-muted-foreground">
-                            Don't have an account? <Link href="/signup" className="text-primary font-black uppercase tracking-widest hover:underline">Sign up</Link>
+                            Don't have an account? <Link href="/signup" className="text-[#eab308] font-black uppercase tracking-widest hover:underline">Sign up</Link>
                         </p>
                     </div>
                 </div>
@@ -243,7 +243,7 @@ export default function LoginPage() {
                         <TooltipTrigger asChild>
                             <Link 
                                 href="/super-admin" 
-                                className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/20 hover:text-primary transition-colors"
+                                className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/20 hover:text-[#eab308] transition-colors"
                             >
                                 <ShieldCheck className="h-2 w-2" />
                                 System Portal
@@ -251,7 +251,7 @@ export default function LoginPage() {
                         </TooltipTrigger>
                         <TooltipContent side="top" className="bg-black text-white text-[10px] font-bold uppercase p-3 border-none rounded-xl shadow-2xl">
                            <div className="flex items-start gap-2">
-                                <Info className="h-3 w-3 mt-0.5 text-primary" />
+                                <Info className="h-3 w-3 mt-0.5 text-[#eab308]" />
                                 <p className="leading-relaxed">
                                     Master Login: use admin@businesshub.co.ke.<br/>
                                     First time? Please <Link href="/signup" className="underline">Sign Up</Link> first to set your password.
