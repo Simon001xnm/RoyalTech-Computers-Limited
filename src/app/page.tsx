@@ -96,6 +96,7 @@ import {
     Legend
 } from 'recharts';
 import { LandingPage } from '@/components/marketing/landing-page';
+import { MarketingWrapper } from '@/components/marketing/marketing-wrapper';
 
 export default function RootPage() {
   const { user, isUserLoading } = useUser();
@@ -103,9 +104,13 @@ export default function RootPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  // If no user is logged in, show the public landing page
+  // If no user is logged in, show the public landing page wrapped in the marketing layout
   if (!isUserLoading && !user) {
-      return <LandingPage />;
+      return (
+        <MarketingWrapper>
+          <LandingPage />
+        </MarketingWrapper>
+      );
   }
 
   // If user exists, show the dashboard
