@@ -71,15 +71,6 @@ export function LandingPage() {
                         alt="Shop Dashboard" 
                         className="rounded-[32px] w-full h-auto shadow-inner border border-[#eab308]/10" 
                     />
-                    <div className="absolute top-10 left-10 p-4 bg-white dark:bg-[#1a1a1a] backdrop-blur rounded-2xl shadow-xl border border-[#eab308]/10 animate-bounce-slow">
-                         <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 bg-[#22c55e] rounded-full flex items-center justify-center text-white"><CheckCircle2 className="h-4 w-4" /></div>
-                            <div>
-                                <p className="text-[8px] font-black uppercase text-muted-foreground">Sale Done</p>
-                                <p className="text-xs font-black uppercase tracking-tight text-[#22c55e]">Money Saved</p>
-                            </div>
-                         </div>
-                    </div>
                     <div className="absolute bottom-10 right-10 p-6 bg-[#1a1a1a] text-white rounded-3xl shadow-2xl w-56 animate-float border border-white/5">
                         <p className="text-[10px] font-bold uppercase opacity-60 mb-2">Our Network</p>
                         <p className="text-2xl font-black tracking-tighter text-[#eab308]">9 Countries</p>
