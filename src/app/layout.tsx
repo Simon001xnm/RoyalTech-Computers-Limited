@@ -57,10 +57,10 @@ export default function RootLayout({
             __html: `
               (function() {
                 // HIGH PRIORITY RESILIENCE ENGINE
-                // Catches ChunkLoadErrors and network timeouts immediately.
+                // Catches ChunkLoadErrors, fetch failures, and network timeouts immediately.
                 function recover() {
                   if (window.location.hash !== '#retry') {
-                    console.warn('Network timeout detected. Executing micro-sync recovery...');
+                    console.warn('Network or fetch failure detected. Executing micro-sync recovery...');
                     window.location.hash = 'retry';
                     window.location.reload();
                   }
@@ -68,7 +68,7 @@ export default function RootLayout({
 
                 window.addEventListener('error', function(e) {
                   var msg = (e.message || "").toLowerCase();
-                  if (msg.indexOf('chunkloaderror') > -1 || msg.indexOf('timeout') > -1) {
+                  if (msg.indexOf('chunkloaderror') > -1 || msg.indexOf('timeout') > -1 || msg.indexOf('failed to fetch') > -1) {
                     e.preventDefault();
                     recover();
                   }
@@ -76,7 +76,7 @@ export default function RootLayout({
 
                 window.addEventListener('unhandledrejection', function(e) {
                   var msg = (e.reason && e.reason.message || "").toLowerCase();
-                  if (msg.indexOf('chunkloaderror') > -1 || msg.indexOf('timeout') > -1) {
+                  if (msg.indexOf('chunkloaderror') > -1 || msg.indexOf('timeout') > -1 || msg.indexOf('failed to fetch') > -1) {
                     e.preventDefault();
                     recover();
                   }
