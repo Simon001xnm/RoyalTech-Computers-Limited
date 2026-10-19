@@ -2,23 +2,24 @@
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarSeparator, SidebarTrigger } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2, Settings } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Settings, Search, Sun, Moon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
 import { logger } from '@/lib/logger';
 import { NotificationCenter } from '@/components/layout/notification-center';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '../ui/input';
+import { cn } from '@/lib/utils';
 
 const AUTH_PATHS = ['/login', '/signup'];
-// PUBLIC_ROOT_PATHS allows these routes to be viewed without redirection to login
 const PUBLIC_ROOT_PATHS = ['/', '/login', '/signup'];
 const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/legal'];
 
@@ -26,6 +27,27 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     const { user } = useUser();
     const auth = useAuth();
     const firestore = useFirestore();
+    const [isDark, setIsDark] = useState(false);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('rcl_theme');
+        if (saved === 'dark') {
+            setIsDark(true);
+            document.documentElement.classList.add('dark');
+        }
+    }, []);
+
+    const toggleTheme = () => {
+        const newTheme = !isDark;
+        setIsDark(newTheme);
+        if (newTheme) {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('rcl_theme', 'dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('rcl_theme', 'light');
+        }
+    };
 
     const companyRef = useMemoFirebase(() => 
       userProfile?.tenantId ? doc(firestore, 'companies', userProfile.tenantId) : null,
@@ -49,35 +71,100 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
   return (
     <SidebarProvider defaultOpen={true}>
       <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-2xl no-print">
-        <SidebarHeader className="h-28 flex items-center justify-center p-0 border-b bg-sidebar-accent/5">
-            <Link href="/" className="flex items-center justify-center w-full">
-                 <div className="transition-all hover:scale-110 active:scale-95 bg-white p-3 rounded-[20px] shadow-lg border-4 border-primary/10">
-                    <img 
-                        src="/images__9_-removebg-preview.png" 
-                        className="h-12 w-12 object-contain" 
-                        alt="Identity" 
+        <SidebarHeader className="p-4 space-y-4">
+            {/* Mac Dots Aesthetic */}
+            <div className="flex gap-1.5 px-2 group-data-[collapsible=icon]:hidden">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
+            </div>
+
+            <div className="flex items-center gap-3 px-2">
+                <div className="h-10 w-10 shrink-0 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 overflow-hidden shadow-sm">
+                    {company?.logoUrl ? (
+                         <img src={company.logoUrl} className="h-full w-full object-contain p-1" alt="Logo" />
+                    ) : (
+                         <Building2 className="h-5 w-5 text-primary" />
+                    )}
+                </div>
+                <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
+                    <p className="text-sm font-black uppercase tracking-tighter truncate text-foreground">{company?.name || APP_NAME}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-50">Silo Node</p>
+                </div>
+            </div>
+
+            {/* Search Node */}
+            <div className="px-2 group-data-[collapsible=icon]:hidden">
+                <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-40" />
+                    <Input 
+                        placeholder="Search..." 
+                        className="h-9 pl-8 bg-muted/40 border-none rounded-xl text-xs font-medium placeholder:text-muted-foreground/30 focus-visible:ring-1 focus-visible:ring-primary/20"
                     />
                 </div>
-            </Link>
+            </div>
+            
+            {/* Collapsed Search Trigger */}
+            <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center py-2">
+                <Search className="h-4 w-4 text-muted-foreground opacity-40" />
+            </div>
         </SidebarHeader>
-        <SidebarContent className="bg-sidebar/95">
+
+        <SidebarContent className="px-2">
             <SidebarNav />
         </SidebarContent>
-        <SidebarSeparator className="opacity-50" />
-        <SidebarFooter className="p-4 bg-sidebar/95">
-            <div className="flex flex-col gap-2">
+
+        <SidebarFooter className="p-4 space-y-4">
+            {/* Theme Switcher Node */}
+            <div className="p-1 bg-muted/40 rounded-xl flex items-center gap-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent">
                 <Button 
-                    onClick={handleLogout} 
-                    variant="ghost" 
-                    className="w-full h-12 justify-start gap-4 px-4 text-sidebar-foreground/70 hover:text-red-500 hover:bg-red-500/5 rounded-xl group-data-[collapsible=icon]:px-3" 
-                    aria-label="Exit Shop"
+                    variant={isDark ? "ghost" : "secondary"} 
+                    size="sm" 
+                    onClick={() => isDark && toggleTheme()}
+                    className={cn(
+                        "flex-1 h-8 text-[10px] font-black uppercase rounded-lg transition-all",
+                        !isDark && "bg-white shadow-sm text-black"
+                    )}
                 >
-                    <LogOut className="h-5 w-5 shrink-0" />
-                    <span className="text-[11px] font-black uppercase tracking-widest group-data-[collapsible=icon]:hidden">Exit Area</span>
+                    <Sun className="h-3.5 w-3.5 mr-1.5" />
+                    <span className="group-data-[collapsible=icon]:hidden">Light</span>
                 </Button>
-                <div className="flex flex-col items-center justify-center pt-4 opacity-20 group-data-[collapsible=icon]:hidden">
-                    <p className="text-[8px] font-black uppercase tracking-[0.3em]">v3.26</p>
+                <Button 
+                    variant={isDark ? "secondary" : "ghost"} 
+                    size="sm" 
+                    onClick={() => !isDark && toggleTheme()}
+                    className={cn(
+                        "flex-1 h-8 text-[10px] font-black uppercase rounded-lg transition-all",
+                        isDark && "bg-[#2a2a2a] shadow-sm text-white"
+                    )}
+                >
+                    <Moon className="h-3.5 w-3.5 mr-1.5" />
+                    <span className="group-data-[collapsible=icon]:hidden">Dark</span>
+                </Button>
+            </div>
+
+            {/* Profile Node */}
+            <div className="flex items-center justify-between p-2 rounded-2xl hover:bg-muted/30 transition-colors group">
+                <div className="flex items-center gap-3 overflow-hidden">
+                    <Avatar className="h-9 w-9 rounded-xl border-2 border-background shadow-sm ring-1 ring-black/5">
+                        <AvatarImage src={userProfile?.avatarUrl || user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`} className="object-cover" />
+                        <AvatarFallback className="bg-primary/5 text-primary text-[10px] font-black">
+                            {userProfile?.name?.substring(0,2).toUpperCase() || 'ME'}
+                        </AvatarFallback>
+                    </Avatar>
+                    <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
+                        <p className="text-xs font-black uppercase tracking-tight text-foreground truncate">{userProfile?.name || user?.displayName || 'User'}</p>
+                        <p className="text-[10px] text-muted-foreground truncate opacity-40">{userProfile?.email || user?.email}</p>
+                    </div>
                 </div>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive group-data-[collapsible=icon]:hidden"
+                    onClick={handleLogout}
+                >
+                    <LogOut className="h-4 w-4" />
+                </Button>
             </div>
         </SidebarFooter>
       </Sidebar>
@@ -128,7 +215,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                   {isAdmin && (
                     <>
                         <Link href="/profile">
-                            <DropdownMenuItem className="cursor-pointer font-bold">
+                            <DropdownMenuItem className="cursor-pointer font-bold text-xs uppercase tracking-tight">
                                 <Settings className="mr-2 h-4 w-4" />
                                 <span>Shop Settings</span>
                             </DropdownMenuItem>
@@ -136,7 +223,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                         <DropdownMenuSeparator />
                     </>
                   )}
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer font-bold">
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer font-black text-xs uppercase tracking-tight">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Exit Shop Area</span>
                   </DropdownMenuItem>
@@ -145,7 +232,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             )}
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
+        <main className="flex-1 p-4 md:p-6 lg:p-8 bg-muted/20">
           {children}
         </main>
       </SidebarInset>
@@ -212,7 +299,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return <AuthenticatedLayout userProfile={userProfile || null}>{children}</AuthenticatedLayout>;
   }
 
-  // If not logged in but it's a public path, just show the landing page/public view
   if (isPublicPath) {
     return <>{children}</>;
   }
