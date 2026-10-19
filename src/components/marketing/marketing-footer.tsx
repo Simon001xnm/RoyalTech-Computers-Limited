@@ -21,7 +21,7 @@ export function MarketingFooter({ isDark }: MarketingFooterProps) {
             <div className="bg-[#1a1a1a] p-2 rounded-xl ring-1 ring-[#eab308]/30">
               <Zap className="h-5 w-5 text-[#eab308]" />
             </div>
-            <span className={cn("font-black uppercase tracking-tighter", isDark ? "text-white" : "text-black")}>ShopManager</span>
+            <span className={cn("font-black uppercase tracking-tighter", isDark ? "text-white" : "text-black")}>BusinessHub</span>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed max-w-[200px]">
             The professional choice for businesses seeking scale, stability, and privacy in the regional cloud.
@@ -71,8 +71,11 @@ export function MarketingFooter({ isDark }: MarketingFooterProps) {
 
       <div className="max-w-7xl mx-auto mt-24 pt-8 border-t border-muted-foreground/10 flex flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-2">
-            <p className="text-[10px] text-muted-foreground tracking-[0.2em] text-center uppercase opacity-40 font-bold">
-              © 2026 SimonStyles Technologies Limited
+            <p className={cn(
+              "text-[11px] tracking-[0.05em] text-center uppercase font-black",
+              isDark ? "text-white" : "text-black"
+            )}>
+              © 2026, Simon Styles Corporation Pvt. Ltd. All Rights Reserved.
             </p>
             <a 
                 href="https://simonstyles.co.ke" 

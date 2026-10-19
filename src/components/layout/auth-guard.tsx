@@ -76,7 +76,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                     <span className="text-[11px] font-black uppercase tracking-widest group-data-[collapsible=icon]:hidden">Exit Area</span>
                 </Button>
                 <div className="flex flex-col items-center justify-center pt-4 opacity-20 group-data-[collapsible=icon]:hidden">
-                    <p className="text-[8px] font-black uppercase tracking-[0.3em]">Matesh v3.26</p>
+                    <p className="text-[8px] font-black uppercase tracking-[0.3em]">v3.26</p>
                 </div>
             </div>
         </SidebarFooter>

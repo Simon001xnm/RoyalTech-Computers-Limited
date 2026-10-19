@@ -338,7 +338,7 @@ export function AdminClient() {
       </div>
 
       <div className="text-center pt-12 opacity-20">
-          <p className="text-[11px] font-black tracking-[0.3em] uppercase">Matesh Version 3.26</p>
+          <p className="text-[11px] font-black tracking-[0.3em] uppercase">v3.26</p>
       </div>
     </div>
   );

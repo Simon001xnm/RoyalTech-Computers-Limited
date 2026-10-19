@@ -150,7 +150,7 @@ export default function LoginPage() {
 
             <div className="relative z-10 flex justify-between items-end">
                 <p className="text-[8px] font-black uppercase tracking-[0.3em] opacity-40">
-                    Version 3.26
+                    v3.26
                 </p>
                 <div className="bg-[#eab308]/10 px-3 py-1.5 rounded-full backdrop-blur-sm border border-[#eab308]/20">
                     <p className="text-[7px] font-bold uppercase tracking-widest text-[#eab308]">Enterprise Secured</p>
