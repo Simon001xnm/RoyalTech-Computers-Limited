@@ -17,7 +17,8 @@ import {
     Globe,
     Landmark,
     LayoutDashboard,
-    Star
+    Star,
+    Building2
 } from 'lucide-react';
 import Link from 'next/link';
 
