@@ -16,21 +16,25 @@ export default function ContactPage() {
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
           <div className="space-y-10">
             <div className="space-y-3">
-                <Badge className="bg-primary text-white uppercase font-black text-[9px] px-3">Support</Badge>
-                <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter leading-tight">Talk to us</h1>
+                <Badge className="bg-primary text-white uppercase font-black text-[9px] px-3">Get Help</Badge>
+                <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter leading-tight">Talk to our team</h1>
                 <p className="text-base text-muted-foreground font-medium leading-relaxed">
-                    Our team is here to help you with anything from technical setup to business strategy.
+                    We are here to help you get your shop started or answer any questions you have about our tools.
                 </p>
             </div>
             
             <div className="space-y-6">
                 <div className="flex gap-3">
                     <div className="bg-primary/5 p-2 rounded-lg"><Mail className="h-5 w-5 text-primary" /></div>
-                    <div><p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Email</p><p className="text-sm font-bold">support@businesshub.co.ke</p></div>
+                    <div>
+                        <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Email Us</p>
+                        <p className="text-sm font-bold">info@simonstyles.co.ke</p>
+                        <p className="text-xs text-muted-foreground">simonwanjiru224@gmail.com</p>
+                    </div>
                 </div>
                 <div className="flex gap-3">
                     <div className="bg-primary/5 p-2 rounded-lg"><Phone className="h-5 w-5 text-primary" /></div>
-                    <div><p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Phone</p><p className="text-sm font-bold">+254 700 000 000</p></div>
+                    <div><p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Call or WhatsApp</p><p className="text-sm font-bold">+254 758 673 616</p></div>
                 </div>
                 <div className="flex gap-3">
                     <div className="bg-primary/5 p-2 rounded-lg"><MapPin className="h-5 w-5 text-primary" /></div>
@@ -46,14 +50,14 @@ export default function ContactPage() {
                     <Input placeholder="John Doe" className="h-10 text-xs" />
                 </div>
                 <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase tracking-widest">Work Email</Label>
-                    <Input type="email" placeholder="john@company.com" className="h-10 text-xs" />
+                    <Label className="text-[9px] font-black uppercase tracking-widest">Your Email</Label>
+                    <Input type="email" placeholder="john@gmail.com" className="h-10 text-xs" />
                 </div>
                 <div className="space-y-1.5">
                     <Label className="text-[9px] font-black uppercase tracking-widest">Message</Label>
-                    <Textarea placeholder="How can we help?" rows={4} className="bg-white text-xs" />
+                    <Textarea placeholder="How can we help your business?" rows={4} className="bg-white text-xs" />
                 </div>
-                <Button className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-lg mt-2">Send Message</Button>
+                <Button className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-lg mt-2">Send My Message</Button>
             </form>
           </div>
         </div>
