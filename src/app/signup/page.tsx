@@ -9,9 +9,10 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, getDocs, collection, query, where, deleteDoc } from 'firebase/firestore';
-import { Loader2, Zap, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Zap, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { MASTER_KEYS } from '@/lib/roles';
 import { initiateGoogleSignIn } from '@/firebase/non-blocking-login';
+import Link from 'next/link';
 
 /**
  * @fileOverview Easy Signup Form
@@ -203,10 +204,19 @@ export default function SignUpPage() {
           </div>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center space-y-4">
             <p className="text-[10px] font-medium text-muted-foreground">
                 Already have an account? <button onClick={() => router.push('/login')} className="text-primary font-black uppercase tracking-widest hover:underline">Log in here</button>
             </p>
+            <div className="pt-2">
+                <Link 
+                    href="/" 
+                    className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-black transition-colors"
+                >
+                    <ArrowLeft className="h-3 w-3" />
+                    Back to Website
+                </Link>
+            </div>
         </div>
       </div>
     </div>

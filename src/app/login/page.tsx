@@ -7,7 +7,7 @@ import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignIn, initiatePasswordReset } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Eye, EyeOff, Quote, ShieldCheck, Info } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Quote, ShieldCheck, Info, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -223,10 +223,19 @@ export default function LoginPage() {
                         </Button>
                     </div>
 
-                    <div className="pt-2 text-center">
+                    <div className="pt-2 text-center space-y-4">
                         <p className="text-[10px] font-bold text-muted-foreground">
                             Don't have an account? <Link href="/signup" className="text-[#eab308] font-black uppercase tracking-widest hover:underline">Sign up</Link>
                         </p>
+                        <div className="pt-2">
+                            <Link 
+                                href="/" 
+                                className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-black transition-colors"
+                            >
+                                <ArrowLeft className="h-3 w-3" />
+                                Back to Website
+                            </Link>
+                        </div>
                     </div>
                 </div>
                 
