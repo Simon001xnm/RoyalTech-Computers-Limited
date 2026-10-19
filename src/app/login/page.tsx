@@ -115,7 +115,7 @@ export default function LoginPage() {
                         <div className="w-4 h-4 border-2 border-black rounded-full" />
                     </div>
                     <h2 className="text-sm font-black tracking-tight uppercase leading-tight">
-                        BUSINESS HUB
+                        Business Hub
                     </h2>
                 </div>
                 <p className="text-[10px] font-bold opacity-60 uppercase tracking-[0.2em]">Shop Workspace</p>
@@ -167,7 +167,7 @@ export default function LoginPage() {
 
             <div className="w-full max-w-[280px] space-y-8">
                 <div className="text-center space-y-2">
-                    <h1 className="text-4xl font-black tracking-tighter text-[#1a1a1a] uppercase">Login</h1>
+                    <h1 className="text-4xl font-black tracking-tighter text-[#1a1a1a]">Login</h1>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Welcome Back</p>
                 </div>
 

@@ -124,7 +124,7 @@ export default function SignUpPage() {
             <div className="w-14 h-14 bg-white rounded-2xl shadow-md flex items-center justify-center p-3 mb-6 border border-black/5">
                 <Zap className="w-full h-full text-primary fill-primary" />
             </div>
-            <h1 className="text-2xl font-black uppercase tracking-tighter text-foreground leading-none">Shop Setup</h1>
+            <h1 className="text-2xl font-black tracking-tighter text-foreground leading-none">Shop Setup</h1>
             <p className="text-xs text-muted-foreground font-bold mt-2 uppercase tracking-widest">Create Shop Owner Account</p>
         </div>
 

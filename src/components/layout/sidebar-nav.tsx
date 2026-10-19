@@ -60,7 +60,6 @@ export function SidebarNav() {
   const NavItem = ({ item }: { item: any }) => {
     const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
     
-    // Aesthetic Badges to match reference image
     let badge = null;
     if (item.id === 'pos') badge = "12";
     if (item.id === 'documents') badge = "14";
@@ -78,7 +77,7 @@ export function SidebarNav() {
             size="default"
           >
             <item.icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-foreground' : 'text-muted-foreground opacity-60'}`} />
-            <span className={`text-[11px] uppercase tracking-tight ml-2 ${isActive ? 'font-black' : 'font-bold opacity-70'}`}>
+            <span className={`text-[11px] tracking-tight ml-2 ${isActive ? 'font-black' : 'font-bold opacity-70'}`}>
                 {item.label}
             </span>
             
@@ -96,7 +95,7 @@ export function SidebarNav() {
   return (
     <div className="flex flex-col h-full py-2">
       <SidebarGroup>
-        <SidebarGroupLabel className="px-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 mb-2">Menu</SidebarGroupLabel>
+        <SidebarGroupLabel className="px-3 text-[10px] font-black tracking-[0.2em] text-muted-foreground/40 mb-2">Main Menu</SidebarGroupLabel>
         <SidebarGroupContent>
             <SidebarMenu className="gap-1">
                 {menuItems.map((item) => <NavItem key={item.id} item={item} />)}
@@ -109,7 +108,7 @@ export function SidebarNav() {
       </div>
 
       <SidebarGroup>
-        <SidebarGroupLabel className="px-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 mb-2">Group</SidebarGroupLabel>
+        <SidebarGroupLabel className="px-3 text-[10px] font-black tracking-[0.2em] text-muted-foreground/40 mb-2">Company Groups</SidebarGroupLabel>
         <SidebarGroupContent>
             <SidebarMenu className="gap-1">
                 {groupItems.map((item) => (
@@ -120,7 +119,7 @@ export function SidebarNav() {
                                 className="px-3 h-10 rounded-xl hover:bg-sidebar-accent"
                             >
                                 <item.icon className="h-4 w-4 text-muted-foreground opacity-60" />
-                                <span className="text-[11px] font-bold uppercase tracking-tight ml-2 opacity-70">{item.label}</span>
+                                <span className="text-[11px] font-bold tracking-tight ml-2 opacity-70">{item.label}</span>
                                 <ChevronRight className="ml-auto h-3 w-3 opacity-20 group-data-[collapsible=icon]:hidden" />
                             </SidebarMenuButton>
                         </Link>
