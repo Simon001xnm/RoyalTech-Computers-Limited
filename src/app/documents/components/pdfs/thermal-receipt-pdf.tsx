@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Document as AppDocument } from "@/types";
@@ -9,7 +8,6 @@ import { useSaaS } from "@/components/saas/saas-provider";
 
 /**
  * @fileOverview Professional Thermal Receipt (80mm)
- * Enhanced with larger font sizes and explicit VAT display.
  */
 export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocument }) {
   const { tenant } = useSaaS();
@@ -33,7 +31,6 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
   const vat = Number(data.vatAmount || data.vat || 0);
   const todayTotal = Number(data.total || (subtotal + vat));
   
-  // Ensure 0 is handled correctly
   const amountPaidToday = data.amountPaid !== undefined ? Number(data.amountPaid) : todayTotal;
   const balanceToday = Math.max(0, todayTotal - amountPaidToday);
   const previousBalance = Number(data.previousBalance || 0);
@@ -95,7 +92,6 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
             const unitPrice = item.sellingPrice || item.price || item.unitPrice || 0;
             const quantity = item.quantity || 1;
             const lineTotal = unitPrice * quantity;
-
             return (
               <div key={i} className="flex justify-between items-start border-b border-gray-100 border-dotted pb-2 last:border-0">
                 <div className="w-1/2 flex flex-col">
@@ -131,6 +127,20 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
           </div>
         </div>
 
+        {/* PAYMENT DETAILS SECTION */}
+        <div className="w-full p-2 bg-slate-50 border border-black/5 rounded-sm space-y-1 mb-5">
+            <p className="text-[8px] font-black uppercase text-center opacity-60">Payment Remittance</p>
+            {workspace?.bankName && (
+                <p className="text-[9px] font-bold uppercase">{workspace.bankName}: {workspace.bankAccNo}</p>
+            )}
+            {workspace?.paybillNumber && (
+                <p className="text-[9px] font-bold uppercase">MPESA: {workspace.paybillNumber} ACC: {workspace.paybillAccount || 'VAL'}</p>
+            )}
+            {workspace?.tillNumber && (
+                <p className="text-[9px] font-bold uppercase">MPESA TILL: {workspace.tillNumber}</p>
+            )}
+        </div>
+
         {/* STATEMENT SECTION */}
         {(previousBalance > 0 || balanceToday > 0) && (
             <div className="w-full p-3 bg-gray-50 border border-black/10 rounded-sm space-y-2 mb-8">
@@ -161,15 +171,8 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
           </p>
           <p className="text-[11px] font-black uppercase">{bizName}</p>
           <div className="text-[9px] space-y-1.5 opacity-80">
-            <p>Phone: {workspace?.phone || '+254701694469'} • Email: {workspace?.email || 'mateshtechltd@gmail.com'}</p>
-            <p className="text-[8px] font-black pt-4 lowercase tracking-tighter">
-                developed by simonstylestechnologies 0758673616
-            </p>
+            <p>Phone: {workspace?.phone || 'N/A'} • Email: {workspace?.email || 'N/A'}</p>
           </div>
-        </div>
-
-        <div className="w-full border-t border-black border-dashed pt-4 text-center text-[8px] opacity-40 uppercase tracking-widest">
-          {bizName}
         </div>
       </div>
     </div>

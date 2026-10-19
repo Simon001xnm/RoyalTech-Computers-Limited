@@ -10,7 +10,6 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview High-Fidelity Detailed Dynamic Paginated Proforma Invoice
- * Updated with a 7-item single-page threshold and increased margins for clean presentation.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
@@ -75,24 +74,17 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
   }, [bizName]);
 
   const pages = useMemo(() => {
-    // SINGLE PAGE RULE: Up to 7 items fit perfectly with summary on one page
-    if (items.length <= 7) {
-        return [items];
-    }
-
+    if (items.length <= 7) return [items];
     const calculatedPages: any[][] = [];
     let currentPageItems: any[] = [];
     let currentHeightUsed = HEADER_P1 + TABLE_HEADER + FOOTER_RESERVE;
-
     items.forEach((item: any, idx: number) => {
         const isLastItem = idx === items.length - 1;
         const descText = (item.name || item.description || "");
         const lines = Math.max(1, Math.ceil(descText.length / CHARS_PER_LINE));
         const itemHeight = ROW_BASE + (lines > 1 ? (lines - 1) * 18 : 0);
-
         const totalsSpace = isLastItem ? SUMMARY_BLOCK : 0;
         const spaceNeeded = itemHeight + totalsSpace;
-
         if (currentHeightUsed + spaceNeeded > PAGE_HEIGHT && currentPageItems.length > 0) {
             calculatedPages.push(currentPageItems);
             currentPageItems = [item];
@@ -102,7 +94,6 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
             currentHeightUsed += itemHeight;
         }
     });
-
     if (currentPageItems.length > 0) calculatedPages.push(currentPageItems);
     return calculatedPages;
   }, [items]);
@@ -110,10 +101,7 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
   return (
     <div className="flex flex-col items-center gap-0 bg-slate-200 p-0 no-scrollbar">
       {pages.map((pageItems, pageIdx) => (
-        <div 
-            key={pageIdx} 
-            className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden"
-        >
+        <div key={pageIdx} className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden">
           {pageIdx === 0 ? (
             <header className="flex justify-between items-start mb-6 pb-6 border-b">
                 <div className="flex items-center gap-6 flex-1 overflow-hidden">
@@ -123,15 +111,9 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                       <div className="h-24 w-24 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300 shrink-0">LOGO</div>
                   )}
                   <div className="flex-1 overflow-hidden">
-                    <h1 className={cn(
-                        "font-black uppercase tracking-tighter leading-[0.9] text-black whitespace-nowrap",
-                        dynamicFontClass
-                    )} style={{ color: primaryBlue }}>
-                      {bizName}
-                    </h1>
+                    <h1 className={cn("font-black uppercase tracking-tighter leading-[0.9] text-black whitespace-nowrap", dynamicFontClass)} style={{ color: primaryBlue }}>{bizName}</h1>
                   </div>
                 </div>
-                
                 <div className="text-right ml-4 space-y-1 shrink-0">
                     <p className="text-[10px] font-bold leading-tight uppercase text-black">{workspace?.address || 'Nairobi, Kenya'}</p>
                     <p className="text-[10px] font-bold text-black">Tel: {workspace?.phone || 'N/A'}</p>
@@ -168,13 +150,21 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                     <div className="grid grid-cols-2 gap-4 pt-2">
                       <div className="p-3 bg-slate-50 border rounded-lg border-black/5">
                           <p className="text-[8px] font-black uppercase text-blue-900/60 tracking-widest mb-1.5">Bank Payment</p>
-                          <p className="text-[10px] font-black text-black leading-tight uppercase">Bank DTB; NAME-{bizName}</p>
-                          <p className="text-[11px] font-black uppercase text-black">ACC NO: 0084976001</p>
+                          <p className="text-[10px] font-black text-black leading-tight uppercase">{workspace?.bankName || 'BANK DTB'}; NAME-{workspace?.bankAccName || bizName}</p>
+                          <p className="text-[11px] font-black uppercase text-black">ACC NO: {workspace?.bankAccNo || '0084976001'}</p>
                       </div>
                       <div className="p-3 bg-slate-50 border rounded-lg border-black/5">
                           <p className="text-[8px] font-black uppercase text-blue-900/60 tracking-widest mb-1.5">Lipan Na M-Pesa</p>
-                          <p className="text-[10px] font-black text-black">PAYBILL NO: 516600</p>
-                          <p className="text-[11px] font-black text-black">ACC NO: 5084975001</p>
+                          {workspace?.paybillNumber ? (
+                             <>
+                                <p className="text-[10px] font-black text-black">PAYBILL NO: {workspace.paybillNumber}</p>
+                                <p className="text-[11px] font-black text-black">ACC NO: {workspace.paybillAccount || '5084975001'}</p>
+                             </>
+                          ) : workspace?.tillNumber ? (
+                              <p className="text-[11px] font-black text-black">TILL NO: {workspace.tillNumber}</p>
+                          ) : (
+                              <p className="text-[10px] font-black text-black">NO MPESA SET</p>
+                          )}
                       </div>
                     </div>
                 </div>
@@ -206,17 +196,11 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                         const unitPrice = Number(item.price || item.unitPrice || item.sellingPrice || 0);
                         const qty = Number(item.quantity || 1);
                         const rowTotal = unitPrice * qty;
-                        
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
-
                         return (
                             <tr key={idx} className="border-b border-gray-100 last:border-0 h-12">
-                                <td className="p-3 text-[11px] font-black text-center text-black opacity-20">
-                                    {itemNumber.toString().padStart(2, '0')}
-                                </td>
-                                <td className="p-3">
-                                    <p className="font-black uppercase leading-tight text-[12px] tracking-tight text-black">{item.name || item.description}</p>
-                                </td>
+                                <td className="p-3 text-[11px] font-black text-center text-black opacity-20">{itemNumber.toString().padStart(2, '0')}</td>
+                                <td className="p-3"><p className="font-black uppercase leading-tight text-[12px] tracking-tight text-black">{item.name || item.description}</p></td>
                                 <td className="p-3 text-center font-black text-[11px] text-black">{qty}</td>
                                 <td className="p-3 text-right tabular-nums font-bold text-[11px] text-black opacity-70">{formatCurrency(unitPrice)}</td>
                                 <td className="p-3 text-right tabular-nums font-black text-[12px] text-black">{formatCurrency(rowTotal)}</td>
@@ -235,14 +219,13 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                             <div className="p-4 bg-slate-50 border rounded-xl">
                                 <p className="text-[9px] font-black uppercase text-blue-900/40 tracking-widest mb-1.5">Proforma Notice</p>
                                 <p className="font-bold text-[10px] leading-relaxed italic text-black">
-                                    This proforma invoice is issued for payment and order confirmation purposes. Goods or services will be processed subject to payment confirmation and availability. Prices and taxes are as stated on this document.
+                                    This proforma invoice is issued for payment and order confirmation purposes.
                                 </p>
                             </div>
                             <p className="font-black uppercase text-[10px] leading-relaxed text-black max-w-[380px]">
                                 Amount in words: <span className="font-bold underline underline-offset-4">{numberToWords(total)}</span>
                             </p>
                         </div>
-                        
                         <div className="w-[350px] space-y-0">
                             <div className="flex justify-between items-center p-3 bg-slate-50/50 border-b border-white">
                                 <span className="font-bold text-black opacity-50 uppercase text-[10px]">Net Subtotal</span>
@@ -262,21 +245,15 @@ export function ProformaInvoicePdf({ document: docSnapshot }: { document: AppDoc
                     </div>
                 </div>
              )}
-
              {pageIdx === pages.length - 1 && (
                 <div className="text-center space-y-1.5 pb-4">
                     <p className="text-[10px] font-black uppercase tracking-widest text-black">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
                     <p className="text-[12px] font-black uppercase tracking-widest" style={{ color: primaryBlue }}>{bizName}</p>
                 </div>
              )}
-             
              <div className="flex justify-between items-center border-t pt-3">
-                <div className="text-[10px] font-black uppercase tracking-normal text-black">
-                   GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
-                </div>
-                <div className="font-black text-[10px] text-black uppercase tracking-widest">
-                    PAGE {pageIdx + 1} OF {pages.length}
-                </div>
+                <div className="text-[10px] font-black uppercase tracking-normal text-black">GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}</div>
+                <div className="font-black text-[10px] text-black uppercase tracking-widest">PAGE {pageIdx + 1} OF {pages.length}</div>
              </div>
           </footer>
         </div>

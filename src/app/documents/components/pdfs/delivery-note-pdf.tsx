@@ -8,7 +8,6 @@ import { useSaaS } from '@/components/saas/saas-provider';
 
 /**
  * @fileOverview High-Fidelity Delivery Note PDF
- * Updated with larger font sizes.
  */
 
 export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -56,8 +55,13 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
             <p className="text-[11px] font-medium text-black opacity-70">{workspace?.address || 'Kenya'}</p>
         </div>
         <div className="p-4 rounded-xl border border-black/5 bg-slate-50 flex flex-col justify-center">
-            <p className="text-[10px] font-black text-black">BANK: DTB - ACC: 0084976001</p>
-            <p className="text-[10px] font-black text-black">MPESA: PAYBILL: 516600 | ACC: 5084975001</p>
+            <p className="text-[10px] font-black text-black">BANK: {workspace?.bankName || 'DTB'} - ACC: {workspace?.bankAccNo || '0084976001'}</p>
+            {workspace?.paybillNumber && (
+                <p className="text-[10px] font-black text-black">MPESA: PAYBILL: {workspace.paybillNumber} | ACC: {workspace.paybillAccount || 'BUSINESS'}</p>
+            )}
+            {workspace?.tillNumber && (
+                <p className="text-[10px] font-black text-black">MPESA TILL: {workspace.tillNumber}</p>
+            )}
         </div>
       </section>
 
@@ -92,8 +96,8 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
             )}
             <div className="p-5 border rounded-2xl bg-blue-50/30 h-fit">
                 <h4 className="font-black text-[10px] uppercase text-blue-900/60 mb-2">Delivery Agreement</h4>
-                <p className="text-[11px] font-bold text-black leading-relaxed italic">
-                    This document confirms delivery of the goods listed above. Please inspect the items upon delivery and report any shortages or damages before signing. This delivery note is not proof of payment.
+                <p className="text-[11px] font-bold text-black leading-relaxed italic text-center">
+                    I confirm receipt of the items listed above in good condition.
                 </p>
             </div>
         </div>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -350,7 +349,14 @@ export function DocumentsClient() {
             logoUrl: workspaceProfile.logoUrl || null,
             primaryColor: workspaceProfile.primaryColor || null,
             secondaryColor: workspaceProfile.secondaryColor || null,
-            taxPin: workspaceProfile.taxPin || null
+            taxPin: workspaceProfile.taxPin || null,
+            bankName: workspaceProfile.bankName || '',
+            bankAccName: workspaceProfile.bankAccName || '',
+            bankAccNo: workspaceProfile.bankAccNo || '',
+            paybillNumber: workspaceProfile.paybillNumber || '',
+            paybillAccount: workspaceProfile.paybillAccount || '',
+            tillNumber: workspaceProfile.tillNumber || '',
+            mobileMoneyPhone: workspaceProfile.mobileMoneyPhone || '',
         } : null
     };
 
@@ -436,7 +442,7 @@ export function DocumentsClient() {
                 paymentMethod: type === 'Receipt' ? 'Cash' : 'Credit',
                 createdAt: isEditing ? editingDoc.createdAt : timestamp,
                 updatedAt: timestamp,
-                createdBy: isEditing ? editingDoc.createdBy : { uid: user.uid, name: user.displayName || 'User' }
+                createdBy: iisEditing ? editingDoc.createdBy : { uid: user.uid, name: user.displayName || 'User' }
             });
         }
 
@@ -804,7 +810,7 @@ export function DocumentsClient() {
                     "w-full sm:w-auto font-black uppercase shadow-lg",
                     isEditing ? "bg-amber-600 hover:bg-amber-700" : ""
                 )} 
-                disabled={docsLoading || isGenerating}
+                disabled={docsLoading || iisGenerating}
             >
                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isEditing ? <Save className="mr-2 h-4 w-4" /> : null)}
                 {isEditing ? "Save Modified Data" : "Save and Sync Dashboard"}

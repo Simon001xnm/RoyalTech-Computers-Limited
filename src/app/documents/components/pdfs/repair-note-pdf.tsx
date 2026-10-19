@@ -49,9 +49,11 @@ export function RepairNotePdf({ document: docSnapshot }: { document: AppDocument
             <p className="text-[11px] font-medium text-black opacity-70">{workspace?.address || 'Kenya'}</p>
         </div>
         <div className="p-4 rounded-xl border border-black/5 flex flex-col justify-center">
-            <h3 className="font-bold text-[11px] mb-1 text-blue-900">Payment Instructions</h3>
-            <p className="text-[10px] font-black text-black">BANK: DTB - ACC: 0084976001</p>
-            <p className="text-[10px] font-black text-black">MPESA: PAYBILL: 516600 - ACC: 5084975001</p>
+            <h3 className="font-bold text-[11px] mb-1 text-blue-900">Settlement Details</h3>
+            <p className="text-[10px] font-black text-black">BANK: {workspace?.bankName || 'DTB'} - ACC: {workspace?.bankAccNo || '0084976001'}</p>
+            {workspace?.paybillNumber && (
+                <p className="text-[10px] font-black text-black">MPESA: {workspace.paybillNumber} | ACC: {workspace.paybillAccount || 'BUSINESS'}</p>
+            )}
         </div>
       </section>
 
@@ -83,9 +85,8 @@ export function RepairNotePdf({ document: docSnapshot }: { document: AppDocument
             <h4 className="text-[10px] font-black uppercase tracking-widest text-destructive">Disclaimer & Terms</h4>
             <div className="grid grid-cols-1 gap-1.5 text-[10px] font-bold opacity-80 leading-snug text-black">
                 <p>1. BACKUP: Client must backup all data. We are not liable for data loss.</p>
-                <p>2. DIAGNOSTICS: Non-refundable fee may apply even if repairs are declined.</p>
-                <p>3. WARRANTY: 30 days warranty on parts replaced by us.</p>
-                <p>4. UNCLAIMED: Items not picked after 90 days will be disposed to recover costs.</p>
+                <p>2. WARRANTY: 30 days warranty on parts replaced by us.</p>
+                <p>3. UNCLAIMED: Items not picked after 90 days will be disposed to recover costs.</p>
             </div>
         </div>
 

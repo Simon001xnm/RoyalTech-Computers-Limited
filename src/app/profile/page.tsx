@@ -18,7 +18,10 @@ import {
     Lock,
     ArrowRight,
     Globe,
-    Zap
+    Zap,
+    CreditCard,
+    Smartphone,
+    Landmark
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
@@ -65,6 +68,13 @@ export default function ProfilePage() {
     deliveryPrefix: 'DLV',
     primaryColor: '#1d4ed8',
     secondaryColor: '#f8fafc',
+    bankName: '',
+    bankAccName: '',
+    bankAccNo: '',
+    paybillNumber: '',
+    paybillAccount: '',
+    tillNumber: '',
+    mobileMoneyPhone: '',
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -296,7 +306,6 @@ export default function ProfilePage() {
 
           <SaaSUsageMeters />
           
-          {/* SUPER ADMIN PORTAL LINK - "Far" from normal navigation */}
           {isSuperAdmin && (
               <Card className="border-2 border-dashed border-red-200 bg-red-50/30 overflow-hidden shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-1000">
                   <CardHeader className="pb-3">
@@ -349,9 +358,10 @@ export default function ProfilePage() {
                     </CardHeader>
                     <CardContent className="p-0">
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList className="grid w-full grid-cols-4 h-14 bg-muted/30 rounded-none border-b p-0">
+                            <TabsList className="grid w-full grid-cols-5 h-14 bg-muted/30 rounded-none border-b p-0">
                                 <TabsTrigger value="profile" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Branding</TabsTrigger>
                                 <TabsTrigger value="contact" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Contact</TabsTrigger>
+                                <TabsTrigger value="payments" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Payments</TabsTrigger>
                                 <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Standards</TabsTrigger>
                                 <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest text-primary">Backups</TabsTrigger>
                             </TabsList>
@@ -398,6 +408,37 @@ export default function ProfilePage() {
                                         <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase">Head Office Address</Label><Input value={compData.address} onChange={e => handleInputChange('address', e.target.value)} className="h-11" /></div>
                                         <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Website</Label><Input value={compData.website} onChange={e => handleInputChange('website', e.target.value)} className="h-11" /></div>
                                         <div className="space-y-2"><Label className="text-[10px] font-black uppercase">KRA PIN / Tax ID</Label><Input value={compData.taxPin} onChange={e => handleInputChange('taxPin', e.target.value)} className="h-11 font-mono uppercase" /></div>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="payments" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-6">
+                                            <div className="flex items-center gap-2 text-primary font-black uppercase text-[10px] tracking-widest border-b pb-2">
+                                                <Landmark className="h-4 w-4" />
+                                                Bank Settlement Details
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Bank Name</Label><Input value={compData.bankName} onChange={e => handleInputChange('bankName', e.target.value)} placeholder="e.g. Diamond Trust Bank (DTB)" className="h-11" /></div>
+                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Account Name</Label><Input value={compData.bankAccName} onChange={e => handleInputChange('bankAccName', e.target.value)} placeholder="e.g. Matesh Technologies Ltd" className="h-11" /></div>
+                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Account Number</Label><Input value={compData.bankAccNo} onChange={e => handleInputChange('bankAccNo', e.target.value)} placeholder="e.g. 0084976001" className="h-11 font-mono" /></div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            <div className="flex items-center gap-2 text-primary font-black uppercase text-[10px] tracking-widest border-b pb-2">
+                                                <Smartphone className="h-4 w-4" />
+                                                M-Pesa / Mobile Money
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Paybill Number</Label><Input value={compData.paybillNumber} onChange={e => handleInputChange('paybillNumber', e.target.value)} placeholder="516600" className="h-11 font-mono" /></div>
+                                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Account Name/No</Label><Input value={compData.paybillAccount} onChange={e => handleInputChange('paybillAccount', e.target.value)} placeholder="5084975001" className="h-11 font-mono" /></div>
+                                                </div>
+                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Till Number</Label><Input value={compData.tillNumber} onChange={e => handleInputChange('tillNumber', e.target.value)} placeholder="Optional" className="h-11 font-mono" /></div>
+                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Direct Mobile No.</Label><Input value={compData.mobileMoneyPhone} onChange={e => handleInputChange('mobileMoneyPhone', e.target.value)} placeholder="07XX..." className="h-11 font-mono" /></div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </TabsContent>
 

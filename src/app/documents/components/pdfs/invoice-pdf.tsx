@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Document as AppDocument } from "@/types";
@@ -11,17 +10,16 @@ import { useMemo } from 'react';
 
 /**
  * @fileOverview Compact High-Fidelity Dynamic Paginated Invoice
- * Updated with a 7-item single-page threshold and increased margins for clean presentation.
  */
 
 // CALIBRATED HEIGHT CONSTANTS (Pixels)
 const PAGE_HEIGHT = 1123;   
-const HEADER_P1 = 450;      // Space for large logo + billing info
+const HEADER_P1 = 450;      
 const HEADER_PX = 150;      
 const TABLE_HEADER = 50;    
-const FOOTER_RESERVE = 200; // Safe bottom margin
+const FOOTER_RESERVE = 200; 
 const ROW_BASE = 44;        
-const SUMMARY_BLOCK = 400;  // Space for totals + terms
+const SUMMARY_BLOCK = 400;  
 const CHARS_PER_LINE = 50;   
 
 export function InvoicePdf({ document: docSnapshot }: { document: AppDocument }) {
@@ -80,10 +78,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
   }, [bizName]);
 
   const pages = useMemo(() => {
-    // SINGLE PAGE RULE: Up to 7 items fit perfectly with summary on one page
-    if (items.length <= 7) {
-        return [items];
-    }
+    if (items.length <= 7) return [items];
 
     const calculatedPages: any[][] = [];
     let currentPageItems: any[] = [];
@@ -173,13 +168,21 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     <div className="grid grid-cols-2 gap-4 pt-2">
                       <div className="p-3 bg-slate-50 border rounded-lg border-black/5">
                           <p className="text-[8px] font-black uppercase text-blue-900/60 tracking-widest mb-1.5">Bank Payment</p>
-                          <p className="text-[10px] font-black text-black leading-tight uppercase">Bank DTB; NAME-{bizName}</p>
-                          <p className="text-[11px] font-black uppercase text-black">ACC NO: 0084976001</p>
+                          <p className="text-[10px] font-black text-black leading-tight uppercase">{workspace?.bankName || 'BANK DTB'}; NAME-{workspace?.bankAccName || bizName}</p>
+                          <p className="text-[11px] font-black uppercase text-black">ACC NO: {workspace?.bankAccNo || '0084976001'}</p>
                       </div>
                       <div className="p-3 bg-slate-50 border rounded-lg border-black/5">
                           <p className="text-[8px] font-black uppercase text-blue-900/60 tracking-widest mb-1.5">Lipan Na M-Pesa</p>
-                          <p className="text-[10px] font-black text-black">PAYBILL NO: 516600</p>
-                          <p className="text-[11px] font-black text-black">ACC NO: 5084975001</p>
+                          {workspace?.paybillNumber ? (
+                             <>
+                                <p className="text-[10px] font-black text-black">PAYBILL NO: {workspace.paybillNumber}</p>
+                                <p className="text-[11px] font-black text-black">ACC NO: {workspace.paybillAccount || '5084975001'}</p>
+                             </>
+                          ) : workspace?.tillNumber ? (
+                              <p className="text-[11px] font-black text-black">TILL NO: {workspace.tillNumber}</p>
+                          ) : (
+                              <p className="text-[10px] font-black text-black">NO MPESA SET</p>
+                          )}
                       </div>
                     </div>
                 </div>
@@ -211,19 +214,13 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                         const unitPrice = Number(item.sellingPrice || item.price || item.unitPrice || 0);
                         const qty = Number(item.quantity || 1);
                         const rowTotal = unitPrice * qty;
-                        
                         const itemNumber = pages.slice(0, pageIdx).reduce((acc, p) => acc + p.length, 0) + idx + 1;
-
                         return (
                             <tr key={idx} className="border-b border-gray-100 last:border-0 h-12">
-                                <td className="p-3 text-[11px] font-black text-center text-black opacity-20">
-                                    {itemNumber.toString().padStart(2, '0')}
-                                </td>
+                                <td className="p-3 text-[11px] font-black text-center text-black opacity-20">{itemNumber.toString().padStart(2, '0')}</td>
                                 <td className="p-3">
                                     <p className="font-black uppercase leading-tight text-[12px] tracking-tight text-black">{item.name || item.description}</p>
-                                    {item.serialNumber && (
-                                        <p className="text-[9px] text-gray-400 font-mono mt-1 uppercase tracking-tighter">S/N: {item.serialNumber}</p>
-                                    )}
+                                    {item.serialNumber && <p className="text-[9px] text-gray-400 font-mono mt-1 uppercase tracking-tighter">S/N: {item.serialNumber}</p>}
                                 </td>
                                 <td className="p-3 text-center font-black text-[11px] text-black">{qty}</td>
                                 <td className="p-3 text-right tabular-nums font-bold text-[11px] text-black opacity-70">{formatCurrency(unitPrice)}</td>
@@ -243,10 +240,10 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                             <div className="p-4 bg-slate-50 border rounded-xl">
                                 <p className="text-[9px] font-black uppercase text-blue-900/40 tracking-widest mb-1.5">Invoice Terms</p>
                                 <p className="font-bold text-[10px] leading-relaxed italic text-black">
-                                    Payment is due by the date stated on this invoice. Please quote the invoice number when making payment. Any additional charges, refunds, or adjustments are subject to the agreed terms.
+                                    Payment is due by the date stated on this invoice. Please quote the invoice number when making payment.
                                 </p>
                             </div>
-                            <div className="text-[10px] font-medium text-black italic max-w-[320px]">
+                            <div className="text-[10px] font-medium text-black italic max-w-[320px] uppercase">
                                 * All items remain property of {bizName} until the total balance is cleared.
                             </div>
                         </div>
@@ -276,21 +273,15 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     </div>
                 </div>
              )}
-
              {pageIdx === pages.length - 1 && (
                 <div className="text-center space-y-1.5 pb-4">
                     <p className="text-[10px] font-black uppercase tracking-widest text-black">THIS DOCUMENT IS ELECTRONICALLY GENERATED AND DOES NOT REQUIRE A SIGNATURE</p>
                     <p className="text-[12px] font-black uppercase tracking-widest" style={{ color: primaryBlue }}>{bizName}</p>
                 </div>
              )}
-             
              <div className="flex justify-between items-center border-t pt-3">
-                <div className="text-[10px] font-black uppercase tracking-normal text-black">
-                   GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}
-                </div>
-                <div className="font-black text-[10px] text-black uppercase tracking-widest">
-                    PAGE {pageIdx + 1} OF {pages.length}
-                </div>
+                <div className="text-[10px] font-black uppercase tracking-normal text-black">GENERATED: {format(new Date(), 'dd/MM/yy HH:mm')}</div>
+                <div className="font-black text-[10px] text-black uppercase tracking-widest">PAGE {pageIdx + 1} OF {pages.length}</div>
              </div>
           </footer>
         </div>

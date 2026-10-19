@@ -85,12 +85,18 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
           <h3 className="font-black text-blue-900 uppercase text-[9px] mb-2">Settlement Details</h3>
           <div className="grid grid-cols-2 gap-4 text-[9px]">
             <div>
-                <p className="font-black">BANK: DIAMOND TRUST BANK (DTB)</p>
-                <p className="font-bold uppercase">NAME: {workspace?.name || 'THE BUSINESS'}</p>
-                <p className="font-bold">ACC NO: 0084976001</p>
+                <p className="font-black">BANK: {workspace?.bankName || 'DIAMOND TRUST BANK (DTB)'}</p>
+                <p className="font-bold uppercase">NAME: {workspace?.bankAccName || workspace?.name || 'THE BUSINESS'}</p>
+                <p className="font-bold">ACC NO: {workspace?.bankAccNo || '0084976001'}</p>
             </div>
             <div className="text-right">
-                <p className="italic opacity-60">"Please use your account name as the reference when making payments."</p>
+                {workspace?.paybillNumber && (
+                    <p className="font-black">MPESA PAYBILL: {workspace.paybillNumber} | ACC: {workspace.paybillAccount || 'BUSINESS'}</p>
+                )}
+                {workspace?.tillNumber && (
+                    <p className="font-black">MPESA TILL: {workspace.tillNumber}</p>
+                )}
+                <p className="italic opacity-60 mt-2">"Please use your account name as the reference when making payments."</p>
             </div>
           </div>
       </div>
@@ -110,29 +116,21 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
             <tbody>
                 {sales.map((sale, idx) => {
                     const balance = (Number(sale.total) || 0) - (Number(sale.amountPaid) || 0);
-                    
-                    // Format the reference string precisely as requested: "INVOICE NO: #077"
                     let refString = sale.invoiceNumber || "";
                     let displayRef = "N/A";
-
                     if (refString) {
                         const isReceipt = refString.toLowerCase().includes('receipt');
                         const prefix = isReceipt ? "RECEIPT NO: #" : "INVOICE NO: #";
-                        // Extract numeric part after '#'
                         const parts = refString.split('#');
                         const num = parts.length > 1 ? parts[1].trim() : refString.replace(/\D/g, '');
                         displayRef = `${prefix}${num.padStart(3, '0')}`;
                     } else {
-                        // Intelligent Fallback for older records
                         displayRef = `REF: ${sale.id.slice(0, 8).toUpperCase()}`;
                     }
-
                     return (
                         <tr key={sale.id} className="border-b border-gray-200 h-12">
                             <td className="p-3 font-medium">{format(new Date(sale.date), "dd/MM/yyyy")}</td>
-                            <td className="p-3 font-black uppercase text-[10px]">
-                                {displayRef}
-                            </td>
+                            <td className="p-3 font-black uppercase text-[10px]">{displayRef}</td>
                             <td className="p-3 text-right tabular-nums font-medium">{formatCurrency(Number(sale.total) || 0)}</td>
                             <td className="p-3 text-right tabular-nums text-green-600 font-medium">{formatCurrency(Number(sale.amountPaid) || 0)}</td>
                             <td className="p-3 text-right tabular-nums font-black text-blue-900">{formatCurrency(balance)}</td>
@@ -148,9 +146,7 @@ export function CustomerStatementPdf({ customer, sales, workspace }: CustomerSta
 
       {/* Footer Contact */}
       <footer className="mt-auto pt-8 border-t border-gray-200 text-center">
-         <p className="text-sm font-black italic text-blue-900 mb-4">
-            Thank you for your business!
-         </p>
+         <p className="text-sm font-black italic text-blue-900 mb-4">Thank you for your business!</p>
          <div className="space-y-1 text-[9px] font-bold text-gray-500">
             {workspace?.website && <p>{workspace.website}</p>}
             <p>Phone: {workspace?.phone || 'N/A'} &bull; Email: {workspace?.email || 'N/A'}</p>
