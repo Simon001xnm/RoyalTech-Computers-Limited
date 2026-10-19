@@ -71,7 +71,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
   return (
     <SidebarProvider defaultOpen={true}>
       <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-2xl no-print">
-        <SidebarHeader className="p-4 space-y-4">
+        <SidebarHeader className="p-4 space-y-4 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-4">
             {/* Mac Dots Aesthetic */}
             <div className="flex gap-1.5 px-2 group-data-[collapsible=icon]:hidden">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
@@ -79,7 +79,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
             </div>
 
-            <div className="flex items-center gap-3 px-2">
+            <div className="flex items-center gap-3 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
                 <div className="h-10 w-10 shrink-0 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 overflow-hidden shadow-sm">
                     {company?.logoUrl ? (
                          <img src={company.logoUrl} className="h-full w-full object-contain p-1" alt="Logo" />
@@ -114,7 +114,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             <SidebarNav />
         </SidebarContent>
 
-        <SidebarFooter className="p-4 space-y-4">
+        <SidebarFooter className="p-4 space-y-4 group-data-[collapsible=icon]:px-2">
             {/* Theme Switcher Node */}
             <div className="p-1 bg-muted/40 rounded-xl flex items-center gap-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent">
                 <Button 
@@ -123,10 +123,11 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                     onClick={() => isDark && toggleTheme()}
                     className={cn(
                         "flex-1 h-8 text-[10px] font-black uppercase rounded-lg transition-all",
-                        !isDark && "bg-white shadow-sm text-black"
+                        !isDark && "bg-white shadow-sm text-black",
+                        "group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:px-0"
                     )}
                 >
-                    <Sun className="h-3.5 w-3.5 mr-1.5" />
+                    <Sun className="h-3.5 w-3.5 mr-1.5 group-data-[collapsible=icon]:mr-0" />
                     <span className="group-data-[collapsible=icon]:hidden">Light</span>
                 </Button>
                 <Button 
@@ -135,16 +136,17 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                     onClick={() => !isDark && toggleTheme()}
                     className={cn(
                         "flex-1 h-8 text-[10px] font-black uppercase rounded-lg transition-all",
-                        isDark && "bg-[#2a2a2a] shadow-sm text-white"
+                        isDark && "bg-[#2a2a2a] shadow-sm text-white",
+                        "group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:px-0"
                     )}
                 >
-                    <Moon className="h-3.5 w-3.5 mr-1.5" />
+                    <Moon className="h-3.5 w-3.5 mr-1.5 group-data-[collapsible=icon]:mr-0" />
                     <span className="group-data-[collapsible=icon]:hidden">Dark</span>
                 </Button>
             </div>
 
             {/* Profile Node */}
-            <div className="flex items-center justify-between p-2 rounded-2xl hover:bg-muted/30 transition-colors group">
+            <div className="flex items-center justify-between p-2 rounded-2xl hover:bg-muted/30 transition-colors group group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center">
                 <div className="flex items-center gap-3 overflow-hidden">
                     <Avatar className="h-9 w-9 rounded-xl border-2 border-background shadow-sm ring-1 ring-black/5">
                         <AvatarImage src={userProfile?.avatarUrl || user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`} className="object-cover" />
