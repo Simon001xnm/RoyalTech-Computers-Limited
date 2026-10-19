@@ -18,6 +18,9 @@ import { NotificationCenter } from '@/components/layout/notification-center';
 import { Separator } from '@/components/ui/separator';
 
 const AUTH_PATHS = ['/login', '/signup'];
+// PUBLIC_ROOT_PATHS allows these routes to be viewed without redirection to login
+const PUBLIC_ROOT_PATHS = ['/', '/login', '/signup'];
+const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/legal'];
 
 function AuthenticatedLayout({ children, userProfile }: { children: React.ReactNode, userProfile: AppUser | null }) {
     const { user } = useUser();
@@ -157,19 +160,20 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
 
   const isAuthPath = AUTH_PATHS.includes(pathname);
+  const isPublicPath = PUBLIC_ROOT_PATHS.includes(pathname) || PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix));
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
 
   useEffect(() => {
     if (!isUserLoading) {
-      if (!user && !isAuthPath) {
+      if (!user && !isPublicPath) {
         router.push('/login');
       } else if (user && isAuthPath) {
         router.push('/');
       }
     }
-  }, [user, isUserLoading, userProfile, router, pathname, isAuthPath]);
+  }, [user, isUserLoading, userProfile, router, pathname, isPublicPath, isAuthPath]);
 
   if (isUserLoading) {
     return (
@@ -208,7 +212,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return <AuthenticatedLayout userProfile={userProfile || null}>{children}</AuthenticatedLayout>;
   }
 
-  if (isAuthPath) {
+  // If not logged in but it's a public path, just show the landing page/public view
+  if (isPublicPath) {
     return <>{children}</>;
   }
 

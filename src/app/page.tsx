@@ -95,20 +95,24 @@ import {
     ResponsiveContainer,
     Legend
 } from 'recharts';
+import { LandingPage } from '@/components/marketing/landing-page';
 
-type TimeFilter = 'today' | 'week' | 'month' | 'year' | 'custom';
+export default function RootPage() {
+  const { user, isUserLoading } = useUser();
+  const { tenant, isLoading: isSaaSLoading } = useSaaS();
+  const firestore = useFirestore();
+  const router = useRouter();
 
-const TYPE_INITIALS: Record<string, string> = {
-    'Invoice': 'INV',
-    'Receipt': 'RCT',
-    'Quotation': 'QTN',
-    'Proforma': 'PRO',
-    'DeliveryNote': 'DLV'
-};
+  // If no user is logged in, show the public landing page
+  if (!isUserLoading && !user) {
+      return <LandingPage />;
+  }
 
-const VAT_RATE = 0.16;
+  // If user exists, show the dashboard
+  return <DashboardPage />;
+}
 
-export default function DashboardPage() {
+function DashboardPage() {
   const { tenant } = useSaaS();
   const firestore = useFirestore();
   const { user } = useUser();
@@ -1120,3 +1124,15 @@ function startOfDay(date: Date) {
     d.setHours(0, 0, 0, 0);
     return d;
 }
+
+type TimeFilter = 'today' | 'week' | 'month' | 'year' | 'custom';
+
+const TYPE_INITIALS: Record<string, string> = {
+    'Invoice': 'INV',
+    'Receipt': 'RCT',
+    'Quotation': 'QTN',
+    'Proforma': 'PRO',
+    'DeliveryNote': 'DLV'
+};
+
+const VAT_RATE = 0.16;
