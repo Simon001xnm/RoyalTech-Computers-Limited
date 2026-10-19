@@ -18,6 +18,7 @@ import { useMemo } from "react";
 import type { User as AppUser, Company } from '@/types';
 import { Badge } from "../ui/badge";
 import { ChevronRight } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 export function SidebarNav() {
   const pathname = usePathname();
