@@ -62,9 +62,20 @@ export function MarketingFooter() {
       </div>
 
       <div className="max-w-7xl mx-auto mt-24 pt-8 border-t border-black/5 flex flex-col items-center gap-8">
-        <p className="text-[10px] text-muted-foreground tracking-[0.2em] text-center uppercase opacity-40">
-          Professional Business Suite
-        </p>
+        <div className="flex flex-col items-center gap-2">
+            <p className="text-[10px] text-muted-foreground tracking-[0.2em] text-center uppercase opacity-40">
+              © 2026 SimonStyles Technologies Limited
+            </p>
+            <a 
+                href="https://simonstyles.co.ke" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5"
+            >
+                Made in Kenya 
+                <span className="text-base" role="img" aria-label="Kenya Flag">🇰🇪</span>
+            </a>
+        </div>
       </div>
     </footer>
   );
