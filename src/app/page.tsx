@@ -103,7 +103,8 @@ import {
     AreaChart,
     Area,
     PieChart,
-    Pie
+    Pie,
+    LabelList
 } from 'recharts';
 import { LandingPage } from '@/components/marketing/landing-page';
 import { MarketingWrapper } from '@/components/marketing/marketing-wrapper';
@@ -124,6 +125,42 @@ export default function RootPage() {
 
   return <DashboardPage />;
 }
+
+const PriceRibbon = (props: any) => {
+    const { x, y, value } = props;
+    if (value === 0) return null;
+    
+    const formattedValue = new Intl.NumberFormat('en-KE', { 
+        style: 'currency', 
+        currency: 'KES', 
+        maximumFractionDigits: 0 
+    }).format(value);
+
+    return (
+        <g>
+            <rect 
+                x={x - 45} 
+                y={y - 35} 
+                width={90} 
+                height={20} 
+                rx={10} 
+                fill="#10b981" 
+                className="drop-shadow-lg"
+            />
+            <text 
+                x={x} 
+                y={y - 21} 
+                fill="white" 
+                fontSize={9} 
+                fontWeight="900" 
+                textAnchor="middle"
+                className="uppercase tracking-tighter"
+            >
+                {formattedValue}
+            </text>
+        </g>
+    );
+};
 
 function DashboardPage() {
   const { tenant } = useSaaS();
@@ -656,7 +693,7 @@ function DashboardPage() {
                         </div>
                         <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={performanceStats}>
+                                <AreaChart data={performanceStats} margin={{ top: 40, right: 30, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3}/>
@@ -667,7 +704,9 @@ function DashboardPage() {
                                     <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#000', opacity: 0.5 }} />
                                     <YAxis fontSize={10} axisLine={false} tickLine={false} tickFormatter={(v) => `${v/1000}k`} tick={{ fill: '#000', opacity: 0.5 }} />
                                     <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                                    <Area type="monotone" dataKey="Revenue" stroke="#4f46e5" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
+                                    <Area type="monotone" dataKey="Revenue" stroke="#4f46e5" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3}>
+                                        <LabelList dataKey="Revenue" content={<PriceRibbon />} />
+                                    </Area>
                                     <Area type="monotone" dataKey="Expenses" stroke="#ef4444" fill="transparent" strokeWidth={2} strokeDasharray="5 5" />
                                 </AreaChart>
                             </ResponsiveContainer>
