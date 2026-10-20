@@ -88,10 +88,13 @@ export interface Asset extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   model: string;
   serialNumber: string;
   category?: string;
+  subCategory?: string;
   status: 'Available' | 'Leased' | 'Repair' | 'Sold' | 'With Reseller';
   quantity: number;
   purchaseDate: string;
+  purchasePrice: number; // Buying price
   sellingPrice: number;
+  isSerialized: boolean;
   createdAt?: string; 
   updatedAt?: string; 
 }
@@ -119,6 +122,7 @@ export interface SaleItem {
     name: string;
     quantity: number;
     sellingPrice: number;
+    buyingPrice: number;
     total: number;
     type: 'asset' | 'accessory' | 'custom';
 }

@@ -23,18 +23,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, DollarSign, Package } from "lucide-react";
+import { CalendarIcon, DollarSign, Package, Tag, Layers, CheckCircle2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useEffect } from "react";
 
 const inventoryFormSchema = z.object({
   model: z.string().min(2, "Model must be at least 2 characters."),
-  serialNumber: z.string().min(5, "Serial number must be at least 5 characters."),
+  serialNumber: z.string().optional(),
   purchaseDate: z.date({ required_error: "Date is required." }),
   status: z.enum(["Available", "Leased", "Repair", "Sold", "With Reseller"]),
   quantity: z.coerce.number().min(0, "Quantity cannot be negative."),
+  purchasePrice: z.coerce.number().min(1, "Buying price is mandatory."),
   sellingPrice: z.coerce.number().min(0, "Selling price is required."),
+  isSerialized: z.boolean().default(true),
+  category: z.string().min(2, "Category is required."),
+  subCategory: z.string().optional(),
 });
 
 type InventoryFormValues = z.infer<typeof inventoryFormSchema>;
@@ -51,36 +58,75 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
     ? {
         ...laptop,
         purchaseDate: laptop.purchaseDate ? new Date(laptop.purchaseDate) : new Date(),
+        purchasePrice: (laptop as any).purchasePrice || 0,
         sellingPrice: laptop.sellingPrice || 0,
+        isSerialized: laptop.isSerialized ?? true,
       }
     : {
         model: "",
         serialNumber: "",
         status: "Available",
         quantity: 1,
+        purchasePrice: 0,
         sellingPrice: 0,
         purchaseDate: new Date(),
+        isSerialized: true,
+        category: "",
+        subCategory: "",
       };
 
   const form = useForm<InventoryFormValues>({
     resolver: zodResolver(inventoryFormSchema),
-    defaultValues,
+    defaultValues: defaultValues as any,
   });
 
+  const isSerialized = form.watch("isSerialized");
+
+  useEffect(() => {
+    if (isSerialized) {
+      form.setValue("quantity", 1);
+    }
+  }, [isSerialized, form]);
+
   const handleSubmit = (data: InventoryFormValues) => {
+    if (data.isSerialized && (!data.serialNumber || data.serialNumber.length < 3)) {
+      form.setError("serialNumber", { message: "Serial number is required for serialized items." });
+      return;
+    }
     onSubmit(data);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+        <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
+          <div className="space-y-0.5">
+            <Label className="text-sm font-black uppercase tracking-tight">Serialized Item Tracking</Label>
+            <p className="text-[10px] text-muted-foreground uppercase">Unique unit tracking vs Bulk stock</p>
+          </div>
+          <FormField
+            control={form.control}
+            name="isSerialized"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Switch 
+                    checked={field.value} 
+                    onCheckedChange={field.onChange} 
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
             name="model"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Product Model / Name</FormLabel>
+                <FormLabel>Product Model / Name</Label>
                 <FormControl>
                   <Input placeholder="e.g., MacBook Pro 16" {...field} />
                 </FormControl>
@@ -93,14 +139,47 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
             name="serialNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Serial Number</FormLabel>
+                <FormLabel>Serial Number {isSerialized && "*"}</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., C02X1234J1GJ" {...field} />
+                  <Input 
+                    placeholder={isSerialized ? "Enter unique S/N" : "Optional for bulk"} 
+                    {...field} 
+                    disabled={!isSerialized && !field.value} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Primary Category</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Laptops" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="subCategory"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sub-Category (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Business Class" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -116,7 +195,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
                       <Button
                         variant={"outline"}
                         className={cn(
-                          "w-full pl-3 text-left font-normal",
+                          "w-full pl-3 text-left font-normal h-11",
                           !field.value && "text-muted-foreground"
                         )}
                       >
@@ -150,19 +229,19 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
             name="status"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Status</FormLabel>
+                <FormLabel>Inventory Status</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="Available">Available</SelectItem>
-                    <SelectItem value="Leased">Leased</SelectItem>
-                    <SelectItem value="Repair">Under Repair</SelectItem>
-                    <SelectItem value="Sold">Sold</SelectItem>
-                    <SelectItem value="With Reseller">With Reseller</SelectItem>
+                    <SelectItem value="Available">Available for Sale</SelectItem>
+                    <SelectItem value="Leased">On Lease</SelectItem>
+                    <SelectItem value="Repair">Under Maintenance</SelectItem>
+                    <SelectItem value="Sold">Sold Out</SelectItem>
+                    <SelectItem value="With Reseller">With Partner</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -171,15 +250,38 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
           />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField
             control={form.control}
             name="quantity"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Current Stock Quantity</FormLabel>
+                <FormLabel>Stock Quantity</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="e.g., 10" {...field} />
+                  <Input 
+                    type="number" 
+                    placeholder="e.g., 10" 
+                    {...field} 
+                    disabled={isSerialized} 
+                    className="h-11 font-bold"
+                  />
+                </FormControl>
+                {isSerialized && <p className="text-[9px] text-primary font-bold uppercase mt-1">Locked to 1 for Serialized items</p>}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="purchasePrice"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-red-600 font-bold uppercase text-[10px]">Buying Price (Ksh) *</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input type="number" step="0.01" placeholder="0.00" className="pl-9 font-black h-11 border-red-200" {...field} />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -190,11 +292,11 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
             name="sellingPrice"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-primary font-bold">Selling Price (Ksh)</FormLabel>
+                <FormLabel className="text-primary font-bold uppercase text-[10px]">Selling Price (Ksh) *</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input type="number" step="0.01" placeholder="0.00" className="pl-9 font-black" {...field} />
+                    <Input type="number" step="0.01" placeholder="0.00" className="pl-9 font-black h-11 border-primary/20" {...field} />
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -204,11 +306,12 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
         </div>
 
         <div className="flex justify-end space-x-3 pt-6 border-t">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading} className="h-12 px-6">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading} className="h-12 px-6 font-bold">
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading} className="h-12 px-10 font-black uppercase tracking-widest shadow-lg">
-            {isLoading ? "Syncing..." : (laptop ? "Update Item" : "Save to Inventory")}
+          <Button type="submit" disabled={isLoading} className="h-12 px-12 font-black uppercase tracking-widest shadow-xl">
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+            {laptop ? "Sync Changes" : "Commit to Shop"}
           </Button>
         </div>
       </form>

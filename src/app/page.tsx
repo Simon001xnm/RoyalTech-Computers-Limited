@@ -45,7 +45,8 @@ import {
     PieChart as PieChartIcon,
     Activity as ActivityIcon,
     MapPin,
-    Zap
+    Zap,
+    CreditCard
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -141,12 +142,10 @@ const PriceRibbon = (props: any) => {
     let rectX = x - 45;
     let textX = x;
     
-    // Adjust for the last point (Year)
     if (index === 3) {
         rectX = x - 85;
         textX = x - 40;
     } 
-    // Adjust for the first point (Today)
     else if (index === 0) {
         rectX = x - 5;
         textX = x + 40;
@@ -217,7 +216,7 @@ function DashboardPage() {
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
   const [posAction, setPosAction] = useState<DocumentType | null>(null);
-  const [paymentMode, setPaymentMode] = useState<'Cash' | 'M-Pesa' | 'Bank'>('Cash');
+  const [paymentMode, setPaymentMode] = useState<'Cash' | 'M-Pesa' | 'Bank' | 'Card' | 'Cheque' | 'Till' | 'Paybill'>('Cash');
   const [applyVat, setApplyVat] = useState(false);
 
   const [configuringProduct, setConfiguringProduct] = useState<any>(null);
@@ -893,7 +892,33 @@ function DashboardPage() {
                     </div>
                 </div>
 
-                <div className="mt-auto space-y-5 pt-4 border-t">
+                <div className="space-y-4 pt-4 border-t">
+                    <div className="space-y-3">
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 text-muted-foreground">4. Settlement Method</Label>
+                        <Select value={paymentMode} onValueChange={(v: any) => setPaymentMode(v)}>
+                            <SelectTrigger className="h-12 font-bold bg-background border-2 rounded-xl">
+                                <div className="flex items-center gap-2">
+                                    {paymentMode === 'Cash' && <Banknote className="h-4 w-4 text-green-600" />}
+                                    {paymentMode === 'M-Pesa' && <Smartphone className="h-4 w-4 text-green-600" />}
+                                    {paymentMode === 'Bank' && <Landmark className="h-4 w-4 text-blue-600" />}
+                                    {paymentMode === 'Card' && <CreditCard className="h-4 w-4 text-purple-600" />}
+                                    {paymentMode === 'Till' && <Receipt className="h-4 w-4 text-primary" />}
+                                    {paymentMode === 'Paybill' && <ActivityIcon className="h-4 w-4 text-primary" />}
+                                    <SelectValue />
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Cash">Cash Transaction</SelectItem>
+                                <SelectItem value="M-Pesa">M-Pesa (Direct)</SelectItem>
+                                <SelectItem value="Till">M-Pesa Buy Goods (Till)</SelectItem>
+                                <SelectItem value="Paybill">M-Pesa Paybill</SelectItem>
+                                <SelectItem value="Bank">Bank Deposit/Transfer</SelectItem>
+                                <SelectItem value="Card">Visa/Mastercard</SelectItem>
+                                <SelectItem value="Cheque">Physical Cheque</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     <div className="flex justify-between items-center px-2">
                         <div className="flex items-center gap-3">
                             <Switch checked={applyVat} onCheckedChange={setApplyVat} id="vat-dash" />
