@@ -180,7 +180,7 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
       <footer className="mt-auto pt-8 border-t border-gray-200 text-center">
          <p className="text-sm font-black italic text-blue-900 mb-4">Thank you for your business!</p>
          <div className="space-y-1 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
-            <p>Generated: {format(new Date(), 'dd/MM/yyyy HH:mm:ss')} &bull; Permanent Audit Record</p>
+            <p>Generated: {format(new Date(), 'dd/MM/yyyy HH:mm:ss')}</p>
          </div>
       </footer>
     </div>
