@@ -18,8 +18,8 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
   // TOTAL INVOICED: Sum of all invoices and receipts billed to the client
   const totalInvoiced = sales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
   
-  // TOTAL PAID: Sum of all matching payments in the ledger (includes POS receipts and manual adjustments)
-  const totalPaid = payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+  // TOTAL PAID: Calculate from sale amountPaid to include POS payments + manual payments
+  const totalPaid = sales.reduce((acc, s) => acc + (Number(s.amountPaid) || 0), 0);
   
   const netBalance = totalInvoiced - totalPaid;
 
@@ -32,27 +32,55 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
   };
 
   const unifiedLedger = useMemo(() => {
-    const items = [
-      ...sales.map(s => ({
+    const items: any[] = [];
+
+    sales.forEach(s => {
+      // 1. Log the Invoice entry
+      items.push({
         date: s.date || s.createdAt,
         reference: s.invoiceNumber || `SALE_${s.id.slice(0, 8)}`,
         description: 'INVOICED AMOUNT',
         type: 'SALE',
         invoiced: Number(s.total) || 0,
         paid: 0
-      })),
-      ...payments.map(p => ({
+      });
+
+      // 2. Handle payments that happened at the Point of Sale (POS)
+      // This bridges the gap for historical data where separate payment records weren't logged
+      const posPaidAmount = Number(s.amountPaid) || 0;
+      if (posPaidAmount > 0) {
+          // Check if there is already a manual payment doc for this sale (to avoid double entry in ledger)
+          const hasManualPayment = payments.some(p => p.saleId === s.id || p.reference === s.invoiceNumber);
+          
+          if (!hasManualPayment) {
+              items.push({
+                date: s.date || s.createdAt,
+                reference: s.invoiceNumber || `SALE_${s.id.slice(0, 8)}`,
+                description: 'PAYMENT AT POINT OF SALE',
+                type: 'PAYMENT',
+                invoiced: 0,
+                paid: posPaidAmount
+              });
+          }
+      }
+    });
+
+    // 3. Add all manual/direct payments from the payments collection
+    payments.forEach(p => {
+      items.push({
         date: p.date || p.createdAt,
         reference: p.reference || `PAY_${p.id.slice(0, 8)}`,
         description: p.type === 'Credit Note' ? 'CREDIT NOTE OFFSET' : `PAYMENT RECEIVED (${p.method})`,
         type: p.type === 'Credit Note' ? 'CREDIT' : 'PAYMENT',
         invoiced: 0,
         paid: Number(p.amount) || 0
-      }))
-    ].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+      });
+    });
+
+    const sortedItems = items.sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
     let runningBalance = 0;
-    return items.map(item => {
+    return sortedItems.map(item => {
       runningBalance += (item.invoiced - item.paid);
       return { ...item, balance: runningBalance };
     });
@@ -70,7 +98,7 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
             <div className="h-16 w-16 bg-gray-50 flex items-center justify-center text-[10px] font-black border-2 border-dashed border-gray-200 text-gray-300 uppercase">LOGO</div>
           )}
           <div className="space-y-0.5">
-            <h1 className="text-3xl font-black uppercase tracking-tighter" style={{ color: primaryBlue }}>{workspace?.name || 'MATESH TECHNOLOGIES LIMITED'}</h1>
+            <h1 className="text-3xl font-black uppercase tracking-tighter" style={{ color: primaryBlue }}>{workspace?.name || 'BUSINESS WORKSPACE'}</h1>
             <p className="font-bold text-[10px] opacity-70 uppercase tracking-widest">Official Customer Statement</p>
           </div>
         </div>
@@ -80,13 +108,13 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
             <p className="text-[9px] font-bold">Tel: {workspace?.phone || 'N/A'}</p>
             <p className="text-[9px] font-bold">Email: {workspace?.email || 'N/A'}</p>
             <div className="pt-2">
-                <p className="text-[10px] font-black uppercase text-blue-800">Date: {format(new Date(), "dd MMM yyyy")}</p>
+                <p className="text-[10px] font-black uppercase text-blue-800">Statement Date: {format(new Date(), "dd MMM yyyy")}</p>
             </div>
         </div>
       </header>
 
       <div className="flex w-full mb-4 border border-black overflow-hidden rounded-sm">
-        <div className="w-7/12 bg-gray-200 px-4 py-2 border-r border-black font-black uppercase text-[10px]">Client Information</div>
+        <div className="w-7/12 bg-gray-200 px-4 py-2 border-r border-black font-black uppercase text-[10px]">Client Identity</div>
         <div className="w-5/12 bg-blue-100 px-4 py-2 font-black uppercase text-[10px]">Account Summary</div>
       </div>
 
@@ -95,11 +123,11 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
             <p className="font-black uppercase text-xs">{customer.alias || customer.name}</p>
             <p className="uppercase">{customer.address || 'Nairobi, Kenya'}</p>
             <p className="font-bold">{customer.phone}</p>
-            <p className="mt-4">Payment remit to: <span className="font-black uppercase">{workspace?.name || 'THE BUSINESS'}</span></p>
+            <p className="mt-4">Please remit payments to: <span className="font-black uppercase">{workspace?.name || 'THE BUSINESS'}</span></p>
         </div>
         <div className="col-span-5 border-l border-black/10 pl-4 space-y-2">
              <div className="flex justify-between items-center">
-                <p className="text-[8px] font-black uppercase opacity-60">Total Invoiced</p>
+                <p className="text-[8px] font-black uppercase opacity-60">Lifetime Billed</p>
                 <p className="font-black">KES {formatCurrency(totalInvoiced)}</p>
              </div>
              <div className="flex justify-between items-center">
@@ -108,14 +136,14 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
              </div>
              <div className="pt-2 border-t border-black/10 text-right">
                 <p className="text-[9px] font-black uppercase text-blue-900 leading-none">
-                  {netBalance >= 0 ? 'Net Balance Due' : 'Account Credit Balance'}
+                  {netBalance >= 0 ? 'Current Balance Due' : 'Account Credit Balance'}
                 </p>
                 <p className={cn(
                   "text-xl font-black",
                   netBalance > 0 ? "text-blue-900" : "text-green-700"
                 )}>
                   KES {formatCurrency(netBalance)}
-                  {netBalance < 0 && <span className="text-[8px] block mt-1 uppercase text-green-600">(Credit Balance)</span>}
+                  {netBalance < 0 && <span className="text-[8px] block mt-1 uppercase text-green-600">(Overpaid / Credit)</span>}
                 </p>
              </div>
         </div>
@@ -136,7 +164,7 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
                 {workspace?.tillNumber && (
                     <p className="font-black">MPESA TILL: {workspace.tillNumber}</p>
                 )}
-                <p className="italic opacity-60 mt-2">"Please use your account name as reference for reconciliations."</p>
+                <p className="italic opacity-60 mt-2">"Please quote your account identity during settlements."</p>
             </div>
           </div>
       </div>
@@ -148,8 +176,8 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
                     <th className="p-3 font-black text-[9px] border border-black uppercase w-24">Date</th>
                     <th className="p-3 font-black text-[9px] border border-black uppercase">Reference & Detail</th>
                     <th className="p-3 text-right font-black text-[9px] border border-black w-28 uppercase">Invoiced</th>
-                    <th className="p-3 text-right font-black text-[9px] border border-black w-28 uppercase">Paid/Credit</th>
-                    <th className="p-3 text-right font-black text-[9px] border border-black w-32 uppercase">Account Bal</th>
+                    <th className="p-3 text-right font-black text-[9px] border border-black w-28 uppercase">Settled</th>
+                    <th className="p-3 text-right font-black text-[9px] border border-black w-32 uppercase">Running Bal</th>
                 </tr>
             </thead>
             <tbody>
@@ -171,7 +199,7 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
                     </tr>
                 ))}
                 {unifiedLedger.length === 0 && (
-                    <tr><td colSpan={5} className="p-10 text-center italic opacity-30 font-black uppercase text-[10px]">No transaction flow logged for this client</td></tr>
+                    <tr><td colSpan={5} className="p-10 text-center italic opacity-30 font-black uppercase text-[10px]">No transaction history recorded</td></tr>
                 )}
             </tbody>
         </table>
