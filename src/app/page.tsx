@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -193,7 +192,6 @@ function DashboardPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
-  const [currentTime, setCurrentTime] = useState<string>('');
 
   // POS State
   const [cart, setCart] = useState<any[]>([]);
@@ -209,23 +207,6 @@ function DashboardPage() {
   const [configuringProduct, setConfiguringProduct] = useState<any>(null);
   const [configQty, setConfigQty] = useState('1');
   const [configPrice, setConfigPrice] = useState('');
-
-  useEffect(() => {
-    const updateTime = () => {
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            second: '2-digit',
-            hour12: true 
-        });
-        const dayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
-        setCurrentTime(`${dayStr}, ${timeStr}`);
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const salesQuery = useMemoFirebase(() => {
     if (!tenant) return null;
@@ -640,11 +621,6 @@ function DashboardPage() {
         description={`Analyzing records for period: ${stats.viewLabel}`}
         actions={
             <div className="flex items-center gap-3">
-                {currentTime && (
-                    <div className="hidden lg:flex items-center gap-2 px-4 py-1.5 bg-primary/5 rounded-xl border border-primary/20 font-mono text-[11px] font-black uppercase tracking-widest text-primary shadow-sm">
-                        <Clock className="h-3 w-3" /> {currentTime}
-                    </div>
-                )}
                 <div className="flex items-center gap-2">
                     <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
                         <SelectTrigger className="h-9 w-32 font-bold text-[10px] uppercase bg-white border-2"><Filter className="h-3 w-3 mr-2" /><SelectValue /></SelectTrigger>
@@ -695,7 +671,7 @@ function DashboardPage() {
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={performanceStats} margin={{ top: 40, right: 30, left: 0, bottom: 0 }}>
                                     <defs>
-                                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                        <linearGradient id="colorRev" x1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3}/>
                                             <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
                                         </linearGradient>
