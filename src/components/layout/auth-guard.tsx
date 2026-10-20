@@ -89,7 +89,6 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 </div>
                 <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
                     <p className="text-sm font-black uppercase tracking-tighter truncate text-foreground">{company?.name || APP_NAME}</p>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-50">Silo Node</p>
                 </div>
             </div>
 
