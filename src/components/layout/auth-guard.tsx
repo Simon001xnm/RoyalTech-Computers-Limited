@@ -1,17 +1,17 @@
 'use client';
 
-import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { doc } from 'firebase/firestore';
+import { doc, collection, query, where } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
 import { logger } from '@/lib/logger';
 import { NotificationCenter } from '@/components/layout/notification-center';
@@ -20,14 +20,50 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useSaaS } from '@/components/saas/saas-provider';
+import { Badge } from '../ui/badge';
 
 const AUTH_PATHS = ['/login', '/signup'];
 const PUBLIC_ROOT_PATHS = ['/', '/login', '/signup'];
 const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/legal'];
 
+/**
+ * DebtIndicator Component
+ * Counts unique customers with balance > 0
+ */
+function DebtIndicator({ tenantId }: { tenantId: string }) {
+    const firestore = useFirestore();
+    const q = useMemoFirebase(() => query(
+        collection(firestore, 'sales_transactions'),
+        where('tenantId', '==', tenantId),
+        where('balance', '>', 0)
+    ), [firestore, tenantId]);
+    
+    const { data: sales } = useCollection(q);
+    
+    const uniqueDebtors = useMemo(() => {
+        if (!sales) return 0;
+        return new Set(sales.map(s => s.customerId)).size;
+    }, [sales]);
+
+    if (uniqueDebtors === 0) return null;
+
+    return (
+        <Link href="/receivables">
+            <Button variant="ghost" size="icon" className="relative group">
+                <Wallet className="h-5 w-5 text-red-500 group-hover:text-red-600 transition-colors" />
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] border-2 border-background bg-red-600 text-white shadow-sm font-black">
+                    {uniqueDebtors}
+                </Badge>
+            </Button>
+        </Link>
+    );
+}
+
 function AuthenticatedLayout({ children, userProfile }: { children: React.ReactNode, userProfile: AppUser | null }) {
     const { user } = useUser();
     const auth = useAuth();
+    const { tenant } = useSaaS();
     const firestore = useFirestore();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -203,6 +239,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
           </div>
           
           <div className="flex items-center gap-4">
+            {tenant?.id && <DebtIndicator tenantId={tenant.id} />}
             <NotificationCenter />
             {user && (
               <DropdownMenu>
