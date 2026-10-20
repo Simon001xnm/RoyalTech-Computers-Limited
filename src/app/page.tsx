@@ -42,7 +42,9 @@ import {
     ShieldAlert,
     ChevronRight,
     Target,
-    History as HistoryIcon
+    History as HistoryIcon,
+    PieChart as PieChartIcon,
+    Activity as ActivityIcon
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -91,15 +93,17 @@ import { DeliveryNotePdf } from "./documents/components/pdfs/delivery-note-pdf";
 import { useToast } from "@/hooks/use-toast";
 import type { Document as AppDocument, DocumentType, User as AppUser } from "@/types";
 import {
-    BarChart,
-    Bar,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
     Legend,
-    Cell
+    Cell,
+    AreaChart,
+    Area,
+    PieChart,
+    Pie
 } from 'recharts';
 import { LandingPage } from '@/components/marketing/landing-page';
 import { MarketingWrapper } from '@/components/marketing/marketing-wrapper';
@@ -163,12 +167,6 @@ function DashboardPage() {
   const [posAction, setPosAction] = useState<DocumentType | null>(null);
   const [paymentMode, setPaymentMode] = useState<'Cash' | 'M-Pesa' | 'Bank'>('Cash');
   const [applyVat, setApplyVat] = useState(false);
-
-  // New Customer State
-  const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
-  const [newCustName, setNewCustName] = useState('');
-  const [newCustPhone, setNewCustPhone] = useState('');
-  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
 
   // POS Selection Logic
   const [configuringProduct, setConfiguringProduct] = useState<any>(null);
@@ -263,12 +261,28 @@ function DashboardPage() {
     const totalDebt = sales.filter(s => (Number(s.balance) || 0) > 0).reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
     const lowStock = assets.filter(a => Number(a.quantity) <= (Number(a.minStock) || 5));
 
+    // Category Distribution Logic
+    const productCounts: Record<string, number> = {};
+    filteredSales.forEach(sale => {
+      sale.items?.forEach((item: any) => {
+        const name = item.name || item.description || 'Unknown Item';
+        const qty = Number(item.quantity) || 1;
+        productCounts[name] = (productCounts[name] || 0) + qty;
+      });
+    });
+
+    const categoryData = Object.entries(productCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, value]) => ({ name, value }));
+
     return {
         totalRevenue, totalProfit, totalExpenses, totalDebt,
         lowStockCount: lowStock.length,
         unpaidCount: sales.filter(s => (Number(s.balance) || 0) > 0).length,
         items: [...filteredDocs].sort((a,b) => parseISO(b.generatedDate).getTime() - parseISO(a.generatedDate).getTime()),
-        viewLabel: filter === 'custom' && dateRange?.from ? `${format(dateRange.from, 'dd MMM')} - ${format(dateRange.to || now, 'dd MMM')}` : filter.toUpperCase()
+        viewLabel: filter === 'custom' && dateRange?.from ? `${format(dateRange.from, 'dd MMM')} - ${format(dateRange.to || now, 'dd MMM')}` : filter.charAt(0).toUpperCase() + filter.slice(1),
+        categoryData: categoryData.length > 0 ? categoryData : [{ name: 'Empty', value: 1 }]
     };
   }, [sales, assets, expenses, documents, filter, dateRange, ledgerSearch]);
 
@@ -302,7 +316,6 @@ function DashboardPage() {
     });
   }, [sales, expenses]);
 
-  // POS Logic
   const handleOpenConfigDialog = (product: any) => {
     setConfiguringProduct(product);
     setConfigQty('1');
@@ -434,30 +447,6 @@ function DashboardPage() {
     }
   };
 
-  const handleCreateCustomer = async () => {
-    if (!tenant || !user || !newCustName) return;
-    setIsSavingCustomer(true);
-    try {
-        const docRef = await addDoc(collection(firestore, 'customers'), {
-            tenantId: tenant.id,
-            name: newCustName,
-            phone: newCustPhone,
-            registrationDate: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            createdBy: { uid: user.uid, name: user.displayName || 'User' }
-        });
-        setSelectedCustomer({ id: docRef.id, name: newCustName });
-        setIsNewCustomerOpen(false);
-        setNewCustName('');
-        setNewCustPhone('');
-        toast({ title: "Client Registered" });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: "Registration Failed" });
-    } finally {
-        setIsSavingCustomer(false);
-    }
-  };
-
   const handleViewDocument = (docObj: AppDocument) => {
     setSelectedDocument(docObj);
     setIsPdfPreviewOpen(true);
@@ -533,14 +522,14 @@ function DashboardPage() {
     {
       accessorKey: "relatedTo",
       header: "Client",
-      cell: ({ row }) => <span className="text-[10px] font-black uppercase truncate block max-w-[150px]">{row.original.relatedTo || 'Walk-in'}</span>
+      cell: ({ row }) => <span className="text-[10px] font-black truncate block max-w-[150px]">{row.original.relatedTo || 'Walk-in'}</span>
     },
     {
       accessorKey: "type",
       header: "Type",
       cell: ({ row }) => {
           const type = row.original.type;
-          return <Badge className={cn("text-[8px] font-black uppercase h-4 px-2 border-none", type === 'Receipt' ? "bg-green-100 text-green-700" : (type === 'Invoice' ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"))}>{type}</Badge>;
+          return <Badge className={cn("text-[8px] font-black h-4 px-2 border-none", type === 'Receipt' ? "bg-green-100 text-green-700" : (type === 'Invoice' ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"))}>{type}</Badge>;
       }
     },
     {
@@ -584,7 +573,7 @@ function DashboardPage() {
 
   if (salesLoading || stockLoading || expLoading || docsLoading || isProfileLoading) {
       return (
-        <div className="flex h-[80vh] flex-col items-center justify-center space-y-4">
+        <div className="flex h-[80vh] flex-col items-center justify-center space-y-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Initializing Data Stream...</p>
         </div>
@@ -604,6 +593,8 @@ function DashboardPage() {
       default: return null;
     }
   };
+
+  const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'];
 
   return (
     <div className="space-y-6 pb-20 max-w-[1600px] mx-auto">
@@ -644,82 +635,87 @@ function DashboardPage() {
             <CardHeader className="bg-white p-8 border-b-0">
                 <div className="flex items-center gap-5">
                     <div className="bg-[#4f46e5] p-3 rounded-2xl shadow-xl">
-                        <BarChart3 className="h-7 w-7 text-white" />
+                        <ActivityIcon className="h-7 w-7 text-white" />
                     </div>
                     <div className="space-y-1">
-                        <CardTitle className="text-2xl font-black uppercase tracking-tighter leading-none">Performance Intelligence</CardTitle>
-                        <CardDescription className="text-[10px] font-black uppercase tracking-widest text-[#4f46e5]">Cross-Period Comparative Analysis</CardDescription>
+                        <CardTitle className="text-2xl font-bold leading-none">Performance Intelligence</CardTitle>
+                        <CardDescription className="text-[10px] font-bold text-[#4f46e5] tracking-widest uppercase">Visual Insights & Data Flow</CardDescription>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-10 space-y-12">
-                <div className="h-[450px] w-full relative">
-                    <div className="absolute top-0 right-0 z-10 flex gap-6">
-                        <div className="flex items-center gap-2">
-                            <div className="h-4 w-4 rounded-full bg-[#4f46e5]" />
-                            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Revenue</span>
+            <CardContent className="p-8 pt-0 space-y-12">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    {/* TREND CHART */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-black uppercase tracking-widest opacity-40">Revenue Growth Trend</h4>
+                            <div className="flex gap-4">
+                                <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-[#4f46e5]" /><span className="text-[9px] font-bold opacity-60">Revenue</span></div>
+                                <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-[#ef4444]" /><span className="text-[9px] font-bold opacity-60">Expenses</span></div>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="h-4 w-4 rounded-full bg-[#ef4444]" />
-                            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Expenses</span>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={performanceStats}>
+                                    <defs>
+                                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.05} />
+                                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#000', opacity: 0.5 }} />
+                                    <YAxis fontSize={10} axisLine={false} tickLine={false} tickFormatter={(v) => `${v/1000}k`} tick={{ fill: '#000', opacity: 0.5 }} />
+                                    <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                    <Area type="monotone" dataKey="Revenue" stroke="#4f46e5" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
+                                    <Area type="monotone" dataKey="Expenses" stroke="#ef4444" fill="transparent" strokeWidth={2} strokeDasharray="5 5" />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
 
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={performanceStats} margin={{ top: 40, right: 0, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.05} />
-                            <XAxis 
-                                dataKey="name" 
-                                axisLine={false} 
-                                tickLine={false} 
-                                fontSize={12} 
-                                fontWeight="900" 
-                                tick={{ fill: '#000000' }}
-                                dy={15}
-                            />
-                            <YAxis 
-                                axisLine={false} 
-                                tickLine={false} 
-                                fontSize={10} 
-                                fontWeight="bold"
-                                tickFormatter={(v) => `Ksh ${v/1000}k`} 
-                                tick={{ fill: '#000000', opacity: 0.5 }} 
-                            />
-                            <Tooltip 
-                                cursor={{ fill: 'rgba(0,0,0,0.02)' }} 
-                                contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', padding: '20px' }} 
-                            />
-                            <Bar 
-                                dataKey="Revenue" 
-                                fill="#4f46e5" 
-                                radius={[12, 12, 0, 0]} 
-                                barSize={80} 
-                            />
-                            <Bar 
-                                dataKey="Expenses" 
-                                fill="#ef4444" 
-                                radius={[12, 12, 0, 0]} 
-                                barSize={80} 
-                            />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    {/* PIE CHART */}
+                    <div className="space-y-4">
+                        <h4 className="text-xs font-black uppercase tracking-widest opacity-40 text-center">Moving Products Mix</h4>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie 
+                                        data={stats.categoryData} 
+                                        cx="50%" cy="50%" 
+                                        innerRadius={60} 
+                                        outerRadius={90} 
+                                        paddingAngle={8} 
+                                        dataKey="value"
+                                        label={({ name }) => name.slice(0, 12) + '...'}
+                                    >
+                                        {stats.categoryData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-8 border-t border-black/5">
                     {performanceStats.map((p) => {
                         const surplus = p.Revenue - p.Expenses;
                         return (
-                            <div key={p.name} className="space-y-4">
+                            <div key={p.name} className="space-y-3">
                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">{p.name}</p>
                                 <div className="space-y-1">
-                                    <p className="text-xl font-black tracking-tighter">{formatKes(p.Revenue)}</p>
+                                    <p className="text-lg font-black tracking-tighter">{formatKes(p.Revenue)}</p>
                                     <div className="flex items-center gap-2">
                                         <div className={cn(
                                             "h-1.5 w-1.5 rounded-full",
                                             surplus >= 0 ? "bg-green-500" : "bg-red-500"
                                         )} />
                                         <p className={cn(
-                                            "text-[9px] font-black uppercase",
+                                            "text-[9px] font-bold uppercase",
                                             surplus >= 0 ? "text-green-600" : "text-red-600"
                                         )}>
                                             {surplus >= 0 ? 'Surplus' : 'Deficit'}
@@ -737,11 +733,11 @@ function DashboardPage() {
           <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden rounded-[2rem] flex flex-col">
             <CardHeader className="bg-primary/5 border-b p-6">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-black uppercase tracking-tight text-primary flex items-center gap-3">
-                        <ShoppingCart className="h-5 w-5" />
+                    <CardTitle className="text-lg font-bold flex items-center gap-3">
+                        <ShoppingCart className="h-5 w-5 text-primary" />
                         Quick Sell Node
                     </CardTitle>
-                    <Badge variant="outline" className="text-[8px] font-black uppercase h-5 bg-white border-primary/20">Operational</Badge>
+                    <Badge variant="outline" className="text-[8px] font-black h-5 bg-white border-primary/20 uppercase tracking-widest">Operational</Badge>
                 </div>
             </CardHeader>
             <CardContent className="p-8 flex-grow flex flex-col gap-8 overflow-hidden">
@@ -896,7 +892,7 @@ function DashboardPage() {
                     <div className="bg-black p-2.5 rounded-xl shadow-lg">
                         <HistoryIcon className="h-5 w-5 text-white" />
                     </div>
-                    <CardTitle className="text-xl font-black uppercase tracking-tight">Recent Activity Ledger</CardTitle>
+                    <CardTitle className="text-xl font-bold tracking-tight">Recent Activity Ledger</CardTitle>
                 </div>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
@@ -950,7 +946,7 @@ function DashboardPage() {
       <Dialog open={!!configuringProduct} onOpenChange={(open) => !open && setConfiguringProduct(null)}>
         <DialogContent className="sm:max-w-md border-none shadow-2xl rounded-[2rem]">
             <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase tracking-tight">Add to Basket</DialogTitle>
+                <DialogTitle className="text-xl font-bold tracking-tight">Add to Basket</DialogTitle>
                 <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">{configuringProduct?.model}</DialogDescription>
             </DialogHeader>
             <div className="space-y-8 pt-6">
@@ -1001,7 +997,7 @@ function DashboardPage() {
       <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
         <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
           <DialogHeader className="p-6 bg-white border-b no-print flex flex-row items-center justify-between">
-            <DialogTitle className="text-xl font-black uppercase tracking-tight">View Document</DialogTitle>
+            <DialogTitle className="text-xl font-bold tracking-tight">View Document</DialogTitle>
             <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!)} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">
                     {isExporting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Download className="h-3 w-3 mr-2" />}
