@@ -10,7 +10,7 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -19,6 +19,7 @@ import { NotificationCenter } from '@/components/layout/notification-center';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '../ui/input';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 const AUTH_PATHS = ['/login', '/signup'];
 const PUBLIC_ROOT_PATHS = ['/', '/login', '/signup'];
@@ -29,6 +30,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     const auth = useAuth();
     const firestore = useFirestore();
     const [isDark, setIsDark] = useState(false);
+    const [dateTime, setDateTime] = useState<string>("");
 
     useEffect(() => {
         const saved = localStorage.getItem('rcl_theme');
@@ -36,6 +38,16 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             setIsDark(true);
             document.documentElement.classList.add('dark');
         }
+    }, []);
+
+    useEffect(() => {
+        const updateTime = () => {
+            const now = new Date();
+            setDateTime(format(now, "EEEE, MMM d, yyyy • hh:mm:ss a"));
+        };
+        updateTime();
+        const interval = setInterval(updateTime, 1000);
+        return () => clearInterval(interval);
     }, []);
 
     const toggleTheme = () => {
@@ -155,6 +167,11 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 </div>
                 <span className="font-black uppercase tracking-tighter">{company?.name || APP_NAME}</span>
             </Link>
+          </div>
+
+          <div className="hidden lg:flex items-center gap-3 px-4 py-1.5 bg-muted/30 rounded-xl border border-border/50 font-mono text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground shadow-inner">
+            <Clock className="h-3 w-3 text-primary" />
+            {dateTime}
           </div>
           
           <div className="flex items-center gap-4">
