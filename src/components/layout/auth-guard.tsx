@@ -111,11 +111,11 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 </div>
             </SidebarHeader>
 
-            <SidebarContent className="px-4 group-data-[collapsible=icon]:px-0 scrollbar-hide overflow-y-auto">
+            <SidebarContent className="px-4 group-data-[collapsible=icon]:px-1 overflow-y-auto">
                 <SidebarNav />
             </SidebarContent>
 
-            <SidebarFooter className="p-6 space-y-4 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:pb-6 group-data-[collapsible=icon]:items-center">
+            <SidebarFooter className="p-6 space-y-4 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:pb-6 group-data-[collapsible=icon]:items-center mt-auto border-t border-white/5">
                 <div className="flex justify-center group-data-[collapsible=icon]:pb-2">
                     <Button 
                         variant="ghost" 

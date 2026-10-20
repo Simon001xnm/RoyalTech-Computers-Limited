@@ -17,7 +17,6 @@ import { useSaaS } from "@/components/saas/saas-provider";
 import { useMemo } from "react";
 import type { User as AppUser, Company } from '@/types';
 import { Badge } from "../ui/badge";
-import { ChevronRight } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
@@ -105,7 +104,7 @@ export function SidebarNav() {
   };
   
   return (
-    <div className="flex flex-col h-full py-2">
+    <div className="flex flex-col py-2">
       <SidebarGroup className="group-data-[collapsible=icon]:px-0">
         <SidebarGroupLabel className="px-3 text-[10px] font-black tracking-[0.2em] text-muted-foreground/40 mb-2 group-data-[collapsible=icon]:hidden">Main Menu</SidebarGroupLabel>
         <SidebarGroupContent>
