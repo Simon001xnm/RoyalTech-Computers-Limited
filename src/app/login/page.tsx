@@ -7,10 +7,11 @@ import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignIn, initiatePasswordReset } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Eye, EyeOff, Quote, ShieldCheck, Info, ArrowLeft } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Quote, ShieldCheck, Info, ArrowLeft, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 
 const quotes = [
   { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" },
@@ -89,8 +90,23 @@ export default function LoginPage() {
 
   if (isUserLoading || user) {
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-            <Loader2 className="w-5 h-5 text-primary animate-spin opacity-20" />
+        <div className="flex h-screen w-full flex-col items-center justify-center bg-[#0a0a0a] text-white space-y-8 animate-in fade-in duration-1000">
+            <div className="relative h-24 w-24">
+                <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
+                <div className="absolute inset-0 border-4 border-t-primary rounded-full animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <Zap className="h-8 w-8 text-primary fill-primary animate-pulse" />
+                </div>
+            </div>
+            <div className="text-center space-y-3">
+                <h2 className="text-2xl font-black uppercase tracking-tighter text-white">Business Hub</h2>
+                <div className="flex flex-col items-center gap-3">
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 h-6 text-[9px] font-black uppercase tracking-[0.25em] px-4 animate-pulse">
+                        CONNECTING TO INFRASTRUCTURE...
+                    </Badge>
+                    <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.4em]">v3.26 Secure Access</p>
+                </div>
+            </div>
         </div>
     );
   }

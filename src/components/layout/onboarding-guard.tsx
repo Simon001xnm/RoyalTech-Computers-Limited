@@ -17,12 +17,14 @@ import { logger } from '@/lib/logger';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
+import { useSaaS } from '@/components/saas/saas-provider';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/legal'];
 
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
+  const { tenant } = useSaaS();
   const firestore = useFirestore();
   const { toast } = useToast();
   const pathname = usePathname();
@@ -112,18 +114,31 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   if (isUserLoading || isProfileLoading || isSelfHealing) {
     if (isPublic) return <>{children}</>;
     return (
-        <div className="h-screen w-full flex flex-col items-center justify-center bg-background space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin text-primary opacity-20" />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground animate-pulse">
-                {isSelfHealing ? "Opening Shop..." : "Checking account..."}
-            </p>
+        <div className="flex h-screen w-full flex-col items-center justify-center bg-[#0a0a0a] text-white space-y-8 animate-in fade-in duration-1000">
+            <div className="relative h-24 w-24">
+                <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
+                <div className="absolute inset-0 border-4 border-t-primary rounded-full animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <Zap className="h-8 w-8 text-primary fill-primary animate-pulse" />
+                </div>
+            </div>
+            <div className="text-center space-y-3">
+                <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
+                    {tenant?.name || "Business Hub"}
+                </h2>
+                <div className="flex flex-col items-center gap-3">
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 h-6 text-[9px] font-black uppercase tracking-[0.25em] px-4 animate-pulse">
+                        {isSelfHealing ? "RESTORING SHOP NODE..." : "FINALIZING SETUP..."}
+                    </Badge>
+                    <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.4em]">v3.26 Secure Logic</p>
+                </div>
+            </div>
         </div>
     );
   }
 
   if (!user || isPublic) return <>{children}</>;
   
-  // Skip onboarding for Super Admin
   if (userProfile?.role === 'super_admin') return <>{children}</>;
 
   if (userProfile && !userProfile.tenantId && (!userProfile.tenantIds || userProfile.tenantIds.length === 0)) {

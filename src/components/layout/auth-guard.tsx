@@ -9,7 +9,7 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc, collection, query, where } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -29,8 +29,6 @@ const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/l
 
 /**
  * DebtIndicator Component
- * Counts unique customers with balance > 0
- * Updated: Filtered client-side to avoid Firestore composite index requirement.
  */
 function DebtIndicator({ tenantId }: { tenantId: string }) {
     const firestore = useFirestore();
@@ -43,7 +41,6 @@ function DebtIndicator({ tenantId }: { tenantId: string }) {
     
     const uniqueDebtors = useMemo(() => {
         if (!allSales) return 0;
-        // Identify unique customers who have an unpaid balance
         const debtorIds = allSales
             .filter(s => (Number(s.balance) || 0) > 0)
             .map(s => s.customerId);
@@ -62,6 +59,31 @@ function DebtIndicator({ tenantId }: { tenantId: string }) {
                 </Badge>
             </Button>
         </Link>
+    );
+}
+
+function BrandedLoader({ title, sub }: { title?: string, sub?: string }) {
+    return (
+        <div className="flex h-screen w-full flex-col items-center justify-center bg-[#0a0a0a] text-white space-y-8 animate-in fade-in duration-1000">
+            <div className="relative h-24 w-24">
+                <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
+                <div className="absolute inset-0 border-4 border-t-primary rounded-full animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <Zap className="h-8 w-8 text-primary fill-primary animate-pulse" />
+                </div>
+            </div>
+            <div className="text-center space-y-3 px-6">
+                <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
+                    {title || "Business Hub"}
+                </h2>
+                <div className="flex flex-col items-center gap-3">
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 h-6 text-[9px] font-black uppercase tracking-[0.25em] px-4 animate-pulse">
+                        {sub || "ESTABLISHING SECURE SILO..."}
+                    </Badge>
+                    <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.4em]">v3.26 Platform Core</p>
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -301,6 +323,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
+  const { tenant, isLoading: isSaaSLoading } = useSaaS();
   const router = useRouter();
   const pathname = usePathname();
   const firestore = useFirestore();
@@ -321,23 +344,22 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [user, isUserLoading, userProfile, router, pathname, isPublicPath, isAuthPath]);
 
+  // COMBINED LOADING STATE (AUTHENTICATED)
+  if (user && (isProfileLoading || isSaaSLoading)) {
+      return (
+        <BrandedLoader 
+            title={tenant?.name || "Business Hub"} 
+            sub={tenant?.name ? "SYNCHRONIZING SILO DATA..." : "AUTHENTICATING ACCESS..."} 
+        />
+      );
+  }
+
+  // INITIAL AUTH CHECK
   if (isUserLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="w-6 h-6 text-primary animate-spin opacity-20" />
-      </div>
-    );
+    return <BrandedLoader sub="INITIALIZING INFRASTRUCTURE..." />;
   }
 
   if (user) {
-    if (isProfileLoading) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center bg-background">
-                <Loader2 className="w-6 h-6 text-primary animate-spin opacity-20" />
-            </div>
-        );
-    }
-
     if (userProfile?.status === 'suspended') {
         return (
             <div className="flex h-screen w-full flex-col items-center justify-center p-8 text-center space-y-6 bg-background">
