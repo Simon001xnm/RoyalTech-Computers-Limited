@@ -19,6 +19,7 @@ import type { User as AppUser, Company } from '@/types';
 import { Badge } from "../ui/badge";
 import { ChevronRight } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -67,17 +68,27 @@ export function SidebarNav() {
     return (
       <SidebarMenuItem key={item.href} className="relative">
         {isActive && (
-            <div className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-1.5 h-6 bg-red-600 rounded-r-full z-10" />
+            <div className="absolute left-[-16px] group-data-[collapsible=icon]:left-[-8px] top-1/2 -translate-y-1/2 w-1.5 h-6 bg-red-600 rounded-r-full z-10 transition-all" />
         )}
         <Link href={item.href} className="w-full">
           <SidebarMenuButton
             isActive={isActive}
             tooltip={item.label}
-            className="w-full justify-start font-bold hover:bg-sidebar-accent transition-all px-3 h-10 rounded-xl"
+            className={cn(
+                "w-full justify-start font-bold hover:bg-sidebar-accent transition-all px-3 h-10 rounded-xl",
+                "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+            )}
             size="default"
           >
-            <item.icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-foreground' : 'text-muted-foreground opacity-60'}`} />
-            <span className={`text-[11px] tracking-tight ml-2 ${isActive ? 'font-bold' : 'font-medium opacity-70'}`}>
+            <item.icon className={cn(
+                "h-4 w-4 shrink-0 transition-colors",
+                isActive ? 'text-foreground' : 'text-muted-foreground opacity-60'
+            )} />
+            <span className={cn(
+                "text-[11px] tracking-tight ml-2",
+                isActive ? 'font-bold' : 'font-medium opacity-70',
+                "group-data-[collapsible=icon]:hidden"
+            )}>
                 {item.label}
             </span>
             
@@ -94,8 +105,8 @@ export function SidebarNav() {
   
   return (
     <div className="flex flex-col h-full py-2">
-      <SidebarGroup>
-        <SidebarGroupLabel className="px-3 text-[10px] font-black tracking-[0.2em] text-muted-foreground/40 mb-2">Main Menu</SidebarGroupLabel>
+      <SidebarGroup className="group-data-[collapsible=icon]:px-0">
+        <SidebarGroupLabel className="px-3 text-[10px] font-black tracking-[0.2em] text-muted-foreground/40 mb-2 group-data-[collapsible=icon]:hidden">Main Menu</SidebarGroupLabel>
         <SidebarGroupContent>
             <SidebarMenu className="gap-1">
                 {menuItems.map((item) => <NavItem key={item.id} item={item} />)}
@@ -103,24 +114,27 @@ export function SidebarNav() {
         </SidebarGroupContent>
       </SidebarGroup>
 
-      <div className="my-2 px-3">
+      <div className="my-2 px-3 group-data-[collapsible=icon]:px-1">
           <Separator className="opacity-5" />
       </div>
 
-      <SidebarGroup>
-        <SidebarGroupLabel className="px-3 text-[10px] font-black tracking-[0.2em] text-muted-foreground/40 mb-2">Company Groups</SidebarGroupLabel>
+      <SidebarGroup className="group-data-[collapsible=icon]:px-0">
+        <SidebarGroupLabel className="px-3 text-[10px] font-black tracking-[0.2em] text-muted-foreground/40 mb-2 group-data-[collapsible=icon]:hidden">Company Groups</SidebarGroupLabel>
         <SidebarGroupContent>
             <SidebarMenu className="gap-1">
                 {groupItems.map((item) => (
-                    <SidebarMenuItem key={item.id}>
+                    <SidebarMenuItem key={item.id} className="relative">
                         <Link href={item.href} className="w-full">
                             <SidebarMenuButton
                                 isActive={pathname === item.href}
                                 tooltip={item.label}
-                                className="px-3 h-10 rounded-xl hover:bg-sidebar-accent w-full"
+                                className={cn(
+                                    "px-3 h-10 rounded-xl hover:bg-sidebar-accent w-full",
+                                    "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+                                )}
                             >
                                 <item.icon className="h-4 w-4 text-muted-foreground opacity-60" />
-                                <span className="text-[11px] font-medium tracking-tight ml-2 opacity-70">{item.label}</span>
+                                <span className="text-[11px] font-medium tracking-tight ml-2 opacity-70 group-data-[collapsible=icon]:hidden">{item.label}</span>
                                 <ChevronRight className="ml-auto h-3 w-3 opacity-20 group-data-[collapsible=icon]:hidden" />
                             </SidebarMenuButton>
                         </Link>
