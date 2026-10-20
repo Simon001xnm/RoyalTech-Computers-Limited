@@ -141,7 +141,7 @@ export function DocumentsClient() {
     }
   }, [editingDoc]);
 
-  // Recalculate Brought Forward balance (excluding current document if editing)
+  // Recalculate Brought Forward balance
   useEffect(() => {
     if (!selectedCustomerId || !tenant) {
       setCustomerBalance(0);
@@ -158,7 +158,6 @@ export function DocumentsClient() {
         );
         const snap = await getDocs(q);
         
-        // Sum balances while excluding the document being edited to prevent double counting
         const totalBalance = snap.docs.reduce((acc, saleDoc) => {
             if (editingDoc && saleDoc.data().documentId === editingDoc.id) {
                 return acc;
@@ -412,7 +411,6 @@ export function DocumentsClient() {
         if (type === 'Invoice' || type === 'Receipt') {
             const salesRef = collection(firestore, 'sales_transactions');
             
-            // Find existing sale to preserve historical payments
             let saleRef = doc(collection(firestore, 'sales_transactions'));
             let existingAmountPaid = 0;
 
@@ -451,7 +449,7 @@ export function DocumentsClient() {
                 createdBy: isEditing ? editingDoc.createdBy : { uid: user.uid, name: user.displayName || 'User' }
             });
 
-            // CRITICAL: Log payment entry for Receipts to sync with Payment Ledger
+            // CRITICAL: Log payment entry for Receipts to sync with Payment Ledger and Statement
             if (type === 'Receipt') {
                 const payRef = doc(collection(firestore, 'payments'));
                 batch.set(payRef, {

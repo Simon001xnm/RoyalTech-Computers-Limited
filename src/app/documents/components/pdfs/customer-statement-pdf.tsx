@@ -15,8 +15,12 @@ interface CustomerStatementPdfProps {
 export function CustomerStatementPdf({ customer, sales, payments, workspace }: CustomerStatementPdfProps) {
   const primaryBlue = "#1e3a8a"; 
 
+  // TOTAL INVOICED: Sum of all invoices and receipts billed to the client
   const totalInvoiced = sales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
+  
+  // TOTAL PAID: Sum of all matching payments in the ledger (includes POS receipts and manual adjustments)
   const totalPaid = payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+  
   const netBalance = totalInvoiced - totalPaid;
 
   const formatCurrency = (value: number) => {

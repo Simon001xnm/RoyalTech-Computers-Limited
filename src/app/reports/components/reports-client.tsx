@@ -52,6 +52,7 @@ export interface PnlData {
   operatingIncome: {
     totalSales: number;
     totalVat: number;
+    totalCollected: number;
   };
   costOfGoodsSold: {
     totalCogs: number;
@@ -65,6 +66,7 @@ export interface PnlData {
   netIncome: number;
   sales: any[];
   expenses: any[];
+  payments: any[];
 }
 
 type FilterPreset = 'today' | 'month' | 'year' | 'custom';
@@ -99,30 +101,31 @@ export function ReportsClient() {
     return query(collection(firestore, 'expenses'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
 
-  const customersQuery = useMemoFirebase(() => {
+  const paymentsQuery = useMemoFirebase(() => {
     if (!tenant) return null;
-    return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
+    return query(collection(firestore, 'payments'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
 
   const { data: rawSales, isLoading: salesLoading } = useCollection(salesQuery);
   const { data: rawExpenses, isLoading: expensesLoading } = useCollection(expensesQuery);
-  const { data: rawCustomers, isLoading: customersLoading } = useCollection(customersQuery);
+  const { data: rawPayments, isLoading: paymentsLoading } = useCollection(paymentsQuery);
 
-  const isLoading = salesLoading || expensesLoading || customersLoading;
+  const isLoading = salesLoading || expensesLoading || paymentsLoading;
 
   // P&L COMPUTATION
   const pnlData = useMemo<PnlData>(() => {
-    if (!rawSales || !rawExpenses || !date?.from || !date?.to) {
+    if (!rawSales || !rawExpenses || !rawPayments || !date?.from || !date?.to) {
         return { 
-            operatingIncome: { totalSales: 0, totalVat: 0 }, 
+            operatingIncome: { totalSales: 0, totalVat: 0, totalCollected: 0 }, 
             costOfGoodsSold: { totalCogs: 0, cogsByCategory: {} }, 
             operatingExpenses: { totalExpenses: 0, expenseByCategory: {} },
-            grossProfit: 0, netIncome: 0, sales: [], expenses: []
+            grossProfit: 0, netIncome: 0, sales: [], expenses: [], payments: []
         };
     }
     const interval = { start: startOfDay(date.from), end: endOfDay(date.to) };
     const filteredSales = rawSales.filter(s => { try { return isWithinInterval(parseISO(s.date), interval); } catch { return false; } });
     const filteredExpenses = rawExpenses.filter(e => { try { return isWithinInterval(parseISO(e.date), interval); } catch { return false; } });
+    const filteredPayments = rawPayments.filter(p => { try { return isWithinInterval(parseISO(p.date), interval); } catch { return false; } });
 
     let totalSales = 0;
     let totalVat = 0;
@@ -130,6 +133,8 @@ export function ReportsClient() {
         totalSales += (Number(s.total) || 0);
         totalVat += (Number(s.vatAmount) || 0);
     });
+
+    const totalCollected = filteredPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
     
     const cogsBreakdown = filteredSales.reduce((acc, sale) => {
         sale.items?.forEach((item: any) => {
@@ -150,19 +155,20 @@ export function ReportsClient() {
 
     const grossProfit = totalSales - cogsBreakdown.totalCogs - totalVat;
     return {
-      operatingIncome: { totalSales, totalVat },
+      operatingIncome: { totalSales, totalVat, totalCollected },
       costOfGoodsSold: cogsBreakdown,
       operatingExpenses: { totalExpenses: totalExp, expenseByCategory: expByCat },
       grossProfit,
       netIncome: grossProfit - totalExp,
       sales: filteredSales,
-      expenses: filteredExpenses
+      expenses: filteredExpenses,
+      payments: filteredPayments
     };
-  }, [rawSales, rawExpenses, date]);
+  }, [rawSales, rawExpenses, rawPayments, date]);
 
   // ANALYTICS DASHBOARD ENGINE
   const analytics = useMemo(() => {
-    if (!rawSales || !rawExpenses || !rawCustomers || !date?.from || !date?.to) return null;
+    if (!rawSales || !rawExpenses || !date?.from || !date?.to) return null;
 
     const interval = { start: startOfDay(date.from), end: endOfDay(date.to) };
     const filteredSalesForPeriod = rawSales.filter(s => { try { return isWithinInterval(parseISO(s.date), interval); } catch { return false; } });
@@ -181,7 +187,6 @@ export function ReportsClient() {
     const totalRevenue = filteredSalesForPeriod.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
     const totalExpenses = filteredExpensesForPeriod.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
     
-    // Product Distribution Logic (Top 5 + Others)
     const productCounts: Record<string, number> = {};
     filteredSalesForPeriod.forEach(sale => {
       sale.items?.forEach((item: any) => {
@@ -214,7 +219,7 @@ export function ReportsClient() {
         },
         categoryData: categoryData.length > 0 ? categoryData : [{ name: 'No Sales Data', value: 1 }]
     };
-  }, [rawSales, rawExpenses, rawCustomers, date]);
+  }, [rawSales, rawExpenses, date]);
 
   const handleApplyPreset = (preset: FilterPreset) => {
     setFilterPreset(preset);
@@ -257,16 +262,25 @@ export function ReportsClient() {
 
   const customerSummaryData = useMemo(() => {
     const summaryMap: Record<string, any> = {};
+    
     pnlData.sales.forEach(s => {
         const cId = s.customerId || 'walk-in';
         if (!summaryMap[cId]) {
             summaryMap[cId] = { name: s.customerName || 'GENERAL WALK-IN', opening: Number(s.previousBalance || 0), sales: 0, paid: 0 };
         }
         summaryMap[cId].sales += Number(s.total || 0);
-        summaryMap[cId].paid += Number(s.amountPaid || 0);
     });
-    return Object.values(summaryMap).sort((a,b) => b.sales - a.sales);
-  }, [pnlData.sales]);
+
+    pnlData.payments.forEach(p => {
+        const cId = p.customerId || 'walk-in';
+        if (!summaryMap[cId]) {
+            summaryMap[cId] = { name: p.customerName || 'GENERAL WALK-IN', opening: 0, sales: 0, paid: 0 };
+        }
+        summaryMap[cId].paid += Number(p.amount || 0);
+    });
+
+    return Object.values(summaryMap).sort((a: any, b: any) => b.sales - a.sales);
+  }, [pnlData.sales, pnlData.payments]);
 
   const unifiedLedgerData = useMemo(() => {
     return [
@@ -285,7 +299,6 @@ export function ReportsClient() {
     ];
   }, [pnlData.sales, pnlData.expenses]);
 
-  // TABLE COLUMNS - CUSTOMER SUMMARY
   const customerColumns = useMemo<ColumnDef<any>[]>(() => [
     {
       accessorKey: "name",
@@ -314,7 +327,6 @@ export function ReportsClient() {
     }
   ], []);
 
-  // TABLE COLUMNS - LEDGER
   const ledgerColumns = useMemo<ColumnDef<any>[]>(() => [
     {
       accessorKey: "date",
@@ -531,7 +543,6 @@ export function ReportsClient() {
                         </div>
                     </div>
 
-                    {/* PAGINATED CUSTOMER SUMMARY */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
                             <Users className="h-4 w-4 text-primary" />
@@ -572,7 +583,6 @@ export function ReportsClient() {
                         </div>
                     </div>
 
-                    {/* PAGINATED DETAILED LEDGER */}
                     <div className="space-y-4 pt-4">
                         <div className="flex items-center gap-2">
                             <Wallet className="h-4 w-4 text-primary" />

@@ -131,6 +131,8 @@ export function ReceivablesClient() {
     sales.forEach(sale => {
         if (debtorMap[sale.customerId]) {
             debtorMap[sale.customerId].sales.push(sale);
+            // Receipts count as invoices but they are paid instantly. Invoices are credit. 
+            // In either case, 'total' is what was billed.
             debtorMap[sale.customerId].totalInvoiced += (Number(sale.total) || 0);
             
             const saleDate = sale.updatedAt || sale.date || sale.createdAt;
@@ -281,6 +283,7 @@ export function ReceivablesClient() {
             createdBy: { uid: user.uid, name: user.displayName || user.email }
         });
 
+        // Waterfall deduction: Clear oldest unpaid sales first
         const unpaidSales = [...selectedAccount.sales]
             .filter(s => (Number(s.balance) || 0) > 0)
             .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
