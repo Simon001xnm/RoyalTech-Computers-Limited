@@ -115,7 +115,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 <SidebarNav />
             </SidebarContent>
 
-            <SidebarFooter className="p-6 space-y-4 group-data-[collapsible=icon]:p-2">
+            <SidebarFooter className="p-6 space-y-4 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:items-center">
                 <div className="flex justify-center group-data-[collapsible=icon]:pb-2">
                     <Button 
                         variant="ghost" 
@@ -129,8 +129,8 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 </div>
 
                 <div className="flex items-center justify-between p-2 rounded-2xl hover:bg-muted/30 transition-colors group group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                        <Avatar className="h-9 w-9 rounded-xl border-2 border-background shadow-sm ring-1 ring-black/5">
+                    <div className="flex items-center gap-3 overflow-hidden group-data-[collapsible=icon]:justify-center">
+                        <Avatar className="h-9 w-9 rounded-xl border-2 border-background shadow-sm ring-1 ring-black/5 shrink-0">
                             <AvatarImage src={userProfile?.avatarUrl || user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`} className="object-cover" />
                             <AvatarFallback className="bg-primary/5 text-primary text-[10px] font-black">
                                 {userProfile?.name?.substring(0,2).toUpperCase() || 'ME'}

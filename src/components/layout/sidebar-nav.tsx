@@ -66,17 +66,18 @@ export function SidebarNav() {
     if (item.id === 'documents') badge = "14";
 
     return (
-      <SidebarMenuItem key={item.href} className="relative">
+      <SidebarMenuItem key={item.href} className="relative px-0 flex items-center justify-center">
         {isActive && (
-            <div className="absolute left-[-16px] group-data-[collapsible=icon]:left-[-8px] top-1/2 -translate-y-1/2 w-1.5 h-6 bg-red-600 rounded-r-full z-10 transition-all" />
+            <div className="absolute left-[-16px] group-data-[collapsible=icon]:left-[-8px] top-1/2 -translate-y-1/2 w-1.5 h-6 bg-red-600 rounded-r-full z-20 transition-all" />
         )}
-        <Link href={item.href} className="w-full">
+        <Link href={item.href} className="w-full flex justify-center">
           <SidebarMenuButton
             isActive={isActive}
             tooltip={item.label}
             className={cn(
-                "w-full justify-start font-bold hover:bg-sidebar-accent transition-all px-3 h-10 rounded-xl",
-                "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+                "w-full flex items-center font-bold transition-all px-3 h-10 rounded-xl justify-start",
+                "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:rounded-full",
+                isActive ? "bg-muted/60" : "hover:bg-muted/40"
             )}
             size="default"
           >
@@ -108,7 +109,7 @@ export function SidebarNav() {
       <SidebarGroup className="group-data-[collapsible=icon]:px-0">
         <SidebarGroupLabel className="px-3 text-[10px] font-black tracking-[0.2em] text-muted-foreground/40 mb-2 group-data-[collapsible=icon]:hidden">Main Menu</SidebarGroupLabel>
         <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
+            <SidebarMenu className="gap-1 group-data-[collapsible=icon]:items-center">
                 {menuItems.map((item) => <NavItem key={item.id} item={item} />)}
             </SidebarMenu>
         </SidebarGroupContent>
@@ -121,25 +122,41 @@ export function SidebarNav() {
       <SidebarGroup className="group-data-[collapsible=icon]:px-0">
         <SidebarGroupLabel className="px-3 text-[10px] font-black tracking-[0.2em] text-muted-foreground/40 mb-2 group-data-[collapsible=icon]:hidden">Company Groups</SidebarGroupLabel>
         <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
-                {groupItems.map((item) => (
-                    <SidebarMenuItem key={item.id} className="relative">
-                        <Link href={item.href} className="w-full">
-                            <SidebarMenuButton
-                                isActive={pathname === item.href}
-                                tooltip={item.label}
-                                className={cn(
-                                    "px-3 h-10 rounded-xl hover:bg-sidebar-accent w-full",
-                                    "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-                                )}
-                            >
-                                <item.icon className="h-4 w-4 text-muted-foreground opacity-60" />
-                                <span className="text-[11px] font-medium tracking-tight ml-2 opacity-70 group-data-[collapsible=icon]:hidden">{item.label}</span>
-                                <ChevronRight className="ml-auto h-3 w-3 opacity-20 group-data-[collapsible=icon]:hidden" />
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
-                ))}
+            <SidebarMenu className="gap-1 group-data-[collapsible=icon]:items-center">
+                {groupItems.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                        <SidebarMenuItem key={item.id} className="relative px-0 flex items-center justify-center w-full">
+                             {isActive && (
+                                <div className="absolute left-[-16px] group-data-[collapsible=icon]:left-[-8px] top-1/2 -translate-y-1/2 w-1.5 h-6 bg-red-600 rounded-r-full z-20 transition-all" />
+                            )}
+                            <Link href={item.href} className="w-full flex justify-center">
+                                <SidebarMenuButton
+                                    isActive={isActive}
+                                    tooltip={item.label}
+                                    className={cn(
+                                        "px-3 h-10 rounded-xl w-full flex items-center justify-start",
+                                        isActive ? "bg-muted/60" : "hover:bg-muted/40",
+                                        "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:rounded-full"
+                                    )}
+                                >
+                                    <item.icon className={cn(
+                                        "h-4 w-4 shrink-0 transition-colors",
+                                        isActive ? 'text-foreground' : 'text-muted-foreground opacity-60'
+                                    )} />
+                                    <span className={cn(
+                                        "text-[11px] tracking-tight ml-2",
+                                        isActive ? 'font-bold' : 'font-medium opacity-70',
+                                        "group-data-[collapsible=icon]:hidden"
+                                    )}>
+                                        {item.label}
+                                    </span>
+                                    <ChevronRight className="ml-auto h-3 w-3 opacity-20 group-data-[collapsible=icon]:hidden" />
+                                </SidebarMenuButton>
+                            </Link>
+                        </SidebarMenuItem>
+                    )
+                })}
             </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>

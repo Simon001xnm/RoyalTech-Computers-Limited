@@ -39,7 +39,7 @@ export interface NavItem {
 
 /**
  * SIMPLE NAVIGATION
- * Using basic English for all users.
+ * Using Title Case for all labels to maintain professional simplicity.
  */
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', href: '/', label: 'Main Dashboard', icon: LayoutDashboard },
@@ -49,7 +49,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'documents', href: '/documents', label: 'Paperwork', icon: FileText },
   
   // STOCK & CLIENTS
-  { id: 'stock', href: '/stock', label: 'Items in Shop', icon: Package },
+  { id: 'stock', href: '/stock', label: 'Items In Shop', icon: Package },
   { id: 'customers', href: '/customers', label: 'Client List', icon: Users },
   { id: 'receivables', href: '/receivables', label: 'Money Owed', icon: Wallet },
   
