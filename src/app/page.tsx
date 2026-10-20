@@ -128,8 +128,8 @@ export default function RootPage() {
 }
 
 const PriceRibbon = (props: any) => {
-    const { x, y, value } = props;
-    if (value === 0) return null;
+    const { x, y, value, index } = props;
+    if (value === 0 || value === undefined) return null;
     
     const formattedValue = new Intl.NumberFormat('en-KE', { 
         style: 'currency', 
@@ -137,10 +137,25 @@ const PriceRibbon = (props: any) => {
         maximumFractionDigits: 0 
     }).format(value);
 
+    // Logic to prevent clipping at graph edges
+    let rectX = x - 45;
+    let textX = x;
+    
+    // Adjust for the last point (Year)
+    if (index === 3) {
+        rectX = x - 85;
+        textX = x - 40;
+    } 
+    // Adjust for the first point (Today)
+    else if (index === 0) {
+        rectX = x - 5;
+        textX = x + 40;
+    }
+
     return (
         <g>
             <rect 
-                x={x - 45} 
+                x={rectX} 
                 y={y - 35} 
                 width={90} 
                 height={20} 
@@ -149,7 +164,7 @@ const PriceRibbon = (props: any) => {
                 className="drop-shadow-lg"
             />
             <text 
-                x={x} 
+                x={textX} 
                 y={y - 21} 
                 fill="white" 
                 fontSize={9} 
@@ -680,7 +695,7 @@ function DashboardPage() {
                         </div>
                         <div className="h-[350px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={performanceStats} margin={{ top: 60, right: 10, left: -20, bottom: 0 }}>
+                                <AreaChart data={performanceStats} margin={{ top: 60, right: 50, left: -20, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorRev" x1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3}/>
