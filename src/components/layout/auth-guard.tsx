@@ -74,7 +74,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
       <Sidebar 
         variant="sidebar" 
         collapsible="icon" 
-        className="bg-transparent border-none no-print group-data-[side=left]:ml-4 group-data-[side=left]:my-4"
+        className="bg-transparent border-none no-print group-data-[side=left]:ml-4 group-data-[side=left]:my-4 z-40"
       >
         <div className="flex flex-col h-full bg-sidebar rounded-[2.5rem] shadow-2xl border border-sidebar-border overflow-hidden">
             <SidebarHeader className="p-6 pb-2 space-y-4 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:pb-4">
@@ -145,8 +145,8 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             </SidebarFooter>
         </div>
       </Sidebar>
-      <SidebarInset className="min-h-screen">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6 no-print">
+      <SidebarInset className="min-h-screen bg-muted/10">
+        <header className="sticky top-4 z-30 mx-4 flex h-16 items-center justify-between border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6 no-print rounded-2xl shadow-sm">
           <div className="flex items-center gap-4">
             <SidebarTrigger className="h-10 w-10" />
             <Link href="/" className="flex items-center gap-2 font-bold text-lg md:hidden">
@@ -204,7 +204,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             )}
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8 bg-muted/20">
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
           {children}
         </main>
       </SidebarInset>
