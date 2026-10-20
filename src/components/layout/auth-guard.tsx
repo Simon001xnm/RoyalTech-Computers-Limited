@@ -117,25 +117,20 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
 
             <SidebarFooter className="p-6 space-y-4 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:pb-6 group-data-[collapsible=icon]:items-center mt-auto border-t border-white/5">
                 <div className="flex justify-center group-data-[collapsible=icon]:pb-2">
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
+                    <button 
                         onClick={toggleTheme}
-                        className="h-10 w-10 rounded-xl transition-all hover:bg-muted/50"
+                        className="h-10 w-10 rounded-xl transition-all hover:bg-muted/50 flex items-center justify-center"
                         title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
                     >
                         {isDark ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-primary" />}
-                    </Button>
+                    </button>
                 </div>
 
                 <div className="flex items-center justify-between p-2 rounded-2xl hover:bg-muted/30 transition-colors group group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center">
                     <div className="flex items-center gap-3 overflow-hidden group-data-[collapsible=icon]:justify-center">
-                        <Avatar className="h-9 w-9 rounded-xl border-2 border-background shadow-sm ring-1 ring-black/5 shrink-0">
-                            <AvatarImage src={userProfile?.avatarUrl || user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`} className="object-cover" />
-                            <AvatarFallback className="bg-primary/5 text-primary text-[10px] font-black">
-                                {userProfile?.name?.substring(0,2).toUpperCase() || 'ME'}
-                            </AvatarFallback>
-                        </Avatar>
+                        <div className="h-9 w-9 rounded-xl border-2 border-background shadow-sm ring-1 ring-black/5 shrink-0 flex items-center justify-center bg-primary/5 text-primary">
+                            <UserIcon className="h-4 w-4" />
+                        </div>
                         <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
                             <p className="text-xs font-bold text-foreground truncate">{userProfile?.name || user?.displayName || 'User'}</p>
                             <p className="text-[10px] text-muted-foreground truncate opacity-40">{userProfile?.email || user?.email}</p>
@@ -173,7 +168,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm bg-white">
                       <AvatarImage 
-                        src={company?.logoUrl || userProfile?.avatarUrl || user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`} 
+                        src={company?.logoUrl || userProfile?.avatarUrl || user.photoURL} 
                         alt="Shop Profile" 
                         className="object-contain p-0.5"
                       />
