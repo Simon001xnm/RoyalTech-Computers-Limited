@@ -72,7 +72,6 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     <SidebarProvider defaultOpen={true}>
       <Sidebar variant="sidebar" collapsible="icon" className="border-r border-sidebar-border shadow-2xl no-print">
         <SidebarHeader className="p-4 space-y-4 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-4">
-            {/* Mac Dots Aesthetic */}
             <div className="flex gap-1.5 px-2 group-data-[collapsible=icon]:hidden">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
@@ -92,7 +91,6 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 </div>
             </div>
 
-            {/* Search Node */}
             <div className="px-2 group-data-[collapsible=icon]:hidden">
                 <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-40" />
@@ -103,7 +101,6 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 </div>
             </div>
             
-            {/* Collapsed Search Trigger */}
             <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center py-2">
                 <Search className="h-4 w-4 text-muted-foreground opacity-40" />
             </div>
@@ -114,37 +111,18 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
         </SidebarContent>
 
         <SidebarFooter className="p-4 space-y-4 group-data-[collapsible=icon]:px-2">
-            {/* Theme Switcher Node */}
-            <div className="p-1 bg-muted/40 rounded-xl flex items-center gap-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent">
+            <div className="flex justify-center group-data-[collapsible=icon]:pb-2">
                 <Button 
-                    variant={isDark ? "ghost" : "secondary"} 
-                    size="sm" 
-                    onClick={() => isDark && toggleTheme()}
-                    className={cn(
-                        "flex-1 h-8 text-[10px] font-black uppercase rounded-lg transition-all",
-                        !isDark && "bg-white shadow-sm text-black",
-                        "group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:px-0"
-                    )}
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={toggleTheme}
+                    className="h-10 w-10 rounded-xl transition-all hover:bg-muted/50"
+                    title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
                 >
-                    <Sun className="h-3.5 w-3.5 mr-1.5 group-data-[collapsible=icon]:mr-0" />
-                    <span className="group-data-[collapsible=icon]:hidden">Light</span>
-                </Button>
-                <Button 
-                    variant={isDark ? "secondary" : "ghost"} 
-                    size="sm" 
-                    onClick={() => !isDark && toggleTheme()}
-                    className={cn(
-                        "flex-1 h-8 text-[10px] font-black uppercase rounded-lg transition-all",
-                        isDark && "bg-[#2a2a2a] shadow-sm text-white",
-                        "group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:px-0"
-                    )}
-                >
-                    <Moon className="h-3.5 w-3.5 mr-1.5 group-data-[collapsible=icon]:mr-0" />
-                    <span className="group-data-[collapsible=icon]:hidden">Dark</span>
+                    {isDark ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-primary" />}
                 </Button>
             </div>
 
-            {/* Profile Node */}
             <div className="flex items-center justify-between p-2 rounded-2xl hover:bg-muted/30 transition-colors group group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center">
                 <div className="flex items-center gap-3 overflow-hidden">
                     <Avatar className="h-9 w-9 rounded-xl border-2 border-background shadow-sm ring-1 ring-black/5">
@@ -154,7 +132,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                         </AvatarFallback>
                     </Avatar>
                     <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
-                        <p className="text-xs font-black uppercase tracking-tight text-foreground truncate">{userProfile?.name || user?.displayName || 'User'}</p>
+                        <p className="text-xs font-bold text-foreground truncate">{userProfile?.name || user?.displayName || 'User'}</p>
                         <p className="text-[10px] text-muted-foreground truncate opacity-40">{userProfile?.email || user?.email}</p>
                     </div>
                 </div>
@@ -224,7 +202,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                         <DropdownMenuSeparator />
                     </>
                   )}
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer font-black text-xs uppercase tracking-tight">
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer font-bold text-xs uppercase tracking-tight">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Exit Shop Area</span>
                   </DropdownMenuItem>

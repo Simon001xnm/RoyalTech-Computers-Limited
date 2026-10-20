@@ -69,15 +69,15 @@ export function SidebarNav() {
         {isActive && (
             <div className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-1.5 h-6 bg-red-600 rounded-r-full z-10" />
         )}
-        <Link href={item.href} legacyBehavior passHref>
+        <Link href={item.href} className="w-full">
           <SidebarMenuButton
             isActive={isActive}
-            tooltip={{ children: item.label, side: "right", align: "center" }}
-            className="justify-start relative font-bold hover:bg-sidebar-accent transition-all px-3 h-10 rounded-xl"
+            tooltip={item.label}
+            className="w-full justify-start font-bold hover:bg-sidebar-accent transition-all px-3 h-10 rounded-xl"
             size="default"
           >
             <item.icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-foreground' : 'text-muted-foreground opacity-60'}`} />
-            <span className={`text-[11px] tracking-tight ml-2 ${isActive ? 'font-black' : 'font-bold opacity-70'}`}>
+            <span className={`text-[11px] tracking-tight ml-2 ${isActive ? 'font-bold' : 'font-medium opacity-70'}`}>
                 {item.label}
             </span>
             
@@ -113,13 +113,14 @@ export function SidebarNav() {
             <SidebarMenu className="gap-1">
                 {groupItems.map((item) => (
                     <SidebarMenuItem key={item.id}>
-                        <Link href={item.href} legacyBehavior passHref>
+                        <Link href={item.href} className="w-full">
                             <SidebarMenuButton
                                 isActive={pathname === item.href}
-                                className="px-3 h-10 rounded-xl hover:bg-sidebar-accent"
+                                tooltip={item.label}
+                                className="px-3 h-10 rounded-xl hover:bg-sidebar-accent w-full"
                             >
                                 <item.icon className="h-4 w-4 text-muted-foreground opacity-60" />
-                                <span className="text-[11px] font-bold tracking-tight ml-2 opacity-70">{item.label}</span>
+                                <span className="text-[11px] font-medium tracking-tight ml-2 opacity-70">{item.label}</span>
                                 <ChevronRight className="ml-auto h-3 w-3 opacity-20 group-data-[collapsible=icon]:hidden" />
                             </SidebarMenuButton>
                         </Link>
