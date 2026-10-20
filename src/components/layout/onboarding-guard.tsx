@@ -113,6 +113,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
   if (isUserLoading || isProfileLoading || isSelfHealing) {
     if (isPublic) return <>{children}</>;
+    const isMaster = userProfile?.role === 'super_admin';
     return (
         <div className="flex h-screen w-full flex-col items-center justify-center bg-[#0a0a0a] text-white space-y-8 animate-in fade-in duration-1000">
             <div className="relative h-24 w-24">
@@ -124,7 +125,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
             </div>
             <div className="text-center px-6">
                 <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
-                    {tenant?.name || "Business Hub"}
+                    {isMaster ? "Business Hub" : (tenant?.name || "Business Hub")}
                 </h2>
             </div>
         </div>

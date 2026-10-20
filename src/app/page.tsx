@@ -623,6 +623,7 @@ function DashboardPage() {
   const formatKes = (val: number) => new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
 
   if (salesLoading || stockLoading || expLoading || docsLoading || isProfileLoading) {
+      const isMaster = userProfile?.role === 'super_admin';
       return (
         <div className="flex h-screen w-full flex-col items-center justify-center bg-[#0a0a0a] text-white space-y-8 animate-in fade-in duration-1000">
             <div className="relative h-24 w-24">
@@ -634,7 +635,7 @@ function DashboardPage() {
             </div>
             <div className="text-center px-6">
                 <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
-                    {tenant?.name || "Business Hub"}
+                    {isMaster ? "Business Hub" : (tenant?.name || "Business Hub")}
                 </h2>
             </div>
         </div>

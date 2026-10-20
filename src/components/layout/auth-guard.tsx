@@ -93,6 +93,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     const [dateTime, setDateTime] = useState<string>("");
 
     const currentPeriod = searchParams.get('period') || 'month';
+    const isSuperAdmin = userProfile?.role === 'super_admin';
 
     useEffect(() => {
         const saved = localStorage.getItem('rcl_theme');
@@ -170,14 +171,18 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
 
                 <div className="flex items-center gap-3 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
                     <div className="h-10 w-10 shrink-0 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 overflow-hidden shadow-sm">
-                        {company?.logoUrl ? (
+                        {isSuperAdmin ? (
+                             <Zap className="h-5 w-5 text-primary" />
+                        ) : company?.logoUrl ? (
                             <img src={company.logoUrl} className="h-full w-full object-contain p-1" alt="Logo" />
                         ) : (
                             <Building2 className="h-5 w-5 text-primary" />
                         )}
                     </div>
                     <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
-                        <p className="text-sm font-black uppercase tracking-tighter truncate text-foreground">{company?.name || APP_NAME}</p>
+                        <p className="text-sm font-black uppercase tracking-tighter truncate text-foreground">
+                            {isSuperAdmin ? "Business Hub" : (company?.name || APP_NAME)}
+                        </p>
                     </div>
                 </div>
 
@@ -237,7 +242,9 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 <div className="bg-primary p-1.5 rounded-lg shadow-sm">
                     <Building2 className="h-4 w-4 text-white" />
                 </div>
-                <span className="font-black uppercase tracking-tighter">{company?.name || APP_NAME}</span>
+                <span className="font-black uppercase tracking-tighter">
+                    {isSuperAdmin ? "Business Hub" : (company?.name || APP_NAME)}
+                </span>
             </Link>
           </div>
 
@@ -251,26 +258,30 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors" onClick={handleRefresh} title="Sync Workspace">
                     <RefreshCw className="h-4 w-4" />
                 </Button>
-                <Separator orientation="vertical" className="h-4 mx-1" />
-                <Select value={currentPeriod} onValueChange={handlePeriodChange}>
-                    <SelectTrigger className="h-9 w-40 font-black text-[10px] uppercase bg-white border-2 rounded-xl">
-                        <Filter className="h-3 w-3 mr-2 text-primary" />
-                        <SelectValue placeholder="Period" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="today">Today's Flow</SelectItem>
-                        <SelectItem value="week">Weekly Summary</SelectItem>
-                        <SelectItem value="month">Monthly Audit</SelectItem>
-                        <SelectItem value="year">Annual Performance</SelectItem>
-                        <SelectItem value="custom">Custom Filter</SelectItem>
-                    </SelectContent>
-                </Select>
+                {!isSuperAdmin && (
+                    <>
+                        <Separator orientation="vertical" className="h-4 mx-1" />
+                        <Select value={currentPeriod} onValueChange={handlePeriodChange}>
+                            <SelectTrigger className="h-9 w-40 font-black text-[10px] uppercase bg-white border-2 rounded-xl">
+                                <Filter className="h-3 w-3 mr-2 text-primary" />
+                                <SelectValue placeholder="Period" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="today">Today's Flow</SelectItem>
+                                <SelectItem value="week">Weekly Summary</SelectItem>
+                                <SelectItem value="month">Monthly Audit</SelectItem>
+                                <SelectItem value="year">Annual Performance</SelectItem>
+                                <SelectItem value="custom">Custom Filter</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </>
+                )}
               </div>
           </div>
           
           <div className="flex items-center gap-4">
-            <ModuleTutorial />
-            {tenant?.id && <DebtIndicator tenantId={tenant.id} />}
+            {!isSuperAdmin && <ModuleTutorial />}
+            {!isSuperAdmin && tenant?.id && <DebtIndicator tenantId={tenant.id} />}
             <NotificationCenter />
             {user && (
               <DropdownMenu>
@@ -278,7 +289,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm bg-white">
                       <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-black uppercase">
-                        {company?.name?.substring(0, 2).toUpperCase() || 'CP'}
+                        {isSuperAdmin ? "BH" : (company?.name?.substring(0, 2).toUpperCase() || 'CP')}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -286,9 +297,11 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 <DropdownMenuContent className="w-64" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-xs font-black uppercase tracking-widest text-primary">Current Shop</p>
+                      <p className="text-xs font-black uppercase tracking-widest text-primary">
+                          {isSuperAdmin ? "Platform Controller" : "Current Shop"}
+                      </p>
                       <p className="text-sm font-black uppercase tracking-tight leading-none truncate">
-                        {company?.name || 'My Shop'}
+                        {isSuperAdmin ? "Business Hub" : (company?.name || 'My Shop')}
                       </p>
                       <Separator className="my-2" />
                       <p className="text-[10px] font-bold text-muted-foreground truncate flex items-center gap-2">
@@ -297,7 +310,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {isAdmin && (
+                  {!isSuperAdmin && (
                     <>
                         <Link href="/profile">
                             <DropdownMenuItem className="cursor-pointer font-bold text-xs uppercase tracking-tight">
@@ -350,9 +363,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // COMBINED LOADING STATE (AUTHENTICATED)
   if (user && (isProfileLoading || isSaaSLoading)) {
+      const isMaster = userProfile?.role === 'super_admin';
       return (
         <BrandedLoader 
-            title={tenant?.name || "Business Hub"} 
+            title={isMaster ? "Business Hub" : (tenant?.name || "Business Hub")} 
         />
       );
   }
