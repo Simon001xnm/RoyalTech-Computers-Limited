@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -26,7 +27,7 @@ import {
     Headset,
     Shield,
     DownloadCloud,
-    History,
+    History as HistoryIcon,
     MessageSquare,
     Trash2,
     ArrowRight,

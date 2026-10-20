@@ -41,7 +41,8 @@ import {
     UserPlus,
     ShieldAlert,
     ChevronRight,
-    Target
+    Target,
+    History as HistoryIcon
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -791,6 +792,7 @@ function DashboardPage() {
                                 <Command>
                                     <CommandInput placeholder="Find client..." className="h-12" />
                                     <CommandList>
+                                        <CommandEmpty>No clients found.</CommandEmpty>
                                         <CommandGroup>
                                             {customers?.map(c => (
                                                 <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({ id: c.id, name: c.name }); setCustomerSearchOpen(false); }} className="text-[10px] uppercase font-black p-4">
@@ -818,6 +820,7 @@ function DashboardPage() {
                                 <Command>
                                     <CommandInput placeholder="Search shop stock..." className="h-12" />
                                     <CommandList>
+                                        <CommandEmpty>No products found.</CommandEmpty>
                                         <CommandGroup>
                                             {assets?.filter(p => (p.quantity || 0) > 0).map(p => (
                                                 <CommandItem key={p.id} onSelect={() => handleOpenConfigDialog(p)} className="p-4 cursor-pointer">
@@ -891,7 +894,7 @@ function DashboardPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
                     <div className="bg-black p-2.5 rounded-xl shadow-lg">
-                        <History className="h-5 w-5 text-white" />
+                        <HistoryIcon className="h-5 w-5 text-white" />
                     </div>
                     <CardTitle className="text-xl font-black uppercase tracking-tight">Recent Activity Ledger</CardTitle>
                 </div>

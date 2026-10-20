@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -16,7 +17,7 @@ import {
     ArrowDownLeft, 
     Loader2,
     Calendar as CalendarIcon,
-    History
+    History as HistoryIcon
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -111,7 +112,7 @@ export function PaymentsClient() {
   if (!isAdmin) {
       return (
           <div className="flex h-[80vh] flex-col items-center justify-center p-8 text-center space-y-6">
-              <div className="bg-destructive/10 p-6 rounded-full"><History className="h-16 w-16 text-destructive" /></div>
+              <div className="bg-destructive/10 p-6 rounded-full"><HistoryIcon className="h-16 w-16 text-destructive" /></div>
               <div className="max-w-md space-y-2">
                   <h1 className="text-3xl font-black uppercase tracking-tighter">Access Forbidden</h1>
                   <p className="text-muted-foreground">The Payment Ledger is restricted to administrators only. Please contact your shop owner.</p>
@@ -140,7 +141,7 @@ export function PaymentsClient() {
         <CardHeader className="bg-muted/10 py-4 px-6 border-b">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                    <History className="h-4 w-4 text-primary" />
+                    <HistoryIcon className="h-4 w-4 text-primary" />
                     Transaction Stream
                 </CardTitle>
                 <div className="flex flex-wrap items-center gap-3">
