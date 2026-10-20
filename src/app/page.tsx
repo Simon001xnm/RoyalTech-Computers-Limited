@@ -608,9 +608,19 @@ function DashboardPage() {
 
   if (salesLoading || stockLoading || expLoading || docsLoading || isProfileLoading) {
       return (
-        <div className="flex h-[80vh] flex-col items-center justify-center space-y-4 bg-background">
-            <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Initializing Data Stream...</p>
+        <div className="flex h-screen w-full flex-col items-center justify-center bg-[#0a0a0a] text-white space-y-8 animate-in fade-in duration-1000">
+            <div className="relative h-24 w-24">
+                <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
+                <div className="absolute inset-0 border-4 border-t-primary rounded-full animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <Zap className="h-8 w-8 text-primary fill-primary animate-pulse" />
+                </div>
+            </div>
+            <div className="text-center px-6">
+                <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
+                    {tenant?.name || "Business Hub"}
+                </h2>
+            </div>
         </div>
       );
   }

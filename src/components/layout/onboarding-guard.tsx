@@ -122,16 +122,10 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                     <Zap className="h-8 w-8 text-primary fill-primary animate-pulse" />
                 </div>
             </div>
-            <div className="text-center space-y-3">
+            <div className="text-center px-6">
                 <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
                     {tenant?.name || "Business Hub"}
                 </h2>
-                <div className="flex flex-col items-center gap-3">
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 h-6 text-[9px] font-black uppercase tracking-[0.25em] px-4 animate-pulse">
-                        {isSelfHealing ? "RESTORING SHOP NODE..." : "FINALIZING SETUP..."}
-                    </Badge>
-                    <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.4em]">v3.26 Secure Logic</p>
-                </div>
             </div>
         </div>
     );

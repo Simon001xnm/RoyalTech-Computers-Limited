@@ -62,7 +62,7 @@ function DebtIndicator({ tenantId }: { tenantId: string }) {
     );
 }
 
-function BrandedLoader({ title, sub }: { title?: string, sub?: string }) {
+function BrandedLoader({ title }: { title?: string }) {
     return (
         <div className="flex h-screen w-full flex-col items-center justify-center bg-[#0a0a0a] text-white space-y-8 animate-in fade-in duration-1000">
             <div className="relative h-24 w-24">
@@ -72,16 +72,10 @@ function BrandedLoader({ title, sub }: { title?: string, sub?: string }) {
                     <Zap className="h-8 w-8 text-primary fill-primary animate-pulse" />
                 </div>
             </div>
-            <div className="text-center space-y-3 px-6">
+            <div className="text-center px-6">
                 <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
                     {title || "Business Hub"}
                 </h2>
-                <div className="flex flex-col items-center gap-3">
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 h-6 text-[9px] font-black uppercase tracking-[0.25em] px-4 animate-pulse">
-                        {sub || "ESTABLISHING SECURE SILO..."}
-                    </Badge>
-                    <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.4em]">v3.26 Platform Core</p>
-                </div>
             </div>
         </div>
     );
@@ -349,14 +343,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       return (
         <BrandedLoader 
             title={tenant?.name || "Business Hub"} 
-            sub={tenant?.name ? "SYNCHRONIZING SILO DATA..." : "AUTHENTICATING ACCESS..."} 
         />
       );
   }
 
   // INITIAL AUTH CHECK
   if (isUserLoading) {
-    return <BrandedLoader sub="INITIALIZING INFRASTRUCTURE..." />;
+    return <BrandedLoader />;
   }
 
   if (user) {
