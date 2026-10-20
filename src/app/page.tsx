@@ -443,6 +443,25 @@ function DashboardPage() {
             };
             batch.set(saleRef, saleData);
 
+            // LOG PAYMENT TO UNIFIED LEDGER
+            if (posAction === 'Receipt') {
+                const payRef = doc(collection(firestore, 'payments'));
+                batch.set(payRef, {
+                    tenantId: tenant.id,
+                    customerId: selectedCustomer.id,
+                    customerName: selectedCustomer.name,
+                    amount: cartTotal,
+                    method: paymentMode,
+                    type: 'Payment',
+                    reference: docTitle,
+                    date: timestamp,
+                    saleId: saleRef.id,
+                    documentId: docRef.id,
+                    createdAt: timestamp,
+                    createdBy: { uid: user.uid, name: user.displayName || 'User' }
+                });
+            }
+
             for (const item of cart) {
                 const productRef = doc(firestore, 'assets', item.id);
                 const currentProduct = assets?.find(p => p.id === item.id);

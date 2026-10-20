@@ -293,22 +293,28 @@ export function DocumentsClient() {
         const deduct = Math.min(currentBal, amountToPay);
         const newBal = currentBal - deduct;
 
+        const timestamp = new Date().toISOString();
+
         await updateDoc(doc(firestore, 'sales_transactions', saleDoc.id), {
             balance: newBal,
             amountPaid: currentPaid + deduct,
             status: newBal <= 0 ? 'Paid' : 'Partial',
-            updatedAt: new Date().toISOString()
+            updatedAt: timestamp
         });
 
-        await addDoc(collection(firestore, 'account_payments'), {
+        await addDoc(collection(firestore, 'payments'), {
             tenantId: tenant.id,
             customerId: saleDoc.data().customerId,
-            saleId: saleDoc.id,
-            documentId: targetInvoice.id,
+            customerName: saleDoc.data().customerName,
             amount: deduct,
             method: "Cash",
-            date: new Date().toISOString(),
-            recordedBy: { uid: user.uid, name: user.displayName }
+            type: 'Payment',
+            reference: targetInvoice.title,
+            date: timestamp,
+            saleId: saleDoc.id,
+            documentId: targetInvoice.id,
+            createdAt: timestamp,
+            createdBy: { uid: user.uid, name: user.displayName || user.email }
         });
 
         toast({ title: "Payment Applied Successfully" });
@@ -444,6 +450,26 @@ export function DocumentsClient() {
                 updatedAt: timestamp,
                 createdBy: isEditing ? editingDoc.createdBy : { uid: user.uid, name: user.displayName || 'User' }
             });
+
+            // CRITICAL: Log payment entry for Receipts to sync with Payment Ledger
+            if (type === 'Receipt') {
+                const payRef = doc(collection(firestore, 'payments'));
+                batch.set(payRef, {
+                    tenantId: tenant.id,
+                    customerId: selectedCustomerId || 'walk-in',
+                    customerName: relatedTo,
+                    amount: currentDocTotal,
+                    method: 'Cash',
+                    type: 'Payment',
+                    reference: docTitle,
+                    date: isEditing ? editingDoc.generatedDate : timestamp,
+                    saleId: saleRef.id,
+                    documentId: docRef.id,
+                    createdAt: isEditing ? editingDoc.createdAt : timestamp,
+                    updatedAt: timestamp,
+                    createdBy: isEditing ? editingDoc.createdBy : { uid: user.uid, name: user.displayName || 'User' }
+                });
+            }
         }
 
         await batch.commit();
