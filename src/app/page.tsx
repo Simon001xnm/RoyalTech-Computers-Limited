@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -38,9 +39,11 @@ import {
     Lock as LockIcon,
     Truck,
     UserPlus,
-    ShieldAlert
+    ShieldAlert,
+    ChevronRight,
+    Target
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
     format, 
@@ -53,7 +56,8 @@ import {
     endOfMonth,
     endOfWeek,
     endOfYear,
-    startOfDay
+    startOfDay,
+    isSameDay
 } from 'date-fns';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -93,18 +97,18 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    Legend
+    Legend,
+    Cell
 } from 'recharts';
 import { LandingPage } from '@/components/marketing/landing-page';
 import { MarketingWrapper } from '@/components/marketing/marketing-wrapper';
 
 export default function RootPage() {
   const { user, isUserLoading } = useUser();
-  const { tenant, isLoading: isSaaSLoading } = useSaaS();
+  const { tenant } = useSaaS();
   const firestore = useFirestore();
   const router = useRouter();
 
-  // If no user is logged in, show the public landing page wrapped in the marketing layout
   if (!isUserLoading && !user) {
       return (
         <MarketingWrapper>
@@ -113,7 +117,6 @@ export default function RootPage() {
       );
   }
 
-  // If user exists, show the dashboard
   return <DashboardPage />;
 }
 
@@ -124,7 +127,6 @@ function DashboardPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  // Role check for Super Admin Redirection
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
 
@@ -167,7 +169,7 @@ function DashboardPage() {
   const [newCustPhone, setNewCustPhone] = useState('');
   const [isSavingCustomer, setIsSavingCustomer] = useState(false);
 
-  // New POS Selection Logic
+  // POS Selection Logic
   const [configuringProduct, setConfiguringProduct] = useState<any>(null);
   const [configQty, setConfigQty] = useState('1');
   const [configPrice, setConfigPrice] = useState('');
@@ -294,8 +296,7 @@ function DashboardPage() {
         return {
             name: p.label,
             Revenue: revenue,
-            Expenses: expense + cogs,
-            Surplus: revenue - (expense + cogs)
+            Expenses: expense + cogs
         };
     });
   }, [sales, expenses]);
@@ -351,7 +352,6 @@ function DashboardPage() {
         const batch = writeBatch(firestore);
         const timestamp = new Date().toISOString();
 
-        // Sequential document logic
         const typeCount = documents?.filter(d => d.type === posAction).length || 0;
         const docTitle = `${posAction} #${String(typeCount + 1).padStart(3, '0')}`;
         
@@ -457,35 +457,6 @@ function DashboardPage() {
     }
   };
 
-  const handleGenerateDelivery = async (originDoc: AppDocument) => {
-    if (!tenant || !user) return;
-    try {
-        const timestamp = new Date().toISOString();
-        const docRef = await addDoc(collection(firestore, 'documents'), {
-            tenantId: tenant.id,
-            type: 'DeliveryNote',
-            title: `Delivery Note #${Math.floor(Math.random() * 1000)}`,
-            generatedDate: timestamp,
-            relatedTo: originDoc.relatedTo,
-            data: {
-                ...originDoc.data,
-                workspace: workspaceProfile ? {
-                    name: workspaceProfile.name || '',
-                    address: workspaceProfile.address || '',
-                    phone: workspaceProfile.phone || '',
-                    email: workspaceProfile.email || '',
-                    logoUrl: workspaceProfile.logoUrl || null
-                } : null
-            },
-            createdAt: timestamp,
-            createdBy: { uid: user.uid, name: user.displayName || 'User' }
-        });
-        toast({ title: "Delivery Note Created" });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: "Generation Failed" });
-    }
-  };
-
   const handleViewDocument = (docObj: AppDocument) => {
     setSelectedDocument(docObj);
     setIsPdfPreviewOpen(true);
@@ -582,17 +553,11 @@ function DashboardPage() {
     },
     {
         id: "actions",
-        header: () => <div className="text-right pr-6">Action</div>,
+        header: () => <div className="text-right pr-6">Ops</div>,
         cell: ({ row }) => {
             const docObj = row.original;
-            const canGenerateDelivery = ['Invoice', 'Receipt'].includes(docObj.type);
             return (
                 <div className="flex justify-end pr-6 gap-2">
-                    {canGenerateDelivery && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-orange-600 hover:text-orange-700" onClick={() => handleGenerateDelivery(docObj)}>
-                            <Truck className="h-3.5 w-3.5" />
-                        </Button>
-                    )}
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleViewDocument(docObj)} disabled={isExporting}>
                         <Eye className="h-3.5 w-3.5" />
                     </Button>
@@ -617,11 +582,12 @@ function DashboardPage() {
   const formatKes = (val: number) => new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
 
   if (salesLoading || stockLoading || expLoading || docsLoading || isProfileLoading) {
-      return <div className="p-20 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground">Checking Shop Records...</div>;
-  }
-
-  if (userProfile?.role === 'super_admin') {
-      return null; // Redirect logic will handle this
+      return (
+        <div className="flex h-[80vh] flex-col items-center justify-center space-y-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Initializing Data Stream...</p>
+        </div>
+      );
   }
 
   if (!stats) return null;
@@ -639,7 +605,7 @@ function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-20 max-w-[1600px] mx-auto">
       <PageHeader 
         title="Main Shop Dashboard" 
         description={`Analyzing records for period: ${stats.viewLabel}`}
@@ -652,48 +618,17 @@ function DashboardPage() {
                 )}
                 <div className="flex items-center gap-2">
                     <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
-                        <SelectTrigger className="h-9 w-32 font-bold text-[10px] uppercase"><Filter className="h-3 w-3 mr-2" /><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-9 w-32 font-bold text-[10px] uppercase bg-white border-2"><Filter className="h-3 w-3 mr-2" /><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="today">Today</SelectItem><SelectItem value="week">This Week</SelectItem>
                             <SelectItem value="month">This Month</SelectItem><SelectItem value="year">This Year</SelectItem>
                             <SelectItem value="custom">Date Range</SelectItem>
                         </SelectContent>
                     </Select>
-                    {filter === 'custom' && (
-                        <Popover>
-                            <PopoverTrigger asChild><Button variant="outline" size="sm" className="h-9 text-[10px] font-bold"><CalendarIcon className="h-3 w-3 mr-2" />Custom Range</Button></PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="end"><Calendar mode="range" selected={dateRange} onSelect={setDateRange} initialFocus numberOfMonths={2} /></PopoverContent>
-                        </Popover>
-                    )}
                 </div>
             </div>
         }
       />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {stats.lowStockCount > 0 && (
-            <Link href="/stock">
-                <Card className="border-l-4 border-l-orange-500 hover:bg-orange-50 cursor-pointer transition-colors">
-                    <CardContent className="p-4 flex items-center gap-4">
-                        <div className="bg-orange-100 p-2.5 rounded-xl"><Package className="h-5 w-5 text-orange-600" /></div>
-                        <div><p className="text-[10px] font-black uppercase text-orange-600">Stock Alert</p><p className="text-sm font-bold">{stats.lowStockCount} items almost finished</p></div>
-                        <ArrowUpRight className="ml-auto h-4 w-4 text-orange-300" />
-                    </CardContent>
-                </Card>
-            </Link>
-          )}
-          {stats.unpaidCount > 0 && (
-            <Link href="/receivables">
-                <Card className="border-l-4 border-l-red-500 hover:bg-red-50 cursor-pointer transition-colors">
-                    <CardContent className="p-4 flex items-center gap-4">
-                        <div className="bg-red-100 p-2.5 rounded-xl"><FileWarning className="h-5 w-5 text-red-600" /></div>
-                        <div><p className="text-[10px] font-black uppercase text-red-600">Total Money Owed</p><p className="text-sm font-bold">{stats.unpaidCount} people owe money ({formatKes(stats.totalDebt)})</p></div>
-                        <ArrowUpRight className="ml-auto h-4 w-4 text-red-300" />
-                    </CardContent>
-                </Card>
-            </Link>
-          )}
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <SummaryCard title="Period Revenue" value={formatKes(stats.totalRevenue)} icon={DollarSign} description="Total money in" />
@@ -702,128 +637,163 @@ function DashboardPage() {
           <SummaryCard title="Total Money Owed" value={formatKes(stats.totalDebt)} icon={FileWarning} description="Historical pending payments" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
-          {/* ANALYTICS */}
-          <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden">
-            <CardHeader className="bg-muted/10 border-b py-4 px-6">
-                <div className="flex items-center gap-3">
-                    <div className="bg-primary p-2 rounded-xl shadow-sm">
-                        <BarChart3 className="h-4 w-4 text-white" />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8">
+          {/* PERFORMANCE INTELLIGENCE HUB */}
+          <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden rounded-[2rem]">
+            <CardHeader className="bg-white p-8 border-b-0">
+                <div className="flex items-center gap-5">
+                    <div className="bg-[#4f46e5] p-3 rounded-2xl shadow-xl">
+                        <BarChart3 className="h-7 w-7 text-white" />
                     </div>
-                    <div>
-                        <CardTitle className="text-sm font-black uppercase tracking-widest">Performance Intelligence</CardTitle>
-                        <CardDescription className="text-[10px] font-bold uppercase text-primary">Cross-Period Comparative Analysis</CardDescription>
+                    <div className="space-y-1">
+                        <CardTitle className="text-2xl font-black uppercase tracking-tighter leading-none">Performance Intelligence</CardTitle>
+                        <CardDescription className="text-[10px] font-black uppercase tracking-widest text-[#4f46e5]">Cross-Period Comparative Analysis</CardDescription>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-6 space-y-8">
-                <div className="h-[350px] w-full">
+            <CardContent className="p-10 space-y-12">
+                <div className="h-[450px] w-full relative">
+                    <div className="absolute top-0 right-0 z-10 flex gap-6">
+                        <div className="flex items-center gap-2">
+                            <div className="h-4 w-4 rounded-full bg-[#4f46e5]" />
+                            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Revenue</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="h-4 w-4 rounded-full bg-[#ef4444]" />
+                            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Expenses</span>
+                        </div>
+                    </div>
+
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={performanceStats} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} fontWeight="bold" tick={{ fill: '#000000' }} />
-                            <YAxis axisLine={false} tickLine={false} fontSize={10} tickFormatter={(v) => `Ksh ${v/1000}k`} tick={{ fill: '#000000' }} />
-                            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }} />
-                            <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 'black', textTransform: 'uppercase' }} />
-                            <Bar dataKey="Revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} barSize={40} />
-                            <Bar dataKey="Expenses" fill="hsl(var(--destructive))" radius={[6, 6, 0, 0]} barSize={40} />
+                        <BarChart data={performanceStats} margin={{ top: 40, right: 0, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.05} />
+                            <XAxis 
+                                dataKey="name" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                fontSize={12} 
+                                fontWeight="900" 
+                                tick={{ fill: '#000000' }}
+                                dy={15}
+                            />
+                            <YAxis 
+                                axisLine={false} 
+                                tickLine={false} 
+                                fontSize={10} 
+                                fontWeight="bold"
+                                tickFormatter={(v) => `Ksh ${v/1000}k`} 
+                                tick={{ fill: '#000000', opacity: 0.5 }} 
+                            />
+                            <Tooltip 
+                                cursor={{ fill: 'rgba(0,0,0,0.02)' }} 
+                                contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', padding: '20px' }} 
+                            />
+                            <Bar 
+                                dataKey="Revenue" 
+                                fill="#4f46e5" 
+                                radius={[12, 12, 0, 0]} 
+                                barSize={80} 
+                            />
+                            <Bar 
+                                dataKey="Expenses" 
+                                fill="#ef4444" 
+                                radius={[12, 12, 0, 0]} 
+                                barSize={80} 
+                            />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
-                    {performanceStats.map((p) => (
-                        <div key={p.name} className="p-3 bg-muted/20 rounded-2xl border space-y-2">
-                            <p className="text-[9px] font-black uppercase text-center border-b pb-2">{p.name}</p>
-                            <div className="space-y-1">
-                                <div className="flex justify-between items-center text-[8px] font-bold">
-                                    <span className="opacity-40">REV</span>
-                                    <span className="text-primary">{formatKes(p.Revenue)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-[8px] font-bold">
-                                    <span className="opacity-40">EXP</span>
-                                    <span className="text-red-600">{formatKes(p.Expenses)}</span>
-                                </div>
-                                <div className="pt-1 mt-1 border-t flex justify-between items-center">
-                                    <span className="text-[7px] font-black uppercase">NET</span>
-                                    <span className={cn("text-[10px] font-black", p.Surplus >= 0 ? "text-green-600" : "text-red-600")}>
-                                        {formatKes(p.Surplus)}
-                                    </span>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-8 border-t border-black/5">
+                    {performanceStats.map((p) => {
+                        const surplus = p.Revenue - p.Expenses;
+                        return (
+                            <div key={p.name} className="space-y-4">
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">{p.name}</p>
+                                <div className="space-y-1">
+                                    <p className="text-xl font-black tracking-tighter">{formatKes(p.Revenue)}</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className={cn(
+                                            "h-1.5 w-1.5 rounded-full",
+                                            surplus >= 0 ? "bg-green-500" : "bg-red-500"
+                                        )} />
+                                        <p className={cn(
+                                            "text-[9px] font-black uppercase",
+                                            surplus >= 0 ? "text-green-600" : "text-red-600"
+                                        )}>
+                                            {surplus >= 0 ? 'Surplus' : 'Deficit'}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             </CardContent>
           </Card>
 
-          {/* DASHBOARD POS TERMINAL */}
-          <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden flex flex-col">
-            <CardHeader className="bg-primary/5 border-b py-3 px-5">
+          {/* QUICK SELL TERMINAL */}
+          <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden rounded-[2rem] flex flex-col">
+            <CardHeader className="bg-primary/5 border-b p-6">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                        <ShoppingCart className="h-3 w-3" />
-                        Quick Sell
+                    <CardTitle className="text-lg font-black uppercase tracking-tight text-primary flex items-center gap-3">
+                        <ShoppingCart className="h-5 w-5" />
+                        Quick Sell Node
                     </CardTitle>
-                    <Badge variant="outline" className="text-[8px] font-black uppercase h-5 bg-white">v3.0</Badge>
+                    <Badge variant="outline" className="text-[8px] font-black uppercase h-5 bg-white border-primary/20">Operational</Badge>
                 </div>
             </CardHeader>
-            <CardContent className="p-4 flex-grow flex flex-col gap-5 overflow-hidden">
-                <div className="space-y-2">
-                    <Label className="text-[8px] font-black uppercase opacity-50">1. Select Document Type</Label>
+            <CardContent className="p-8 flex-grow flex flex-col gap-8 overflow-hidden">
+                <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">1. Workflow Definition</Label>
                     <div className="grid grid-cols-3 gap-2">
                         <Button 
                             variant={posAction === 'Receipt' ? 'default' : 'outline'} 
                             onClick={() => setPosAction('Receipt')}
-                            className="h-10 text-[9px] font-black uppercase px-0"
+                            className="h-12 text-[10px] font-black uppercase rounded-xl border-2"
                         >
-                            <Receipt className="h-3 w-3 mr-1" /> Receipt
+                            Receipt
                         </Button>
                         <Button 
                             variant={posAction === 'Invoice' ? 'default' : 'outline'} 
                             onClick={() => setPosAction('Invoice')}
-                            className="h-10 text-[9px] font-black uppercase px-0"
+                            className="h-12 text-[10px] font-black uppercase rounded-xl border-2"
                         >
-                            <FileText className="h-3 w-3 mr-1" /> Invoice
+                            Invoice
                         </Button>
                         <Button 
                             variant={posAction === 'Quotation' ? 'default' : 'outline'} 
                             onClick={() => setPosAction('Quotation')}
-                            className="h-10 text-[9px] font-black uppercase px-0"
+                            className="h-12 text-[10px] font-black uppercase rounded-xl border-2"
                         >
-                            <FilePlus2 className="h-3 w-3 mr-1" /> Quote
+                            Quote
                         </Button>
                     </div>
                 </div>
 
-                <div className="space-y-2">
-                    <Label className={cn("text-[8px] font-black uppercase opacity-50", !posAction && "text-destructive")}>
-                        2. Identify Customer {!posAction && "(Unlock Step 1 First)"}
-                    </Label>
+                <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">2. Operator & Client Link</Label>
                     <div className="flex gap-2">
-                        <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
+                        <Popover open={customerSearchOpen} onValueChange={setCustomerSearchOpen}>
                             <PopoverTrigger asChild disabled={!posAction}>
                                 <Button 
                                     variant="outline" 
-                                    className={cn(
-                                        "flex-1 h-11 justify-between text-[10px] font-bold uppercase tracking-tight bg-white",
-                                        !posAction && "opacity-40 cursor-not-allowed border-dashed"
-                                    )}
+                                    className="flex-1 h-14 justify-between text-[11px] font-bold uppercase tracking-tight bg-white border-2 rounded-xl"
                                 >
-                                    <div className="flex items-center gap-2">
-                                        {!posAction ? <LockIcon className="h-4 w-4" /> : <UserIcon className="h-4 w-4 text-primary" />}
-                                        <span>{selectedCustomer ? selectedCustomer.name : 'Select Client...'}</span>
+                                    <div className="flex items-center gap-3">
+                                        <UserIcon className="h-5 w-5 text-primary opacity-40" />
+                                        <span>{selectedCustomer ? selectedCustomer.name : 'Select Client Identity...'}</span>
                                     </div>
-                                    <Search className="h-3 w-3 opacity-30" />
+                                    <Search className="h-4 w-4 opacity-20" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[300px] p-0" align="start">
+                            <PopoverContent className="w-[340px] p-0" align="start">
                                 <Command>
-                                    <CommandInput placeholder="Find client..." className="h-9" />
+                                    <CommandInput placeholder="Find client..." className="h-12" />
                                     <CommandList>
                                         <CommandGroup>
                                             {customers?.map(c => (
-                                                <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({ id: c.id, name: c.name }); setCustomerSearchOpen(false); }} className="text-[10px] uppercase font-bold p-3">
+                                                <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({ id: c.id, name: c.name }); setCustomerSearchOpen(false); }} className="text-[10px] uppercase font-black p-4">
                                                     {c.name}
                                                 </CommandItem>
                                             ))}
@@ -832,276 +802,199 @@ function DashboardPage() {
                                 </Command>
                             </PopoverContent>
                         </Popover>
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="h-11 w-11 border-2 border-primary text-primary"
-                            onClick={() => setIsNewCustomerOpen(true)}
-                            disabled={!posAction}
-                        >
-                            <UserPlus className="h-5 w-5" />
-                        </Button>
                     </div>
                 </div>
 
-                <div className="space-y-2">
-                    <Label className={cn("text-[8px] font-black uppercase opacity-50", !selectedCustomer && "text-destructive")}>
-                        3. Add Items to Cart {!selectedCustomer && "(Unlock Step 2 First)"}
-                    </Label>
-                    <Popover open={productSearchOpen} onOpenChange={(open) => {
-                        if (open && !selectedCustomer) {
-                            toast({ variant: 'destructive', title: 'Action Error', description: 'Please select a customer before browsing inventory.' });
-                            return;
-                        }
-                        setProductSearchOpen(open);
-                    }}>
-                        <PopoverTrigger asChild disabled={!selectedCustomer}>
-                            <Button variant="outline" className={cn(
-                                "w-full justify-between h-11 text-[10px] font-black uppercase tracking-widest bg-primary/5 border-primary/20 text-primary border-2",
-                                !selectedCustomer && "opacity-40 cursor-not-allowed border-muted text-muted-foreground bg-muted/5"
-                            )}>
-                                <span>{productSearchOpen ? 'Selecting...' : 'Add Products...'}</span>
-                                {selectedCustomer ? <Plus className="h-4 w-4" /> : <LockIcon className="h-4 w-4" />}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[340px] p-0" align="start">
-                            <Command>
-                                <CommandInput placeholder="Search inventory..." className="h-9" />
-                                <CommandList>
-                                    <CommandEmpty>No stock found.</CommandEmpty>
-                                    <CommandGroup heading="Available Inventory">
-                                        {assets?.map(p => {
-                                            const qty = p.quantity || 0;
-                                            const isOut = qty <= 0;
-                                            return (
-                                                <CommandItem 
-                                                    key={p.id} 
-                                                    onSelect={() => !isOut && handleOpenConfigDialog(p)} 
-                                                    disabled={isOut}
-                                                    className={cn("p-3 cursor-pointer", isOut && "opacity-40 cursor-not-allowed")}
-                                                >
-                                                    <div className="flex justify-between w-full items-center">
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">3. Hardware Matrix</Label>
+                        <Popover open={productSearchOpen} onOpenChange={setProductSearchOpen}>
+                            <PopoverTrigger asChild disabled={!selectedCustomer}>
+                                <Button variant="outline" size="sm" className="h-8 font-black uppercase text-[9px] tracking-widest bg-primary/5 text-primary border-primary/20">
+                                    <Plus className="h-3 w-3 mr-1" /> Browse
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[380px] p-0" align="end">
+                                <Command>
+                                    <CommandInput placeholder="Search shop stock..." className="h-12" />
+                                    <CommandList>
+                                        <CommandGroup>
+                                            {assets?.filter(p => (p.quantity || 0) > 0).map(p => (
+                                                <CommandItem key={p.id} onSelect={() => handleOpenConfigDialog(p)} className="p-4 cursor-pointer">
+                                                    <div className="flex justify-between w-full">
                                                         <div>
-                                                            <p className="font-bold text-[10px] uppercase truncate max-w-[150px]">{p.model}</p>
-                                                            <p className="text-[8px] font-mono opacity-50">S/N: {p.serialNumber?.slice(-8).toUpperCase()}</p>
+                                                            <p className="font-black uppercase text-xs">{p.model}</p>
+                                                            <p className="text-[9px] opacity-40">S/N: {p.serialNumber}</p>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <span className="font-black text-primary text-[10px] block">{formatKes(p.sellingPrice)}</span>
-                                                            <span className={cn("text-[8px] font-black uppercase", isOut ? "text-red-500" : "text-green-600")}>
-                                                                {isOut ? 'OUT OF STOCK' : `${qty} IN STOCK`}
-                                                            </span>
-                                                        </div>
+                                                        <p className="font-black text-primary text-xs">{formatKes(p.sellingPrice)}</p>
                                                     </div>
                                                 </CommandItem>
-                                            );
-                                        })}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
 
-                    <div className="min-h-[140px] max-h-[220px] overflow-y-auto border rounded-xl p-2 bg-muted/5">
+                    <div className="min-h-[180px] border-2 border-dashed rounded-[1.5rem] p-4 bg-muted/5 flex flex-col gap-3">
                         {cart.length > 0 ? (
-                            <div className="space-y-2">
-                                {cart.map(item => (
-                                    <div key={item.id} className="flex justify-between items-center p-2.5 bg-white rounded-lg shadow-sm border group">
-                                        <div className="flex flex-col">
-                                            <span className="text-[9px] font-black uppercase truncate max-w-[130px]">{item.name}</span>
-                                            <span className="text-[8px] font-bold opacity-50">{item.quantity} x {formatKes(item.sellingPrice)}</span>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-[10px] font-black">{formatKes(item.total)}</span>
-                                            <button onClick={() => setCart(cart.filter(i => i.id !== item.id))} className="text-muted-foreground hover:text-red-600 transition-all">
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </button>
-                                        </div>
+                            cart.map(item => (
+                                <div key={item.id} className="flex justify-between items-center p-3 bg-white rounded-xl shadow-sm border border-black/5">
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase truncate max-w-[150px]">{item.name}</p>
+                                        <p className="text-[9px] font-bold opacity-40">{item.quantity} Unit(s)</p>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-xs font-black">{formatKes(item.total)}</span>
+                                        <button onClick={() => setCart(cart.filter(i => i.id !== item.id))} className="text-muted-foreground hover:text-red-600">
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
                         ) : (
-                            <div className="h-full flex flex-col items-center justify-center opacity-10 py-12">
-                                <ShoppingCart className="h-10 w-10 mb-2" />
+                            <div className="flex-grow flex flex-col items-center justify-center opacity-20 py-8">
+                                <Target className="h-10 w-10 mb-2" />
                                 <p className="text-[8px] font-black uppercase tracking-widest">Basket Empty</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className="space-y-3 pt-2 border-t">
-                    <div className="flex items-center justify-between">
-                        <Label className="text-[8px] font-black uppercase opacity-50">4. Finalize Details</Label>
-                        <div className="flex items-center gap-2">
-                            <Switch checked={applyVat} onCheckedChange={setApplyVat} id="pos-vat" />
-                            <Label htmlFor="pos-vat" className="text-[10px] font-black uppercase cursor-pointer">16% VAT</Label>
+                <div className="mt-auto space-y-5 pt-4 border-t">
+                    <div className="flex justify-between items-center px-2">
+                        <div className="flex items-center gap-3">
+                            <Switch checked={applyVat} onCheckedChange={setApplyVat} id="vat-dash" />
+                            <Label htmlFor="vat-dash" className="text-[10px] font-black uppercase opacity-60">Add 16% VAT</Label>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[9px] font-black uppercase opacity-40">Total Payable</p>
+                            <p className="text-2xl font-black text-primary tracking-tighter">{formatKes(cartTotal)}</p>
                         </div>
                     </div>
-
-                    {posAction !== 'Quotation' && (
-                        <div className="grid grid-cols-3 gap-2">
-                            <Button 
-                                variant={paymentMode === 'Cash' ? 'default' : 'outline'} 
-                                onClick={() => setPaymentMode('Cash')}
-                                className="h-10 text-[9px] font-black uppercase px-0 border-2"
-                            >
-                                <Banknote className="h-3 w-3 mr-1" /> Cash
-                            </Button>
-                            <Button 
-                                variant={paymentMode === 'M-Pesa' ? 'default' : 'outline'} 
-                                onClick={() => setPaymentMode('M-Pesa')}
-                                className="h-10 text-[9px] font-black uppercase px-0 border-2"
-                            >
-                                <Smartphone className="h-3 w-3 mr-1" /> M-Pesa
-                            </Button>
-                            <Button 
-                                variant={paymentMode === 'Bank' ? 'default' : 'outline'} 
-                                onClick={() => setPaymentMode('Bank')}
-                                className="h-10 text-[9px] font-black uppercase px-0 border-2"
-                            >
-                                <Landmark className="h-3 w-3 mr-1" /> Bank
-                            </Button>
-                        </div>
-                    )}
-
-                    <div className="p-4 bg-black text-white rounded-2xl shadow-xl flex justify-between items-center mt-2">
-                        <div>
-                            <span className="text-[8px] font-black uppercase opacity-50 block">Grand Total</span>
-                            <span className="text-2xl font-black tracking-tighter leading-none">{formatKes(cartTotal)}</span>
-                        </div>
-                        <Badge className="bg-primary text-white border-none text-[8px] font-black uppercase">{posAction || 'Pending'}</Badge>
-                    </div>
-
+                    
                     <Button 
                         onClick={handleFinishSale} 
-                        className="w-full h-14 font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all text-sm"
+                        className="w-full h-16 text-sm font-black uppercase tracking-[0.2em] shadow-2xl rounded-2xl active:scale-95 transition-all"
                         disabled={isProcessingSale || cart.length === 0 || !selectedCustomer || !posAction}
                     >
-                        {isProcessingSale ? <Loader2 className="h-5 w-5 animate-spin" /> : `Finish ${posAction || 'Process'}`}
+                        {isProcessingSale ? <Loader2 className="h-6 w-6 animate-spin" /> : `Execute ${posAction || 'Process'}`}
                     </Button>
                 </div>
             </CardContent>
           </Card>
       </div>
 
-      <Dialog open={!!configuringProduct} onOpenChange={(open) => !open && setConfiguringProduct(null)}>
-        <DialogContent className="sm:max-w-md border-none shadow-2xl">
-            <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase tracking-tight">Add to Basket</DialogTitle>
-                <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">{configuringProduct?.model}</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-6 pt-4">
-                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex justify-between items-center">
-                    <div>
-                        <p className="text-[10px] font-black uppercase opacity-40">Shop Price</p>
-                        <p className="text-lg font-black text-primary">KES {configuringProduct?.sellingPrice?.toLocaleString()}</p>
+      <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden rounded-[2rem] bg-white mt-10">
+        <CardHeader className="bg-muted/10 border-b py-6 px-10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="bg-black p-2.5 rounded-xl shadow-lg">
+                        <History className="h-5 w-5 text-white" />
                     </div>
-                    <div className="text-right">
-                        <p className="text-[10px] font-black uppercase opacity-40">In Shop</p>
-                        <p className="text-lg font-black">{configuringProduct?.quantity} Units</p>
-                    </div>
+                    <CardTitle className="text-xl font-black uppercase tracking-tight">Recent Activity Ledger</CardTitle>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase">Quantity</Label>
-                        <Input 
-                            type="number" 
-                            value={configQty} 
-                            onChange={e => setConfigQty(e.target.value)} 
-                            className="h-12 text-lg font-black"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase">Final Price (KES)</Label>
-                        <Input 
-                            type="number" 
-                            value={configPrice} 
-                            onChange={e => setConfigPrice(e.target.value)} 
-                            className="h-12 text-lg font-black border-primary"
-                            placeholder="Enter Price"
-                            autoFocus
-                        />
-                    </div>
-                </div>
-
-                <div className="pt-4 flex justify-between items-center border-t">
-                    <div>
-                        <p className="text-[10px] font-black uppercase opacity-40">Subtotal</p>
-                        <p className="text-2xl font-black text-primary">KES {((parseInt(configQty) || 0) * (parseFloat(configPrice) || 0)).toLocaleString()}</p>
-                    </div>
-                    <Button className="h-14 px-8 font-black uppercase tracking-widest shadow-xl" onClick={handleAddToCart}>Add to Cart</Button>
-                </div>
-            </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isNewCustomerOpen} onOpenChange={setIsNewCustomerOpen}>
-        <DialogContent className="sm:max-w-md border-none shadow-2xl">
-            <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase">Register Client</DialogTitle>
-                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Add a new account to your shop database.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-6 pt-4">
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase opacity-60">Full Name / Business</Label>
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
                     <Input 
-                        value={newCustName} 
-                        onChange={e => setNewCustName(e.target.value)} 
-                        placeholder="e.g. John Doe"
-                        className="h-11 font-bold"
+                        placeholder="Filter transactions..." 
+                        value={ledgerSearch}
+                        onChange={(e) => setLedgerSearch(e.target.value)}
+                        className="pl-10 h-11 text-xs font-bold uppercase bg-white w-full sm:w-80 rounded-xl"
                     />
-                </div>
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase opacity-60">Phone Number</Label>
-                    <Input 
-                        value={newCustPhone} 
-                        onChange={e => setNewCustPhone(e.target.value)} 
-                        placeholder="e.g. 0712345678"
-                        className="h-11 font-bold"
-                    />
-                </div>
-                <div className="pt-4 flex justify-end gap-3 border-t">
-                    <Button variant="outline" onClick={() => setIsNewCustomerOpen(false)} className="h-11 font-bold">Cancel</Button>
-                    <Button onClick={handleCreateCustomer} disabled={isSavingCustomer || !newCustName} className="h-11 px-8 font-black uppercase tracking-widest">
-                        {isSavingCustomer ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Client"}
-                    </Button>
-                </div>
-            </div>
-        </DialogContent>
-      </Dialog>
-
-      <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
-        <CardHeader className="bg-muted/30 border-b py-4 px-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                    <FileWarning className="h-4 w-4 text-muted-foreground" />
-                    <CardTitle className="text-sm font-black uppercase tracking-widest">Recent Activity Ledger</CardTitle>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input 
-                            placeholder="Search by customer..." 
-                            value={ledgerSearch}
-                            onChange={(e) => setLedgerSearch(e.target.value)}
-                            className="pl-8 h-9 text-[10px] font-bold uppercase bg-white w-full sm:w-64 border-muted"
-                        />
-                    </div>
-                    {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                 </div>
             </div>
         </CardHeader>
         <CardContent className="p-0">
             <Table>
-                <TableHeader className="bg-muted/20">{table.getHeaderGroups().map((headerGroup) => (<TableRow key={headerGroup.id}>{headerGroup.headers.map((header) => (<TableHead key={header.id} className="text-[10px] font-black uppercase py-4">{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
+                <TableHeader className="bg-muted/20">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                            {headerGroup.headers.map((header) => (
+                                <TableHead key={header.id} className="text-[10px] font-black uppercase py-5 px-10">
+                                    {flexRender(header.column.columnDef.header, header.getContext())}
+                                </TableHead>
+                            ))}
+                        </TableRow>
+                    ))}
+                </TableHeader>
                 <TableBody>
-                    {table.getRowModel().rows.length ? (table.getRowModel().rows.map((row) => (<TableRow key={row.id} className="h-12 border-b last:border-0 hover:bg-muted/5 transition-colors">{row.getVisibleCells().map((cell) => (<TableCell key={cell.id} className="py-2">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))) : (<TableRow><TableCell colSpan={columns.length} className="h-32 text-center opacity-30 text-xs font-bold uppercase italic">No documents found for this criteria</TableCell></TableRow>)}
+                    {table.getRowModel().rows.length ? (
+                        table.getRowModel().rows.map((row) => (
+                            <TableRow key={row.id} className="h-16 border-b last:border-0 hover:bg-muted/5 transition-colors group">
+                                {row.getVisibleCells().map((cell) => (
+                                    <TableCell key={cell.id} className="py-2 px-10">
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={columns.length} className="h-40 text-center opacity-30 text-xs font-black uppercase italic">
+                                No records found for this period
+                            </TableCell>
+                        </TableRow>
+                    )}
                 </TableBody>
             </Table>
-            <DataTablePagination table={table} />
+            <div className="px-10"><DataTablePagination table={table} /></div>
         </CardContent>
       </Card>
       
+      {/* CONFIGURE PRODUCT DIALOG */}
+      <Dialog open={!!configuringProduct} onOpenChange={(open) => !open && setConfiguringProduct(null)}>
+        <DialogContent className="sm:max-w-md border-none shadow-2xl rounded-[2rem]">
+            <DialogHeader>
+                <DialogTitle className="text-xl font-black uppercase tracking-tight">Add to Basket</DialogTitle>
+                <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">{configuringProduct?.model}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-8 pt-6">
+                <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 flex justify-between items-center">
+                    <div>
+                        <p className="text-[9px] font-black uppercase opacity-40 mb-1">Standard Rate</p>
+                        <p className="text-xl font-black text-primary">{formatKes(configuringProduct?.sellingPrice)}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[9px] font-black uppercase opacity-40 mb-1">Available Units</p>
+                        <p className="text-xl font-black">{configuringProduct?.quantity}</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Quantity</Label>
+                        <Input 
+                            type="number" 
+                            value={configQty} 
+                            onChange={e => setConfigQty(e.target.value)} 
+                            className="h-14 text-lg font-black rounded-xl"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Custom Rate (KES)</Label>
+                        <Input 
+                            type="number" 
+                            value={configPrice} 
+                            onChange={e => setConfigPrice(e.target.value)} 
+                            className="h-14 text-lg font-black border-primary rounded-xl"
+                            autoFocus
+                        />
+                    </div>
+                </div>
+
+                <div className="pt-6 flex justify-between items-center border-t">
+                    <div className="space-y-0.5">
+                        <p className="text-[9px] font-black uppercase opacity-40">Subtotal Calculation</p>
+                        <p className="text-3xl font-black text-primary tracking-tighter">KES {((parseInt(configQty) || 0) * (parseFloat(configPrice) || 0)).toLocaleString()}</p>
+                    </div>
+                    <Button className="h-16 px-10 font-black uppercase tracking-widest shadow-xl rounded-2xl" onClick={handleAddToCart}>Apply Item</Button>
+                </div>
+            </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
         <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
           <DialogHeader className="p-6 bg-white border-b no-print flex flex-row items-center justify-between">
