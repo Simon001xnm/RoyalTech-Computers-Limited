@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, addDoc, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { Loader2, DollarSign, ArrowDownLeft, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DialogFooter } from '@/components/ui/dialog';
 
 const paymentSchema = z.object({
   customerId: z.string().min(1, "Please select a customer"),
