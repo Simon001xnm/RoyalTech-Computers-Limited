@@ -43,7 +43,8 @@ import {
     Target,
     History as HistoryIcon,
     PieChart as PieChartIcon,
-    Activity as ActivityIcon
+    Activity as ActivityIcon,
+    MapPin
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -69,7 +70,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/command';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -90,7 +91,7 @@ import { ProformaInvoicePdf } from "./documents/components/pdfs/proforma-pdf";
 import { QuotationPdf } from "./documents/components/pdfs/quotation-pdf";
 import { DeliveryNotePdf } from "./documents/components/pdfs/delivery-note-pdf";
 import { useToast } from "@/hooks/use-toast";
-import type { Document as AppDocument, DocumentType, User as AppUser } from "@/types";
+import type { Document as AppDocument, DocumentType, User as AppUser, Customer } from "@/types";
 import {
     XAxis,
     YAxis,
@@ -239,7 +240,7 @@ function DashboardPage() {
   const { data: assets, isLoading: stockLoading } = useCollection(stockQuery);
   const { data: expenses, isLoading: expLoading } = useCollection(expensesQuery);
   const { data: documents, isLoading: docsLoading } = useCollection<AppDocument>(docsQuery);
-  const { data: customers } = useCollection(customersQuery);
+  const { data: customers } = useCollection<Customer>(customersQuery);
 
   const companyRef = useMemoFirebase(() => 
     tenant?.id ? doc(firestore, 'companies', tenant.id) : null,
@@ -274,14 +275,13 @@ function DashboardPage() {
     const totalRevenue = filteredSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
     const totalCost = filteredSales.reduce((acc, s) => {
         const cogs = s.items?.reduce((c: number, i: any) => c + (Number(i.buyingPrice || 0) * (Number(i.quantity) || 1)), 0) || 0;
-        return acc + cogs;
+        return acc + saleCogs;
     }, 0);
     const totalExpenses = filteredExp.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
     const totalProfit = totalRevenue - (totalExpenses + totalCost);
     const totalDebt = sales.filter(s => (Number(s.balance) || 0) > 0).reduce((acc, s) => acc + (Number(s.balance) || 0), 0);
     const lowStock = assets.filter(a => Number(a.quantity) <= (Number(a.minStock) || 5));
 
-    // Category Distribution Logic
     const productCounts: Record<string, number> = {};
     filteredSales.forEach(sale => {
       sale.items?.forEach((item: any) => {
@@ -443,7 +443,6 @@ function DashboardPage() {
             };
             batch.set(saleRef, saleData);
 
-            // LOG PAYMENT TO UNIFIED LEDGER
             if (posAction === 'Receipt') {
                 const payRef = doc(collection(firestore, 'payments'));
                 batch.set(payRef, {
@@ -650,7 +649,6 @@ function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8">
-          {/* PERFORMANCE INTELLIGENCE HUB */}
           <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden rounded-[2rem]">
             <CardHeader className="bg-white p-8 border-b-0">
                 <div className="flex items-center gap-5">
@@ -665,7 +663,6 @@ function DashboardPage() {
             </CardHeader>
             <CardContent className="p-8 pt-0 space-y-12">
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                    {/* TREND CHART */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h4 className="text-xs font-black uppercase tracking-widest opacity-40">Revenue Growth Trend</h4>
@@ -696,7 +693,6 @@ function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* PIE CHART */}
                     <div className="space-y-4">
                         <h4 className="text-xs font-black uppercase tracking-widest opacity-40 text-center">Moving Products</h4>
                         <div className="h-[300px] w-full">
@@ -725,7 +721,6 @@ function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* QUICK SELL TERMINAL */}
           <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden rounded-[2rem] flex flex-col">
             <CardHeader className="bg-primary/5 border-b p-6">
                 <div className="flex items-center justify-between">
@@ -767,28 +762,43 @@ function DashboardPage() {
                 <div className="space-y-3">
                     <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">2. Operator & Client Link</Label>
                     <div className="flex gap-2">
-                        <Popover open={customerSearchOpen} onValueChange={setCustomerSearchOpen}>
+                        <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
                             <PopoverTrigger asChild disabled={!posAction}>
                                 <Button 
                                     variant="outline" 
                                     className="flex-1 h-14 justify-between text-[11px] font-bold uppercase tracking-tight bg-white border-2 rounded-xl"
                                 >
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 overflow-hidden">
                                         <UserIcon className="h-5 w-5 text-primary opacity-40" />
-                                        <span>{selectedCustomer ? selectedCustomer.name : 'Select Client Identity...'}</span>
+                                        <span className="truncate">{selectedCustomer ? selectedCustomer.name : 'Select Client Identity...'}</span>
                                     </div>
                                     <Search className="h-4 w-4 opacity-20" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[340px] p-0" align="start">
+                            <PopoverContent className="w-[420px] p-0" align="start">
                                 <Command>
-                                    <CommandInput placeholder="Find client..." className="h-12" />
+                                    <CommandInput placeholder="Find by name, number, company or location..." className="h-12" />
                                     <CommandList>
-                                        <CommandEmpty>No clients found.</CommandEmpty>
-                                        <CommandGroup>
+                                        <CommandEmpty>No matching clients in CRM.</CommandEmpty>
+                                        <CommandGroup heading="Available Customer Node Registry">
                                             {customers?.map(c => (
-                                                <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({ id: c.id, name: c.name }); setCustomerSearchOpen(false); }} className="text-[10px] uppercase font-black p-4">
-                                                    {c.name}
+                                                <CommandItem 
+                                                    key={c.id} 
+                                                    value={`${c.name} ${c.alias || ''} ${c.phone || ''} ${c.address || ''}`}
+                                                    onSelect={() => { 
+                                                        setSelectedCustomer({ id: c.id, name: c.alias ? `${c.alias} (${c.name})` : c.name }); 
+                                                        setCustomerSearchOpen(false); 
+                                                    }} 
+                                                    className="p-4 cursor-pointer"
+                                                >
+                                                    <div className="flex flex-col gap-1">
+                                                        <p className="font-black uppercase text-xs">{c.name}</p>
+                                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                            {c.alias && <Badge variant="outline" className="text-[8px] h-4 border-primary/20 text-primary bg-primary/5 uppercase font-black">{c.alias}</Badge>}
+                                                            {c.phone && <span className="flex items-center gap-1 text-[9px] font-bold opacity-50 uppercase tracking-tighter"><Smartphone className="h-2 w-2" /> {c.phone}</span>}
+                                                            {c.address && <span className="flex items-center gap-1 text-[9px] font-bold opacity-50 truncate max-w-[150px] uppercase tracking-tighter"><MapPin className="h-2 w-2" /> {c.address}</span>}
+                                                        </div>
+                                                    </div>
                                                 </CommandItem>
                                             ))}
                                         </CommandGroup>
@@ -938,7 +948,6 @@ function DashboardPage() {
         </CardContent>
       </Card>
       
-      {/* CONFIGURE PRODUCT DIALOG */}
       <Dialog open={!!configuringProduct} onOpenChange={(open) => !open && setConfiguringProduct(null)}>
         <DialogContent className="sm:max-w-md border-none shadow-2xl rounded-[2rem]">
             <DialogHeader>
