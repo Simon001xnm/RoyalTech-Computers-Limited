@@ -12,7 +12,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, getDocs, addDoc } from 'firebase/firestore';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,7 @@ import { RecentSales } from './recent-sales';
 const VAT_RATE = 0.16;
 
 type PaymentSplit = {
-    method: 'Cash' | 'M-Pesa' | 'Bank' | 'Card' | 'Credit';
+    method: 'Cash' | 'M-Pesa' | 'Bank' | 'Card' | 'Credit' | 'Till' | 'Paybill' | 'Cheque';
     amount: number;
     reference?: string;
 };
@@ -205,7 +205,7 @@ export function PosClient() {
             date: timestamp,
             customerId: selectedCustomer.id,
             customerName: selectedCustomer.name,
-            invoiceNumber: docTitle, // Storing for statement identification
+            invoiceNumber: docTitle, 
             items: cart.map(item => ({...item, type: 'asset'})),
             subtotal,
             vatAmount,
@@ -250,6 +250,25 @@ export function PosClient() {
             const saleRef = doc(collection(firestore, 'sales_transactions'));
             batch.set(saleRef, { ...baseData, documentId: docRef.id });
 
+            // LOG PAYMENTS INDIVIDUALLY TO UNIFIED LEDGER
+            for (const p of payments) {
+              const payRef = doc(collection(firestore, 'payments'));
+              batch.set(payRef, {
+                  tenantId: tenant.id,
+                  customerId: selectedCustomer.id,
+                  customerName: selectedCustomer.name,
+                  amount: p.amount,
+                  method: p.method,
+                  type: 'Payment',
+                  reference: p.reference || docTitle,
+                  date: timestamp,
+                  saleId: saleRef.id,
+                  documentId: docRef.id,
+                  createdAt: timestamp,
+                  createdBy: { uid: user.uid, name: user.displayName || user.email }
+              });
+            }
+
             for (const item of cart) {
                 const productRef = doc(firestore, 'assets', item.productId);
                 const product = products?.find(p => p.id === item.productId);
@@ -269,6 +288,7 @@ export function PosClient() {
         setSelectedCustomer(null);
         setDiscount(0);
         setApplyVat(false);
+        toast({ title: `Transaction Processed` });
     } catch (e: any) {
         toast({ variant: 'destructive', title: `Saving failed`, description: e.message });
     } finally {
