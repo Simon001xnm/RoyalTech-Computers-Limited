@@ -50,6 +50,7 @@ import {
 } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import { cn } from '@/lib/utils';
 
 export function ReceivablesClient() {
   const { tenant } = useSaaS();
