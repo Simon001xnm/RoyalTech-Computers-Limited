@@ -46,6 +46,8 @@ import {
     startOfMonth, 
     startOfYear 
 } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 export function PaymentsClient() {
   const { tenant } = useSaaS();
