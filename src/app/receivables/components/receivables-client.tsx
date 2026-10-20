@@ -189,7 +189,7 @@ export function ReceivablesClient() {
                     <User className="h-4 w-4" />
                 </div>
                 <div>
-                    <p className="font-black uppercase text-xs tracking-tight">{row.original.customer.name}</p>
+                    <p className="font-black uppercase text-xs tracking-tight text-foreground">{row.original.customer.name}</p>
                     <p className="text-[10px] text-muted-foreground">{row.original.customer.alias || row.original.customer.email}</p>
                 </div>
             </div>
@@ -341,17 +341,17 @@ export function ReceivablesClient() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8">
-        <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden bg-white">
+        <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden bg-card">
             <CardHeader className="bg-muted/10 py-4 px-6 border-b">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <CardTitle className="text-sm font-black uppercase tracking-widest">Client Account Ledger</CardTitle>
+                    <CardTitle className="text-sm font-black uppercase tracking-widest text-foreground">Client Account Ledger</CardTitle>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
                             placeholder="Find client..." 
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="pl-10 h-10 w-full sm:w-64 bg-white font-bold"
+                            className="pl-10 h-10 w-full sm:w-64 bg-background font-bold"
                         />
                     </div>
                 </div>
@@ -382,7 +382,7 @@ export function ReceivablesClient() {
                                             onClick={() => setSelectedCustomerId(row.original.customer.id)}
                                         >
                                             {row.getVisibleCells().map(cell => (
-                                                <TableCell key={cell.id} className="py-4">
+                                                <TableCell key={cell.id} className="py-4 text-foreground">
                                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                                 </TableCell>
                                             ))}
@@ -404,10 +404,10 @@ export function ReceivablesClient() {
         </Card>
 
         <div className="space-y-6">
-          <Card className="shadow-xl border-none ring-1 ring-black/5 bg-[#1a1a1a] text-white overflow-hidden">
-            <CardHeader className="border-b border-white/5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-primary" />
+          <Card className="shadow-xl border-none ring-1 ring-black/5 bg-card text-card-foreground overflow-hidden">
+            <CardHeader className="border-b">
+                <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
                     Top Debt Distribution
                 </CardTitle>
             </CardHeader>
@@ -416,14 +416,14 @@ export function ReceivablesClient() {
                   <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={topDebtorsData} layout="vertical" margin={{ left: -20 }}>
                           <XAxis type="number" hide />
-                          <YAxis dataKey="name" type="category" fontSize={9} fontStyle="bold" axisLine={false} tickLine={false} tick={{ fill: 'white', opacity: 0.6 }} />
+                          <YAxis dataKey="name" type="category" fontSize={9} fontStyle="bold" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.6 }} />
                           <Tooltip 
-                            contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#000', color: '#fff', fontSize: '10px' }}
+                            contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))', fontSize: '10px' }}
                             formatter={(v: number) => formatKes(v)}
                           />
                           <Bar dataKey="balance" radius={[0, 4, 4, 0]} barSize={20}>
                               {topDebtorsData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={index === 0 ? 'hsl(var(--primary))' : 'rgba(255,255,255,0.1)'} />
+                                  <Cell key={`cell-${index}`} fill={index === 0 ? 'hsl(var(--primary))' : 'hsl(var(--muted))'} />
                               ))}
                           </Bar>
                       </BarChart>
@@ -444,7 +444,7 @@ export function ReceivablesClient() {
                   <p className="text-[10px] font-bold text-muted-foreground leading-relaxed italic">
                     All customer payments are logged to a permanent audit ledger and paired with their respective document identifiers for financial reconciliation.
                   </p>
-                  <div className="p-3 bg-white rounded-xl border border-primary/10 flex justify-between items-center">
+                  <div className="p-3 bg-card rounded-xl border border-primary/10 flex justify-between items-center">
                       <span className="text-[9px] font-black uppercase opacity-40">Matrix Sync</span>
                       <Badge variant="default" className="bg-green-100 text-green-700 hover:bg-green-100 border-none text-[8px] font-black h-5">VERIFIED</Badge>
                   </div>
@@ -456,11 +456,11 @@ export function ReceivablesClient() {
       <Sheet open={!!selectedCustomerId} onOpenChange={(open) => !open && setSelectedCustomerId(null)}>
         <SheetContent className="sm:max-w-3xl flex flex-col p-0 border-none shadow-2xl">
             {selectedAccount && (
-                <div className="flex flex-col h-full overflow-hidden">
+                <div className="flex flex-col h-full overflow-hidden bg-background">
                     <SheetHeader className="p-8 border-b bg-muted/10">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
-                                <SheetTitle className="text-2xl font-black uppercase tracking-tighter">{selectedAccount.customer.name}</SheetTitle>
+                                <SheetTitle className="text-2xl font-black uppercase tracking-tighter text-foreground">{selectedAccount.customer.name}</SheetTitle>
                                 <SheetDescription className="font-bold text-[10px] uppercase tracking-widest text-primary mt-1">Cloud Silo Financial History</SheetDescription>
                             </div>
                             <div className="flex gap-2">
@@ -474,13 +474,13 @@ export function ReceivablesClient() {
                         </div>
                     </SheetHeader>
 
-                    <div className="flex-grow overflow-y-auto p-8 space-y-8 bg-card/50">
+                    <div className="flex-grow overflow-y-auto p-8 space-y-8 bg-muted/5">
                         <div className="grid grid-cols-3 gap-4">
-                            <div className="bg-white p-6 rounded-2xl ring-1 ring-black/5 shadow-sm text-center">
+                            <div className="bg-card p-6 rounded-2xl ring-1 ring-black/5 shadow-sm text-center">
                                 <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Lifetime Invoiced</p>
-                                <p className="text-xl font-black">{formatKes(selectedAccount.totalInvoiced)}</p>
+                                <p className="text-xl font-black text-foreground">{formatKes(selectedAccount.totalInvoiced)}</p>
                             </div>
-                            <div className="bg-white p-6 rounded-2xl ring-1 ring-black/5 shadow-sm text-center">
+                            <div className="bg-card p-6 rounded-2xl ring-1 ring-black/5 shadow-sm text-center">
                                 <p className="text-[10px] font-black uppercase text-green-600 mb-1">Total Collected</p>
                                 <p className="text-xl font-black text-green-700">{formatKes(selectedAccount.totalPaid)}</p>
                             </div>
@@ -498,14 +498,14 @@ export function ReceivablesClient() {
                         </div>
 
                         <div className="space-y-4">
-                            <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                            <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2 text-foreground">
                                 <History className="h-4 w-4 text-primary" /> Permanent Record Stream
                             </h3>
                             <div className="space-y-4">
                                 {selectedAccount.sales.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).map(sale => {
                                     const bal = Number(sale.balance) || 0;
                                     return (
-                                        <Card key={sale.id} className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
+                                        <Card key={sale.id} className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden bg-card">
                                             <CardHeader className="bg-muted/20 py-3 px-5 border-b">
                                                 <div className="flex justify-between items-center">
                                                     <Badge variant="outline" className="text-[8px] font-mono h-5 uppercase">{sale.invoiceNumber || `REF: ${sale.id.slice(0,8)}`}</Badge>
@@ -514,8 +514,8 @@ export function ReceivablesClient() {
                                                     </Badge>
                                                 </div>
                                             </CardHeader>
-                                            <CardContent className="p-4 bg-white">
-                                                <div className="flex justify-between items-center text-xs font-bold">
+                                            <CardContent className="p-4 bg-card">
+                                                <div className="flex justify-between items-center text-xs font-bold text-foreground">
                                                     <span className="truncate max-w-[200px]">{format(parseISO(sale.date), "dd MMM yyyy, HH:mm")}</span>
                                                     <span className="text-green-600 font-black">Sale Total: {formatKes(Number(sale.total) || 0)}</span>
                                                 </div>
@@ -532,9 +532,9 @@ export function ReceivablesClient() {
       </Sheet>
 
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-          <DialogContent className="sm:max-w-md border-none shadow-2xl">
+          <DialogContent className="sm:max-w-md border-none shadow-2xl bg-card">
               <DialogHeader>
-                  <DialogTitle className="text-xl font-black uppercase">Ledger Adjustment</DialogTitle>
+                  <DialogTitle className="text-xl font-black uppercase text-foreground">Ledger Adjustment</DialogTitle>
                   <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">Manual entry for shop financial flows</DialogDescription>
               </DialogHeader>
               <div className="py-6 space-y-4">
@@ -545,7 +545,7 @@ export function ReceivablesClient() {
                         value={paymentAmount} 
                         onChange={e => setPaymentAmount(e.target.value)} 
                         placeholder="0.00" 
-                        className="h-14 text-2xl font-black border-2 border-primary"
+                        className="h-14 text-2xl font-black border-2 border-primary bg-background"
                         autoFocus
                       />
                   </div>

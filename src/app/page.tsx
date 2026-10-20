@@ -549,8 +549,8 @@ function DashboardPage() {
         const date = parseISO(row.original.generatedDate);
         return (
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold">{format(date, 'dd MMM yyyy')}</span>
-            <span className="text-[9px] font-mono opacity-50">{format(date, 'hh:mm a')}</span>
+            <span className="text-[10px] font-bold text-foreground">{format(date, 'dd MMM yyyy')}</span>
+            <span className="text-[9px] font-mono opacity-50 text-muted-foreground">{format(date, 'hh:mm a')}</span>
           </div>
         );
       }
@@ -558,7 +558,7 @@ function DashboardPage() {
     {
       accessorKey: "relatedTo",
       header: "Client",
-      cell: ({ row }) => <span className="text-[10px] font-black truncate block max-w-[150px]">{row.original.relatedTo || 'Walk-in'}</span>
+      cell: ({ row }) => <span className="text-[10px] font-black truncate block max-w-[150px] text-foreground">{row.original.relatedTo || 'Walk-in'}</span>
     },
     {
       accessorKey: "type",
@@ -572,7 +572,7 @@ function DashboardPage() {
       accessorKey: "total",
       header: () => <div className="text-right">Amount</div>,
       cell: ({ row }) => (
-        <div className="text-right font-black text-xs">
+        <div className="text-right font-black text-xs text-foreground">
           {new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(Number(row.original.data?.total || 0))}
         </div>
       )
@@ -657,14 +657,14 @@ function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8">
-          <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden rounded-[2rem]">
-            <CardHeader className="bg-white p-8 border-b-0">
+          <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-card overflow-hidden rounded-[2rem]">
+            <CardHeader className="bg-card p-8 border-b-0">
                 <div className="flex items-center gap-5">
                     <div className="bg-[#4f46e5] p-3 rounded-2xl shadow-xl">
                         <ActivityIcon className="h-7 w-7 text-white" />
                     </div>
                     <div className="space-y-1">
-                        <CardTitle className="text-2xl font-bold leading-none">Performance Intelligence</CardTitle>
+                        <CardTitle className="text-2xl font-bold leading-none text-card-foreground">Performance Intelligence</CardTitle>
                         <CardDescription className="text-[10px] font-bold text-[#4f46e5] tracking-widest uppercase">Visual Insights & Data Flow</CardDescription>
                     </div>
                 </div>
@@ -673,7 +673,7 @@ function DashboardPage() {
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-black uppercase tracking-widest opacity-40">Revenue Growth Trend</h4>
+                            <h4 className="text-xs font-black uppercase tracking-widest opacity-40 text-muted-foreground">Revenue Growth Trend</h4>
                             <div className="flex gap-4">
                                 <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-[#4f46e5]" /><span className="text-[9px] font-bold opacity-60">Revenue</span></div>
                                 <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-[#ef4444]" /><span className="text-[9px] font-bold opacity-60">Expenses</span></div>
@@ -689,9 +689,9 @@ function DashboardPage() {
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.05} />
-                                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#000', opacity: 0.5 }} />
-                                    <YAxis fontSize={10} axisLine={false} tickLine={false} tickFormatter={(v) => `${v/1000}k`} tick={{ fill: '#000', opacity: 0.5 }} />
-                                    <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.5 }} />
+                                    <YAxis fontSize={10} axisLine={false} tickLine={false} tickFormatter={(v) => `${v/1000}k`} tick={{ fill: 'currentColor', opacity: 0.5 }} />
+                                    <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', backgroundColor: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))' }} />
                                     <Area type="monotone" dataKey="Revenue" stroke="#4f46e5" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3}>
                                         <LabelList dataKey="Revenue" content={<PriceRibbon />} />
                                     </Area>
@@ -702,7 +702,7 @@ function DashboardPage() {
                     </div>
 
                     <div className="space-y-4">
-                        <h4 className="text-xs font-black uppercase tracking-widest opacity-40 text-center">Moving Products</h4>
+                        <h4 className="text-xs font-black uppercase tracking-widest opacity-40 text-center text-muted-foreground">Moving Products</h4>
                         <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -719,7 +719,7 @@ function DashboardPage() {
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <Tooltip />
+                                    <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))' }} />
                                     <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: '10px', fontStyle: 'bold' }} />
                                 </PieChart>
                             </ResponsiveContainer>
@@ -729,19 +729,19 @@ function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-white overflow-hidden rounded-[2rem] flex flex-col">
+          <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-card overflow-hidden rounded-[2rem] flex flex-col">
             <CardHeader className="bg-primary/5 border-b p-6">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-bold flex items-center gap-3">
+                    <CardTitle className="text-lg font-bold flex items-center gap-3 text-card-foreground">
                         <ShoppingCart className="h-5 w-5 text-primary" />
                         Quick Sell Node
                     </CardTitle>
-                    <Badge variant="outline" className="text-[8px] font-black h-5 bg-white border-primary/20 uppercase tracking-widest">Operational</Badge>
+                    <Badge variant="outline" className="text-[8px] font-black h-5 bg-background border-primary/20 uppercase tracking-widest text-foreground">Operational</Badge>
                 </div>
             </CardHeader>
             <CardContent className="p-8 flex-grow flex flex-col gap-8 overflow-hidden">
                 <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">1. Workflow Definition</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 text-muted-foreground">1. Workflow Definition</Label>
                     <div className="grid grid-cols-3 gap-2">
                         <Button 
                             variant={posAction === 'Receipt' ? 'default' : 'outline'} 
@@ -768,13 +768,16 @@ function DashboardPage() {
                 </div>
 
                 <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">2. Operator & Client Link</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 text-muted-foreground">2. Operator & Client Link</Label>
                     <div className="flex gap-2">
                         <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
                             <PopoverTrigger asChild disabled={!posAction}>
                                 <Button 
                                     variant="outline" 
-                                    className="flex-1 h-14 justify-between text-[11px] font-bold uppercase tracking-tight bg-white border-2 rounded-xl"
+                                    className={cn(
+                                        "flex-1 h-14 justify-between text-[11px] font-bold uppercase tracking-tight bg-background border-2 rounded-xl",
+                                        !selectedCustomer && "text-muted-foreground"
+                                    )}
                                 >
                                     <div className="flex items-center gap-3 overflow-hidden">
                                         <UserIcon className="h-5 w-5 text-primary opacity-40" />
@@ -800,11 +803,11 @@ function DashboardPage() {
                                                     className="p-4 cursor-pointer"
                                                 >
                                                     <div className="flex flex-col gap-1">
-                                                        <p className="font-black uppercase text-xs">{c.name}</p>
-                                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                        <p className="font-black uppercase text-xs text-foreground">{c.name}</p>
+                                                        <div className="flex wrap items-center gap-x-3 gap-y-1">
                                                             {c.alias && <Badge variant="outline" className="text-[8px] h-4 border-primary/20 text-primary bg-primary/5 uppercase font-black">{c.alias}</Badge>}
-                                                            {c.phone && <span className="flex items-center gap-1 text-[9px] font-bold opacity-50 uppercase tracking-tighter"><Smartphone className="h-2 w-2" /> {c.phone}</span>}
-                                                            {c.address && <span className="flex items-center gap-1 text-[9px] font-bold opacity-50 truncate max-w-[150px] uppercase tracking-tighter"><MapPin className="h-2 w-2" /> {c.address}</span>}
+                                                            {c.phone && <span className="flex items-center gap-1 text-[9px] font-bold opacity-50 uppercase tracking-tighter text-muted-foreground"><Smartphone className="h-2 w-2" /> {c.phone}</span>}
+                                                            {c.address && <span className="flex items-center gap-1 text-[9px] font-bold opacity-50 truncate max-w-[150px] uppercase tracking-tighter text-muted-foreground"><MapPin className="h-2 w-2" /> {c.address}</span>}
                                                         </div>
                                                     </div>
                                                 </CommandItem>
@@ -819,7 +822,7 @@ function DashboardPage() {
 
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">3. Hardware Matrix</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 text-muted-foreground">3. Hardware Matrix</Label>
                         <Popover open={productSearchOpen} onOpenChange={setProductSearchOpen}>
                             <PopoverTrigger asChild disabled={!selectedCustomer}>
                                 <Button variant="outline" size="sm" className="h-8 font-black uppercase text-[9px] tracking-widest bg-primary/5 text-primary border-primary/20">
@@ -836,8 +839,8 @@ function DashboardPage() {
                                                 <CommandItem key={p.id} onSelect={() => handleOpenConfigDialog(p)} className="p-4 cursor-pointer">
                                                     <div className="flex justify-between w-full items-center">
                                                         <div>
-                                                            <p className="font-black uppercase text-xs">{p.model}</p>
-                                                            <p className="text-[9px] opacity-40">S/N: {p.serialNumber}</p>
+                                                            <p className="font-black uppercase text-xs text-foreground">{p.model}</p>
+                                                            <p className="text-[9px] opacity-40 text-muted-foreground">S/N: {p.serialNumber}</p>
                                                         </div>
                                                         <p className="font-black text-primary text-xs">{formatKes(p.sellingPrice)}</p>
                                                     </div>
@@ -853,13 +856,13 @@ function DashboardPage() {
                     <div className="min-h-[180px] border-2 border-dashed rounded-[1.5rem] p-4 bg-muted/5 flex flex-col gap-3">
                         {cart.length > 0 ? (
                             cart.map(item => (
-                                <div key={item.id} className="flex justify-between items-center p-3 bg-white rounded-xl shadow-sm border border-black/5">
+                                <div key={item.id} className="flex justify-between items-center p-3 bg-card rounded-xl shadow-sm border border-black/5">
                                     <div>
-                                        <p className="text-[10px] font-black uppercase truncate max-w-[150px]">{item.name}</p>
-                                        <p className="text-[9px] font-bold opacity-40">{item.quantity} Unit(s)</p>
+                                        <p className="text-[10px] font-black uppercase truncate max-w-[150px] text-foreground">{item.name}</p>
+                                        <p className="text-[9px] font-bold opacity-40 text-muted-foreground">{item.quantity} Unit(s)</p>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <span className="text-xs font-black">{formatKes(item.total)}</span>
+                                        <span className="text-xs font-black text-foreground">{formatKes(item.total)}</span>
                                         <button onClick={() => setCart(cart.filter(i => i.id !== item.id))} className="text-muted-foreground hover:text-red-600">
                                             <Trash2 className="h-4 w-4" />
                                         </button>
@@ -869,7 +872,7 @@ function DashboardPage() {
                         ) : (
                             <div className="flex-grow flex flex-col items-center justify-center opacity-20 py-8">
                                 <Target className="h-10 w-10 mb-2" />
-                                <p className="text-[8px] font-black uppercase tracking-widest">Basket Empty</p>
+                                <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Basket Empty</p>
                             </div>
                         )}
                     </div>
@@ -879,10 +882,10 @@ function DashboardPage() {
                     <div className="flex justify-between items-center px-2">
                         <div className="flex items-center gap-3">
                             <Switch checked={applyVat} onCheckedChange={setApplyVat} id="vat-dash" />
-                            <Label htmlFor="vat-dash" className="text-[10px] font-black uppercase opacity-60">Add 16% VAT</Label>
+                            <Label htmlFor="vat-dash" className="text-[10px] font-black uppercase opacity-60 text-muted-foreground cursor-pointer">Add 16% VAT</Label>
                         </div>
                         <div className="text-right">
-                            <p className="text-[9px] font-black uppercase opacity-40">Total Payable</p>
+                            <p className="text-[9px] font-black uppercase opacity-40 text-muted-foreground">Total Payable</p>
                             <p className="text-2xl font-black text-primary tracking-tighter">{formatKes(cartTotal)}</p>
                         </div>
                     </div>
@@ -899,14 +902,14 @@ function DashboardPage() {
           </Card>
       </div>
 
-      <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden rounded-[2rem] bg-white mt-10">
+      <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden rounded-[2rem] bg-card mt-10">
         <CardHeader className="bg-muted/10 border-b py-6 px-10">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
                     <div className="bg-black p-2.5 rounded-xl shadow-lg">
                         <HistoryIcon className="h-5 w-5 text-white" />
                     </div>
-                    <CardTitle className="text-xl font-bold tracking-tight">Recent Activity Ledger</CardTitle>
+                    <CardTitle className="text-xl font-bold tracking-tight text-card-foreground">Recent Activity Ledger</CardTitle>
                 </div>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
@@ -914,7 +917,7 @@ function DashboardPage() {
                         placeholder="Filter transactions..." 
                         value={ledgerSearch}
                         onChange={(e) => setLedgerSearch(e.target.value)}
-                        className="pl-10 h-11 text-xs font-bold uppercase bg-white w-full sm:w-80 rounded-xl"
+                        className="pl-10 h-11 text-xs font-bold uppercase bg-background w-full sm:w-80 rounded-xl text-foreground"
                     />
                 </div>
             </div>
@@ -945,7 +948,7 @@ function DashboardPage() {
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={columns.length} className="h-40 text-center opacity-30 text-xs font-black uppercase italic">
+                            <TableCell colSpan={columns.length} className="h-40 text-center opacity-30 text-xs font-black uppercase italic text-muted-foreground">
                                 No records found for this period
                             </TableCell>
                         </TableRow>
@@ -957,40 +960,40 @@ function DashboardPage() {
       </Card>
       
       <Dialog open={!!configuringProduct} onOpenChange={(open) => !open && setConfiguringProduct(null)}>
-        <DialogContent className="sm:max-w-md border-none shadow-2xl rounded-[2rem]">
+        <DialogContent className="sm:max-w-md border-none shadow-2xl rounded-[2rem] bg-card">
             <DialogHeader>
-                <DialogTitle className="text-xl font-bold tracking-tight">Add to Basket</DialogTitle>
+                <DialogTitle className="text-xl font-bold tracking-tight text-foreground">Add to Basket</DialogTitle>
                 <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">{configuringProduct?.model}</DialogDescription>
             </DialogHeader>
             <div className="space-y-8 pt-6">
                 <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 flex justify-between items-center">
                     <div>
-                        <p className="text-[9px] font-black uppercase opacity-40 mb-1">Standard Rate</p>
+                        <p className="text-[9px] font-black uppercase opacity-40 mb-1 text-muted-foreground">Standard Rate</p>
                         <p className="text-xl font-black text-primary">{formatKes(configuringProduct?.sellingPrice)}</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-[9px] font-black uppercase opacity-40 mb-1">Available Units</p>
-                        <p className="text-xl font-black">{configuringProduct?.quantity}</p>
+                        <p className="text-[9px] font-black uppercase opacity-40 mb-1 text-muted-foreground">Available Units</p>
+                        <p className="text-xl font-black text-foreground">{configuringProduct?.quantity}</p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Quantity</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60 text-muted-foreground">Quantity</Label>
                         <Input 
                             type="number" 
                             value={configQty} 
                             onChange={e => setConfigQty(e.target.value)} 
-                            className="h-14 text-lg font-black rounded-xl"
+                            className="h-14 text-lg font-black rounded-xl bg-background"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Custom Rate (KES)</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60 text-muted-foreground">Custom Rate (KES)</Label>
                         <Input 
                             type="number" 
                             value={configPrice} 
                             onChange={e => setConfigPrice(e.target.value)} 
-                            className="h-14 text-lg font-black border-primary rounded-xl"
+                            className="h-14 text-lg font-black border-primary rounded-xl bg-background"
                             placeholder="Enter Price"
                             autoFocus
                         />
@@ -999,7 +1002,7 @@ function DashboardPage() {
 
                 <div className="pt-6 flex justify-between items-center border-t">
                     <div className="space-y-0.5">
-                        <p className="text-[9px] font-black uppercase opacity-40">Subtotal Calculation</p>
+                        <p className="text-[9px] font-black uppercase opacity-40 text-muted-foreground">Subtotal Calculation</p>
                         <p className="text-3xl font-black text-primary tracking-tighter">KES {((parseInt(configQty) || 0) * (parseFloat(configPrice) || 0)).toLocaleString()}</p>
                     </div>
                     <Button className="h-16 px-10 font-black uppercase tracking-widest shadow-xl rounded-2xl" onClick={handleAddToCart}>Apply Item</Button>
