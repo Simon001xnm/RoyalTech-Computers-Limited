@@ -3,7 +3,6 @@
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import React from "react";
-import { ModuleTutorial } from "./module-tutorial";
 
 interface PageHeaderProps {
   title: string;
@@ -20,7 +19,6 @@ export function PageHeader({ title, description, actionLabel, onAction, ActionIc
       <div className="space-y-1 w-full sm:w-auto">
         <div className="flex items-center justify-between sm:justify-start gap-3">
             <h1 className="text-xl md:text-2xl font-black tracking-tight text-foreground truncate">{title}</h1>
-            <ModuleTutorial />
         </div>
         {description && <p className="text-xs md:text-sm text-muted-foreground font-medium line-clamp-1">{description}</p>}
       </div>

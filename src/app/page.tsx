@@ -645,8 +645,7 @@ function DashboardPage() {
   return (
     <div className="space-y-6 pb-20 max-w-[1600px] mx-auto">
       <PageHeader 
-        title="Main Shop Dashboard" 
-        description={`Analyzing records for period: ${stats.viewLabel}`}
+        title={`Welcome, ${userProfile?.name || 'Partner'}`}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

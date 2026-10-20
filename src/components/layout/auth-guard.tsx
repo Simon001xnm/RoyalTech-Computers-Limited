@@ -9,7 +9,7 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap, RefreshCw } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc, collection, query, where } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { Badge } from '../ui/badge';
+import { ModuleTutorial } from './module-tutorial';
 
 const AUTH_PATHS = ['/login', '/signup'];
 const PUBLIC_ROOT_PATHS = ['/', '/login', '/signup'];
@@ -127,6 +128,10 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
         const params = new URLSearchParams(searchParams.toString());
         params.set('period', value);
         router.push(`?${params.toString()}`);
+    };
+
+    const handleRefresh = () => {
+        window.location.reload();
     };
 
     const companyRef = useMemoFirebase(() => 
@@ -243,6 +248,10 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
               </div>
 
               <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors" onClick={handleRefresh} title="Sync Workspace">
+                    <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Separator orientation="vertical" className="h-4 mx-1" />
                 <Select value={currentPeriod} onValueChange={handlePeriodChange}>
                     <SelectTrigger className="h-9 w-40 font-black text-[10px] uppercase bg-white border-2 rounded-xl">
                         <Filter className="h-3 w-3 mr-2 text-primary" />
@@ -260,6 +269,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
           </div>
           
           <div className="flex items-center gap-4">
+            <ModuleTutorial />
             {tenant?.id && <DebtIndicator tenantId={tenant.id} />}
             <NotificationCenter />
             {user && (
