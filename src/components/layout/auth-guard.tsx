@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
@@ -7,9 +8,9 @@ import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, 
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2, Settings, Search, Sun, Moon } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -105,17 +106,13 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                         />
                     </div>
                 </div>
-                
-                <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center py-2">
-                    <Search className="h-4 w-4 text-muted-foreground opacity-40" />
-                </div>
             </SidebarHeader>
 
-            <SidebarContent className="px-4 group-data-[collapsible=icon]:px-1 overflow-y-auto">
+            <SidebarContent className="px-4 group-data-[collapsible=icon]:px-1 overflow-y-auto flex-1 min-h-0">
                 <SidebarNav />
             </SidebarContent>
 
-            <SidebarFooter className="p-6 space-y-4 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:pb-6 group-data-[collapsible=icon]:items-center mt-auto border-t border-white/5">
+            <SidebarFooter className="p-6 space-y-4 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:pb-6 group-data-[collapsible=icon]:items-center mt-auto border-t border-white/5 bg-sidebar">
                 <div className="flex justify-center group-data-[collapsible=icon]:pb-2">
                     <button 
                         onClick={toggleTheme}
@@ -167,11 +164,6 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm bg-white">
-                      <AvatarImage 
-                        src={company?.logoUrl || userProfile?.avatarUrl || user.photoURL} 
-                        alt="Shop Profile" 
-                        className="object-contain p-0.5"
-                      />
                       <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-black uppercase">
                         {company?.name?.substring(0, 2).toUpperCase() || 'CP'}
                       </AvatarFallback>
@@ -196,7 +188,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                     <>
                         <Link href="/profile">
                             <DropdownMenuItem className="cursor-pointer font-bold text-xs uppercase tracking-tight">
-                                <Settings className="mr-2 h-4 w-4" />
+                                <Search className="mr-2 h-4 w-4" />
                                 <span>Shop Settings</span>
                             </DropdownMenuItem>
                         </Link>

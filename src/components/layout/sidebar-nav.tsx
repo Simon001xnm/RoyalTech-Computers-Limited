@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -67,7 +68,7 @@ export function SidebarNav() {
     return (
       <SidebarMenuItem key={item.href} className="relative px-0 flex items-center justify-center w-full">
         {isActive && (
-            <div className="absolute left-0 group-data-[collapsible=icon]:left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-red-600 rounded-r-full z-20 transition-all" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-red-600 rounded-r-full z-20 transition-all" />
         )}
         <Link href={item.href} className="w-full flex justify-center px-2 group-data-[collapsible=icon]:px-0">
           <SidebarMenuButton
@@ -104,8 +105,8 @@ export function SidebarNav() {
   };
   
   return (
-    <div className="flex flex-col py-2">
-      <SidebarGroup className="group-data-[collapsible=icon]:px-0">
+    <div className="flex flex-col py-2 min-h-min">
+      <SidebarGroup className="group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-1">
         <SidebarGroupLabel className="px-3 text-[10px] font-black tracking-[0.2em] text-muted-foreground/40 mb-2 group-data-[collapsible=icon]:hidden">Main Menu</SidebarGroupLabel>
         <SidebarGroupContent>
             <SidebarMenu className="gap-1 group-data-[collapsible=icon]:items-center">
@@ -114,11 +115,11 @@ export function SidebarNav() {
         </SidebarGroupContent>
       </SidebarGroup>
 
-      <div className="my-4 px-3 group-data-[collapsible=icon]:px-2">
+      <div className="my-2 px-3 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:my-1">
           <Separator className="opacity-5" />
       </div>
 
-      <SidebarGroup className="group-data-[collapsible=icon]:px-0">
+      <SidebarGroup className="group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-1">
         <SidebarGroupLabel className="px-3 text-[10px] font-black tracking-[0.2em] text-muted-foreground/40 mb-2 group-data-[collapsible=icon]:hidden">Company Groups</SidebarGroupLabel>
         <SidebarGroupContent>
             <SidebarMenu className="gap-1 group-data-[collapsible=icon]:items-center">
