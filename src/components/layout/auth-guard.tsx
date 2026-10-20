@@ -30,21 +30,26 @@ const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/l
 /**
  * DebtIndicator Component
  * Counts unique customers with balance > 0
+ * Updated: Filtered client-side to avoid Firestore composite index requirement.
  */
 function DebtIndicator({ tenantId }: { tenantId: string }) {
     const firestore = useFirestore();
     const q = useMemoFirebase(() => query(
         collection(firestore, 'sales_transactions'),
-        where('tenantId', '==', tenantId),
-        where('balance', '>', 0)
+        where('tenantId', '==', tenantId)
     ), [firestore, tenantId]);
     
-    const { data: sales } = useCollection(q);
+    const { data: allSales } = useCollection(q);
     
     const uniqueDebtors = useMemo(() => {
-        if (!sales) return 0;
-        return new Set(sales.map(s => s.customerId)).size;
-    }, [sales]);
+        if (!allSales) return 0;
+        // Identify unique customers who have an unpaid balance
+        const debtorIds = allSales
+            .filter(s => (Number(s.balance) || 0) > 0)
+            .map(s => s.customerId);
+            
+        return new Set(debtorIds).size;
+    }, [allSales]);
 
     if (uniqueDebtors === 0) return null;
 
