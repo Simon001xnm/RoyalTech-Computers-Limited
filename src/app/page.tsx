@@ -44,7 +44,8 @@ import {
     History as HistoryIcon,
     PieChart as PieChartIcon,
     Activity as ActivityIcon,
-    MapPin
+    MapPin,
+    Zap
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -990,6 +991,7 @@ function DashboardPage() {
                             value={configPrice} 
                             onChange={e => setConfigPrice(e.target.value)} 
                             className="h-14 text-lg font-black border-primary rounded-xl"
+                            placeholder="Enter Price"
                             autoFocus
                         />
                     </div>
