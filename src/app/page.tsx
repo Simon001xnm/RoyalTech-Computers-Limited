@@ -70,7 +70,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -179,7 +179,6 @@ function DashboardPage() {
     }
   }, [userProfile, router]);
   
-  // Read filter from global search params
   const filter = (searchParams.get('period') as TimeFilter) || 'month';
   const [ledgerSearch, setLedgerSearch] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -196,7 +195,6 @@ function DashboardPage() {
   const [selectedDocument, setSelectedDocument] = useState<AppDocument | null>(null);
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
 
-  // POS State
   const [cart, setCart] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
@@ -206,7 +204,6 @@ function DashboardPage() {
   const [paymentMode, setPaymentMode] = useState<'Cash' | 'M-Pesa' | 'Bank'>('Cash');
   const [applyVat, setApplyVat] = useState(false);
 
-  // POS Selection Logic
   const [configuringProduct, setConfiguringProduct] = useState<any>(null);
   const [configQty, setConfigQty] = useState('1');
   const [configPrice, setConfigPrice] = useState('');
@@ -274,7 +271,7 @@ function DashboardPage() {
 
     const totalRevenue = filteredSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
     const totalCost = filteredSales.reduce((acc, s) => {
-        const cogs = s.items?.reduce((c: number, i: any) => c + (Number(i.buyingPrice || 0) * (Number(i.quantity) || 1)), 0) || 0;
+        const saleCogs = s.items?.reduce((c: number, i: any) => c + (Number(i.buyingPrice || 0) * (Number(i.quantity) || 1)), 0) || 0;
         return acc + saleCogs;
     }, 0);
     const totalExpenses = filteredExp.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
