@@ -40,7 +40,7 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
       ...payments.map(p => ({
         date: p.date || p.createdAt,
         reference: p.reference || `PAY_${p.id.slice(0, 8)}`,
-        description: `PAYMENT RECEIVED (${p.method})`,
+        description: p.type === 'Credit Note' ? 'CREDIT NOTE OFFSET' : `PAYMENT RECEIVED (${p.method})`,
         type: p.type === 'Credit Note' ? 'CREDIT' : 'PAYMENT',
         invoiced: 0,
         paid: Number(p.amount) || 0
@@ -111,7 +111,7 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
                   netBalance > 0 ? "text-blue-900" : "text-green-700"
                 )}>
                   KES {formatCurrency(netBalance)}
-                  {netBalance < 0 && <span className="text-[8px] block mt-1 uppercase text-green-600">(We owe you)</span>}
+                  {netBalance < 0 && <span className="text-[8px] block mt-1 uppercase text-green-600">(Credit Balance)</span>}
                 </p>
              </div>
         </div>
@@ -144,7 +144,7 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
                     <th className="p-3 font-black text-[9px] border border-black uppercase w-24">Date</th>
                     <th className="p-3 font-black text-[9px] border border-black uppercase">Reference & Detail</th>
                     <th className="p-3 text-right font-black text-[9px] border border-black w-28 uppercase">Invoiced</th>
-                    <th className="p-3 text-right font-black text-[9px] border border-black w-28 uppercase">Paid</th>
+                    <th className="p-3 text-right font-black text-[9px] border border-black w-28 uppercase">Paid/Credit</th>
                     <th className="p-3 text-right font-black text-[9px] border border-black w-32 uppercase">Account Bal</th>
                 </tr>
             </thead>
@@ -167,7 +167,7 @@ export function CustomerStatementPdf({ customer, sales, payments, workspace }: C
                     </tr>
                 ))}
                 {unifiedLedger.length === 0 && (
-                    <tr><td colSpan={5} className="p-10 text-center italic opacity-30 font-black uppercase text-[10px]">No transaction flow logged for this silo</td></tr>
+                    <tr><td colSpan={5} className="p-10 text-center italic opacity-30 font-black uppercase text-[10px]">No transaction flow logged for this client</td></tr>
                 )}
             </tbody>
         </table>

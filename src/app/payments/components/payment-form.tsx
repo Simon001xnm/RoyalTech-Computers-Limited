@@ -67,36 +67,34 @@ export function PaymentForm({ customers, onFinished }: PaymentFormProps) {
             createdBy: { uid: user.uid, name: user.displayName || user.email }
         });
 
-        // 2. Adjust account balances if applicable
-        // This logic finds the oldest unpaid sale for the customer and applies the payment
-        if (values.type === 'Payment') {
-            const salesRef = collection(firestore, 'sales_transactions');
-            const q = query(
-                salesRef, 
-                where('tenantId', '==', tenant.id), 
-                where('customerId', '==', values.customerId),
-                where('status', 'in', ['Credit', 'Partial'])
-            );
-            const snap = await getDocs(q);
-            
-            let remainingMoney = values.amount;
-            const unpaidSales = snap.docs
-                .map(d => ({ ...d.data(), id: d.id }))
-                .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        // 2. Adjust account balances
+        // Standard behavior: Deduct from oldest unpaid sales (FIFO)
+        const salesRef = collection(firestore, 'sales_transactions');
+        const q = query(
+            salesRef, 
+            where('tenantId', '==', tenant.id), 
+            where('customerId', '==', values.customerId),
+            where('status', 'in', ['Credit', 'Partial'])
+        );
+        const snap = await getDocs(q);
+        
+        let remainingMoney = values.amount;
+        const unpaidSales = snap.docs
+            .map(d => ({ ...d.data(), id: d.id }))
+            .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-            for (const sale of unpaidSales) {
-                if (remainingMoney <= 0) break;
-                const bal = Number((sale as any).balance) || 0;
-                const deduct = Math.min(bal, remainingMoney);
-                
-                await updateDoc(doc(firestore, 'sales_transactions', sale.id), {
-                    balance: bal - deduct,
-                    amountPaid: (Number((sale as any).amountPaid) || 0) + deduct,
-                    status: (bal - deduct) <= 0 ? 'Paid' : 'Partial',
-                    updatedAt: timestamp
-                });
-                remainingMoney -= deduct;
-            }
+        for (const sale of unpaidSales) {
+            if (remainingMoney <= 0) break;
+            const bal = Number((sale as any).balance) || 0;
+            const deduct = Math.min(bal, remainingMoney);
+            
+            await updateDoc(doc(firestore, 'sales_transactions', sale.id), {
+                balance: bal - deduct,
+                amountPaid: (Number((sale as any).amountPaid) || 0) + deduct,
+                status: (bal - deduct) <= 0 ? 'Paid' : 'Partial',
+                updatedAt: timestamp
+            });
+            remainingMoney -= deduct;
         }
 
         toast({ title: `${values.type} Recorded Successfully` });

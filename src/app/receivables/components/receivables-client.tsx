@@ -115,21 +115,21 @@ export function ReceivablesClient() {
         lastModified: string;
     }> = {};
 
+    // Initialize map with all customers first to catch those with only payments (overpaid)
+    customers.forEach(customer => {
+        debtorMap[customer.id] = {
+            customer,
+            sales: [],
+            payments: [],
+            totalBalance: 0,
+            totalPaid: 0,
+            totalInvoiced: 0,
+            lastModified: customer.updatedAt || customer.registrationDate || new Date().toISOString()
+        };
+    });
+
+    // Aggregate Sales
     sales.forEach(sale => {
-        if (!debtorMap[sale.customerId]) {
-            const customer = customers.find(c => c.id === sale.customerId);
-            if (customer) {
-                debtorMap[sale.customerId] = {
-                    customer,
-                    sales: [],
-                    payments: [],
-                    totalBalance: 0,
-                    totalPaid: 0,
-                    totalInvoiced: 0,
-                    lastModified: sale.updatedAt || sale.date || sale.createdAt || new Date().toISOString()
-                };
-            }
-        }
         if (debtorMap[sale.customerId]) {
             debtorMap[sale.customerId].sales.push(sale);
             debtorMap[sale.customerId].totalInvoiced += (Number(sale.total) || 0);
@@ -146,14 +146,21 @@ export function ReceivablesClient() {
       if (debtorMap[pay.customerId]) {
         debtorMap[pay.customerId].payments.push(pay);
         debtorMap[pay.customerId].totalPaid += (Number(pay.amount) || 0);
+        
+        const payDate = pay.date || pay.createdAt;
+        if (payDate && isAfter(parseISO(payDate), parseISO(debtorMap[pay.customerId].lastModified))) {
+            debtorMap[pay.customerId].lastModified = payDate;
+        }
       }
     });
 
-    // Compute Final Balances
-    return Object.values(debtorMap).map(d => ({
-      ...d,
-      totalBalance: d.totalInvoiced - d.totalPaid
-    }));
+    // Compute Final Balances and filter out customers with zero lifetime activity
+    return Object.values(debtorMap)
+        .map(d => ({
+            ...d,
+            totalBalance: d.totalInvoiced - d.totalPaid
+        }))
+        .filter(d => d.totalInvoiced > 0 || d.totalPaid > 0);
   }, [sales, customers, allPayments]);
 
   const filteredDebtors = useMemo(() => {
@@ -264,7 +271,7 @@ export function ReceivablesClient() {
     try {
         const timestamp = new Date().toISOString();
         
-        // Log to Unified Payment Ledger
+        // 1. Log to Unified Payment Ledger
         await addDoc(collection(firestore, 'payments'), {
             tenantId: tenant.id,
             customerId: selectedAccount.customer.id,
@@ -278,6 +285,7 @@ export function ReceivablesClient() {
             createdBy: { uid: user.uid, name: user.displayName || user.email }
         });
 
+        // 2. Cascade payment through unpaid sales (FIFO)
         const unpaidSales = [...selectedAccount.sales]
             .filter(s => (Number(s.balance) || 0) > 0)
             .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
@@ -314,6 +322,10 @@ export function ReceivablesClient() {
     try {
         const element = document.getElementById('statement-export-target');
         if (!element) throw new Error("Target not found");
+        
+        // Allow time for images/data to render fully
+        await new Promise(r => setTimeout(r, 500));
+        
         const canvas = await html2canvas(element, { scale: 3.0, useCORS: true, backgroundColor: "#ffffff" });
         const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         const imgData = canvas.toDataURL('image/png', 1.0);
@@ -336,7 +348,7 @@ export function ReceivablesClient() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <SummaryCard title="Total Money Owed" value={formatKes(totalOutstanding)} icon={Wallet} trend={`${debtors.filter(d => d.totalBalance > 0).length} active debtors`} />
-          <SummaryCard title="Total Overpaid" value={formatKes(totalOverpaid)} icon={TrendingDown} className="border-l-4 border-l-green-500" description="Credit balances we owe clients" />
+          <SummaryCard title="Total Overpaid" value={formatKes(totalOverpaid)} icon={TrendingUp} className="border-l-4 border-l-green-500" description="Credit balances we owe clients" />
           <SummaryCard title="Total Accounts" value={debtors.length} icon={User} description="Registered customer identity nodes" />
       </div>
 
