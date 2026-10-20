@@ -3,6 +3,7 @@
 import type { Sale, Customer, Payment } from "@/types";
 import { format, parseISO } from "date-fns";
 import { useMemo } from "react";
+import { cn } from "@/lib/utils";
 
 interface CustomerStatementPdfProps {
   customer: Customer;
