@@ -698,7 +698,7 @@ function DashboardPage() {
 
                     {/* PIE CHART */}
                     <div className="space-y-4">
-                        <h4 className="text-xs font-black uppercase tracking-widest opacity-40 text-center">Moving Products Mix</h4>
+                        <h4 className="text-xs font-black uppercase tracking-widest opacity-40 text-center">Moving Products</h4>
                         <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>

@@ -458,7 +458,7 @@ export function ReportsClient() {
                     </CardContent>
                 </Card>
                 <Card className="border-none shadow-xl ring-1 ring-black/5 overflow-hidden">
-                    <CardHeader className="bg-black text-white p-3 text-center"><CardTitle className="text-xs font-black uppercase tracking-widest">Moving Products Split</CardTitle></CardHeader>
+                    <CardHeader className="bg-black text-white p-3 text-center"><CardTitle className="text-xs font-black uppercase tracking-widest">Moving Products</CardTitle></CardHeader>
                     <CardContent className="p-6 h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
