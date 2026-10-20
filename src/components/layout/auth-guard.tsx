@@ -73,10 +73,10 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
       <Sidebar 
         variant="sidebar" 
         collapsible="icon" 
-        className="p-4 bg-transparent border-none no-print"
+        className="bg-transparent border-none no-print group-data-[side=left]:ml-4 group-data-[side=left]:my-4"
       >
         <div className="flex flex-col h-full bg-sidebar rounded-[2.5rem] shadow-2xl border border-sidebar-border overflow-hidden">
-            <SidebarHeader className="p-6 pb-2 space-y-4 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:pb-2">
+            <SidebarHeader className="p-6 pb-2 space-y-4 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:pb-4">
                 <div className="flex gap-1.5 px-2 group-data-[collapsible=icon]:hidden">
                     <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
                     <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
@@ -111,11 +111,11 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 </div>
             </SidebarHeader>
 
-            <SidebarContent className="px-4 group-data-[collapsible=icon]:px-2 scrollbar-hide overflow-y-auto">
+            <SidebarContent className="px-4 group-data-[collapsible=icon]:px-0 scrollbar-hide overflow-y-auto">
                 <SidebarNav />
             </SidebarContent>
 
-            <SidebarFooter className="p-6 space-y-4 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:items-center">
+            <SidebarFooter className="p-6 space-y-4 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:pb-6 group-data-[collapsible=icon]:items-center">
                 <div className="flex justify-center group-data-[collapsible=icon]:pb-2">
                     <Button 
                         variant="ghost" 
