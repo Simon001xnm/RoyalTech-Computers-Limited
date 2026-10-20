@@ -668,9 +668,9 @@ function DashboardPage() {
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-8 pt-0 space-y-12">
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                    <div className="space-y-4">
+            <CardContent className="p-0 space-y-12">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
+                    <div className="space-y-4 px-8 pb-8">
                         <div className="flex items-center justify-between">
                             <h4 className="text-xs font-black uppercase tracking-widest opacity-40 text-muted-foreground">Revenue Growth Trend</h4>
                             <div className="flex gap-4">
@@ -678,9 +678,9 @@ function DashboardPage() {
                                 <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-[#ef4444]" /><span className="text-[9px] font-bold opacity-60">Expenses</span></div>
                             </div>
                         </div>
-                        <div className="h-[300px] w-full">
+                        <div className="h-[350px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={performanceStats} margin={{ top: 40, right: 30, left: 0, bottom: 0 }}>
+                                <AreaChart data={performanceStats} margin={{ top: 50, right: 10, left: -20, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorRev" x1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3}/>
@@ -700,9 +700,9 @@ function DashboardPage() {
                         </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-4 px-8 pb-8 border-l border-white/5">
                         <h4 className="text-xs font-black uppercase tracking-widest opacity-40 text-center text-muted-foreground">Moving Products</h4>
-                        <div className="h-[300px] w-full">
+                        <div className="h-[350px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie 
