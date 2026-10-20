@@ -423,7 +423,7 @@ export function ReceivablesClient() {
                           />
                           <Bar dataKey="balance" radius={[0, 4, 4, 0]} barSize={20}>
                               {topDebtorsData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={index === 0 ? 'hsl(var(--primary))' : 'hsl(var(--muted))'} />
+                                  <Cell key={`cell-${index}`} fill={index === 0 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.25)'} />
                               ))}
                           </Bar>
                       </BarChart>

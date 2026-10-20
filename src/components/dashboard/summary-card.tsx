@@ -1,4 +1,3 @@
-
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -17,10 +16,10 @@ export function SummaryCard({ title, value, icon: Icon, description, trend, clas
   const isNegativeTrend = trend?.startsWith('-');
 
   return (
-    <Card className={cn("shadow-sm border-muted/40 transition-all hover:shadow-md group", className)}>
+    <Card className={cn("shadow-sm border-border transition-all hover:shadow-md hover:ring-2 hover:ring-primary/5 group", className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</CardTitle>
-        <div className="bg-primary/5 p-2 rounded-lg group-hover:bg-primary/10 transition-colors">
+        <div className="bg-primary/5 p-2 rounded-lg group-hover:bg-primary/10 transition-colors ring-1 ring-primary/10">
             <Icon className="h-4 w-4 text-primary" />
         </div>
       </CardHeader>

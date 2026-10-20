@@ -966,7 +966,7 @@ function DashboardPage() {
                 <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground">{configuringProduct?.model}</DialogDescription>
             </DialogHeader>
             <div className="space-y-8 pt-6">
-                <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 flex justify-between items-center">
+                <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 flex justify-between items-center shadow-inner">
                     <div>
                         <p className="text-[9px] font-black uppercase opacity-40 mb-1 text-muted-foreground">Standard Rate</p>
                         <p className="text-xl font-black text-primary">{formatKes(configuringProduct?.sellingPrice)}</p>
@@ -984,7 +984,7 @@ function DashboardPage() {
                             type="number" 
                             value={configQty} 
                             onChange={e => setConfigQty(e.target.value)} 
-                            className="h-14 text-lg font-black rounded-xl bg-background"
+                            className="h-14 text-lg font-black rounded-xl bg-background border-2"
                         />
                     </div>
                     <div className="space-y-2">
@@ -993,7 +993,7 @@ function DashboardPage() {
                             type="number" 
                             value={configPrice} 
                             onChange={e => setConfigPrice(e.target.value)} 
-                            className="h-14 text-lg font-black border-primary rounded-xl bg-background"
+                            className="h-14 text-lg font-black border-primary rounded-xl bg-background border-2"
                             placeholder="Enter Price"
                             autoFocus
                         />
