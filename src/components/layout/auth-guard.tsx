@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
@@ -10,7 +9,7 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -18,6 +17,7 @@ import { logger } from '@/lib/logger';
 import { NotificationCenter } from '@/components/layout/notification-center';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -29,8 +29,12 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     const { user } = useUser();
     const auth = useAuth();
     const firestore = useFirestore();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [isDark, setIsDark] = useState(false);
     const [dateTime, setDateTime] = useState<string>("");
+
+    const currentPeriod = searchParams.get('period') || 'month';
 
     useEffect(() => {
         const saved = localStorage.getItem('rcl_theme');
@@ -60,6 +64,12 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             document.documentElement.classList.remove('dark');
             localStorage.setItem('rcl_theme', 'light');
         }
+    };
+
+    const handlePeriodChange = (value: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('period', value);
+        router.push(`?${params.toString()}`);
     };
 
     const companyRef = useMemoFirebase(() => 
@@ -120,7 +130,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 </div>
             </SidebarHeader>
 
-            <SidebarContent className="px-4 group-data-[collapsible=icon]:px-1 overflow-y-auto flex-1 min-h-0">
+            <SidebarContent className="px-4 group-data-[collapsible=icon]:px-1 overflow-y-auto flex-1 min-0">
                 <SidebarNav />
             </SidebarContent>
 
@@ -169,9 +179,27 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             </Link>
           </div>
 
-          <div className="hidden lg:flex items-center gap-3 px-4 py-1.5 bg-muted/30 rounded-xl border border-border/50 font-mono text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground shadow-inner">
-            <Clock className="h-3 w-3 text-primary" />
-            {dateTime}
+          <div className="hidden lg:flex items-center gap-6">
+              <div className="flex items-center gap-3 px-4 py-1.5 bg-muted/30 rounded-xl border border-border/50 font-mono text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground shadow-inner">
+                <Clock className="h-3 w-3 text-primary" />
+                {dateTime}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Select value={currentPeriod} onValueChange={handlePeriodChange}>
+                    <SelectTrigger className="h-9 w-40 font-black text-[10px] uppercase bg-white border-2 rounded-xl">
+                        <Filter className="h-3 w-3 mr-2 text-primary" />
+                        <SelectValue placeholder="Period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="today">Today's Flow</SelectItem>
+                        <SelectItem value="week">Weekly Summary</SelectItem>
+                        <SelectItem value="month">Monthly Audit</SelectItem>
+                        <SelectItem value="year">Annual Performance</SelectItem>
+                        <SelectItem value="custom">Custom Filter</SelectItem>
+                    </SelectContent>
+                </Select>
+              </div>
           </div>
           
           <div className="flex items-center gap-4">

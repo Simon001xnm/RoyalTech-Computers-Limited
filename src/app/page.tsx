@@ -6,7 +6,7 @@ import { collection, query, where, doc, writeBatch, getDocs, addDoc } from 'fire
 import { useSaaS } from '@/components/saas/saas-provider';
 import { PageHeader } from '@/components/layout/page-header';
 import { SummaryCard } from '@/components/dashboard/summary-card';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
     AlertTriangle, 
     ArrowUpRight, 
@@ -167,6 +167,7 @@ function DashboardPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
@@ -177,7 +178,8 @@ function DashboardPage() {
     }
   }, [userProfile, router]);
   
-  const [filter, setFilter] = useState<TimeFilter>('month');
+  // Read filter from global search params
+  const filter = (searchParams.get('period') as TimeFilter) || 'month';
   const [ledgerSearch, setLedgerSearch] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
@@ -619,20 +621,6 @@ function DashboardPage() {
       <PageHeader 
         title="Main Shop Dashboard" 
         description={`Analyzing records for period: ${stats.viewLabel}`}
-        actions={
-            <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                    <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
-                        <SelectTrigger className="h-9 w-32 font-bold text-[10px] uppercase bg-white border-2"><Filter className="h-3 w-3 mr-2" /><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="today">Today</SelectItem><SelectItem value="week">This Week</SelectItem>
-                            <SelectItem value="month">This Month</SelectItem><SelectItem value="year">This Year</SelectItem>
-                            <SelectItem value="custom">Date Range</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-        }
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -709,37 +697,11 @@ function DashboardPage() {
                                         ))}
                                     </Pie>
                                     <Tooltip />
-                                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
+                                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: '10px', fontStyle: 'bold' }} />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-8 border-t border-black/5">
-                    {performanceStats.map((p) => {
-                        const surplus = p.Revenue - p.Expenses;
-                        return (
-                            <div key={p.name} className="space-y-3">
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">{p.name}</p>
-                                <div className="space-y-1">
-                                    <p className="text-lg font-black tracking-tighter">{formatKes(p.Revenue)}</p>
-                                    <div className="flex items-center gap-2">
-                                        <div className={cn(
-                                            "h-1.5 w-1.5 rounded-full",
-                                            surplus >= 0 ? "bg-green-500" : "bg-red-500"
-                                        )} />
-                                        <p className={cn(
-                                            "text-[9px] font-bold uppercase",
-                                            surplus >= 0 ? "text-green-600" : "text-red-600"
-                                        )}>
-                                            {surplus >= 0 ? 'Surplus' : 'Deficit'}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )
-                    })}
                 </div>
             </CardContent>
           </Card>
@@ -835,7 +797,7 @@ function DashboardPage() {
                                         <CommandGroup>
                                             {assets?.filter(p => (p.quantity || 0) > 0).map(p => (
                                                 <CommandItem key={p.id} onSelect={() => handleOpenConfigDialog(p)} className="p-4 cursor-pointer">
-                                                    <div className="flex justify-between w-full">
+                                                    <div className="flex justify-between w-full items-center">
                                                         <div>
                                                             <p className="font-black uppercase text-xs">{p.model}</p>
                                                             <p className="text-[9px] opacity-40">S/N: {p.serialNumber}</p>
