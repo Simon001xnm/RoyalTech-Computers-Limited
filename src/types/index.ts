@@ -136,9 +136,24 @@ export interface Sale extends Auditable {
     total: number;
     amountPaid: number;
     balance: number;
-    paymentMethod: 'Cash' | 'M-Pesa' | 'Bank' | 'Card' | 'Credit' | 'Split';
+    paymentMethod: 'Cash' | 'M-Pesa' | 'Bank' | 'Card' | 'Credit' | 'Split' | 'Till' | 'Paybill' | 'Cheque';
     payments?: any[];
     status: 'Paid' | 'Partial' | 'Credit';
+}
+
+export interface Payment extends Auditable {
+    id: string;
+    tenantId: string;
+    customerId: string;
+    customerName: string;
+    amount: number;
+    method: 'Cash' | 'M-Pesa' | 'Bank' | 'Card' | 'Credit' | 'Till' | 'Paybill' | 'Cheque';
+    type: 'Payment' | 'Credit Note';
+    reference?: string;
+    date: string;
+    saleId?: string;
+    documentId?: string;
+    notes?: string;
 }
 
 export interface Document extends Auditable {

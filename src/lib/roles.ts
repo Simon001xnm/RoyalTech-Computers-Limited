@@ -60,13 +60,15 @@ export const getPermittedNavItems = (user?: User | null, company?: Company | nul
     });
 
     if (role === 'admin') {
-        return items.filter(i => i.id !== 'super_admin');
+        // Admin gets everything except super admin routes
+        return items.filter(i => !i.id.startsWith('master_'));
     }
     
     const alwaysAllowedHrefs = ['/'];
     return items.filter(item => {
         if (alwaysAllowedHrefs.includes(item.href)) return true;
-        if (item.id === 'super_admin' || item.id === 'users' || item.id === 'settings') return false;
+        // User (Staff) cannot see User Management, Settings, or the new Payment Ledger unless specifically permitted
+        if (['users', 'settings', 'payments'].includes(item.id)) return false;
         return permissions.includes(item.id);
     });
 };

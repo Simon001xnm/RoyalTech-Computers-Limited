@@ -12,7 +12,8 @@ import {
     Wallet,
     ShieldCheck,
     Globe,
-    Share2
+    Share2,
+    WalletCards
 } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
@@ -47,6 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
   // SALES
   { id: 'pos', href: '/pos', label: 'Sell Items', icon: ShoppingCart },
   { id: 'documents', href: '/documents', label: 'Paperwork', icon: FileText },
+  { id: 'payments', href: '/payments', label: 'Payment Ledger', icon: WalletCards },
   
   // STOCK & CLIENTS
   { id: 'stock', href: '/stock', label: 'Items In Shop', icon: Package },
