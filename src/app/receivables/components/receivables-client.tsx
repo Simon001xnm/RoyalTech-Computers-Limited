@@ -13,6 +13,7 @@ import {
     ArrowRight, 
     Download, 
     History, 
+    TrendingUp,
     TrendingDown, 
     User,
     Loader2,
@@ -115,7 +116,6 @@ export function ReceivablesClient() {
         lastModified: string;
     }> = {};
 
-    // Initialize map with all customers first to catch those with only payments (overpaid)
     customers.forEach(customer => {
         debtorMap[customer.id] = {
             customer,
@@ -128,7 +128,6 @@ export function ReceivablesClient() {
         };
     });
 
-    // Aggregate Sales
     sales.forEach(sale => {
         if (debtorMap[sale.customerId]) {
             debtorMap[sale.customerId].sales.push(sale);
@@ -141,7 +140,6 @@ export function ReceivablesClient() {
         }
     });
 
-    // Aggregate Payments
     allPayments?.forEach(pay => {
       if (debtorMap[pay.customerId]) {
         debtorMap[pay.customerId].payments.push(pay);
@@ -154,7 +152,6 @@ export function ReceivablesClient() {
       }
     });
 
-    // Compute Final Balances and filter out customers with zero lifetime activity
     return Object.values(debtorMap)
         .map(d => ({
             ...d,
@@ -271,7 +268,6 @@ export function ReceivablesClient() {
     try {
         const timestamp = new Date().toISOString();
         
-        // 1. Log to Unified Payment Ledger
         await addDoc(collection(firestore, 'payments'), {
             tenantId: tenant.id,
             customerId: selectedAccount.customer.id,
@@ -285,7 +281,6 @@ export function ReceivablesClient() {
             createdBy: { uid: user.uid, name: user.displayName || user.email }
         });
 
-        // 2. Cascade payment through unpaid sales (FIFO)
         const unpaidSales = [...selectedAccount.sales]
             .filter(s => (Number(s.balance) || 0) > 0)
             .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
@@ -323,7 +318,6 @@ export function ReceivablesClient() {
         const element = document.getElementById('statement-export-target');
         if (!element) throw new Error("Target not found");
         
-        // Allow time for images/data to render fully
         await new Promise(r => setTimeout(r, 500));
         
         const canvas = await html2canvas(element, { scale: 3.0, useCORS: true, backgroundColor: "#ffffff" });
