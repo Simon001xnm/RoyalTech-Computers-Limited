@@ -1,7 +1,7 @@
 'use client';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,9 +19,6 @@ import {
     ArrowRight,
     Globe,
     Zap,
-    CreditCard,
-    Smartphone,
-    Landmark,
     Plus,
     Trash2,
     Tags
@@ -30,7 +27,6 @@ import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { useEffect, useState, useRef } from "react";
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import placeholderAvatars from '@/lib/placeholder-images.json';
 import { cn, exportToCsv } from "@/lib/utils";
 import { useSaaS } from "@/components/saas/saas-provider";
 import { SaaSUsageMeters } from "@/components/saas/saas-usage-meters";
@@ -38,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { logger } from "@/lib/logger";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from 'next/link';
 import type { CategoryGroup } from "@/types";
 

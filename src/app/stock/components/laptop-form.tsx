@@ -68,7 +68,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
     ? {
         ...laptop,
         purchaseDate: laptop.purchaseDate ? new Date(laptop.purchaseDate) : new Date(),
-        purchasePrice: (laptop as any).purchasePrice || 0,
+        purchasePrice: laptop.purchasePrice || 0,
         sellingPrice: laptop.sellingPrice || 0,
         isSerialized: laptop.isSerialized ?? true,
         serialNumber: laptop.serialNumber || "",
