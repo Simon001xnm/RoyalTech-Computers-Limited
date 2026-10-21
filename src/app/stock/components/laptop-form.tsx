@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, DollarSign, Package, Tag, Layers, CheckCircle2 } from "lucide-react";
+import { CalendarIcon, DollarSign, CheckCircle2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -33,7 +33,7 @@ import { useEffect } from "react";
 
 const inventoryFormSchema = z.object({
   model: z.string().min(2, "Model must be at least 2 characters."),
-  serialNumber: z.string().optional(),
+  serialNumber: z.string().optional().default(""),
   purchaseDate: z.date({ required_error: "Date is required." }),
   status: z.enum(["Available", "Leased", "Repair", "Sold", "With Reseller"]),
   quantity: z.coerce.number().min(0, "Quantity cannot be negative."),
@@ -41,7 +41,7 @@ const inventoryFormSchema = z.object({
   sellingPrice: z.coerce.number().min(0, "Selling price is required."),
   isSerialized: z.boolean().default(true),
   category: z.string().min(2, "Category is required."),
-  subCategory: z.string().optional(),
+  subCategory: z.string().optional().default(""),
 });
 
 type InventoryFormValues = z.infer<typeof inventoryFormSchema>;
@@ -61,6 +61,9 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
         purchasePrice: (laptop as any).purchasePrice || 0,
         sellingPrice: laptop.sellingPrice || 0,
         isSerialized: laptop.isSerialized ?? true,
+        serialNumber: laptop.serialNumber || "",
+        category: laptop.category || "",
+        subCategory: laptop.subCategory || "",
       }
     : {
         model: "",
@@ -126,7 +129,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
             name="model"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Product Model / Name</Label>
+                <FormLabel>Product Model / Name</FormLabel>
                 <FormControl>
                   <Input placeholder="e.g., MacBook Pro 16" {...field} />
                 </FormControl>
@@ -310,7 +313,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading} className="h-12 px-12 font-black uppercase tracking-widest shadow-xl">
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
             {laptop ? "Sync Changes" : "Commit to Shop"}
           </Button>
         </div>

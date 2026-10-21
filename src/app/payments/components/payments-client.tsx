@@ -88,25 +88,8 @@ export function PaymentsClient() {
     return query(collection(firestore, 'payments'), where('tenantId', '==', tenant.id));
   }, [firestore, tenant?.id]);
 
-  const salesQuery = useMemoFirebase(() => {
-    if (!tenant) return null;
-    return query(collection(firestore, 'sales_transactions'), where('tenantId', '==', tenant.id));
-  }, [firestore, tenant?.id]);
-
-  const expensesQuery = useMemoFirebase(() => {
-    if (!tenant) return null;
-    return query(collection(firestore, 'expenses'), where('tenantId', '==', tenant.id));
-  }, [firestore, tenant?.id]);
-
-  const customersQuery = useMemoFirebase(() => {
-    if (!tenant) return null;
-    return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
-  }, [firestore, tenant?.id]);
-
   const { data: rawPayments, isLoading: paymentsLoading } = useCollection<Payment>(paymentsQuery);
-  const { data: rawSales, isLoading: salesLoading } = useCollection(salesQuery);
-  const { data: rawExpenses, isLoading: expensesLoading } = useCollection(expensesQuery);
-  const { data: customers } = useCollection(customersQuery);
+  const { data: customers } = useCollection(useMemoFirebase(() => tenant ? query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id)) : null, [tenant]));
 
   const filterInterval = useMemo(() => {
     const start = startOfMonth(setMonth(setYear(new Date(), parseInt(selectedYear)), parseInt(selectedMonth)));
@@ -187,7 +170,7 @@ export function PaymentsClient() {
 
   if (!isAdmin) {
       return (
-          <div className="flex h-[80vh] flex-col items-center justify-center p-8 text-center space-y-6">
+          <div className="flex h-[80vh] flex-col items-center justify-center p-8 text-center space-y-6 bg-background">
               <div className="bg-destructive/10 p-6 rounded-full"><HistoryIcon className="h-16 w-16 text-destructive" /></div>
               <div className="max-w-md space-y-2">
                   <h1 className="text-3xl font-black uppercase tracking-tighter">Access Forbidden</h1>
@@ -282,7 +265,7 @@ export function PaymentsClient() {
 
       <Separator className="opacity-40" />
 
-      <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-white rounded-[2rem]">
+      <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-card rounded-[2rem]">
         <CardHeader className="bg-muted/10 py-6 px-8 border-b">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <CardTitle className="text-lg font-black uppercase tracking-widest flex items-center gap-2">
@@ -291,8 +274,8 @@ export function PaymentsClient() {
                 </CardTitle>
                 <div className="flex flex-wrap items-center gap-3">
                     <Select value={typeFilter} onValueChange={setTypeFilter}>
-                        <SelectTrigger className="h-10 w-40 font-bold text-[10px] uppercase bg-white border-2 rounded-xl">
-                            <Filter className="h-3 w-3 mr-2" />
+                        <SelectTrigger className="h-10 w-40 font-bold text-[10px] uppercase bg-background border-2 rounded-xl">
+                            <Filter className="h-3 w-3 mr-2 text-primary" />
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -307,7 +290,7 @@ export function PaymentsClient() {
                             placeholder="Find client or ref..." 
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="pl-10 h-10 w-64 bg-white font-bold rounded-xl border-2"
+                            className="pl-10 h-10 w-64 bg-background font-bold rounded-xl border-2"
                         />
                     </div>
                 </div>
@@ -326,7 +309,7 @@ export function PaymentsClient() {
                             {table.getHeaderGroups().map(hg => (
                                 <TableRow key={hg.id}>
                                     {hg.headers.map(h => (
-                                        <TableHead key={h.id} className="text-[10px] font-black uppercase py-6 px-8">
+                                        <TableHead key={h.id} className="text-[10px] font-black uppercase py-6 px-8 text-muted-foreground">
                                             {flexRender(h.column.columnDef.header, h.getContext())}
                                         </TableHead>
                                     ))}
@@ -360,7 +343,7 @@ export function PaymentsClient() {
       </Card>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-xl border-none shadow-2xl rounded-[2rem]">
+        <DialogContent className="sm:max-w-xl border-none shadow-2xl rounded-[2rem] bg-card">
           <DialogHeader className="pb-4 border-b p-8">
             <DialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
                 <WalletCards className="h-6 w-6 text-primary" />

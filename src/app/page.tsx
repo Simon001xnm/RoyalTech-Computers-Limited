@@ -115,7 +115,6 @@ export default function RootPage() {
   const { user, isUserLoading } = useUser();
   const { tenant } = useSaaS();
   const firestore = useFirestore();
-  const router = useRouter();
 
   if (!isUserLoading && !user) {
       return (
@@ -138,15 +137,15 @@ const PriceRibbon = (props: any) => {
         maximumFractionDigits: 0 
     }).format(value);
 
-    // Logic to prevent clipping at graph edges
+    // Dynamic alignment logic to prevent edge clipping
     let rectX = x - 45;
     let textX = x;
     
-    if (index === 3) {
+    if (index === 3) { // End of data (typically Year)
         rectX = x - 85;
         textX = x - 40;
     } 
-    else if (index === 0) {
+    else if (index === 0) { // Start of data (Today)
         rectX = x - 5;
         textX = x + 40;
     }
@@ -622,7 +621,6 @@ function DashboardPage() {
   const formatKes = (val: number) => new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
 
   if (salesLoading || stockLoading || expLoading || docsLoading || isProfileLoading) {
-      const isMaster = userProfile?.role === 'super_admin';
       return (
         <div className="flex h-screen w-full flex-col items-center justify-center bg-[#0a0a0a] text-white space-y-8 animate-in fade-in duration-1000">
             <div className="relative h-24 w-24">
@@ -634,7 +632,7 @@ function DashboardPage() {
             </div>
             <div className="text-center px-6">
                 <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
-                    {isMaster ? "Business Hub" : (tenant?.name || "Business Hub")}
+                    {tenant?.name || "Business Hub"}
                 </h2>
             </div>
         </div>
@@ -968,7 +966,7 @@ function DashboardPage() {
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id} className="hover:bg-transparent">
                             {headerGroup.headers.map((header) => (
-                                <TableHead key={header.id} className="text-[10px] font-black uppercase py-5 px-10">
+                                <TableHead key={header.id} className="text-[10px] font-black uppercase py-5 px-10 text-muted-foreground">
                                     {flexRender(header.column.columnDef.header, header.getContext())}
                                 </TableHead>
                             ))}

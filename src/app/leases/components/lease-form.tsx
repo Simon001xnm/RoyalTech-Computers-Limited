@@ -1,4 +1,3 @@
-WYFL RIDDIM
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,7 +5,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import type { Lease, Customer } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -18,6 +17,7 @@ import * as React from "react";
 import { SignaturePad } from "@/components/ui/signature-pad";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
 
 const leaseFormSchema = z.object({
   clientType: z.enum(["Individual", "Corporate"]),
@@ -119,7 +119,7 @@ export function LeaseForm({
     }
   }, [startDate, duration, durationUnit, form]);
 
-  const calculatedTotal = useMemo(() => {
+  const calculatedTotal = React.useMemo(() => {
     const subtotal = rate * duration;
     const vat = applyVat ? subtotal * 0.16 : 0;
     return subtotal + vat;
@@ -304,7 +304,7 @@ export function LeaseForm({
         </section>
 
         <div className="flex justify-end space-x-3 pt-6 border-t">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading} className="h-12 px-6">Cancel</Button>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading} className="h-12 px-6 font-bold">Cancel</Button>
           <Button type="submit" disabled={isLoading} className="h-12 px-10 font-black uppercase tracking-widest shadow-lg">{lease ? "Update Lease" : "Execute Agreement"}</Button>
         </div>
       </form>
