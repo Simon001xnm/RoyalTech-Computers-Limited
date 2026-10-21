@@ -72,6 +72,7 @@ export interface Company extends Auditable {
 
   // Inventory Groups
   categories?: CategoryGroup[];
+  unitsOfMeasure?: string[];
 }
 
 export interface User {
@@ -99,6 +100,7 @@ export interface Asset extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   subCategory?: string;
   status: 'Available' | 'Leased' | 'Repair' | 'Sold' | 'With Reseller';
   quantity: number;
+  unit: string;
   purchaseDate: string;
   purchasePrice: number; // Buying price
   sellingPrice: number;
@@ -129,6 +131,7 @@ export interface SaleItem {
     productId: string;
     name: string;
     quantity: number;
+    unit: string;
     sellingPrice: number;
     buyingPrice: number;
     total: number;
@@ -184,6 +187,7 @@ export type DocumentType = 'Receipt' | 'Invoice' | 'Proforma' | 'RepairNote' | '
 export interface DocumentLineItem {
   description: string;
   quantity: number;
+  unit?: string;
   unitPrice: number;
   serialNumber?: string;
   discount?: number;

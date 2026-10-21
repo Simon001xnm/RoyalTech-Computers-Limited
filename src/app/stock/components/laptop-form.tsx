@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, DollarSign, CheckCircle2, Box, Tag, AlertTriangle } from "lucide-react";
+import { CalendarIcon, DollarSign, CheckCircle2, Scale } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -46,6 +46,7 @@ const inventoryFormSchema = z.object({
   isSerialized: z.boolean().default(true),
   category: z.string().min(2, "Category is required."),
   subCategory: z.string().optional().default(""),
+  unit: z.string().min(1, "Unit of measure is required."),
 });
 
 type InventoryFormValues = z.infer<typeof inventoryFormSchema>;
@@ -74,6 +75,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
         serialNumber: laptop.serialNumber || "",
         category: laptop.category || "",
         subCategory: laptop.subCategory || "",
+        unit: laptop.unit || "Unit",
       }
     : {
         model: "",
@@ -86,6 +88,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
         isSerialized: true,
         category: "",
         subCategory: "",
+        unit: "Unit",
       };
 
   const form = useForm<InventoryFormValues>({
@@ -99,6 +102,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
   useEffect(() => {
     if (isSerialized) {
       form.setValue("quantity", 1);
+      form.setValue("unit", "Unit");
     }
   }, [isSerialized, form]);
 
@@ -107,6 +111,10 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
       const cat = company.categories.find(c => c.name === selectedCategoryName);
       return cat?.subCategories || [];
   }, [company?.categories, selectedCategoryName]);
+
+  const unitsOptions = useMemo(() => {
+      return company?.unitsOfMeasure || ['Pcs', 'Unit', 'Set', 'Kg', 'Litre', 'Box', 'Packet'];
+  }, [company?.unitsOfMeasure]);
 
   const handleSubmit = (data: InventoryFormValues) => {
     if (data.isSerialized && (!data.serialNumber || data.serialNumber.length < 3)) {
@@ -227,43 +235,22 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
+           <FormField
             control={form.control}
-            name="purchaseDate"
+            name="unit"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Registration Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal h-11",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) =>
-                        date > new Date() || date < new Date("1900-01-01")
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+              <FormItem>
+                <FormLabel className="flex items-center gap-2"><Scale className="h-3 w-3" /> Unit of Measure</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value} disabled={isSerialized}>
+                  <FormControl>
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select unit..." />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {unitsOptions.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -310,7 +297,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
                     className="h-11 font-bold"
                   />
                 </FormControl>
-                {isSerialized && <p className="text-[9px] text-primary font-bold uppercase mt-1">Locked to 1 for Serialized items</p>}
+                {isSerialized && <p className="text-[9px] text-primary font-bold uppercase mt-1">Locked to 1 (Serialized)</p>}
                 <FormMessage />
               </FormItem>
             )}

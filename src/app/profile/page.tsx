@@ -23,7 +23,8 @@ import {
     Trash2,
     Tags,
     Landmark,
-    Smartphone
+    Smartphone,
+    Scale
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
@@ -78,7 +79,8 @@ export default function ProfilePage() {
     paybillAccount: '',
     tillNumber: '',
     mobileMoneyPhone: '',
-    categories: [] as CategoryGroup[]
+    categories: [] as CategoryGroup[],
+    unitsOfMeasure: ['Pcs', 'Unit', 'Set']
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -86,6 +88,7 @@ export default function ProfilePage() {
 
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newSubCategoryName, setNewSubCategoryName] = useState<Record<string, string>>({});
+  const [newUnitName, setNewUnitName] = useState("");
 
   const userRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
   const { data: userProfile } = useDoc<any>(userRef);
@@ -102,7 +105,8 @@ export default function ProfilePage() {
       setCompData({
         ...compData,
         ...company,
-        categories: company.categories || []
+        categories: company.categories || [],
+        unitsOfMeasure: company.unitsOfMeasure || ['Pcs', 'Unit', 'Set']
       });
     }
   }, [userProfile, authUser, company]);
@@ -137,16 +141,18 @@ export default function ProfilePage() {
   };
 
   const handleAddCategory = () => {
-      if (!newCategoryName.trim()) return;
-      if (compData.categories.some(c => c.name.toLowerCase() === newCategoryName.toLowerCase().trim())) {
+      const name = newCategoryName.trim();
+      if (!name) return;
+      if (compData.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
           toast({ variant: 'destructive', title: 'Duplicate Category' });
           return;
       }
       setCompData(prev => ({
           ...prev,
-          categories: [...prev.categories, { name: newCategoryName.trim(), subCategories: [] }]
+          categories: [...prev.categories, { name: name, subCategories: [] }]
       }));
       setNewCategoryName("");
+      toast({ title: "Category Created" });
   };
 
   const handleRemoveCategory = (name: string) => {
@@ -157,22 +163,23 @@ export default function ProfilePage() {
   };
 
   const handleAddSubCategory = (categoryName: string) => {
-      const val = newSubCategoryName[categoryName];
-      if (!val || !val.trim()) return;
+      const val = (newSubCategoryName[categoryName] || "").trim();
+      if (!val) return;
       
       setCompData(prev => ({
           ...prev,
           categories: prev.categories.map(c => {
               if (c.name === categoryName) {
-                  if (c.subCategories.some(sc => sc.toLowerCase() === val.toLowerCase().trim())) {
+                  if (c.subCategories.some(sc => sc.toLowerCase() === val.toLowerCase())) {
                       return c;
                   }
-                  return { ...c, subCategories: [...c.subCategories, val.trim()] };
+                  return { ...c, subCategories: [...c.subCategories, val] };
               }
               return c;
           })
       }));
       setNewSubCategoryName(prev => ({ ...prev, [categoryName]: "" }));
+      toast({ title: `Added to ${categoryName}` });
   };
 
   const handleRemoveSubCategory = (categoryName: string, subName: string) => {
@@ -184,6 +191,28 @@ export default function ProfilePage() {
               }
               return c;
           })
+      }));
+  };
+
+  const handleAddUnit = () => {
+      const unit = newUnitName.trim();
+      if (!unit) return;
+      if (compData.unitsOfMeasure.includes(unit)) {
+          toast({ variant: 'destructive', title: 'Unit Exists' });
+          return;
+      }
+      setCompData(prev => ({
+          ...prev,
+          unitsOfMeasure: [...prev.unitsOfMeasure, unit]
+      }));
+      setNewUnitName("");
+      toast({ title: "Unit Added" });
+  };
+
+  const handleRemoveUnit = (unit: string) => {
+      setCompData(prev => ({
+          ...prev,
+          unitsOfMeasure: prev.unitsOfMeasure.filter(u => u !== unit)
       }));
   };
 
@@ -262,7 +291,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20">
-      <PageHeader title="Shop Settings" description="Configure branding, documents and product groups." />
+      <PageHeader title="Shop Settings" description="Configure branding, documents and logistics." />
 
       <div className="grid gap-8 lg:grid-cols-[350px_1fr]">
         <div className="space-y-6">
@@ -289,16 +318,6 @@ export default function ProfilePage() {
                 <CardDescription className="font-bold text-[10px] uppercase tracking-widest text-primary">
                     Administrator: {displayName}
                 </CardDescription>
-                <div className="flex items-center justify-center gap-2 mt-4">
-                    <Badge className="capitalize px-4 h-7 text-[10px] font-black tracking-widest uppercase">
-                        {userProfile.role} Account
-                    </Badge>
-                    {isSuperAdmin && (
-                        <Badge variant="outline" className="bg-destructive/5 text-destructive border-destructive/20 h-7 px-3 text-[10px] font-black uppercase tracking-widest">
-                            <Globe className="h-3 w-3 mr-1.5" /> Platform Admin
-                        </Badge>
-                    )}
-                </div>
               </div>
             </CardHeader>
             <CardContent className="p-6 border-t space-y-4">
@@ -316,19 +335,13 @@ export default function ProfilePage() {
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
                 <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
                     <Building2 className="h-3 w-3 text-primary" />
-                    My Workspaces
+                    My Nodes
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
                 <div className="divide-y">
                     {availableWorkspaces.map(ws => (
-                        <div 
-                            key={ws.id} 
-                            className={cn(
-                                "p-4 flex items-center justify-between group transition-all",
-                                tenant?.id === ws.id ? "bg-primary/5" : "hover:bg-muted/30"
-                            )}
-                        >
+                        <div key={ws.id} className={cn("p-4 flex items-center justify-between group", tenant?.id === ws.id ? "bg-primary/5" : "hover:bg-muted/30")}>
                             <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8 rounded-lg">
                                     <AvatarImage src={ws.logoUrl} className="object-contain" />
@@ -336,68 +349,30 @@ export default function ProfilePage() {
                                 </Avatar>
                                 <div>
                                     <p className="text-xs font-black uppercase tracking-tight leading-none">{ws.name}</p>
-                                    {tenant?.id === ws.id ? (
-                                        <Badge variant="outline" className="h-4 px-1 text-[7px] font-black border-primary text-primary bg-white mt-1">CURRENT</Badge>
-                                    ) : (
-                                        <p className="text-[8px] font-bold text-muted-foreground uppercase mt-1">Switch to Node</p>
-                                    )}
+                                    {tenant?.id === ws.id && <Badge variant="outline" className="h-4 px-1 text-[7px] font-black border-primary text-primary bg-white mt-1 uppercase">ACTIVE</Badge>}
                                 </div>
                             </div>
                             {tenant?.id !== ws.id && (
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100"
-                                    onClick={() => handleSwitch(ws.id)}
-                                    disabled={!!isSwitching}
-                                >
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100" onClick={() => handleSwitch(ws.id)} disabled={!!isSwitching}>
                                     {isSwitching === ws.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                                 </Button>
                             )}
                         </div>
                     ))}
-                    {availableWorkspaces.length === 0 && (
-                        <div className="p-8 text-center opacity-20"><p className="text-[10px] font-black uppercase">No other nodes linked.</p></div>
-                    )}
                 </div>
             </CardContent>
           </Card>
 
           <SaaSUsageMeters />
-          
-          {isSuperAdmin && (
-              <Card className="border-2 border-dashed border-red-200 bg-red-50/30 overflow-hidden shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                  <CardHeader className="pb-3">
-                      <div className="flex items-center gap-2 text-red-600">
-                          <ShieldCheck className="h-4 w-4" />
-                          <CardTitle className="text-xs font-black uppercase tracking-widest">Platform Control Node</CardTitle>
-                      </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                      <p className="text-[10px] font-bold text-red-800 leading-relaxed italic">
-                          Infrastructure oversight and global tenant management is restricted to authorized platform controllers.
-                      </p>
-                      <Button asChild variant="destructive" className="w-full h-11 font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-                          <Link href="/super-admin">
-                              <Globe className="mr-2 h-4 w-4" /> Enter Control Layer
-                          </Link>
-                      </Button>
-                  </CardContent>
-              </Card>
-          )}
         </div>
 
         <div className="space-y-8">
           {!isAdmin ? (
                <div className="flex flex-col items-center justify-center p-20 text-center space-y-6 bg-muted/20 rounded-3xl border-4 border-dashed">
-                <div className="bg-destructive/10 p-6 rounded-full">
-                    <Lock className="h-12 w-12 text-destructive" />
-                </div>
+                <div className="bg-destructive/10 p-6 rounded-full"><Lock className="h-12 w-12 text-destructive" /></div>
                 <div className="max-w-md space-y-2">
-                    <h1 className="text-2xl font-black uppercase tracking-tight">Management Restricted</h1>
-                    <p className="text-muted-foreground leading-relaxed">
-                        Shop branding and configuration tools are reserved for account administrators. Please contact your shop owner to update business information.
-                    </p>
+                    <h1 className="text-2xl font-black uppercase tracking-tight">Access Restricted</h1>
+                    <p className="text-muted-foreground">Contact your shop owner to update business information.</p>
                 </div>
             </div>
           ) : (
@@ -406,9 +381,7 @@ export default function ProfilePage() {
                 <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden">
                     <CardHeader className="bg-muted/10 border-b p-8">
                         <div className="flex items-center gap-4">
-                            <div className="bg-black p-3 rounded-2xl shadow-lg">
-                                <Settings2 className="h-6 w-6 text-white" />
-                            </div>
+                            <div className="bg-black p-3 rounded-2xl shadow-lg"><Settings2 className="h-6 w-6 text-white" /></div>
                             <div>
                                 <CardTitle className="text-2xl font-black uppercase tracking-tighter">Identity & Logic</CardTitle>
                                 <CardDescription>Workspace branding and document standards.</CardDescription>
@@ -417,223 +390,180 @@ export default function ProfilePage() {
                     </CardHeader>
                     <CardContent className="p-0">
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList className="grid w-full grid-cols-6 h-14 bg-muted/30 rounded-none border-b p-0">
+                            <TabsList className="grid w-full grid-cols-7 h-14 bg-muted/30 rounded-none border-b p-0">
                                 <TabsTrigger value="profile" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Branding</TabsTrigger>
                                 <TabsTrigger value="contact" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Contact</TabsTrigger>
-                                <TabsTrigger value="payments" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Payments</TabsTrigger>
+                                <TabsTrigger value="payments" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Money</TabsTrigger>
                                 <TabsTrigger value="groups" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Groups</TabsTrigger>
-                                <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Standards</TabsTrigger>
-                                <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest text-primary">Backups</TabsTrigger>
+                                <TabsTrigger value="logistics" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest text-primary">Logistics</TabsTrigger>
+                                <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Docs</TabsTrigger>
+                                <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Exports</TabsTrigger>
                             </TabsList>
                             
                             <div className="p-8">
-                                <TabsContent value="profile" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
-                                    <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-12">
-                                        <div className="space-y-4">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Identity Logo</Label>
-                                            <div className="w-full aspect-square border-2 border-black border-dashed rounded-2xl flex items-center justify-center cursor-pointer overflow-hidden relative group shadow-inner bg-white" onClick={() => logoInputRef.current?.click()}>
-                                                {compData.logoUrl ? <img src={compData.logoUrl} className="w-full h-full object-contain p-2" alt="logo" /> : <ImageIcon className="h-8 w-8 text-muted-foreground" />}
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><Upload className="text-white h-6 w-6" /></div>
-                                            </div>
-                                            <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
-                                            <p className="text-[8px] text-center font-bold text-muted-foreground uppercase">This logo appears on all documents and profile icons.</p>
-                                        </div>
-                                        <div className="space-y-6">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Business Name</Label><Input value={compData.name} onChange={e => handleInputChange('name', e.target.value)} className="h-11 font-bold" /></div>
-                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Shop Category</Label>
-                                                    <Select onValueChange={v => handleInputChange('businessType', v)} value={compData.businessType}>
-                                                        <SelectTrigger className="h-11 font-bold"><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="retail">Retail / Hardware</SelectItem>
-                                                            <SelectItem value="sacco">SACCO / Financial</SelectItem>
-                                                            <SelectItem value="hospitality">Restaurant / Hotel</SelectItem>
-                                                            <SelectItem value="barber">Barber / Salon</SelectItem>
-                                                            <SelectItem value="tech">Computers & IT</SelectItem>
-                                                            <SelectItem value="service">General Services</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Brand Primary Color</Label><div className="flex gap-2"><Input type="color" value={compData.primaryColor} onChange={e => handleInputChange('primaryColor', e.target.value)} className="w-12 h-11 p-1" /><Input value={compData.primaryColor} onChange={e => handleInputChange('primaryColor', e.target.value)} className="h-11 font-mono" /></div></div>
-                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">VAT Rate (%)</Label><Input type="number" value={compData.vatRate} onChange={e => handleInputChange('vatRate', Number(e.target.value))} className="h-11 font-bold" /></div>
-                                            </div>
+                                <TabsContent value="profile" className="mt-0 space-y-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Business Name</Label><Input value={compData.name} onChange={e => handleInputChange('name', e.target.value)} className="h-11 font-bold" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Shop Category</Label>
+                                            <Select onValueChange={v => handleInputChange('businessType', v)} value={compData.businessType}>
+                                                <SelectTrigger className="h-11 font-bold"><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="retail">Retail / Hardware</SelectItem>
+                                                    <SelectItem value="sacco">SACCO / Financial</SelectItem>
+                                                    <SelectItem value="hospitality">Restaurant / Hotel</SelectItem>
+                                                    <SelectItem value="barber">Barber / Salon</SelectItem>
+                                                    <SelectItem value="tech">Computers & IT</SelectItem>
+                                                    <SelectItem value="service">General Services</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
                                 </TabsContent>
 
-                                <TabsContent value="contact" className="mt-0 space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
+                                <TabsContent value="contact" className="mt-0 space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Email</Label><Input value={compData.email} onChange={e => handleInputChange('email', e.target.value)} className="h-11" /></div>
                                         <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Primary Phone</Label><Input value={compData.phone} onChange={e => handleInputChange('phone', e.target.value)} className="h-11" /></div>
                                         <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase">Head Office Address</Label><Input value={compData.address} onChange={e => handleInputChange('address', e.target.value)} className="h-11" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Website</Label><Input value={compData.website} onChange={e => handleInputChange('website', e.target.value)} className="h-11" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">KRA PIN / Tax ID</Label><Input value={compData.taxPin} onChange={e => handleInputChange('taxPin', e.target.value)} className="h-11 font-mono uppercase" /></div>
                                     </div>
                                 </TabsContent>
 
-                                <TabsContent value="payments" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
+                                <TabsContent value="payments" className="mt-0 space-y-8">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="space-y-6">
-                                            <div className="flex items-center gap-2 text-primary font-black uppercase text-[10px] tracking-widest border-b pb-2">
-                                                <Landmark className="h-4 w-4" />
-                                                Bank Settlement Details
-                                            </div>
-                                            <div className="space-y-4">
-                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Bank Name</Label><Input value={compData.bankName} onChange={e => handleInputChange('bankName', e.target.value)} placeholder="e.g. Diamond Trust Bank (DTB)" className="h-11" /></div>
-                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Account Name</Label><Input value={compData.bankAccName} onChange={e => handleInputChange('bankAccName', e.target.value)} placeholder="e.g. Matesh Technologies Ltd" className="h-11" /></div>
-                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Account Number</Label><Input value={compData.bankAccNo} onChange={e => handleInputChange('bankAccNo', e.target.value)} placeholder="e.g. 0084976001" className="h-11 font-mono" /></div>
+                                        <div className="space-y-4">
+                                            <Label className="text-[10px] font-black uppercase flex items-center gap-2"><Landmark className="h-3 w-3" /> Bank Details</Label>
+                                            <div className="space-y-3">
+                                                <Input value={compData.bankName} onChange={e => handleInputChange('bankName', e.target.value)} placeholder="Bank Name" className="h-10" />
+                                                <Input value={compData.bankAccNo} onChange={e => handleInputChange('bankAccNo', e.target.value)} placeholder="Account Number" className="h-10 font-mono" />
                                             </div>
                                         </div>
-
-                                        <div className="space-y-6">
-                                            <div className="flex items-center gap-2 text-primary font-black uppercase text-[10px] tracking-widest border-b pb-2">
-                                                <Smartphone className="h-4 w-4" />
-                                                M-Pesa / Mobile Money
-                                            </div>
-                                            <div className="space-y-4">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Paybill Number</Label><Input value={compData.paybillNumber} onChange={e => handleInputChange('paybillNumber', e.target.value)} placeholder="516600" className="h-11 font-mono" /></div>
-                                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Account Name/No</Label><Input value={compData.paybillAccount} onChange={e => handleInputChange('paybillAccount', e.target.value)} placeholder="5084975001" className="h-11 font-mono" /></div>
-                                                </div>
-                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Till Number</Label><Input value={compData.tillNumber} onChange={e => handleInputChange('tillNumber', e.target.value)} placeholder="Optional" className="h-11 font-mono" /></div>
-                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Direct Mobile No.</Label><Input value={compData.mobileMoneyPhone} onChange={e => handleInputChange('mobileMoneyPhone', e.target.value)} placeholder="07XX..." className="h-11 font-mono" /></div>
+                                        <div className="space-y-4">
+                                            <Label className="text-[10px] font-black uppercase flex items-center gap-2"><Smartphone className="h-3 w-3" /> M-Pesa</Label>
+                                            <div className="space-y-3">
+                                                <Input value={compData.paybillNumber} onChange={e => handleInputChange('paybillNumber', e.target.value)} placeholder="Paybill No" className="h-10 font-mono" />
+                                                <Input value={compData.paybillAccount} onChange={e => handleInputChange('paybillAccount', e.target.value)} placeholder="Account ID" className="h-10 font-mono" />
                                             </div>
                                         </div>
                                     </div>
                                 </TabsContent>
 
                                 <TabsContent value="groups" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 text-primary font-black uppercase text-[10px] tracking-widest border-b pb-2">
-                                            <Tags className="h-4 w-4" />
-                                            Inventory Categories & Sub-Groups
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <div className="space-y-4">
-                                                <Label className="text-[10px] font-black uppercase">Create Category</Label>
-                                                <div className="flex gap-2">
-                                                    <Input 
-                                                        placeholder="e.g. Networking" 
-                                                        value={newCategoryName} 
-                                                        onChange={e => setNewCategoryName(e.target.value)}
-                                                        className="h-11"
-                                                    />
-                                                    <Button onClick={handleAddCategory} type="button" className="h-11 px-6"><Plus className="h-4 w-4" /></Button>
-                                                </div>
-                                                
-                                                <ScrollArea className="h-[400px] border rounded-xl p-4 bg-muted/5">
-                                                    <div className="space-y-3">
-                                                        {compData.categories.map((cat, idx) => (
-                                                            <div key={idx} className="p-3 bg-white border rounded-lg flex items-center justify-between group shadow-sm">
-                                                                <span className="font-bold uppercase text-xs">{cat.name}</span>
-                                                                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleRemoveCategory(cat.name)}>
-                                                                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                                                                </Button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </ScrollArea>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                        <div className="space-y-4">
+                                            <div className="space-y-1">
+                                                <Label className="text-sm font-black uppercase">Master Categories</Label>
+                                                <p className="text-[10px] text-muted-foreground uppercase">Top-level product groups (e.g. Laptops)</p>
                                             </div>
-
-                                            <div className="space-y-6">
-                                                <Label className="text-[10px] font-black uppercase">Sub-Category Linkage</Label>
-                                                <ScrollArea className="h-[500px] space-y-6 pr-4">
-                                                    {compData.categories.map((cat, idx) => (
-                                                        <div key={idx} className="p-5 border rounded-2xl bg-white space-y-4 shadow-sm mb-4">
-                                                            <div className="flex items-center gap-2">
-                                                                <Badge variant="outline" className="font-black uppercase text-[8px] border-primary text-primary h-5">{cat.name}</Badge>
-                                                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Sub-Groups</span>
-                                                            </div>
-                                                            <div className="flex gap-2">
-                                                                <Input 
-                                                                    placeholder={`Add to ${cat.name}...`} 
-                                                                    value={newSubCategoryName[cat.name] || ""} 
-                                                                    onChange={e => setNewSubCategoryName({ ...newSubCategoryName, [cat.name]: e.target.value })}
-                                                                    className="h-9 text-xs"
-                                                                />
-                                                                <Button size="sm" variant="secondary" onClick={() => handleAddSubCategory(cat.name)} className="h-9"><Plus className="h-3 w-3" /></Button>
-                                                            </div>
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {cat.subCategories.map((sub, sIdx) => (
-                                                                    <Badge key={sIdx} variant="secondary" className="flex items-center gap-1.5 px-3 py-1 text-[9px] font-bold uppercase tracking-tight h-7">
-                                                                        {sub}
-                                                                        <button onClick={() => handleRemoveSubCategory(cat.name, sub)} className="hover:text-destructive">
-                                                                            <Trash2 className="h-2.5 w-2.5" />
-                                                                        </button>
-                                                                    </Badge>
-                                                                ))}
-                                                                {cat.subCategories.length === 0 && (
-                                                                    <p className="text-[9px] italic opacity-30">No sub-groups defined.</p>
-                                                                )}
-                                                            </div>
+                                            <div className="flex gap-2">
+                                                <Input 
+                                                    placeholder="Category Name..." 
+                                                    value={newCategoryName} 
+                                                    onChange={e => setNewCategoryName(e.target.value)}
+                                                    className="h-12 border-2"
+                                                />
+                                                <Button onClick={handleAddCategory} type="button" className="h-12 w-12 p-0 shadow-lg"><Plus className="h-5 w-5" /></Button>
+                                            </div>
+                                            <ScrollArea className="h-80 border rounded-2xl p-4 bg-muted/5">
+                                                <div className="space-y-2">
+                                                    {compData.categories.map((cat, i) => (
+                                                        <div key={i} className="p-3 bg-white border rounded-xl flex items-center justify-between group shadow-sm">
+                                                            <span className="font-black uppercase text-xs">{cat.name}</span>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveCategory(cat.name)}>
+                                                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                                            </Button>
                                                         </div>
                                                     ))}
-                                                </ScrollArea>
+                                                </div>
+                                            </ScrollArea>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="space-y-1">
+                                                <Label className="text-sm font-black uppercase">Sub-Category Registry</Label>
+                                                <p className="text-[10px] text-muted-foreground uppercase">Linked grouping for your categories</p>
                                             </div>
+                                            <ScrollArea className="h-[430px] pr-4">
+                                                {compData.categories.map((cat, i) => (
+                                                    <div key={i} className="mb-6 p-5 bg-white border-2 border-black/5 rounded-3xl space-y-4 shadow-sm">
+                                                        <Badge variant="default" className="font-black uppercase text-[9px] h-6 px-3">{cat.name}</Badge>
+                                                        <div className="flex gap-2">
+                                                            <Input 
+                                                                placeholder={`Add sub-group to ${cat.name}...`} 
+                                                                value={newSubCategoryName[cat.name] || ""} 
+                                                                onChange={e => setNewSubCategoryName({ ...newSubCategoryName, [cat.name]: e.target.value })}
+                                                                className="h-10 text-xs"
+                                                            />
+                                                            <Button size="icon" variant="secondary" onClick={() => handleAddSubCategory(cat.name)} className="h-10 w-10"><Plus className="h-4 w-4" /></Button>
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {cat.subCategories.map((sub, sIdx) => (
+                                                                <Badge key={sIdx} variant="secondary" className="flex items-center gap-2 px-3 py-1 text-[9px] font-bold uppercase h-7">
+                                                                    {sub}
+                                                                    <button onClick={() => handleRemoveSubCategory(cat.name, sub)} className="hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
+                                                                </Badge>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {compData.categories.length === 0 && <div className="p-12 text-center opacity-20 italic text-xs uppercase">No categories defined yet.</div>}
+                                            </ScrollArea>
                                         </div>
                                     </div>
                                 </TabsContent>
 
-                                <TabsContent value="documents" className="mt-0 space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-black/5 rounded-2xl border border-black/10">
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Invoice Prefix</Label><Input value={compData.invoicePrefix} onChange={e => handleInputChange('invoicePrefix', e.target.value)} className="h-11 font-black" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Receipt Prefix</Label><Input value={compData.receiptPrefix} onChange={e => handleInputChange('invoicePrefix', e.target.value)} className="h-11 font-black" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Quotation Prefix</Label><Input value={compData.quotePrefix} onChange={e => handleInputChange('quotePrefix', e.target.value)} className="h-11 font-black" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Delivery Prefix</Label><Input value={compData.deliveryPrefix} onChange={e => handleInputChange('deliveryPrefix', e.target.value)} className="h-11 font-black" /></div>
+                                <TabsContent value="logistics" className="mt-0 space-y-8 animate-in fade-in duration-500">
+                                    <div className="max-w-2xl space-y-6">
+                                        <div className="space-y-1">
+                                            <Label className="text-sm font-black uppercase flex items-center gap-2"><Scale className="h-4 w-4" /> Units of Measure</Label>
+                                            <p className="text-[10px] text-muted-foreground uppercase">Define how items are counted (e.g. Kgs, Litres, Boxes)</p>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <Input 
+                                                placeholder="Enter unit name (e.g. Box)..." 
+                                                value={newUnitName} 
+                                                onChange={e => setNewUnitName(e.target.value)}
+                                                className="h-14 text-lg font-black border-2"
+                                            />
+                                            <Button onClick={handleAddUnit} className="h-14 px-8 font-black uppercase shadow-xl"><Plus className="h-5 w-5 mr-2" /> Add Unit</Button>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-4">
+                                            {compData.unitsOfMeasure.map(unit => (
+                                                <div key={unit} className="p-4 bg-white border rounded-2xl flex items-center justify-between group shadow-sm hover:border-primary transition-all">
+                                                    <span className="font-bold text-xs uppercase">{unit}</span>
+                                                    <button onClick={() => handleRemoveUnit(unit)} className="opacity-0 group-hover:opacity-100 text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </TabsContent>
 
-                                <TabsContent value="data" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
-                                            <CardHeader className="bg-primary/5 py-4">
-                                                <CardTitle className="text-sm font-black uppercase tracking-widest">Inventory Log</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="pt-6">
-                                                <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('inventory')} disabled={!!isExporting}>
-                                                    {isExporting === 'inventory' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} CSV Export
-                                                </Button>
-                                            </CardContent>
-                                        </Card>
+                                <TabsContent value="documents" className="mt-0 space-y-6">
+                                    <div className="grid grid-cols-2 gap-6 p-6 bg-black/5 rounded-2xl border">
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Invoice Prefix</Label><Input value={compData.invoicePrefix} onChange={e => handleInputChange('invoicePrefix', e.target.value)} className="h-11 font-black" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Receipt Prefix</Label><Input value={compData.receiptPrefix} onChange={e => handleInputChange('receiptPrefix', e.target.value)} className="h-11 font-black" /></div>
+                                    </div>
+                                </TabsContent>
 
-                                        <Card className="border-none ring-1 ring-black/5 shadow-sm overflow-hidden">
-                                            <CardHeader className="bg-primary/5 py-4">
-                                                <CardTitle className="text-sm font-black uppercase tracking-widest">CRM Directory</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="pt-6">
-                                                <Button variant="outline" className="w-full h-11 font-bold" onClick={() => handleDataExport('customers')} disabled={!!isExporting}>
-                                                    {isExporting === 'customers' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DownloadCloud className="h-4 w-4 mr-2" />} CSV Export
-                                                </Button>
-                                            </CardContent>
-                                        </Card>
+                                <TabsContent value="data" className="mt-0 space-y-6">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <Button variant="outline" className="h-12 font-bold" onClick={() => handleDataExport('inventory')} disabled={!!isExporting}>
+                                            {isExporting === 'inventory' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export Stock
+                                        </Button>
+                                        <Button variant="outline" className="h-12 font-bold" onClick={() => handleDataExport('customers')} disabled={!!isExporting}>
+                                            {isExporting === 'customers' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export Clients
+                                        </Button>
                                     </div>
                                 </TabsContent>
                             </div>
                         </Tabs>
                     </CardContent>
                     <CardFooter className="justify-end bg-muted/10 border-t p-8">
-                        <Button onClick={handleSaveCompany} disabled={isSaving} className="h-14 px-10 font-black uppercase tracking-widest shadow-xl border-2 border-black hover:bg-black hover:text-white transition-all">
-                            {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} 
-                            Sync Settings
+                        <Button onClick={handleSaveCompany} disabled={isSaving} className="h-14 px-12 font-black uppercase tracking-widest shadow-2xl bg-black text-white hover:bg-black/90">
+                            {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} Sync Node Settings
                         </Button>
                     </CardFooter>
                 </Card>
               )}
-
-              <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden">
-                <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight">Security</CardTitle></CardHeader>
-                <CardContent className="p-8 space-y-4">
-                  <p className="text-sm text-muted-foreground leading-relaxed">System identity protection is active. Multi-tenant isolation ensures your business verification data and API secrets are inaccessible to other nodes.</p>
-                  <div className="flex items-center gap-4 p-6 bg-black/5 rounded-2xl border border-black/20">
-                      <ShieldCheck className="h-10 w-10 text-black opacity-50" />
-                      <div className="space-y-0.5">
-                        <p className="text-xs font-black uppercase tracking-widest">Cryptographic Isolation</p>
-                        <p className="text-[10px] text-muted-foreground font-mono">NODE-ID: {tenant?.id}</p>
-                      </div>
-                  </div>
-                </CardContent>
-              </Card>
             </>
           )}
         </div>
