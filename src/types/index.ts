@@ -15,6 +15,11 @@ interface Auditable {
 
 export type DocumentTheme = 'Corporate' | 'Retail' | 'Wholesale' | 'RentalLeasing' | 'Construction';
 
+export interface CategoryGroup {
+    name: string;
+    subCategories: string[];
+}
+
 export interface Company extends Auditable {
   id: string;
   tenantId?: string; 
@@ -64,6 +69,9 @@ export interface Company extends Auditable {
   // Theming
   primaryColor?: string; // Hex color
   secondaryColor?: string; // Hex color
+
+  // Inventory Groups
+  categories?: CategoryGroup[];
 }
 
 export interface User {

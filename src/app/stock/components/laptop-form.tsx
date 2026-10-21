@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import type { Asset } from "@/types";
+import type { Asset, Company } from "@/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,13 +23,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, DollarSign, CheckCircle2, Box, Tag } from "lucide-react";
+import { CalendarIcon, DollarSign, CheckCircle2, Box, Tag, AlertTriangle } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { useSaaS } from "@/components/saas/saas-provider";
+import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
+import Link from 'next/link';
 
 const inventoryFormSchema = z.object({
   model: z.string().min(2, "Model must be at least 2 characters."),
@@ -54,6 +58,12 @@ interface InventoryFormProps {
 }
 
 export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryFormProps) {
+  const { tenant } = useSaaS();
+  const firestore = useFirestore();
+  
+  const companyRef = useMemoFirebase(() => tenant?.id ? doc(firestore, 'companies', tenant.id) : null, [firestore, tenant?.id]);
+  const { data: company } = useDoc<Company>(companyRef);
+
   const defaultValues: Partial<InventoryFormValues> = laptop
     ? {
         ...laptop,
@@ -84,12 +94,19 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
   });
 
   const isSerialized = form.watch("isSerialized");
+  const selectedCategoryName = form.watch("category");
 
   useEffect(() => {
     if (isSerialized) {
       form.setValue("quantity", 1);
     }
   }, [isSerialized, form]);
+
+  const subCategoryOptions = useMemo(() => {
+      if (!company?.categories || !selectedCategoryName) return [];
+      const cat = company.categories.find(c => c.name === selectedCategoryName);
+      return cat?.subCategories || [];
+  }, [company?.categories, selectedCategoryName]);
 
   const handleSubmit = (data: InventoryFormValues) => {
     if (data.isSerialized && (!data.serialNumber || data.serialNumber.length < 3)) {
@@ -163,9 +180,24 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Primary Category</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. Laptops" {...field} />
-                  </FormControl>
+                  <Select onValueChange={(val) => { field.onChange(val); form.setValue("subCategory", ""); }} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="Pick a group..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        {company?.categories?.map((cat, i) => (
+                            <SelectItem key={i} value={cat.name}>{cat.name}</SelectItem>
+                        ))}
+                        {(!company?.categories || company.categories.length === 0) && (
+                            <div className="p-4 text-center space-y-2">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase">No groups defined</p>
+                                <Button asChild variant="link" size="sm" className="text-[10px] h-auto p-0"><Link href="/profile">Set Groups in Settings</Link></Button>
+                            </div>
+                        )}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -175,10 +207,19 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
               name="subCategory"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sub-Category (Optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. Business Class" {...field} />
-                  </FormControl>
+                  <FormLabel>Sub-Category</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedCategoryName}>
+                    <FormControl>
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder={selectedCategoryName ? "Pick sub-group..." : "Select category first"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        {subCategoryOptions.map((sub, i) => (
+                            <SelectItem key={i} value={sub}>{sub}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

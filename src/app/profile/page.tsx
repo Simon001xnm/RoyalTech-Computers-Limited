@@ -1,7 +1,7 @@
 'use client';
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +21,10 @@ import {
     Zap,
     CreditCard,
     Smartphone,
-    Landmark
+    Landmark,
+    Plus,
+    Trash2,
+    Tags
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
@@ -36,6 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { logger } from "@/lib/logger";
 import Link from 'next/link';
+import type { CategoryGroup } from "@/types";
 
 export default function ProfilePage() {
   const { user: authUser, isUserLoading } = useUser();
@@ -75,10 +79,14 @@ export default function ProfilePage() {
     paybillAccount: '',
     tillNumber: '',
     mobileMoneyPhone: '',
+    categories: [] as CategoryGroup[]
   });
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSwitching, setIsSwitching] = useState<string | null>(null);
+
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newSubCategoryName, setNewSubCategoryName] = useState<Record<string, string>>({});
 
   const userRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
   const { data: userProfile } = useDoc<any>(userRef);
@@ -94,7 +102,8 @@ export default function ProfilePage() {
     if (company) {
       setCompData({
         ...compData,
-        ...company
+        ...company,
+        categories: company.categories || []
       });
     }
   }, [userProfile, authUser, company]);
@@ -126,6 +135,57 @@ export default function ProfilePage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleAddCategory = () => {
+      if (!newCategoryName.trim()) return;
+      if (compData.categories.some(c => c.name.toLowerCase() === newCategoryName.toLowerCase().trim())) {
+          toast({ variant: 'destructive', title: 'Duplicate Category' });
+          return;
+      }
+      setCompData(prev => ({
+          ...prev,
+          categories: [...prev.categories, { name: newCategoryName.trim(), subCategories: [] }]
+      }));
+      setNewCategoryName("");
+  };
+
+  const handleRemoveCategory = (name: string) => {
+      setCompData(prev => ({
+          ...prev,
+          categories: prev.categories.filter(c => c.name !== name)
+      }));
+  };
+
+  const handleAddSubCategory = (categoryName: string) => {
+      const val = newSubCategoryName[categoryName];
+      if (!val || !val.trim()) return;
+      
+      setCompData(prev => ({
+          ...prev,
+          categories: prev.categories.map(c => {
+              if (c.name === categoryName) {
+                  if (c.subCategories.some(sc => sc.toLowerCase() === val.toLowerCase().trim())) {
+                      return c;
+                  }
+                  return { ...c, subCategories: [...c.subCategories, val.trim()] };
+              }
+              return c;
+          })
+      }));
+      setNewSubCategoryName(prev => ({ ...prev, [categoryName]: "" }));
+  };
+
+  const handleRemoveSubCategory = (categoryName: string, subName: string) => {
+      setCompData(prev => ({
+          ...prev,
+          categories: prev.categories.map(c => {
+              if (c.name === categoryName) {
+                  return { ...c, subCategories: c.subCategories.filter(sc => sc !== subName) };
+              }
+              return c;
+          })
+      }));
   };
 
   const handleSwitch = async (id: string) => {
@@ -203,7 +263,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20">
-      <PageHeader title="Shop Settings" description="Configure branding and high-fidelity generation standards." />
+      <PageHeader title="Shop Settings" description="Configure branding, documents and product groups." />
 
       <div className="grid gap-8 lg:grid-cols-[350px_1fr]">
         <div className="space-y-6">
@@ -358,10 +418,11 @@ export default function ProfilePage() {
                     </CardHeader>
                     <CardContent className="p-0">
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList className="grid w-full grid-cols-5 h-14 bg-muted/30 rounded-none border-b p-0">
+                            <TabsList className="grid w-full grid-cols-6 h-14 bg-muted/30 rounded-none border-b p-0">
                                 <TabsTrigger value="profile" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Branding</TabsTrigger>
                                 <TabsTrigger value="contact" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Contact</TabsTrigger>
                                 <TabsTrigger value="payments" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Payments</TabsTrigger>
+                                <TabsTrigger value="groups" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Groups</TabsTrigger>
                                 <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Standards</TabsTrigger>
                                 <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest text-primary">Backups</TabsTrigger>
                             </TabsList>
@@ -442,10 +503,83 @@ export default function ProfilePage() {
                                     </div>
                                 </TabsContent>
 
+                                <TabsContent value="groups" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 text-primary font-black uppercase text-[10px] tracking-widest border-b pb-2">
+                                            <Tags className="h-4 w-4" />
+                                            Inventory Categories & Sub-Groups
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-black uppercase">Create Category</Label>
+                                                <div className="flex gap-2">
+                                                    <Input 
+                                                        placeholder="e.g. Networking" 
+                                                        value={newCategoryName} 
+                                                        onChange={e => setNewCategoryName(e.target.value)}
+                                                        className="h-11"
+                                                    />
+                                                    <Button onClick={handleAddCategory} type="button" className="h-11 px-6"><Plus className="h-4 w-4" /></Button>
+                                                </div>
+                                                
+                                                <ScrollArea className="h-[400px] border rounded-xl p-4 bg-muted/5">
+                                                    <div className="space-y-3">
+                                                        {compData.categories.map((cat, idx) => (
+                                                            <div key={idx} className="p-3 bg-white border rounded-lg flex items-center justify-between group shadow-sm">
+                                                                <span className="font-bold uppercase text-xs">{cat.name}</span>
+                                                                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleRemoveCategory(cat.name)}>
+                                                                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </ScrollArea>
+                                            </div>
+
+                                            <div className="space-y-6">
+                                                <Label className="text-[10px] font-black uppercase">Sub-Category Linkage</Label>
+                                                <ScrollArea className="h-[500px] space-y-6 pr-4">
+                                                    {compData.categories.map((cat, idx) => (
+                                                        <div key={idx} className="p-5 border rounded-2xl bg-white space-y-4 shadow-sm mb-4">
+                                                            <div className="flex items-center gap-2">
+                                                                <Badge variant="outline" className="font-black uppercase text-[8px] border-primary text-primary h-5">{cat.name}</Badge>
+                                                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Sub-Groups</span>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <Input 
+                                                                    placeholder={`Add to ${cat.name}...`} 
+                                                                    value={newSubCategoryName[cat.name] || ""} 
+                                                                    onChange={e => setNewSubCategoryName({ ...newSubCategoryName, [cat.name]: e.target.value })}
+                                                                    className="h-9 text-xs"
+                                                                />
+                                                                <Button size="sm" variant="secondary" onClick={() => handleAddSubCategory(cat.name)} className="h-9"><Plus className="h-3 w-3" /></Button>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {cat.subCategories.map((sub, sIdx) => (
+                                                                    <Badge key={sIdx} variant="secondary" className="flex items-center gap-1.5 px-3 py-1 text-[9px] font-bold uppercase tracking-tight h-7">
+                                                                        {sub}
+                                                                        <button onClick={() => handleRemoveSubCategory(cat.name, sub)} className="hover:text-destructive">
+                                                                            <Trash2 className="h-2.5 w-2.5" />
+                                                                        </button>
+                                                                    </Badge>
+                                                                ))}
+                                                                {cat.subCategories.length === 0 && (
+                                                                    <p className="text-[9px] italic opacity-30">No sub-groups defined.</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </ScrollArea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+
                                 <TabsContent value="documents" className="mt-0 space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-black/5 rounded-2xl border border-black/10">
                                         <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Invoice Prefix</Label><Input value={compData.invoicePrefix} onChange={e => handleInputChange('invoicePrefix', e.target.value)} className="h-11 font-black" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Receipt Prefix</Label><Input value={compData.receiptPrefix} onChange={e => handleInputChange('receiptPrefix', e.target.value)} className="h-11 font-black" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Receipt Prefix</Label><Input value={compData.receiptPrefix} onChange={e => handleInputChange('invoicePrefix', e.target.value)} className="h-11 font-black" /></div>
                                         <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Quotation Prefix</Label><Input value={compData.quotePrefix} onChange={e => handleInputChange('quotePrefix', e.target.value)} className="h-11 font-black" /></div>
                                         <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Delivery Prefix</Label><Input value={compData.deliveryPrefix} onChange={e => handleInputChange('deliveryPrefix', e.target.value)} className="h-11 font-black" /></div>
                                     </div>
