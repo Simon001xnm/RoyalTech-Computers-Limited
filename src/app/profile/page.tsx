@@ -21,7 +21,9 @@ import {
     Zap,
     Plus,
     Trash2,
-    Tags
+    Tags,
+    Landmark,
+    Smartphone
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
