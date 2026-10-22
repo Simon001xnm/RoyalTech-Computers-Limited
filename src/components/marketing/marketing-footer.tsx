@@ -74,6 +74,12 @@ export function MarketingFooter({ isDark }: MarketingFooterProps) {
             </p>
             
             <div className="flex flex-col items-center gap-4">
+                <p className={cn(
+                    "text-[10px] font-black uppercase tracking-[0.2em] opacity-60",
+                    isDark ? "text-white" : "text-black"
+                )}>
+                    Partnering with Refrens, a global brand
+                </p>
                 <a 
                     href="https://www.refrens.com/en-ke" 
                     target="_blank" 
@@ -83,7 +89,7 @@ export function MarketingFooter({ isDark }: MarketingFooterProps) {
                     <img 
                         src="/Accounting-Software-Powered-by-Refrens.webp" 
                         alt="Accounting Software Powered by Refrens" 
-                        className="h-12 w-auto grayscale brightness-150 contrast-125"
+                        className="h-12 w-auto brightness-110 contrast-110"
                     />
                 </a>
                 <a 
