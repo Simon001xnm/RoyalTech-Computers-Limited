@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -14,11 +14,33 @@ import {
     Building2,
     Activity,
     ShoppingCart,
-    DollarSign
+    DollarSign,
+    Receipt,
+    Scale,
+    CreditCard,
+    Package,
+    Wallet,
+    Users
 } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export function LandingPage() {
+  const [activeFeature, setActiveFeature] = useState('Accounting');
+
+  const features = [
+    { name: 'Accounting', icon: DollarSign, description: 'Automatically update your books when you make a sale or record a purchase, generate financial reports, automate bank reconciliation, access audit trails, create E-invoices & E-way Bills, generate GSTR-1 & GSTR-2B Reports, and automate GSTR-2B reconciliation.' },
+    { name: 'Invoicing', icon: Receipt, description: 'Create professional, high-fidelity A4 and thermal invoices. Track paid, partial, and credit status in real-time with automatic inventory deduction.' },
+    { name: 'Compliance', icon: Scale, description: 'Stay audit-ready with permanent records and tax-compliant reporting. Handle VAT and local regulations with zero effort.' },
+    { name: 'Payments', icon: CreditCard, description: 'Integrated M-Pesa STK Push, bank settlements, and cash tracking. Monitor every cent across multiple payment modes.' },
+    { name: 'Inventory', icon: Package, description: 'Toggle between serialized tracking for high-value units and bulk stock management. Dynamic categories and sub-categories.' },
+    { name: 'Expenses', icon: Wallet, description: 'Record every shop spend instantly. Categorize expenditures to see where your money goes and optimize your margins.' },
+    { name: 'Sales', icon: ShoppingCart, description: 'High-speed POS interface designed for efficiency. Sell from your phone, tablet, or PC with instant cloud sync.' },
+    { name: 'Vendors', icon: Users, description: 'Manage supplier relationships, track LPOs, and monitor purchase orders to keep your supply chain running smoothly.' }
+  ];
+
+  const currentFeature = features.find(f => f.name === activeFeature) || features[0];
+
   return (
     <div className="space-y-0">
       {/* HERO SECTION */}
@@ -26,40 +48,27 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-1000">
                 <div className="inline-flex items-center gap-2 bg-[#eab308]/10 text-[#eab308] px-4 py-1.5 rounded-full border border-[#eab308]/20 shadow-sm">
-                    <Badge className="bg-[#eab308] text-black hover:bg-[#eab308] font-black text-[9px] h-5 px-2 border-none">NEW</Badge>
-                    <span className="text-[10px] font-black uppercase tracking-widest">Now works across all of Africa</span>
+                    <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map(i => <Star key={i} className="h-3 w-3 fill-[#eab308] text-[#eab308]" />)}
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Rated 4.8/5 by businesses worldwide</span>
                 </div>
                 <h1 className="text-6xl lg:text-8xl font-black uppercase tracking-tighter leading-[0.85] transition-colors">
-                    Stop using paper. <br />
-                    <span className="text-[#eab308]">Grow your shop.</span>
+                    Smarter Way to <br />
+                    <span className="text-[#eab308]">Manage Your Business.</span>
                 </h1>
-                <p className="text-base text-muted-foreground font-medium max-w-lg leading-relaxed">
-                    The easiest way to track your items, see who owes you money, and record every sale from your phone.
+                <p className="text-xl text-muted-foreground font-bold uppercase tracking-tight max-w-lg leading-tight">
+                    Everything You Need To Grow Your Business
                 </p>
                 <div className="flex flex-wrap gap-4 pt-4">
-                    <Button asChild size="lg" className="h-14 px-10 font-black uppercase tracking-widest shadow-2xl bg-[#22c55e] text-white hover:bg-[#16a34a] rounded-2xl active:scale-95 transition-all">
-                        <Link href="/signup">Start My Free Trial</Link>
+                    <Button asChild size="lg" className="h-16 px-12 font-black uppercase tracking-widest shadow-2xl bg-[#22c55e] text-white hover:bg-[#16a34a] rounded-2xl active:scale-95 transition-all">
+                        <Link href="/signup">Try for Free</Link>
                     </Button>
-                    <Button asChild variant="outline" size="lg" className="h-14 px-10 font-black uppercase tracking-widest border-2 rounded-2xl group active:scale-95 transition-all bg-transparent border-muted-foreground/20">
+                    <Button asChild variant="outline" size="lg" className="h-16 px-12 font-black uppercase tracking-widest border-2 rounded-2xl group active:scale-95 transition-all bg-transparent border-muted-foreground/20">
                         <Link href="/company/about" className="flex items-center">
-                            How it works <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                            Explore Accounting <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                         </Link>
                     </Button>
-                </div>
-                <div className="flex items-center gap-4 pt-8">
-                    <div className="flex -space-x-3">
-                        {[1, 2, 3, 4].map(i => (
-                            <div key={i} className="h-10 w-10 rounded-full border-2 border-background overflow-hidden shadow-md">
-                                <img src={`https://picsum.photos/seed/user${i}/64/64`} alt="user" className="w-full h-full object-cover" />
-                            </div>
-                        ))}
-                    </div>
-                    <div className="space-y-0.5">
-                        <div className="flex gap-0.5">
-                            {[1, 2, 3, 4, 5].map(i => <Star key={i} className="h-3 w-3 fill-[#eab308] text-[#eab308]" />)}
-                        </div>
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Trusted by 2,000+ local shops</p>
-                    </div>
                 </div>
             </div>
             
@@ -76,21 +85,50 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* QUICK STATS */}
-      <section className="py-12 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-                { label: 'Uptime', val: '99.9%', icon: Activity },
-                { label: 'Daily Sales', val: 'Thousands', icon: ShoppingCart },
-                { label: 'Shop Growth', val: 'Fast', icon: TrendingUp },
-                { label: 'Records Safe', val: 'Always', icon: ShieldCheck },
-            ].map((m, i) => (
-                <div key={i} className="p-6 rounded-3xl bg-muted/20 border border-muted-foreground/5 flex flex-col items-center text-center space-y-2">
-                    <m.icon className="h-5 w-5 text-[#eab308]" />
-                    <p className="text-2xl font-black tracking-tighter">{m.val}</p>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">{m.label}</p>
+      {/* DYNAMIC FEATURE SHOWCASE */}
+      <section className="py-24 bg-muted/10 border-y border-black/5">
+        <div className="max-w-7xl mx-auto px-6 space-y-16">
+            <div className="text-center space-y-4">
+                <h2 className="text-4xl lg:text-5xl font-black uppercase tracking-tighter">Powerful Capabilities</h2>
+                <p className="text-muted-foreground font-medium">Click a category to see how we help your shop succeed.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-12">
+                <div className="flex flex-wrap lg:flex-col gap-2">
+                    {features.map((f) => (
+                        <button
+                            key={f.name}
+                            onClick={() => setActiveFeature(f.name)}
+                            className={cn(
+                                "flex items-center gap-3 px-6 py-4 rounded-2xl font-black uppercase text-[11px] tracking-widest transition-all text-left",
+                                activeFeature === f.name 
+                                    ? "bg-[#eab308] text-black shadow-lg scale-105 z-10" 
+                                    : "bg-white border hover:bg-muted/50 text-muted-foreground"
+                            )}
+                        >
+                            <f.icon className="h-4 w-4" />
+                            {f.name}
+                        </button>
+                    ))}
                 </div>
-            ))}
+
+                <Card className="p-12 bg-white border-none shadow-2xl rounded-[40px] flex flex-col justify-center animate-in fade-in slide-in-from-right-4 duration-500">
+                    <div className="space-y-6">
+                        <div className="bg-[#eab308]/10 p-4 rounded-2xl w-fit">
+                            <currentFeature.icon className="h-8 w-8 text-[#eab308]" />
+                        </div>
+                        <h3 className="text-4xl font-black uppercase tracking-tighter">{currentFeature.name}</h3>
+                        <p className="text-lg text-muted-foreground font-medium leading-relaxed">
+                            {currentFeature.description}
+                        </p>
+                        <div className="pt-6">
+                            <Button asChild className="h-12 px-8 font-black uppercase tracking-widest rounded-xl">
+                                <Link href="/signup">Get Started with {currentFeature.name}</Link>
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+            </div>
         </div>
       </section>
 
@@ -100,7 +138,7 @@ export function LandingPage() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-4">
                     <div className="inline-flex items-center gap-2 text-[#eab308] font-black uppercase text-[10px] tracking-widest">
-                        <div className="h-1 w-6 bg-[#eab308] rounded-full" /> What we do for you
+                        <div className="h-1 w-6 bg-[#eab308] rounded-full" /> Growth Engineered
                     </div>
                     <h2 className="text-5xl font-black uppercase tracking-tighter leading-[0.9]">
                         Easy tools to make <br /> your shop successful.
