@@ -65,22 +65,37 @@ export function MarketingFooter({ isDark }: MarketingFooterProps) {
       </div>
 
       <div className="max-w-7xl mx-auto mt-24 pt-8 border-t border-muted-foreground/10 flex flex-col items-center gap-8">
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-6">
             <p className={cn(
               "text-[11px] tracking-[0.05em] text-center uppercase font-black",
               isDark ? "text-white" : "text-black"
             )}>
               © 2026, Simon Styles Corporation Pvt. Ltd. All Rights Reserved.
             </p>
-            <a 
-                href="https://simonstyles.co.ke" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-[#eab308] transition-colors flex items-center gap-1.5"
-            >
-                Made with care in Kenya 
-                <span className="text-base" role="img" aria-label="Kenya Flag">🇰🇪</span>
-            </a>
+            
+            <div className="flex flex-col items-center gap-4">
+                <a 
+                    href="https://www.refrens.com/en-ke" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="transition-opacity hover:opacity-80"
+                >
+                    <img 
+                        src="/Accounting-Software-Powered-by-Refrens.webp" 
+                        alt="Accounting Software Powered by Refrens" 
+                        className="h-12 w-auto grayscale brightness-150 contrast-125"
+                    />
+                </a>
+                <a 
+                    href="https://simonstyles.co.ke" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-[#eab308] transition-colors flex items-center gap-1.5"
+                >
+                    Made with care in Kenya 
+                    <span className="text-base" role="img" aria-label="Kenya Flag">🇰🇪</span>
+                </a>
+            </div>
         </div>
       </div>
     </footer>
