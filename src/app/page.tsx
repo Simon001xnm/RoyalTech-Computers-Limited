@@ -554,6 +554,18 @@ function DashboardPage() {
     }
   };
 
+  const renderPdfPreview = () => {
+    if (!selectedDocument) return null;
+    switch(selectedDocument.type) {
+      case 'Invoice': return <InvoicePdf document={selectedDocument} />;
+      case 'Receipt': return <ReceiptPdf document={selectedDocument} />;
+      case 'Proforma': return <ProformaInvoicePdf document={selectedDocument} />;
+      case 'Quotation': return <QuotationPdf document={selectedDocument} />;
+      case 'DeliveryNote': return <DeliveryNotePdf document={selectedDocument} />;
+      default: return null;
+    }
+  };
+
   const columns = useMemo<ColumnDef<any>[]>(() => [
     {
       accessorKey: "generatedDate",
