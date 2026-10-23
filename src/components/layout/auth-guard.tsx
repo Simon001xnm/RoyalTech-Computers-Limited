@@ -53,9 +53,9 @@ function DebtIndicator({ tenantId }: { tenantId: string }) {
 
     return (
         <Link href="/receivables">
-            <Button variant="ghost" size="icon" className="relative group w-9 h-9 sm:w-10 sm:h-10">
+            <Button variant="ghost" size="icon" className="relative group w-8 h-8 sm:w-10 sm:h-10">
                 <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 group-hover:text-red-600 transition-colors" />
-                <Badge className="absolute top-0 right-0 h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-[8px] sm:text-[10px] border-2 border-background bg-red-600 text-white shadow-sm font-black">
+                <Badge className="absolute top-0 right-0 h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-[7px] sm:text-[10px] border-2 border-background bg-red-600 text-white shadow-sm font-black">
                     {uniqueDebtors}
                 </Badge>
             </Button>
@@ -106,7 +106,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     useEffect(() => {
         const updateTime = () => {
             const now = new Date();
-            setDateTime(format(now, "EEEE, MMM d, yyyy • hh:mm:ss a"));
+            setDateTime(format(now, "hh:mm:ss a"));
         };
         updateTime();
         const interval = setInterval(updateTime, 1000);
@@ -153,7 +153,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     };
 
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider defaultOpen={false}>
       <Sidebar 
         variant="sidebar" 
         collapsible="icon" 
@@ -183,16 +183,6 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                         </p>
                     </div>
                 </div>
-
-                <div className="px-2 group-data-[collapsible=icon]:hidden">
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-40" />
-                        <Input 
-                            placeholder="Search..." 
-                            className="h-9 pl-8 bg-muted/40 border-none rounded-xl text-xs font-medium placeholder:text-muted-foreground/30 focus-visible:ring-1 focus-visible:ring-primary/20"
-                        />
-                    </div>
-                </div>
             </SidebarHeader>
 
             <SidebarContent className="px-4 group-data-[collapsible=icon]:px-1 overflow-y-auto flex-1 min-0">
@@ -209,40 +199,28 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                         {isDark ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-primary" />}
                     </button>
                 </div>
-
-                <div className="flex items-center justify-between p-2 rounded-2xl hover:bg-muted/30 transition-colors group group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center">
-                    <div className="flex items-center gap-3 overflow-hidden group-data-[collapsible=icon]:justify-center">
-                        <div className="h-9 w-9 rounded-xl border-2 border-background shadow-sm ring-1 ring-black/5 shrink-0 flex items-center justify-center bg-primary/5 text-primary">
-                            <UserIcon className="h-4 w-4" />
-                        </div>
-                        <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
-                            <p className="text-xs font-bold text-foreground truncate">{userProfile?.name || user?.displayName || 'User'}</p>
-                            <p className="text-[10px] text-muted-foreground truncate opacity-40">{userProfile?.email || user?.email}</p>
-                        </div>
-                    </div>
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive group-data-[collapsible=icon]:hidden"
-                        onClick={handleLogout}
-                    >
-                        <LogOut className="h-4 w-4" />
-                    </Button>
-                </div>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 mx-auto text-muted-foreground hover:text-destructive"
+                    onClick={handleLogout}
+                >
+                    <LogOut className="h-4 w-4" />
+                </Button>
             </SidebarFooter>
         </div>
       </Sidebar>
 
       <SidebarInset className="min-h-screen bg-muted/10 relative">
-        {/* MOBILE OVERLAY HEADER */}
-        <header className="sticky top-2 sm:top-4 z-30 mx-2 sm:mx-4 flex h-14 sm:h-16 items-center justify-between border bg-background/95 backdrop-blur-sm px-3 sm:px-6 no-print rounded-xl sm:rounded-2xl shadow-sm">
-          <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
-            <SidebarTrigger className="h-9 w-9" />
-            <Link href="/" className="flex items-center gap-2 font-bold text-base sm:text-lg overflow-hidden">
-                <div className="bg-primary p-1 rounded-lg shadow-sm shrink-0">
-                    <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
+        {/* MOBILE OVERLAY HEADER - Optimized for Edge-to-Edge */}
+        <header className="sticky top-1 sm:top-4 z-30 mx-1 sm:mx-4 flex h-12 sm:h-16 items-center justify-between border bg-background/95 backdrop-blur-sm px-2 sm:px-6 no-print rounded-lg sm:rounded-2xl shadow-sm">
+          <div className="flex items-center gap-1 sm:gap-4 overflow-hidden">
+            <SidebarTrigger className="h-8 w-8" />
+            <Link href="/" className="flex items-center gap-1.5 font-bold text-sm sm:text-lg overflow-hidden">
+                <div className="bg-primary p-0.5 sm:p-1 rounded-md sm:rounded-lg shadow-sm shrink-0">
+                    <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                 </div>
-                <span className="font-black uppercase tracking-tighter truncate max-w-[120px] sm:max-w-none">
+                <span className="font-black uppercase tracking-tighter truncate max-w-[100px] sm:max-w-none">
                     {isSuperAdmin ? "Control Hub" : (company?.name || APP_NAME)}
                 </span>
             </Link>
@@ -279,51 +257,44 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
               </div>
           </div>
           
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
             {!isSuperAdmin && <ModuleTutorial />}
             {!isSuperAdmin && tenant?.id && <DebtIndicator tenantId={tenant.id} />}
             <NotificationCenter />
             {user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0">
-                    <Avatar className="h-9 w-9 sm:h-10 sm:w-10 border-2 border-primary/20 shadow-sm bg-white">
-                      <AvatarFallback className="bg-primary text-primary-foreground text-[8px] sm:text-[10px] font-black uppercase">
+                  <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full shrink-0">
+                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 border-2 border-primary/20 shadow-sm bg-white">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-[7px] sm:text-[10px] font-black uppercase">
                         {isSuperAdmin ? "BH" : (company?.name?.substring(0, 2).toUpperCase() || 'CP')}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64" align="end" forceMount>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-xs font-black uppercase tracking-widest text-primary">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-primary">
                           {isSuperAdmin ? "Platform Controller" : "Current Node"}
                       </p>
-                      <p className="text-sm font-black uppercase tracking-tight leading-none truncate">
+                      <p className="text-xs font-black uppercase tracking-tight leading-none truncate">
                         {isSuperAdmin ? "Business Hub" : (company?.name || 'My Shop')}
-                      </p>
-                      <Separator className="my-2" />
-                      <p className="text-[10px] font-bold text-muted-foreground truncate flex items-center gap-2">
-                        <UserIcon className="h-3 w-3" /> {userProfile?.name || user.displayName}
                       </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {!isSuperAdmin && (
-                    <>
-                        <Link href="/profile">
-                            <DropdownMenuItem className="cursor-pointer font-bold text-xs uppercase tracking-tight py-2">
-                                <Search className="mr-2 h-4 w-4" />
-                                <span>Shop Settings</span>
-                            </DropdownMenuItem>
-                        </Link>
-                        <DropdownMenuSeparator />
-                    </>
+                    <Link href="/profile">
+                        <DropdownMenuItem className="cursor-pointer font-bold text-xs uppercase tracking-tight py-2">
+                            <Settings className="mr-2 h-4 w-4" />
+                            <span>Shop Settings</span>
+                        </DropdownMenuItem>
+                    </Link>
                   )}
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer font-bold text-xs uppercase tracking-tight py-2">
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Exit Shop Area</span>
+                    <span>Exit Area</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -331,7 +302,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
           </div>
         </header>
 
-        <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-x-hidden">
+        <main className="flex-1 p-1.5 sm:p-4 lg:p-8 overflow-x-hidden">
           {children}
         </main>
       </SidebarInset>
@@ -402,3 +373,5 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return null;
 }
+
+import { Settings } from 'lucide-react';
