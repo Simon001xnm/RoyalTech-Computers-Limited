@@ -6,7 +6,7 @@ import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "fir
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Package } from "lucide-react";
+import { PlusCircle, Package, Search } from "lucide-react";
 import { LaptopForm } from "./laptop-form";
 import { getLaptopColumns } from "./laptop-columns";
 import { Input } from "@/components/ui/input";
@@ -63,11 +63,16 @@ export function StockClient() {
         const assetData = {
             tenantId: tenant.id,
             model: data.model,
-            serialNumber: data.serialNumber,
+            serialNumber: data.serialNumber || '',
             status: data.status,
             quantity: Number(data.quantity) || 1,
+            unit: data.unit || 'Unit',
+            category: data.category || '',
+            subCategory: data.subCategory || '',
             purchaseDate: data.purchaseDate.toISOString(),
+            purchasePrice: Number(data.purchasePrice) || 0,
             sellingPrice: Number(data.sellingPrice) || 0,
+            isSerialized: data.isSerialized ?? true,
             updatedAt: new Date().toISOString()
         };
 
@@ -110,81 +115,88 @@ export function StockClient() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6 px-1 sm:px-0">
       <PageHeader 
-        title="Items in Shop" 
-        description="Unified tracking for all your serialized items and stock."
-        actionLabel="Add New Item"
+        title="Inventory List" 
+        description="Managed hardware & items."
+        actionLabel="Register Item"
         onAction={() => { setEditingAsset(null); setIsFormOpen(true); }}
         ActionIcon={PlusCircle}
       />
 
-      <div className="mb-4">
+      <div className="mb-2 sm:mb-4 relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
         <Input
-          placeholder="Search by model or serial number..."
+          placeholder="Scan serial or search model..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm bg-card h-11 font-bold"
+          className="max-w-sm bg-card h-10 sm:h-11 font-bold pl-10 rounded-xl"
         />
       </div>
       
       {isLoading ? (
-        <div className="p-8 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground">Checking Shop Records...</div>
+        <div className="p-12 text-center animate-pulse font-black uppercase text-[9px] sm:text-[10px] tracking-widest text-muted-foreground">Synchronizing Cloud Silo...</div>
       ) : (
-        <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
-            <Table>
-                <TableHeader className="bg-muted/50">
-                {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id} className="font-black uppercase text-[10px] py-4">
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        </TableHead>
-                    ))}
-                    </TableRow>
-                ))}
-                </TableHeader>
-                <TableBody>
-                {table.getRowModel().rows.length > 0 ? (
-                    table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                        {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+        <div className="rounded-xl sm:rounded-[2rem] border-none ring-1 ring-black/5 shadow-sm bg-card overflow-hidden">
+            <div className="overflow-x-auto">
+                <Table>
+                    <TableHeader className="bg-muted/50">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                            <TableHead key={header.id} className="font-black uppercase text-[8px] sm:text-[10px] py-4 px-3 sm:px-6">
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            </TableHead>
                         ))}
-                    </TableRow>
-                    ))
-                ) : (
-                    <TableRow>
-                    <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No items found in this shop.</TableCell>
-                    </TableRow>
-                )}
-                </TableBody>
-            </Table>
-            <DataTablePagination table={table} />
+                        </TableRow>
+                    ))}
+                    </TableHeader>
+                    <TableBody>
+                    {table.getRowModel().rows.length > 0 ? (
+                        table.getRowModel().rows.map((row) => (
+                        <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                            {row.getVisibleCells().map((cell) => (
+                            <TableCell key={cell.id} className="py-2 sm:py-4 px-3 sm:px-6 text-[11px] sm:text-sm">
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                            ))}
+                        </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                        <TableCell colSpan={columns.length} className="h-40 text-center text-muted-foreground italic text-xs uppercase opacity-30 font-black">No matching inventory</TableCell>
+                        </TableRow>
+                    )}
+                    </TableBody>
+                </Table>
+            </div>
+            <div className="px-4"><DataTablePagination table={table} /></div>
         </div>
       )}
 
       <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingAsset(null); }}}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingAsset ? "Modify Item" : "Register Item"}</DialogTitle>
-            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Manage your shop inventory items.</DialogDescription>
+        <DialogContent className="w-[98vw] sm:max-w-2xl max-h-[95vh] overflow-y-auto border-none shadow-2xl rounded-2xl sm:rounded-[2rem] p-0">
+          <DialogHeader className="p-6 sm:p-8 border-b bg-muted/10">
+            <DialogTitle className="text-xl sm:text-2xl font-black uppercase tracking-tight">{editingAsset ? "Modify Records" : "Register Logic"}</DialogTitle>
+            <DialogDescription className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Cloud Node Registry</DialogDescription>
           </DialogHeader>
-          <LaptopForm laptop={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isSubmitting} />
+          <div className="p-6 sm:p-8 pt-4">
+            <LaptopForm laptop={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isSubmitting} />
+          </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase">Confirm Deletion</DialogTitle>
+            <DialogTitle className="text-xl font-black uppercase text-destructive">Void Item</DialogTitle>
             <DialogDescription className="font-medium text-base pt-2">
-              Are you sure you want to remove <strong>{assetToDelete?.model}</strong>?
+              Remove <strong>{assetToDelete?.model}</strong> from the shop silo?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 mt-4">
-            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold">Cancel</Button>
-            <Button variant="destructive" onClick={async () => { if (assetToDelete) await deleteDoc(doc(firestore, 'assets', assetToDelete.id)); setIsDeleteConfirmOpen(false); }} className="font-black uppercase">Delete Item</Button>
+          <DialogFooter className="gap-2 mt-6">
+            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold h-12 rounded-xl">Cancel</Button>
+            <Button variant="destructive" onClick={async () => { if (assetToDelete) await deleteDoc(doc(firestore, 'assets', assetToDelete.id)); setIsDeleteConfirmOpen(false); }} className="font-black uppercase h-12 rounded-xl">Void Records</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -6,7 +6,7 @@ import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "fir
 import type { Customer, User as AppUser } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Users, UserX, Loader2 } from "lucide-react";
+import { PlusCircle, Users, UserX, Loader2, Search } from "lucide-react";
 import { CustomerForm } from "./customer-form";
 import { getCustomerColumns, type CustomerColumnActions } from "./customer-columns";
 import { Input } from "@/components/ui/input";
@@ -58,12 +58,10 @@ export function CustomersClient() {
     pageSize: 10,
   });
 
-  // Role check
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile } = useDoc<AppUser>(userProfileRef);
   const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
 
-  // FIRESTORE QUERY: Siloed by tenantId
   const customersQuery = useMemoFirebase(() => {
     if (!tenant) return null;
     return query(collection(firestore, 'customers'), where('tenantId', '==', tenant.id));
@@ -79,37 +77,6 @@ export function CustomersClient() {
     );
   }, [customers, searchTerm]);
 
-  const handleAddCustomer = () => {
-    setEditingCustomer(null);
-    setIsFormOpen(true);
-  };
-
-  const handleEditCustomer = (customer: Customer) => {
-    setEditingCustomer(customer);
-    setIsFormOpen(true);
-  };
-
-  const handleDeleteCustomer = (customer: Customer) => {
-    setCustomerToDelete(customer);
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (customerToDelete) {
-      setIsDeleting(true);
-      try {
-        await deleteDoc(doc(firestore, 'customers', customerToDelete.id));
-        toast({ title: "Customer Deleted" });
-      } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: e.message });
-      } finally {
-        setIsDeleting(false);
-        setIsDeleteConfirmOpen(false);
-        setCustomerToDelete(null);
-      }
-    }
-  };
-
   const handleFormSubmit = async (data: any) => {
     if (!tenant || !user) return;
 
@@ -122,7 +89,7 @@ export function CustomersClient() {
     try {
         if (editingCustomer) {
             await updateDoc(doc(firestore, 'customers', editingCustomer.id), customerData);
-            toast({ title: "Customer Updated" });
+            toast({ title: "Updated" });
         } else {
             await addDoc(collection(firestore, 'customers'), {
                 ...customerData,
@@ -130,18 +97,18 @@ export function CustomersClient() {
                 createdAt: new Date().toISOString(),
                 createdBy: { uid: user.uid, name: user.displayName || 'User' }
             });
-            toast({ title: "Customer Added" });
+            toast({ title: "Registered" });
         }
         setIsFormOpen(false);
         setEditingCustomer(null);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: e.message });
+        toast({ variant: 'destructive', title: 'Error Saving' });
     }
   };
 
   const columnActions: CustomerColumnActions = {
-    onEdit: handleEditCustomer,
-    onDelete: isAdmin ? handleDeleteCustomer : undefined,
+    onEdit: (c) => { setEditingCustomer(c); setIsFormOpen(true); },
+    onDelete: isAdmin ? (c) => { setCustomerToDelete(c); setIsDeleteConfirmOpen(true); } : undefined,
   };
   
   const columns = useMemo<ColumnDef<Customer, any>[]>(() => getCustomerColumns(columnActions), [columnActions]);
@@ -149,10 +116,7 @@ export function CustomersClient() {
   const table = useReactTable({
     data: filteredCustomers,
     columns,
-    state: {
-      rowSelection,
-      pagination,
-    },
+    state: { rowSelection, pagination },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
@@ -161,81 +125,74 @@ export function CustomersClient() {
   });
 
   return (
-    <>
+    <div className="space-y-3 sm:space-y-6 px-1 sm:px-0">
       <PageHeader
-        title="Customer CRM"
-        description="Managing client relationships within your cloud workspace."
-        actionLabel="Add New Customer"
-        onAction={handleAddCustomer}
+        title="Client List"
+        description="Workspace CRM silo."
+        actionLabel="Register New"
+        onAction={() => { setEditingCustomer(null); setIsFormOpen(true); }}
         ActionIcon={PlusCircle}
       />
 
-      <div className="mb-4">
+      <div className="mb-3 sm:mb-4 relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-30" />
         <Input
-          placeholder="Search by name or email..."
+          placeholder="Search name or email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm bg-card h-11 font-bold"
+          className="max-w-sm bg-card h-10 sm:h-11 font-bold pl-9 rounded-xl"
         />
       </div>
       
-      {isLoading ? <p className="text-muted-foreground animate-pulse font-black uppercase text-[10px] tracking-widest">Syncing client directory...</p> : (
-        <>
-            {!filteredCustomers.length && searchTerm ? (
-                <Alert variant="default" className="mb-4 bg-card">
-                <UserX className="h-4 w-4" />
-                <AlertTitle>No Results</AlertTitle>
-                <AlertDescription>Your search for "{searchTerm}" did not match any records.</AlertDescription>
-                </Alert>
-            ) : !customers?.length ? (
-                <Alert variant="default" className="mb-4 bg-card">
-                <Users className="h-4 w-4" />
-                <AlertTitle>CRM Empty</AlertTitle>
-                <AlertDescription>Start building your cloud-synced customer base.</AlertDescription>
-                </Alert>
-            ) : (
-                <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
+      {isLoading ? (
+          <div className="p-12 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground">Syncing directory...</div>
+      ) : (
+        <div className="rounded-xl sm:rounded-[2rem] border-none ring-1 ring-black/5 shadow-sm bg-card overflow-hidden">
+            <div className="overflow-x-auto">
                 <Table>
                     <TableHeader className="bg-muted/50">
-                        {table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id} className="font-black uppercase text-[10px] py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}
+                        {table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id} className="font-black uppercase text-[8px] sm:text-[10px] py-4 px-3 sm:px-6">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}
                     </TableHeader>
                     <TableBody>
-                        {table.getRowModel().rows.map(row => (
-                            <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-muted/5 transition-colors">
-                                {row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4 text-xs font-medium">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
-                            </TableRow>
-                        ))}
+                        {table.getRowModel().rows.length ? (
+                            table.getRowModel().rows.map(row => (
+                                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-muted/5 transition-colors">
+                                    {row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-3 px-3 sm:px-6 text-[11px] sm:text-xs font-medium">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow><TableCell colSpan={columns.length} className="h-32 text-center opacity-30 font-black uppercase text-[10px]">No clients found</TableCell></TableRow>
+                        )}
                     </TableBody>
                 </Table>
-                <DataTablePagination table={table} />
-                </div>
-            )}
-        </>
+            </div>
+            <div className="px-4"><DataTablePagination table={table} /></div>
+        </div>
       )}
 
-      <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingCustomer(null); }}}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto border-none shadow-2xl">
-          <DialogHeader><DialogTitle className="text-xl font-black uppercase tracking-tight">{editingCustomer ? "Modify Client" : "Register New Client"}</DialogTitle></DialogHeader>
-          <CustomerForm customer={editingCustomer} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} />
+      <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingCustomer(null); }}}>
+        <DialogContent className="w-[95vw] sm:max-w-lg border-none shadow-2xl rounded-2xl sm:rounded-[2rem] p-0 overflow-hidden">
+          <DialogHeader className="p-6 sm:p-8 bg-muted/10 border-b"><DialogTitle className="text-xl font-black uppercase tracking-tight">{editingCustomer ? "Modify Identity" : "Register Node"}</DialogTitle></DialogHeader>
+          <div className="p-6 sm:p-8 pt-4">
+              <CustomerForm customer={editingCustomer} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} />
+          </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight text-destructive">Confirm Deletion</DialogTitle>
+            <DialogTitle className="text-xl font-black uppercase text-destructive">Void Account</DialogTitle>
             <DialogDescription className="font-medium text-base pt-2">
-              Are you sure you want to delete <strong>{customerToDelete?.name}</strong>? This action will permanently remove the client from your workspace directory.
+              Remove <strong>{customerToDelete?.name}</strong> forever?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 mt-4">
-            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} disabled={isDeleting} className="font-bold">Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting} className="font-black uppercase tracking-widest">
-              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Delete Forever"}
-            </Button>
+            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} disabled={isDeleting} className="font-bold h-12 rounded-xl">Cancel</Button>
+            <Button variant="destructive" onClick={async () => { if (customerToDelete) { setIsDeleting(true); await deleteDoc(doc(firestore, 'customers', customerToDelete.id)); setCustomerToDelete(null); setIsDeleteConfirmOpen(false); setIsDeleting(false); } }} disabled={isDeleting} className="font-black uppercase h-12 rounded-xl">Purge Node</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

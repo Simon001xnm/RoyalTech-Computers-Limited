@@ -84,10 +84,8 @@ export function DocumentsClient() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [docToDelete, setDocToDelete] = useState<AppDocument | null>(null);
 
-  // Edit Mode State
   const [editingDoc, setEditingDoc] = useState<AppDocument | null>(null);
 
-  // Payment Logging State
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
@@ -123,13 +121,11 @@ export function DocumentsClient() {
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [isExporting, setIsExporting] = useState(false);
 
-  // Load existing data when editing
   useEffect(() => {
     if (editingDoc) {
         setSelectedCustomerId(editingDoc.data?.customer?.id || '');
         setApplyVat(editingDoc.data?.applyVat || false);
         
-        // Normalize items to prevent undefined values during transition
         const normalizedItems = (editingDoc.data?.items || []).map((item: any) => ({
             description: item.description ?? item.name ?? '',
             quantity: item.quantity ?? 1,
@@ -141,7 +137,6 @@ export function DocumentsClient() {
     }
   }, [editingDoc]);
 
-  // Recalculate Brought Forward balance
   useEffect(() => {
     if (!selectedCustomerId || !tenant) {
       setCustomerBalance(0);
@@ -449,7 +444,6 @@ export function DocumentsClient() {
                 createdBy: isEditing ? editingDoc.createdBy : { uid: user.uid, name: user.displayName || 'User' }
             });
 
-            // CRITICAL: Log payment entry for Receipts to sync with Payment Ledger and Statement
             if (type === 'Receipt') {
                 const payRef = doc(collection(firestore, 'payments'));
                 batch.set(payRef, {
@@ -595,11 +589,11 @@ export function DocumentsClient() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6 px-1 sm:px-0">
       <PageHeader title="Shop Paperwork" description="View and create documents for your clients." />
       
       <Tabs value={activeTab} onValueChange={(v) => !editingDoc && setActiveTab(v as DocumentType)} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8 h-auto p-1 bg-muted/50 border">
+        <TabsList className="grid w-full grid-cols-4 mb-4 sm:mb-8 h-auto p-1 bg-muted/50 border overflow-x-auto no-scrollbar">
           <TabsTrigger value="Quotation" className="font-black uppercase text-[8px] md:text-[9px] py-3">Quotation</TabsTrigger>
           <TabsTrigger value="Invoice" className="font-black uppercase text-[8px] md:text-[9px] py-3">Invoice</TabsTrigger>
           <TabsTrigger value="Proforma" className="font-black uppercase text-[8px] md:text-[9px] py-3">Proforma</TabsTrigger>
@@ -611,14 +605,14 @@ export function DocumentsClient() {
         <TabsContent value="Receipt">{renderForm("Receipt")}</TabsContent>
       </Tabs>
       
-      <Card className="mt-8 shadow-2xl border-none overflow-hidden">
-          <CardHeader className="bg-muted/50 py-4 border-b">
+      <Card className="mt-4 sm:mt-8 shadow-2xl border-none overflow-hidden rounded-xl sm:rounded-[2rem]">
+          <CardHeader className="bg-muted/50 py-3 sm:py-4 px-4 sm:px-6 border-b">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <CardTitle className="text-xs font-black uppercase tracking-widest opacity-60">Past Paperwork</CardTitle>
+                <CardTitle className="text-[10px] sm:text-xs font-black uppercase tracking-widest opacity-60">Past Paperwork</CardTitle>
                 <div className="flex items-center gap-3">
-                    <Label className="text-[10px] font-black uppercase opacity-40">Choose Month:</Label>
+                    <Label className="text-[9px] sm:text-[10px] font-black uppercase opacity-40">Choose Month:</Label>
                     <Select value={monthFilter} onValueChange={setMonthFilter}>
-                        <SelectTrigger className="h-9 w-40 bg-white font-bold text-[10px] uppercase">
+                        <SelectTrigger className="h-8 sm:h-9 w-32 sm:w-40 bg-white font-bold text-[9px] sm:text-[10px] uppercase">
                             <Filter className="h-3 w-3 mr-2 text-primary" />
                             <SelectValue />
                         </SelectTrigger>
@@ -639,13 +633,13 @@ export function DocumentsClient() {
                     Checking Records...
                 </div>
             ) : (
-                <>
+                <div className="overflow-x-auto">
                     <Table>
                         <TableHeader className="bg-muted/20">
                             {table.getHeaderGroups().map(hg => (
                                 <TableRow key={hg.id}>
                                     {hg.headers.map(h => (
-                                        <TableHead key={h.id} className="text-[10px] font-black uppercase py-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>
+                                        <TableHead key={h.id} className="text-[9px] sm:text-[10px] font-black uppercase py-4 px-3 sm:px-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>
                                     ))}
                                 </TableRow>
                             ))}
@@ -653,7 +647,7 @@ export function DocumentsClient() {
                         <TableBody>
                             {table.getRowModel().rows.length ? (
                                 table.getRowModel().rows.map(row => (
-                                    <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
+                                    <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-2 sm:py-4 px-3 sm:px-4 text-[11px] sm:text-sm">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
                                 ))
                             ) : (
                                 <TableRow><TableCell colSpan={customColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">No records for this month.</TableCell></TableRow>
@@ -661,13 +655,13 @@ export function DocumentsClient() {
                         </TableBody>
                     </Table>
                     <DataTablePagination table={table} />
-                </>
+                </div>
             )}
           </CardContent>
       </Card>
 
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-          <DialogContent className="sm:max-w-md border-none shadow-2xl">
+          <DialogContent className="w-[95vw] sm:max-w-md border-none shadow-2xl rounded-2xl">
               <DialogHeader>
                   <DialogTitle className="text-xl font-black uppercase flex items-center gap-2">
                       <DollarSign className="h-5 w-5 text-primary" />
@@ -685,14 +679,14 @@ export function DocumentsClient() {
                         value={paymentAmount ?? ''} 
                         onChange={e => setPaymentAmount(e.target.value)} 
                         placeholder="0.00" 
-                        className="h-14 text-2xl font-black border-2 border-primary"
+                        className="h-14 text-2xl font-black border-2 border-primary rounded-xl"
                         autoFocus
                       />
                   </div>
               </div>
               <DialogFooter className="gap-2">
-                  <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)} className="font-bold h-12">Cancel</Button>
-                  <Button onClick={handleLogPayment} disabled={isSubmittingPayment} className="font-black uppercase tracking-widest h-12 px-8 shadow-lg">
+                  <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)} className="font-bold h-12 rounded-xl">Cancel</Button>
+                  <Button onClick={handleLogPayment} disabled={isSubmittingPayment} className="font-black uppercase tracking-widest h-12 px-8 shadow-lg rounded-xl">
                       {isSubmittingPayment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Save Payment
                   </Button>
               </DialogFooter>
@@ -700,45 +694,40 @@ export function DocumentsClient() {
       </Dialog>
 
        <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
-        <DialogContent className="max-w-5xl h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
-          <DialogHeader className="p-6 bg-white border-b no-print">
+        <DialogContent className="w-full sm:max-w-5xl h-[100vh] sm:h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
+          <DialogHeader className="p-4 sm:p-6 bg-white border-b no-print">
             <div className="flex items-center justify-between">
-                <DialogTitle className="text-xl font-black uppercase tracking-tight">View Paper</DialogTitle>
+                <DialogTitle className="text-base sm:text-xl font-black uppercase tracking-tight">View Paper</DialogTitle>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'A4')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download A4</Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'A4')} className="h-8 font-black uppercase text-[8px] sm:text-[9px] tracking-widest border-2">A4</Button>
                     {(selectedDocument?.type === 'Receipt' || selectedDocument?.type === 'Invoice') && (
-                        <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'Thermal')} className="h-8 font-black uppercase text-[9px] tracking-widest border-2">Download Small</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!, 'Thermal')} className="h-8 font-black uppercase text-[8px] sm:text-[9px] tracking-widest border-2">Small</Button>
                     )}
                 </div>
             </div>
           </DialogHeader>
-          <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-4 md:p-8">
+          <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-2 sm:p-8">
             <div id="pdf-preview-target" className={cn(
-                "shrink-0 relative overflow-visible origin-top scale-[0.4] sm:scale-[0.6] md:scale-100",
+                "shrink-0 relative overflow-visible origin-top scale-[0.35] sm:scale-[0.6] md:scale-100",
                 exportType === 'Thermal' ? "w-[80mm] h-fit bg-white" : "" 
             )}>
                 {renderPdfPreview()}
             </div>
           </div>
-          <div className="p-4 border-t flex flex-col sm:flex-row justify-end gap-3 bg-white no-print">
-            {isExporting && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-            <Button variant="outline" onClick={() => setIsPdfPreviewOpen(false)} className="font-bold w-full sm:w-auto">Close</Button>
-            <Button onClick={() => handleDownloadPdf(selectedDocument!, 'A4')} className="font-black uppercase w-full sm:w-auto"><Download className="mr-2 h-4 w-4" />Download PDF</Button>
-          </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md rounded-2xl">
             <DialogHeader>
                 <DialogTitle className="text-xl font-black uppercase tracking-tight text-destructive">Delete for Good?</DialogTitle>
                 <DialogDescription className="font-medium text-base pt-2">
-                    This will remove <strong>{docToDelete?.title}</strong> and all its money details from the shop records. This cannot be undone.
+                    This will remove <strong>{docToDelete?.title}</strong> permanently.
                 </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2 mt-4">
-                <Button variant="outline" onClick={() => setDocToDelete(null)} disabled={isDeleting} className="font-bold">Cancel</Button>
-                <Button variant="destructive" onClick={async () => { if (docToDelete) { await deleteDoc(doc(firestore, 'documents', docToDelete.id)); setDocToDelete(null); } }} disabled={isDeleting} className="font-black uppercase tracking-widest">
+                <Button variant="outline" onClick={() => setDocToDelete(null)} disabled={isDeleting} className="font-bold h-12 rounded-xl">Cancel</Button>
+                <Button variant="destructive" onClick={async () => { if (docToDelete) { await deleteDoc(doc(firestore, 'documents', docToDelete.id)); setDocToDelete(null); } }} disabled={isDeleting} className="font-black uppercase tracking-widest h-12 rounded-xl">
                     {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Forever"}
                 </Button>
             </DialogFooter>
@@ -753,31 +742,31 @@ export function DocumentsClient() {
 
     return (
       <Card className={cn(
-        "shadow-lg transition-all",
-        isEditing ? "border-amber-400 border-2 ring-4 ring-amber-50" : "border-primary/10"
+        "shadow-lg transition-all border-none ring-1 ring-black/5 rounded-xl sm:rounded-[2rem]",
+        isEditing ? "border-amber-400 border-2 ring-4 ring-amber-50" : ""
       )}>
         <CardHeader className={cn(
-            "border-b flex flex-row items-center justify-between",
+            "border-b flex flex-row items-center justify-between p-4 sm:p-6",
             isEditing ? "bg-amber-50" : "bg-primary/5"
         )}>
             <div>
-                <CardTitle className="text-lg font-black uppercase">
+                <CardTitle className="text-sm sm:text-lg font-black uppercase">
                     {isEditing ? "Modifying Data" : `Create ${type.replace(/([A-Z])/g, ' $1').trim()}`}
                 </CardTitle>
-                <CardDescription>
-                    {isEditing ? `You are editing ${editingDoc.title}` : "Enter details below to create your paper."}
+                <CardDescription className="text-[10px] sm:text-sm">
+                    {isEditing ? `Editing ${editingDoc.title}` : "Create your paper."}
                 </CardDescription>
             </div>
             {isEditing && (
-                <Badge className="bg-amber-600 text-white font-black uppercase text-[10px] h-6">Edit Mode Active</Badge>
+                <Badge className="bg-amber-600 text-white font-black uppercase text-[8px] sm:text-[10px] h-5 sm:h-6">Active</Badge>
             )}
         </CardHeader>
-        <CardContent className="space-y-6 pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <Label className="text-[10px] font-black uppercase opacity-60">Pick Client</Label>
+        <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <div className="space-y-2">
+                <Label className="text-[9px] sm:text-[10px] font-black uppercase opacity-60">Pick Client</Label>
                 <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId ?? ''}>
-                  <SelectTrigger className="h-11"><SelectValue placeholder="Pick a name..." /></SelectTrigger>
+                  <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Pick a name..." /></SelectTrigger>
                   <SelectContent>
                     {customers?.map(c => (
                       <SelectItem key={c.id} value={c.id}>
@@ -787,57 +776,57 @@ export function DocumentsClient() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-xl border h-11 self-end">
-                <Switch id="vat-switch" checked={applyVat} onCheckedChange={setApplyVat} />
-                <Label htmlFor="vat-switch" className="cursor-pointer font-bold text-xs">Add 16% Tax (VAT)</Label>
+              <div className="flex items-center space-x-2 bg-muted/30 p-3 sm:p-4 rounded-xl border h-11 self-end">
+                <Switch id="vat-switch" checked={applyVat} onCheckedChange={setApplyVat} className="scale-75 sm:scale-100" />
+                <Label htmlFor="vat-switch" className="cursor-pointer font-bold text-[10px] sm:text-xs">Add 16% VAT</Label>
               </div>
           </div>
 
           {showsItemEntry && (
-            <div className="space-y-4">
-                <Label className="text-[10px] font-black uppercase opacity-60">Item Details</Label>
+            <div className="space-y-3">
+                <Label className="text-[9px] sm:text-[10px] font-black uppercase opacity-60">Item Details</Label>
                 <div className="border rounded-xl overflow-hidden overflow-x-auto">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="text-[10px] font-black uppercase min-w-[200px]">Item Description</TableHead>
-                                <TableHead className="w-24 text-[10px] font-black uppercase">Qty</TableHead>
-                                <TableHead className="w-32 text-[10px] font-black uppercase">Price</TableHead>
-                                <TableHead className="w-10"></TableHead>
+                                <TableHead className="text-[9px] font-black uppercase px-3 py-3">Description</TableHead>
+                                <TableHead className="w-16 text-[9px] font-black uppercase px-1 py-3 text-center">Qty</TableHead>
+                                <TableHead className="w-24 text-[9px] font-black uppercase px-1 py-3 text-right">Price</TableHead>
+                                <TableHead className="w-10 px-1 py-3"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {lineItems.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell><Input className="h-9 border-none bg-transparent" placeholder="e.g. Laptop" value={item.description ?? ''} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
-                                    <TableCell><Input type="number" className="h-9 border-none bg-transparent" value={item.quantity ?? ''} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
-                                    <TableCell><Input type="number" className="h-9 border-none bg-transparent" value={item.unitPrice ?? ''} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
-                                    <TableCell><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter((_, i) => i !== index))} disabled={lineItems.length === 1}><Trash2 className="h-4 w-4 text-destructive/50" /></Button></TableCell>
+                                <TableRow key={index} className="border-b last:border-0">
+                                    <TableCell className="p-1 px-3"><Input className="h-9 border-none bg-transparent text-[11px] sm:text-sm p-0" placeholder="Item name..." value={item.description ?? ''} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
+                                    <TableCell className="p-1"><Input type="number" className="h-9 border-none bg-transparent text-[11px] sm:text-sm p-0 text-center" value={item.quantity ?? ''} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
+                                    <TableCell className="p-1"><Input type="number" className="h-9 border-none bg-transparent text-[11px] sm:text-sm p-0 text-right font-bold" value={item.unitPrice ?? ''} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
+                                    <TableCell className="p-1 text-center"><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter((_, i) => i !== index))} disabled={lineItems.length === 1} className="h-7 w-7 opacity-30 hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }])} className="h-8 font-bold"><PlusCircle className="mr-2 h-3 w-3"/>Add Another Row</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }])} className="h-8 font-black uppercase text-[8px] rounded-lg"><PlusCircle className="mr-1.5 h-3 w-3"/>Add Row</Button>
             </div>
           )}
         </CardContent>
-        <CardFooter className="bg-muted/10 border-t py-4 gap-3 flex flex-col sm:flex-row justify-end">
+        <CardFooter className="bg-muted/10 border-t p-4 sm:p-6 gap-3 flex flex-col sm:flex-row justify-end">
             {isEditing && (
-                <Button variant="outline" onClick={handleCancelEdit} className="w-full sm:w-auto font-bold">
-                    <X className="mr-2 h-4 w-4" /> Cancel Edit
+                <Button variant="outline" onClick={handleCancelEdit} className="w-full sm:w-auto font-bold h-12 rounded-xl">
+                    Cancel
                 </Button>
             )}
             <Button 
                 onClick={() => handleGenerateDocument(type)} 
                 className={cn(
-                    "w-full sm:w-auto font-black uppercase shadow-lg",
+                    "w-full sm:w-auto font-black uppercase shadow-lg h-12 sm:h-14 px-10 rounded-xl sm:rounded-2xl",
                     isEditing ? "bg-amber-600 hover:bg-amber-700" : ""
                 )} 
                 disabled={docsLoading || isGenerating}
             >
                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isEditing ? <Save className="mr-2 h-4 w-4" /> : null)}
-                {isEditing ? "Save Modified Data" : "Save and Sync Dashboard"}
+                {isEditing ? "Save Changes" : "Save Document"}
             </Button>
         </CardFooter>
       </Card>

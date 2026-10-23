@@ -287,74 +287,65 @@ export default function ProfilePage() {
   }
 
   const isAdmin = userProfile.role === 'admin' || userProfile.role === 'super_admin';
-  const isSuperAdmin = userProfile.role === 'super_admin';
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-20">
-      <PageHeader title="Shop Settings" description="Configure branding, documents and logistics." />
+    <div className="space-y-4 sm:space-y-8 max-w-7xl mx-auto pb-20 px-1 sm:px-0">
+      <PageHeader title="Shop Settings" description="Branding & Logistics Node." />
 
-      <div className="grid gap-8 lg:grid-cols-[350px_1fr]">
-        <div className="space-y-6">
-          <Card className="shadow-md overflow-hidden border-none ring-1 ring-black/5">
-            <CardHeader className="items-center text-center bg-muted/20 pb-8">
+      <div className="grid gap-4 sm:gap-8 lg:grid-cols-[320px_1fr]">
+        <div className="space-y-4 sm:space-y-6">
+          <Card className="shadow-md overflow-hidden border-none ring-1 ring-black/5 rounded-2xl">
+            <CardHeader className="items-center text-center bg-muted/20 pb-6 sm:pb-8">
               <div className="relative group cursor-pointer mt-4" onClick={() => logoInputRef.current?.click()}>
-                <Avatar className="h-40 w-40 border-4 border-white shadow-xl bg-white">
+                <Avatar className="h-32 w-32 sm:h-40 sm:w-40 border-4 border-white shadow-xl bg-white">
                   <AvatarImage 
                     src={compData.logoUrl || `https://picsum.photos/seed/${authUser?.uid}/128/128`} 
                     className="object-contain p-1"
                   />
-                  <AvatarFallback className="text-4xl font-black uppercase bg-primary text-primary-foreground">
+                  <AvatarFallback className="text-3xl sm:text-4xl font-black uppercase bg-primary text-primary-foreground">
                     {(compData.name || displayName || "CP").substring(0, 2)}
                   </AvatarFallback>
                 </Avatar>
+                <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="h-8 w-8 text-white" />
+                    <Camera className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                 </div>
               </div>
-              <div className="mt-6 space-y-1">
-                <CardTitle className="text-4xl font-black uppercase tracking-tighter leading-none">
+              <div className="mt-4 sm:mt-6 space-y-1 overflow-hidden px-2">
+                <CardTitle className="text-2xl sm:text-4xl font-black uppercase tracking-tighter leading-none truncate">
                     {compData.name || 'Your Shop'}
                 </CardTitle>
-                <CardDescription className="font-bold text-[10px] uppercase tracking-widest text-primary">
+                <CardDescription className="font-bold text-[8px] sm:text-[10px] uppercase tracking-widest text-primary">
                     Administrator: {displayName}
                 </CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="p-6 border-t space-y-4">
-               <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-xl border border-primary/10">
-                  <Building2 className="h-5 w-5 text-primary" />
-                  <div className="space-y-0.5">
-                    <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Shared Identity</p>
-                    <p className="text-[10px] font-bold leading-tight">This logo is shown as the profile image for all users in this shop.</p>
-                  </div>
-               </div>
-            </CardContent>
           </Card>
 
-          <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden">
+          <Card className="shadow-md border-none ring-1 ring-black/5 overflow-hidden rounded-2xl">
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
-                <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                <CardTitle className="text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-2">
                     <Building2 className="h-3 w-3 text-primary" />
                     My Nodes
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-                <div className="divide-y">
+                <div className="divide-y max-h-[250px] overflow-y-auto no-scrollbar">
                     {availableWorkspaces.map(ws => (
-                        <div key={ws.id} className={cn("p-4 flex items-center justify-between group", tenant?.id === ws.id ? "bg-primary/5" : "hover:bg-muted/30")}>
-                            <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8 rounded-lg">
+                        <div key={ws.id} className={cn("p-3 sm:p-4 flex items-center justify-between group", tenant?.id === ws.id ? "bg-primary/5" : "hover:bg-muted/30")}>
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <Avatar className="h-8 w-8 rounded-lg shrink-0">
                                     <AvatarImage src={ws.logoUrl} className="object-contain" />
                                     <AvatarFallback className="text-[8px] font-black">{ws.name.substring(0,2)}</AvatarFallback>
                                 </Avatar>
-                                <div>
-                                    <p className="text-xs font-black uppercase tracking-tight leading-none">{ws.name}</p>
-                                    {tenant?.id === ws.id && <Badge variant="outline" className="h-4 px-1 text-[7px] font-black border-primary text-primary bg-white mt-1 uppercase">ACTIVE</Badge>}
+                                <div className="overflow-hidden">
+                                    <p className="text-[11px] sm:text-xs font-black uppercase tracking-tight leading-none truncate">{ws.name}</p>
+                                    {tenant?.id === ws.id && <Badge variant="outline" className="h-3.5 px-1 text-[6px] font-black border-primary text-primary bg-white mt-1 uppercase">ACTIVE</Badge>}
                                 </div>
                             </div>
                             {tenant?.id !== ws.id && (
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100" onClick={() => handleSwitch(ws.id)} disabled={!!isSwitching}>
-                                    {isSwitching === ws.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => handleSwitch(ws.id)} disabled={!!isSwitching}>
+                                    {isSwitching === ws.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRight className="h-3.5 w-3.5" />}
                                 </Button>
                             )}
                         </div>
@@ -366,205 +357,183 @@ export default function ProfilePage() {
           <SaaSUsageMeters />
         </div>
 
-        <div className="space-y-8">
+        <div className="space-y-4 sm:space-y-8">
           {!isAdmin ? (
-               <div className="flex flex-col items-center justify-center p-20 text-center space-y-6 bg-muted/20 rounded-3xl border-4 border-dashed">
-                <div className="bg-destructive/10 p-6 rounded-full"><Lock className="h-12 w-12 text-destructive" /></div>
+               <div className="flex flex-col items-center justify-center p-12 sm:p-20 text-center space-y-6 bg-muted/20 rounded-[2rem] border-4 border-dashed border-muted">
+                <div className="bg-destructive/10 p-4 sm:p-6 rounded-full"><Lock className="h-10 w-10 sm:h-12 sm:w-12 text-destructive" /></div>
                 <div className="max-w-md space-y-2">
-                    <h1 className="text-2xl font-black uppercase tracking-tight">Access Restricted</h1>
-                    <p className="text-muted-foreground">Contact your shop owner to update business information.</p>
+                    <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight">Access Locked</h1>
+                    <p className="text-muted-foreground text-xs sm:text-sm">Only owners can modify settings.</p>
                 </div>
             </div>
           ) : (
-            <>
-              {company && (
-                <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden">
-                    <CardHeader className="bg-muted/10 border-b p-8">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-black p-3 rounded-2xl shadow-lg"><Settings2 className="h-6 w-6 text-white" /></div>
-                            <div>
-                                <CardTitle className="text-2xl font-black uppercase tracking-tighter">Identity & Logic</CardTitle>
-                                <CardDescription>Workspace branding and document standards.</CardDescription>
-                            </div>
+            <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden rounded-xl sm:rounded-[2rem]">
+                <CardHeader className="bg-muted/10 border-b p-4 sm:p-8 text-center sm:text-left">
+                    <div className="flex items-center justify-center sm:justify-start gap-4">
+                        <div className="bg-black p-2.5 sm:p-3 rounded-xl sm:rounded-2xl shadow-lg"><Settings2 className="h-5 w-5 sm:h-6 sm:w-6 text-white" /></div>
+                        <div>
+                            <CardTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter">Identity Node</CardTitle>
+                            <CardDescription className="text-[10px] sm:text-sm">Logic & Branding Config.</CardDescription>
                         </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList className="grid w-full grid-cols-7 h-14 bg-muted/30 rounded-none border-b p-0">
-                                <TabsTrigger value="profile" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Branding</TabsTrigger>
-                                <TabsTrigger value="contact" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Contact</TabsTrigger>
-                                <TabsTrigger value="payments" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Money</TabsTrigger>
-                                <TabsTrigger value="groups" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Groups</TabsTrigger>
-                                <TabsTrigger value="logistics" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest text-primary">Logistics</TabsTrigger>
-                                <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Docs</TabsTrigger>
-                                <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[10px] tracking-widest">Exports</TabsTrigger>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <div className="overflow-x-auto no-scrollbar border-b bg-muted/30">
+                            <TabsList className="flex w-fit sm:grid sm:w-full sm:grid-cols-7 h-12 sm:h-14 bg-transparent rounded-none p-0">
+                                <TabsTrigger value="profile" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Branding</TabsTrigger>
+                                <TabsTrigger value="contact" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Contact</TabsTrigger>
+                                <TabsTrigger value="payments" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Money</TabsTrigger>
+                                <TabsTrigger value="groups" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Groups</TabsTrigger>
+                                <TabsTrigger value="logistics" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Units</TabsTrigger>
+                                <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Docs</TabsTrigger>
+                                <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Extra</TabsTrigger>
                             </TabsList>
-                            
-                            <div className="p-8">
-                                <TabsContent value="profile" className="mt-0 space-y-8">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Business Name</Label><Input value={compData.name} onChange={e => handleInputChange('name', e.target.value)} className="h-11 font-bold" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Shop Category</Label>
-                                            <Select onValueChange={v => handleInputChange('businessType', v)} value={compData.businessType}>
-                                                <SelectTrigger className="h-11 font-bold"><SelectValue /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="retail">Retail / Hardware</SelectItem>
-                                                    <SelectItem value="sacco">SACCO / Financial</SelectItem>
-                                                    <SelectItem value="hospitality">Restaurant / Hotel</SelectItem>
-                                                    <SelectItem value="barber">Barber / Salon</SelectItem>
-                                                    <SelectItem value="tech">Computers & IT</SelectItem>
-                                                    <SelectItem value="service">General Services</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                        </div>
+                        
+                        <div className="p-4 sm:p-8">
+                            <TabsContent value="profile" className="mt-0 space-y-6 sm:space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                                    <div className="space-y-2"><Label className="text-[9px] sm:text-[10px] font-black uppercase">Legal Name</Label><Input value={compData.name} onChange={e => handleInputChange('name', e.target.value)} className="h-10 sm:h-11 font-bold rounded-xl" /></div>
+                                    <div className="space-y-2"><Label className="text-[9px] sm:text-[10px] font-black uppercase">Silo Template</Label>
+                                        <Select onValueChange={v => handleInputChange('businessType', v)} value={compData.businessType}>
+                                            <SelectTrigger className="h-10 sm:h-11 font-bold rounded-xl"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="retail">Retail / Hardware</SelectItem>
+                                                <SelectItem value="tech">Computers & IT</SelectItem>
+                                                <SelectItem value="service">Service Node</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="contact" className="mt-0 space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                                    <div className="space-y-2"><Label className="text-[9px] sm:text-[10px] font-black uppercase">Official Email</Label><Input value={compData.email} onChange={e => handleInputChange('email', e.target.value)} className="h-10 sm:h-11 rounded-xl" /></div>
+                                    <div className="space-y-2"><Label className="text-[9px] sm:text-[10px] font-black uppercase">Primary Phone</Label><Input value={compData.phone} onChange={e => handleInputChange('phone', e.target.value)} className="h-10 sm:h-11 rounded-xl" /></div>
+                                    <div className="space-y-2 md:col-span-2"><Label className="text-[9px] sm:text-[10px] font-black uppercase">Physical HQ</Label><Input value={compData.address} onChange={e => handleInputChange('address', e.target.value)} className="h-10 sm:h-11 rounded-xl" /></div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="payments" className="mt-0 space-y-6 sm:space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+                                    <div className="space-y-4">
+                                        <Label className="text-[10px] font-black uppercase flex items-center gap-2 text-primary border-b pb-1"><Landmark className="h-3 w-3" /> Bank Link</Label>
+                                        <div className="space-y-3">
+                                            <Input value={compData.bankName} onChange={e => handleInputChange('bankName', e.target.value)} placeholder="Bank Name" className="h-10 rounded-xl text-xs" />
+                                            <Input value={compData.bankAccNo} onChange={e => handleInputChange('bankAccNo', e.target.value)} placeholder="Account No" className="h-10 rounded-xl font-mono text-xs" />
                                         </div>
                                     </div>
-                                </TabsContent>
-
-                                <TabsContent value="contact" className="mt-0 space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Official Email</Label><Input value={compData.email} onChange={e => handleInputChange('email', e.target.value)} className="h-11" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Primary Phone</Label><Input value={compData.phone} onChange={e => handleInputChange('phone', e.target.value)} className="h-11" /></div>
-                                        <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black uppercase">Head Office Address</Label><Input value={compData.address} onChange={e => handleInputChange('address', e.target.value)} className="h-11" /></div>
-                                    </div>
-                                </TabsContent>
-
-                                <TabsContent value="payments" className="mt-0 space-y-8">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="space-y-4">
-                                            <Label className="text-[10px] font-black uppercase flex items-center gap-2"><Landmark className="h-3 w-3" /> Bank Details</Label>
-                                            <div className="space-y-3">
-                                                <Input value={compData.bankName} onChange={e => handleInputChange('bankName', e.target.value)} placeholder="Bank Name" className="h-10" />
-                                                <Input value={compData.bankAccNo} onChange={e => handleInputChange('bankAccNo', e.target.value)} placeholder="Account Number" className="h-10 font-mono" />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <Label className="text-[10px] font-black uppercase flex items-center gap-2"><Smartphone className="h-3 w-3" /> M-Pesa</Label>
-                                            <div className="space-y-3">
-                                                <Input value={compData.paybillNumber} onChange={e => handleInputChange('paybillNumber', e.target.value)} placeholder="Paybill No" className="h-10 font-mono" />
-                                                <Input value={compData.paybillAccount} onChange={e => handleInputChange('paybillAccount', e.target.value)} placeholder="Account ID" className="h-10 font-mono" />
-                                            </div>
+                                    <div className="space-y-4">
+                                        <Label className="text-[10px] font-black uppercase flex items-center gap-2 text-primary border-b pb-1"><Smartphone className="h-3 w-3" /> M-Pesa Node</Label>
+                                        <div className="space-y-3">
+                                            <Input value={compData.paybillNumber} onChange={e => handleInputChange('paybillNumber', e.target.value)} placeholder="Paybill No" className="h-10 rounded-xl font-mono text-xs" />
+                                            <Input value={compData.paybillAccount} onChange={e => handleInputChange('paybillAccount', e.target.value)} placeholder="Account ID" className="h-10 rounded-xl font-mono text-xs" />
                                         </div>
                                     </div>
-                                </TabsContent>
+                                </div>
+                            </TabsContent>
 
-                                <TabsContent value="groups" className="mt-0 space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                        <div className="space-y-4">
+                            <TabsContent value="groups" className="mt-0 space-y-6 sm:space-y-8 animate-in fade-in duration-500">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10">
+                                    <div className="space-y-4">
+                                        <div className="space-y-1">
+                                            <Label className="text-sm font-black uppercase">Primary Groups</Label>
+                                            <p className="text-[9px] text-muted-foreground uppercase">Top-level categories</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Input placeholder="Group Name..." value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="h-10 rounded-xl border-2 text-xs" />
+                                            <Button onClick={handleAddCategory} type="button" className="h-10 w-10 p-0 shadow-lg rounded-xl shrink-0"><Plus className="h-4 w-4" /></Button>
+                                        </div>
+                                        <ScrollArea className="h-40 sm:h-80 border rounded-2xl p-2 sm:p-4 bg-muted/5">
                                             <div className="space-y-1">
-                                                <Label className="text-sm font-black uppercase">Master Categories</Label>
-                                                <p className="text-[10px] text-muted-foreground uppercase">Top-level product groups (e.g. Laptops)</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <Input 
-                                                    placeholder="Category Name..." 
-                                                    value={newCategoryName} 
-                                                    onChange={e => setNewCategoryName(e.target.value)}
-                                                    className="h-12 border-2"
-                                                />
-                                                <Button onClick={handleAddCategory} type="button" className="h-12 w-12 p-0 shadow-lg"><Plus className="h-5 w-5" /></Button>
-                                            </div>
-                                            <ScrollArea className="h-80 border rounded-2xl p-4 bg-muted/5">
-                                                <div className="space-y-2">
-                                                    {compData.categories.map((cat, i) => (
-                                                        <div key={i} className="p-3 bg-white border rounded-xl flex items-center justify-between group shadow-sm">
-                                                            <span className="font-black uppercase text-xs">{cat.name}</span>
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveCategory(cat.name)}>
-                                                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                                                            </Button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </ScrollArea>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <div className="space-y-1">
-                                                <Label className="text-sm font-black uppercase">Sub-Category Registry</Label>
-                                                <p className="text-[10px] text-muted-foreground uppercase">Linked grouping for your categories</p>
-                                            </div>
-                                            <ScrollArea className="h-[430px] pr-4">
                                                 {compData.categories.map((cat, i) => (
-                                                    <div key={i} className="mb-6 p-5 bg-white border-2 border-black/5 rounded-3xl space-y-4 shadow-sm">
-                                                        <Badge variant="default" className="font-black uppercase text-[9px] h-6 px-3">{cat.name}</Badge>
-                                                        <div className="flex gap-2">
-                                                            <Input 
-                                                                placeholder={`Add sub-group to ${cat.name}...`} 
-                                                                value={newSubCategoryName[cat.name] || ""} 
-                                                                onChange={e => setNewSubCategoryName({ ...newSubCategoryName, [cat.name]: e.target.value })}
-                                                                className="h-10 text-xs"
-                                                            />
-                                                            <Button size="icon" variant="secondary" onClick={() => handleAddSubCategory(cat.name)} className="h-10 w-10"><Plus className="h-4 w-4" /></Button>
-                                                        </div>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {cat.subCategories.map((sub, sIdx) => (
-                                                                <Badge key={sIdx} variant="secondary" className="flex items-center gap-2 px-3 py-1 text-[9px] font-bold uppercase h-7">
-                                                                    {sub}
-                                                                    <button onClick={() => handleRemoveSubCategory(cat.name, sub)} className="hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
-                                                                </Badge>
-                                                            ))}
-                                                        </div>
+                                                    <div key={i} className="p-2.5 bg-white border rounded-xl flex items-center justify-between group shadow-sm">
+                                                        <span className="font-black uppercase text-[10px] sm:text-xs">{cat.name}</span>
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-50 sm:opacity-0 group-hover:opacity-100" onClick={() => handleRemoveCategory(cat.name)}>
+                                                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                                        </Button>
                                                     </div>
                                                 ))}
-                                                {compData.categories.length === 0 && <div className="p-12 text-center opacity-20 italic text-xs uppercase">No categories defined yet.</div>}
-                                            </ScrollArea>
-                                        </div>
+                                            </div>
+                                        </ScrollArea>
                                     </div>
-                                </TabsContent>
-
-                                <TabsContent value="logistics" className="mt-0 space-y-8 animate-in fade-in duration-500">
-                                    <div className="max-w-2xl space-y-6">
+                                    <div className="space-y-4">
                                         <div className="space-y-1">
-                                            <Label className="text-sm font-black uppercase flex items-center gap-2"><Scale className="h-4 w-4" /> Units of Measure</Label>
-                                            <p className="text-[10px] text-muted-foreground uppercase">Define how items are counted (e.g. Kgs, Litres, Boxes)</p>
+                                            <Label className="text-sm font-black uppercase">Sub-Group Registry</Label>
+                                            <p className="text-[9px] text-muted-foreground uppercase">Hierarchical links</p>
                                         </div>
-                                        <div className="flex gap-3">
-                                            <Input 
-                                                placeholder="Enter unit name (e.g. Box)..." 
-                                                value={newUnitName} 
-                                                onChange={e => setNewUnitName(e.target.value)}
-                                                className="h-14 text-lg font-black border-2"
-                                            />
-                                            <Button onClick={handleAddUnit} className="h-14 px-8 font-black uppercase shadow-xl"><Plus className="h-5 w-5 mr-2" /> Add Unit</Button>
-                                        </div>
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-4">
-                                            {compData.unitsOfMeasure.map(unit => (
-                                                <div key={unit} className="p-4 bg-white border rounded-2xl flex items-center justify-between group shadow-sm hover:border-primary transition-all">
-                                                    <span className="font-bold text-xs uppercase">{unit}</span>
-                                                    <button onClick={() => handleRemoveUnit(unit)} className="opacity-0 group-hover:opacity-100 text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                                        <ScrollArea className="h-[250px] sm:h-[430px] pr-2">
+                                            {compData.categories.map((cat, i) => (
+                                                <div key={i} className="mb-4 sm:mb-6 p-4 sm:p-5 bg-white border-2 border-black/5 rounded-2xl sm:rounded-3xl space-y-4 shadow-sm">
+                                                    <Badge className="font-black uppercase text-[8px] sm:text-[9px] h-5 sm:h-6 px-3">{cat.name}</Badge>
+                                                    <div className="flex gap-2">
+                                                        <Input placeholder={`Link to ${cat.name}...`} value={newSubCategoryName[cat.name] || ""} onChange={e => setNewSubCategoryName({ ...newSubCategoryName, [cat.name]: e.target.value })} className="h-9 rounded-lg text-[10px]" />
+                                                        <Button size="icon" variant="secondary" onClick={() => handleAddSubCategory(cat.name)} className="h-9 w-9 shrink-0 rounded-lg"><Plus className="h-3.5 w-3.5" /></Button>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {cat.subCategories.map((sub, sIdx) => (
+                                                            <Badge key={sIdx} variant="secondary" className="flex items-center gap-1.5 px-2 py-1 text-[8px] font-bold uppercase h-6">
+                                                                {sub}
+                                                                <button onClick={() => handleRemoveSubCategory(cat.name, sub)} className="hover:text-destructive opacity-40 hover:opacity-100"><Trash2 className="h-2.5 w-2.5" /></button>
+                                                            </Badge>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             ))}
-                                        </div>
+                                        </ScrollArea>
                                     </div>
-                                </TabsContent>
+                                </div>
+                            </TabsContent>
 
-                                <TabsContent value="documents" className="mt-0 space-y-6">
-                                    <div className="grid grid-cols-2 gap-6 p-6 bg-black/5 rounded-2xl border">
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Invoice Prefix</Label><Input value={compData.invoicePrefix} onChange={e => handleInputChange('invoicePrefix', e.target.value)} className="h-11 font-black" /></div>
-                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase">Receipt Prefix</Label><Input value={compData.receiptPrefix} onChange={e => handleInputChange('receiptPrefix', e.target.value)} className="h-11 font-black" /></div>
+                            <TabsContent value="logistics" className="mt-0 space-y-6 sm:space-y-8 animate-in fade-in duration-500">
+                                <div className="space-y-4 sm:space-y-6">
+                                    <div className="space-y-1">
+                                        <Label className="text-sm font-black uppercase flex items-center gap-2"><Scale className="h-4 w-4" /> Units of Measure</Label>
+                                        <p className="text-[9px] text-muted-foreground uppercase">Inventory counting units (e.g. Box, Kgs)</p>
                                     </div>
-                                </TabsContent>
+                                    <div className="flex gap-3">
+                                        <Input placeholder="Unit Name..." value={newUnitName} onChange={e => setNewUnitName(e.target.value)} className="h-12 text-base font-black border-2 rounded-xl" />
+                                        <Button onClick={handleAddUnit} className="h-12 px-6 font-black uppercase shadow-lg rounded-xl shrink-0">Add</Button>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pt-4">
+                                        {compData.unitsOfMeasure.map(unit => (
+                                            <div key={unit} className="p-3 bg-white border rounded-xl flex items-center justify-between group shadow-sm hover:border-primary transition-all">
+                                                <span className="font-bold text-[10px] uppercase">{unit}</span>
+                                                <button onClick={() => handleRemoveUnit(unit)} className="text-destructive opacity-40 hover:opacity-100"><Trash2 className="h-3 w-3" /></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </TabsContent>
 
-                                <TabsContent value="data" className="mt-0 space-y-6">
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <Button variant="outline" className="h-12 font-bold" onClick={() => handleDataExport('inventory')} disabled={!!isExporting}>
-                                            {isExporting === 'inventory' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export Stock
-                                        </Button>
-                                        <Button variant="outline" className="h-12 font-bold" onClick={() => handleDataExport('customers')} disabled={!!isExporting}>
-                                            {isExporting === 'customers' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <DownloadCloud className="h-4 w-4 mr-2" />} Export Clients
-                                        </Button>
-                                    </div>
-                                </TabsContent>
-                            </div>
-                        </Tabs>
-                    </CardContent>
-                    <CardFooter className="justify-end bg-muted/10 border-t p-8">
-                        <Button onClick={handleSaveCompany} disabled={isSaving} className="h-14 px-12 font-black uppercase tracking-widest shadow-2xl bg-black text-white hover:bg-black/90">
-                            {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} Sync Node Settings
-                        </Button>
-                    </CardFooter>
-                </Card>
-              )}
-            </>
+                            <TabsContent value="documents" className="mt-0 space-y-6">
+                                <div className="grid grid-cols-2 gap-4 p-4 sm:p-6 bg-black/5 rounded-2xl border">
+                                    <div className="space-y-2"><Label className="text-[9px] font-black uppercase">Inv Prefix</Label><Input value={compData.invoicePrefix} onChange={e => handleInputChange('invoicePrefix', e.target.value)} className="h-10 font-black rounded-xl text-center" /></div>
+                                    <div className="space-y-2"><Label className="text-[9px] font-black uppercase">Rcpt Prefix</Label><Input value={compData.receiptPrefix} onChange={e => handleInputChange('receiptPrefix', e.target.value)} className="h-10 font-black rounded-xl text-center" /></div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="data" className="mt-0 space-y-4">
+                                <div className="grid grid-cols-2 gap-3 sm:gap-6">
+                                    <Button variant="outline" className="h-12 font-black uppercase text-[9px] rounded-xl border-2" onClick={() => handleDataExport('inventory')} disabled={!!isExporting}>
+                                        {isExporting === 'inventory' ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <DownloadCloud className="h-3 w-3 mr-1.5" />} Stock
+                                    </Button>
+                                    <Button variant="outline" className="h-12 font-black uppercase text-[9px] rounded-xl border-2" onClick={() => handleDataExport('customers')} disabled={!!isExporting}>
+                                        {isExporting === 'customers' ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <DownloadCloud className="h-3 w-3 mr-1.5" />} Clients
+                                    </Button>
+                                </div>
+                            </TabsContent>
+                        </div>
+                    </Tabs>
+                </CardContent>
+                <CardFooter className="justify-end bg-muted/10 border-t p-6 sm:p-8">
+                    <Button onClick={handleSaveCompany} disabled={isSaving} className="h-14 w-full sm:w-auto px-12 font-black uppercase tracking-widest shadow-2xl bg-black text-white hover:bg-black/90 rounded-2xl active:scale-95">
+                        {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} Sync Node
+                    </Button>
+                </CardFooter>
+            </Card>
           )}
         </div>
       </div>
