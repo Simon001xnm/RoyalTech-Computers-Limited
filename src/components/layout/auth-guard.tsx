@@ -53,9 +53,9 @@ function DebtIndicator({ tenantId }: { tenantId: string }) {
 
     return (
         <Link href="/receivables">
-            <Button variant="ghost" size="icon" className="relative group">
-                <Wallet className="h-5 w-5 text-red-500 group-hover:text-red-600 transition-colors" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] border-2 border-background bg-red-600 text-white shadow-sm font-black">
+            <Button variant="ghost" size="icon" className="relative group w-9 h-9 sm:w-10 sm:h-10">
+                <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 group-hover:text-red-600 transition-colors" />
+                <Badge className="absolute top-0 right-0 h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-[8px] sm:text-[10px] border-2 border-background bg-red-600 text-white shadow-sm font-black">
                     {uniqueDebtors}
                 </Badge>
             </Button>
@@ -66,15 +66,15 @@ function DebtIndicator({ tenantId }: { tenantId: string }) {
 function BrandedLoader({ title }: { title?: string }) {
     return (
         <div className="flex h-screen w-full flex-col items-center justify-center bg-[#0a0a0a] text-white space-y-8 animate-in fade-in duration-1000">
-            <div className="relative h-24 w-24">
+            <div className="relative h-20 w-20 sm:h-24 sm:w-24">
                 <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
                 <div className="absolute inset-0 border-4 border-t-primary rounded-full animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <Zap className="h-8 w-8 text-primary fill-primary animate-pulse" />
+                    <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-primary fill-primary animate-pulse" />
                 </div>
             </div>
             <div className="text-center px-6">
-                <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
+                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-white">
                     {title || "Business Hub"}
                 </h2>
             </div>
@@ -152,14 +152,12 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
         }
     };
 
-    const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
-
   return (
     <SidebarProvider defaultOpen={true}>
       <Sidebar 
         variant="sidebar" 
         collapsible="icon" 
-        className="bg-transparent border-none no-print group-data-[side=left]:ml-4 group-data-[side=left]:my-4 z-40"
+        className="bg-transparent border-none no-print group-data-[side=left]:ml-4 group-data-[side=left]:my-4 z-40 hidden md:flex"
       >
         <div className="flex flex-col h-full bg-sidebar rounded-[2.5rem] shadow-2xl border border-sidebar-border overflow-hidden">
             <SidebarHeader className="p-6 pb-2 space-y-4 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:pb-4">
@@ -234,16 +232,18 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             </SidebarFooter>
         </div>
       </Sidebar>
-      <SidebarInset className="min-h-screen bg-muted/10">
-        <header className="sticky top-4 z-30 mx-4 flex h-16 items-center justify-between border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6 no-print rounded-2xl shadow-sm">
-          <div className="flex items-center gap-4">
-            <SidebarTrigger className="h-10 w-10" />
-            <Link href="/" className="flex items-center gap-2 font-bold text-lg md:hidden">
-                <div className="bg-primary p-1.5 rounded-lg shadow-sm">
-                    <Building2 className="h-4 w-4 text-white" />
+
+      <SidebarInset className="min-h-screen bg-muted/10 relative">
+        {/* MOBILE OVERLAY HEADER */}
+        <header className="sticky top-2 sm:top-4 z-30 mx-2 sm:mx-4 flex h-14 sm:h-16 items-center justify-between border bg-background/95 backdrop-blur-sm px-3 sm:px-6 no-print rounded-xl sm:rounded-2xl shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
+            <SidebarTrigger className="h-9 w-9" />
+            <Link href="/" className="flex items-center gap-2 font-bold text-base sm:text-lg overflow-hidden">
+                <div className="bg-primary p-1 rounded-lg shadow-sm shrink-0">
+                    <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
                 </div>
-                <span className="font-black uppercase tracking-tighter">
-                    {isSuperAdmin ? "Business Hub" : (company?.name || APP_NAME)}
+                <span className="font-black uppercase tracking-tighter truncate max-w-[120px] sm:max-w-none">
+                    {isSuperAdmin ? "Control Hub" : (company?.name || APP_NAME)}
                 </span>
             </Link>
           </div>
@@ -279,16 +279,16 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
               </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {!isSuperAdmin && <ModuleTutorial />}
             {!isSuperAdmin && tenant?.id && <DebtIndicator tenantId={tenant.id} />}
             <NotificationCenter />
             {user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm bg-white">
-                      <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-black uppercase">
+                  <Button variant="ghost" className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0">
+                    <Avatar className="h-9 w-9 sm:h-10 sm:w-10 border-2 border-primary/20 shadow-sm bg-white">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-[8px] sm:text-[10px] font-black uppercase">
                         {isSuperAdmin ? "BH" : (company?.name?.substring(0, 2).toUpperCase() || 'CP')}
                       </AvatarFallback>
                     </Avatar>
@@ -298,7 +298,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-xs font-black uppercase tracking-widest text-primary">
-                          {isSuperAdmin ? "Platform Controller" : "Current Shop"}
+                          {isSuperAdmin ? "Platform Controller" : "Current Node"}
                       </p>
                       <p className="text-sm font-black uppercase tracking-tight leading-none truncate">
                         {isSuperAdmin ? "Business Hub" : (company?.name || 'My Shop')}
@@ -313,7 +313,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                   {!isSuperAdmin && (
                     <>
                         <Link href="/profile">
-                            <DropdownMenuItem className="cursor-pointer font-bold text-xs uppercase tracking-tight">
+                            <DropdownMenuItem className="cursor-pointer font-bold text-xs uppercase tracking-tight py-2">
                                 <Search className="mr-2 h-4 w-4" />
                                 <span>Shop Settings</span>
                             </DropdownMenuItem>
@@ -321,7 +321,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                         <DropdownMenuSeparator />
                     </>
                   )}
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer font-bold text-xs uppercase tracking-tight">
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer font-bold text-xs uppercase tracking-tight py-2">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Exit Shop Area</span>
                   </DropdownMenuItem>
@@ -330,7 +330,8 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             )}
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
+
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-x-hidden">
           {children}
         </main>
       </SidebarInset>
@@ -361,7 +362,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [user, isUserLoading, userProfile, router, pathname, isPublicPath, isAuthPath]);
 
-  // COMBINED LOADING STATE (AUTHENTICATED)
   if (user && (isProfileLoading || isSaaSLoading)) {
       const isMaster = userProfile?.role === 'super_admin';
       return (
@@ -371,7 +371,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       );
   }
 
-  // INITIAL AUTH CHECK
   if (isUserLoading) {
     return <BrandedLoader />;
   }
@@ -389,7 +388,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
                         Your account is currently locked.
                     </p>
                 </div>
-                <Button onClick={() => window.location.reload()} variant="outline" className="font-bold">Retry</Button>
+                <Button onClick={() => window.location.reload()} variant="outline" className="font-bold">Retry Sync</Button>
             </div>
         );
     }
