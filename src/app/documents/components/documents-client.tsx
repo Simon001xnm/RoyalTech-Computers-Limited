@@ -459,7 +459,7 @@ export function DocumentsClient() {
                     documentId: docRef.id,
                     createdAt: isEditing ? editingDoc.createdAt : timestamp,
                     updatedAt: timestamp,
-                    createdBy: isEditing ? editingDoc.createdBy : { uid: user.uid, name: user.displayName || 'User' }
+                    createdBy: { uid: user.uid, name: user.displayName || 'User' }
                 });
             }
         }

@@ -9,7 +9,7 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap, RefreshCw } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap, RefreshCw, Settings } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc, collection, query, where } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -28,9 +28,6 @@ const AUTH_PATHS = ['/login', '/signup'];
 const PUBLIC_ROOT_PATHS = ['/', '/login', '/signup'];
 const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/legal'];
 
-/**
- * DebtIndicator Component
- */
 function DebtIndicator({ tenantId }: { tenantId: string }) {
     const firestore = useFirestore();
     const q = useMemoFirebase(() => query(
@@ -212,7 +209,6 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
       </Sidebar>
 
       <SidebarInset className="min-h-screen bg-muted/10 relative">
-        {/* MOBILE OVERLAY HEADER - Optimized for Edge-to-Edge */}
         <header className="sticky top-1 sm:top-4 z-30 mx-1 sm:mx-4 flex h-12 sm:h-16 items-center justify-between border bg-background/95 backdrop-blur-sm px-2 sm:px-6 no-print rounded-lg sm:rounded-2xl shadow-sm">
           <div className="flex items-center gap-1 sm:gap-4 overflow-hidden">
             <SidebarTrigger className="h-8 w-8" />
@@ -373,5 +369,3 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return null;
 }
-
-import { Settings } from 'lucide-react';

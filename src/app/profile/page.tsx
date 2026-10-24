@@ -380,14 +380,14 @@ export default function ProfilePage() {
                 <CardContent className="p-0">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <div className="overflow-x-auto no-scrollbar border-b bg-muted/30">
-                            <TabsList className="flex w-fit sm:grid sm:w-full sm:grid-cols-7 h-12 sm:h-14 bg-transparent rounded-none p-0">
-                                <TabsTrigger value="profile" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Branding</TabsTrigger>
-                                <TabsTrigger value="contact" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Contact</TabsTrigger>
-                                <TabsTrigger value="payments" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Money</TabsTrigger>
-                                <TabsTrigger value="groups" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Groups</TabsTrigger>
-                                <TabsTrigger value="logistics" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Units</TabsTrigger>
-                                <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Docs</TabsTrigger>
-                                <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-4 sm:px-0">Extra</TabsTrigger>
+                            <TabsList className="flex w-full grid grid-cols-7 h-12 sm:h-14 bg-transparent rounded-none p-0 overflow-x-auto no-scrollbar">
+                                <TabsTrigger value="profile" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-2 sm:px-0">Branding</TabsTrigger>
+                                <TabsTrigger value="contact" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-2 sm:px-0">Contact</TabsTrigger>
+                                <TabsTrigger value="payments" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-2 sm:px-0">Money</TabsTrigger>
+                                <TabsTrigger value="groups" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-2 sm:px-0">Groups</TabsTrigger>
+                                <TabsTrigger value="logistics" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-2 sm:px-0">Units</TabsTrigger>
+                                <TabsTrigger value="documents" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-2 sm:px-0">Docs</TabsTrigger>
+                                <TabsTrigger value="data" className="rounded-none h-full font-black uppercase text-[8px] sm:text-[10px] tracking-widest px-2 sm:px-0">Extra</TabsTrigger>
                             </TabsList>
                         </div>
                         
