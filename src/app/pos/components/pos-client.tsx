@@ -8,7 +8,7 @@ import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmar
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
@@ -483,7 +483,7 @@ export function PosClient() {
                             <div><p className="text-[7px] font-black uppercase opacity-50 mb-0.5">UNSETTLED</p><p className={cn("text-lg font-black tabular-nums", remainingBalance > 0 ? "text-red-400" : "text-green-400")}>KES {remainingBalance.toLocaleString()}</p></div>
                             <Badge className={cn("text-[8px] font-black uppercase h-5 border-none", remainingBalance <= 0 ? "bg-green-500" : "bg-red-600")}>{remainingBalance <= 0 ? 'Full' : 'Partial'}</Badge>
                         </div>
-                        <Button onClick={() => handleProcessPOSAction('Receipt')} className="w-full h-14 text-base font-black uppercase tracking-widest shadow-2xl rounded-xl" disabled={isProcessing || cart.length === 0}>{isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Execute Sale'}</Button>
+                        <Button onClick={() => handleProcessPOSAction('Receipt')} className="w-full h-14 text-base font-black uppercase tracking-widest shadow-2xl rounded-xl" disabled={isProcessing || cart.length === 0}>{isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Execute Sale'}</Button>
                         <div className="grid grid-cols-2 gap-2">
                             <Button variant="outline" onClick={() => handleProcessPOSAction('Invoice')} disabled={isProcessing || cart.length === 0} className="h-10 font-black uppercase text-[9px] border-2 rounded-xl"><FileText className="h-3.5 w-3.5 mr-1.5" /> Invoice</Button>
                             <Button variant="outline" onClick={() => handleProcessPOSAction('Quotation')} disabled={isProcessing || cart.length === 0} className="h-10 font-black uppercase text-[9px] border-2 rounded-xl"><FilePlus2 className="h-3.5 w-3.5 mr-1.5" /> Quote</Button>
