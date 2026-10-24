@@ -629,13 +629,13 @@ export function DocumentsClient() {
                     Checking Records...
                 </div>
             ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto no-scrollbar">
                     <Table>
                         <TableHeader className="bg-muted/20">
                             {table.getHeaderGroups().map(hg => (
                                 <TableRow key={hg.id}>
                                     {hg.headers.map(h => (
-                                        <TableHead key={h.id} className="text-[9px] sm:text-[10px] font-black uppercase py-4 px-3 sm:px-4">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>
+                                        <TableHead key={h.id} className="text-[9px] sm:text-[10px] font-black uppercase py-4 px-2 sm:px-4 whitespace-nowrap">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>
                                     ))}
                                 </TableRow>
                             ))}
@@ -643,7 +643,7 @@ export function DocumentsClient() {
                         <TableBody>
                             {table.getRowModel().rows.length ? (
                                 table.getRowModel().rows.map(row => (
-                                    <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-2 sm:py-4 px-3 sm:px-4 text-[11px] sm:text-sm">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
+                                    <TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-2 sm:py-4 px-2 sm:px-4 text-[11px] sm:text-sm whitespace-nowrap">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>
                                 ))
                             ) : (
                                 <TableRow><TableCell colSpan={customColumns.length} className="h-32 text-center text-muted-foreground italic text-xs">No records for this month.</TableCell></TableRow>
@@ -781,22 +781,22 @@ export function DocumentsClient() {
           {showsItemEntry && (
             <div className="space-y-3">
                 <Label className="text-[9px] sm:text-[10px] font-black uppercase opacity-60">Item Details</Label>
-                <div className="border rounded-xl overflow-hidden overflow-x-auto">
+                <div className="border rounded-xl overflow-hidden overflow-x-auto no-scrollbar">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="text-[9px] font-black uppercase px-3 py-3">Description</TableHead>
-                                <TableHead className="w-16 text-[9px] font-black uppercase px-1 py-3 text-center">Qty</TableHead>
-                                <TableHead className="w-24 text-[9px] font-black uppercase px-1 py-3 text-right">Price</TableHead>
-                                <TableHead className="w-10 px-1 py-3"></TableHead>
+                                <TableHead className="text-[9px] font-black uppercase px-2 py-3">Description</TableHead>
+                                <TableHead className="w-12 text-[9px] font-black uppercase px-1 py-3 text-center">Qty</TableHead>
+                                <TableHead className="w-20 text-[9px] font-black uppercase px-1 py-3 text-right">Price</TableHead>
+                                <TableHead className="w-8 px-1 py-3"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {lineItems.map((item, index) => (
                                 <TableRow key={index} className="border-b last:border-0">
-                                    <TableCell className="p-1 px-3"><Input className="h-9 border-none bg-transparent text-[11px] sm:text-sm p-0" placeholder="Item name..." value={item.description ?? ''} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
-                                    <TableCell className="p-1"><Input type="number" className="h-9 border-none bg-transparent text-[11px] sm:text-sm p-0 text-center" value={item.quantity ?? ''} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
-                                    <TableCell className="p-1"><Input type="number" className="h-9 border-none bg-transparent text-[11px] sm:text-sm p-0 text-right font-bold" value={item.unitPrice ?? ''} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
+                                    <TableCell className="p-1 px-2"><Input className="h-8 border-none bg-transparent text-[11px] sm:text-sm p-0 font-medium" placeholder="Item..." value={item.description ?? ''} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
+                                    <TableCell className="p-1"><Input type="number" className="h-8 border-none bg-transparent text-[11px] sm:text-sm p-0 text-center" value={item.quantity ?? ''} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
+                                    <TableCell className="p-1"><Input type="number" className="h-8 border-none bg-transparent text-[11px] sm:text-sm p-0 text-right font-bold" value={item.unitPrice ?? ''} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
                                     <TableCell className="p-1 text-center"><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter((_, i) => i !== index))} disabled={lineItems.length === 1} className="h-7 w-7 opacity-30 hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></TableCell>
                                 </TableRow>
                             ))}

@@ -138,13 +138,13 @@ export function StockClient() {
         <div className="p-12 text-center animate-pulse font-black uppercase text-[9px] sm:text-[10px] tracking-widest text-muted-foreground">Synchronizing Cloud Silo...</div>
       ) : (
         <div className="rounded-xl sm:rounded-[2rem] border-none ring-1 ring-black/5 shadow-sm bg-card overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto no-scrollbar">
                 <Table>
                     <TableHeader className="bg-muted/50">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
                         {headerGroup.headers.map((header) => (
-                            <TableHead key={header.id} className="font-black uppercase text-[8px] sm:text-[10px] py-4 px-3 sm:px-6">
+                            <TableHead key={header.id} className="font-black uppercase text-[8px] sm:text-[10px] py-4 px-2 sm:px-6 whitespace-nowrap">
                             {flexRender(header.column.columnDef.header, header.getContext())}
                             </TableHead>
                         ))}
@@ -156,7 +156,7 @@ export function StockClient() {
                         table.getRowModel().rows.map((row) => (
                         <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                             {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id} className="py-2 sm:py-4 px-3 sm:px-6 text-[11px] sm:text-sm">
+                            <TableCell key={cell.id} className="py-2 sm:py-4 px-2 sm:px-6 text-[11px] sm:text-sm">
                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </TableCell>
                             ))}

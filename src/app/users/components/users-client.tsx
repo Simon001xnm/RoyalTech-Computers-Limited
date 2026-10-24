@@ -187,14 +187,13 @@ export function UsersClient() {
                       const user = props.row.original;
                       const isMe = user.id === authUser?.uid;
                       return (
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1 sm:gap-2">
                             {!isMe && (
                                 <Button 
                                     variant="ghost" 
                                     size="icon" 
-                                    className="h-8 w-8" 
+                                    className="h-7 w-7 sm:h-8 sm:w-8" 
                                     onClick={() => toggleUserStatus(user)}
-                                    title={user.status === 'suspended' ? 'Unlock Access' : 'Lock Access'}
                                 >
                                     {user.status === 'suspended' ? <Unlock className="h-4 w-4 text-green-600" /> : <Lock className="h-4 w-4 text-orange-600" />}
                                 </Button>
@@ -221,114 +220,80 @@ export function UsersClient() {
   });
 
   return (
-    <>
+    <div className="space-y-3 sm:space-y-6 px-1 sm:px-0">
       <PageHeader
         title="Staff Members"
-        description="Add and manage the people who work in your shop."
-        actionLabel={isAdmin ? "Add New Staff" : undefined}
+        description="Managed operators."
+        actionLabel={isAdmin ? "Add Staff" : undefined}
         onAction={isAdmin ? handleAddUser : undefined}
         ActionIcon={UserPlus}
       />
 
        {!isAdmin && !isLoading && (
         <div className="flex h-[60vh] flex-col items-center justify-center p-8 text-center space-y-6 bg-background">
-            <div className="bg-destructive/10 p-6 rounded-full">
-                <Lock className="h-12 w-12 text-destructive" />
-            </div>
-            <div className="max-w-md space-y-2">
-                <h2 className="text-2xl font-black uppercase tracking-tight">Access Restricted</h2>
-                <p className="text-muted-foreground">
-                    Only the shop owner can add or change staff access.
-                </p>
-            </div>
+            <div className="bg-destructive/10 p-6 rounded-full"><Lock className="h-12 w-12 text-destructive" /></div>
+            <div className="max-w-md space-y-2"><h2 className="text-2xl font-black uppercase tracking-tight">Access Locked</h2><p className="text-muted-foreground">Only owners manage staff.</p></div>
         </div>
       )}
 
       {isAdmin && (
         <>
-            <div className="mb-4">
-                <Input
-                placeholder="Search staff by name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm bg-card h-11 font-bold"
-                />
+            <div className="mb-3 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-30" />
+                <Input placeholder="Find staff..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm bg-card h-10 sm:h-11 font-bold pl-9 rounded-xl" />
             </div>
             
             {isLoading ? (
-                <p className="text-muted-foreground animate-pulse font-bold uppercase text-[10px] tracking-widest flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Checking staff list...
-                </p>
+                <p className="text-muted-foreground animate-pulse font-black uppercase text-[10px] tracking-widest text-center py-12">Checking staff pool...</p>
             ) : (
-                <div className="rounded-lg border shadow-sm bg-card overflow-hidden">
-                    <Table>
-                        <TableHeader className="bg-muted/50">
-                            {table.getHeaderGroups().map(headerGroup => (
-                                <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map(header => (
-                                    <TableHead key={header.id} className="font-black uppercase text-[10px] py-4">
-                                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                                    </TableHead>
-                                ))}
-                                </TableRow>
-                            ))}
-                        </TableHeader>
-                        <TableBody>
-                        {table.getRowModel().rows.length ? (
-                            table.getRowModel().rows.map(row => (
-                            <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className={row.original.status === 'suspended' ? 'bg-destructive/5 opacity-70' : ''}>
-                                {row.getVisibleCells().map(cell => (
-                                <TableCell key={cell.id} className="py-4">
-                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </TableCell>
-                                ))}
-                            </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                            <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic">No staff members found.</TableCell>
-                            </TableRow>
-                        )}
-                        </TableBody>
-                    </Table>
-                    <DataTablePagination table={table} />
+                <div className="rounded-xl sm:rounded-[2rem] border-none ring-1 ring-black/5 shadow-sm bg-card overflow-hidden">
+                    <div className="overflow-x-auto no-scrollbar">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                {table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id} className="font-black uppercase text-[8px] sm:text-[10px] py-4 px-2 sm:px-6 whitespace-nowrap">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}
+                            </TableHeader>
+                            <TableBody>
+                                {table.getRowModel().rows.length ? (
+                                    table.getRowModel().rows.map(row => (
+                                        <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className={cn("hover:bg-muted/5 transition-colors", row.original.status === 'suspended' ? 'bg-destructive/5 opacity-70' : '')}>
+                                            {row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-2 sm:py-4 px-2 sm:px-6 text-[11px] sm:text-xs font-medium whitespace-nowrap">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow><TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground italic uppercase text-[10px] font-black opacity-30">No operators found</TableCell></TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                    <div className="px-4"><DataTablePagination table={table} /></div>
                 </div>
             )}
 
             <Dialog open={isFormOpen} onOpenChange={(isOpen) => { if (!isOpen) { setIsFormOpen(false); setEditingUser(null); }}}>
-                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-none shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter">
-                            {editingUser ? 'Change Access' : 'Add New Staff'}
-                        </DialogTitle>
-                        <DialogDescription className="font-bold text-[10px] uppercase text-muted-foreground tracking-widest">
-                            {editingUser ? 'Change what this person can do.' : 'Create an account for someone to help you in the shop.'}
-                        </DialogDescription>
+                <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto border-none shadow-2xl rounded-2xl sm:rounded-[2rem] p-0">
+                    <DialogHeader className="p-6 sm:p-8 border-b bg-muted/10">
+                        <DialogTitle className="text-xl sm:text-2xl font-black uppercase tracking-tight">{editingUser ? 'Modify Access' : 'Register Operator'}</DialogTitle>
                     </DialogHeader>
-                    <UserForm user={editingUser} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isProcessing} />
+                    <div className="p-6 sm:p-8 pt-4">
+                        <UserForm user={editingUser} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isProcessing} />
+                    </div>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="w-[95vw] sm:max-w-md rounded-2xl">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-black uppercase flex items-center gap-2">
-                            <UserX className="h-5 w-5 text-destructive" />
-                            Remove Staff
-                        </DialogTitle>
-                        <DialogDescription className="font-medium text-base pt-2">
-                            Are you sure you want to remove <strong>{userToDelete?.name}</strong>? They will no longer be able to log in.
-                        </DialogDescription>
+                        <DialogTitle className="text-xl font-black uppercase text-destructive">Remove Staff</DialogTitle>
+                        <DialogDescription className="font-medium text-base pt-2">Permanently remove <strong>{userToDelete?.name}</strong> from this workspace?</DialogDescription>
                     </DialogHeader>
-                    <DialogFooter className="gap-2 mt-6">
-                        <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold">Cancel</Button>
-                        <Button variant="destructive" onClick={confirmDelete} className="font-black uppercase">Yes, Remove Them</Button>
+                    <DialogFooter className="gap-2 mt-4">
+                        <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold h-12 rounded-xl">Cancel</Button>
+                        <Button variant="destructive" onClick={confirmDelete} className="font-black uppercase h-12 rounded-xl">Remove Forever</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
       )}
-    </>
+    </div>
   );
 }

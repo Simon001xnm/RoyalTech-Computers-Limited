@@ -148,16 +148,16 @@ export function CustomersClient() {
           <div className="p-12 text-center animate-pulse font-black uppercase text-[10px] tracking-widest text-muted-foreground">Syncing directory...</div>
       ) : (
         <div className="rounded-xl sm:rounded-[2rem] border-none ring-1 ring-black/5 shadow-sm bg-card overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto no-scrollbar">
                 <Table>
                     <TableHeader className="bg-muted/50">
-                        {table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id} className="font-black uppercase text-[8px] sm:text-[10px] py-4 px-3 sm:px-6">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}
+                        {table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id} className="font-black uppercase text-[8px] sm:text-[10px] py-4 px-2 sm:px-6 whitespace-nowrap">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}
                     </TableHeader>
                     <TableBody>
                         {table.getRowModel().rows.length ? (
                             table.getRowModel().rows.map(row => (
                                 <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-muted/5 transition-colors">
-                                    {row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-3 px-3 sm:px-6 text-[11px] sm:text-xs font-medium">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
+                                    {row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-3 px-2 sm:px-6 text-[11px] sm:text-xs font-medium whitespace-nowrap">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
                                 </TableRow>
                             ))
                         ) : (

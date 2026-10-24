@@ -173,19 +173,19 @@ export function ReceivablesClient() {
     {
         accessorKey: "customer.name",
         header: ({ column }) => (
-            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:bg-transparent p-0 font-black uppercase text-[9px] sm:text-[10px]">
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:bg-transparent p-0 font-black uppercase text-[8px] sm:text-[10px]">
                 Identity
-                <ArrowUpDown className="ml-1 sm:ml-2 h-3 w-3" />
+                <ArrowUpDown className="ml-1 h-3 w-3" />
             </Button>
         ),
         cell: ({ row }) => (
             <div className="flex items-center gap-2 sm:gap-3">
-                <div className="bg-primary/5 p-1.5 sm:p-2 rounded-lg shrink-0">
+                <div className="bg-primary/5 p-1.5 rounded-lg shrink-0">
                     <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
                 <div className="overflow-hidden">
-                    <p className="font-black uppercase text-[11px] sm:text-xs tracking-tight text-foreground truncate">{row.original.customer.name}</p>
-                    <p className="text-[9px] text-muted-foreground opacity-60 font-medium truncate">
+                    <p className="font-black uppercase text-[10px] sm:text-xs tracking-tight text-foreground truncate max-w-[120px] sm:max-w-none">{row.original.customer.name}</p>
+                    <p className="text-[8px] sm:text-[9px] text-muted-foreground opacity-60 font-medium truncate max-w-[100px] sm:max-w-none">
                         {row.original.customer.alias || row.original.customer.email}
                     </p>
                 </div>
@@ -196,16 +196,16 @@ export function ReceivablesClient() {
         accessorKey: "totalBalance",
         header: ({ column }) => (
             <div className="text-right">
-                <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:text-white p-0 font-black uppercase text-[9px] sm:text-[10px]">
+                <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:text-white p-0 font-black uppercase text-[8px] sm:text-[10px]">
                     Balance
-                    <ArrowUpDown className="ml-1 sm:ml-2 h-3 w-3" />
+                    <ArrowUpDown className="ml-1 h-3 w-3" />
                 </Button>
             </div>
         ),
         cell: ({ row }) => (
             <div className="flex items-center justify-end gap-1 sm:gap-3">
                 <span className={cn(
-                  "font-black text-xs sm:text-sm",
+                  "font-black text-[11px] sm:text-sm",
                   row.original.totalBalance > 0 ? "text-red-600" : "text-green-600"
                 )}>
                     {formatKes(row.original.totalBalance)}
@@ -312,10 +312,7 @@ export function ReceivablesClient() {
 
   return (
     <div className="space-y-3 sm:space-y-6 px-1 sm:px-0 pb-20">
-      <PageHeader 
-        title="Owed Capital" 
-        description="Debt Matrix Logic."
-      />
+      <PageHeader title="Owed Capital" description="Debt Matrix Logic." />
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-6">
           <SummaryCard title="DEBT LOAD" value={formatKes(totalOutstanding)} icon={Wallet} />
@@ -325,30 +322,30 @@ export function ReceivablesClient() {
           </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 sm:gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-3 sm:gap-8">
         <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden bg-card rounded-xl sm:rounded-[2rem]">
-            <CardHeader className="bg-muted/10 py-3 sm:py-4 px-4 sm:px-6 border-b">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <CardHeader className="bg-muted/10 py-3 sm:py-4 px-3 sm:px-6 border-b">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
                     <CardTitle className="text-[10px] sm:text-sm font-black uppercase tracking-widest">Client Balances</CardTitle>
                     <div className="relative w-full sm:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-30" />
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-30" />
                         <Input 
                             placeholder="Find account..." 
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="pl-9 h-10 w-full bg-background font-bold rounded-xl border-2 text-xs"
+                            className="pl-8 h-9 w-full bg-background font-bold rounded-xl border-2 text-[10px]"
                         />
                     </div>
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto no-scrollbar">
                     <Table>
                         <TableHeader className="bg-muted/30">
                             {table.getHeaderGroups().map(hg => (
                                 <TableRow key={hg.id}>
                                     {hg.headers.map(h => (
-                                        <TableHead key={h.id} className="p-0">
+                                        <TableHead key={h.id} className="p-0 whitespace-nowrap">
                                             {flexRender(h.column.columnDef.header, h.getContext())}
                                         </TableHead>
                                     ))}
@@ -364,7 +361,7 @@ export function ReceivablesClient() {
                                         onClick={() => setSelectedCustomerId(row.original.customer.id)}
                                     >
                                         {row.getVisibleCells().map(cell => (
-                                            <TableCell key={cell.id} className="py-2 px-3 sm:px-4">
+                                            <TableCell key={cell.id} className="py-2 px-2 sm:px-4">
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                             </TableCell>
                                         ))}
@@ -387,7 +384,7 @@ export function ReceivablesClient() {
                     <BarChart3 className="h-3.5 w-3.5" /> Debt Intensity
                 </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 h-[250px] sm:h-[300px]">
+            <CardContent className="p-4 sm:p-6 h-[200px] sm:h-[300px]">
                 {topDebtorsData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={topDebtorsData} layout="vertical" margin={{ left: -10 }}>

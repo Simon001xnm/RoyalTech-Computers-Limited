@@ -179,12 +179,12 @@ export function PaymentsClient() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-10 pb-20 px-1 sm:px-0">
+    <div className="space-y-3 sm:space-y-10 pb-20 px-1 sm:px-0">
       <PageHeader 
         title="Payment Ledger" 
         description="Cash flow monitoring."
         actions={
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-1 sm:gap-3 w-full sm:w-auto">
                 <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border w-full sm:w-auto justify-between sm:justify-start">
                     <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                         <SelectTrigger className="h-8 sm:h-9 w-[100px] sm:w-32 border-none bg-transparent font-bold text-[9px] sm:text-[10px] uppercase">
@@ -203,25 +203,25 @@ export function PaymentsClient() {
                         </SelectContent>
                     </Select>
                 </div>
-                <Button onClick={() => setIsFormOpen(true)} className="h-10 w-full sm:w-auto px-6 font-black uppercase text-[10px] tracking-widest shadow-lg rounded-xl">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Record Entry
+                <Button onClick={() => setIsFormOpen(true)} className="h-9 w-full sm:w-auto px-4 font-black uppercase text-[10px] tracking-widest shadow-lg rounded-xl">
+                    <PlusCircle className="mr-2 h-3.5 w-3.5" /> Record Entry
                 </Button>
             </div>
         }
       />
 
-      <section className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-4 sm:gap-8">
-          <div className="space-y-4 sm:space-y-6">
-              <div className="flex items-center gap-3 px-2">
-                  <div className="bg-primary p-2 rounded-xl shadow-lg">
-                      <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+      <section className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-3 sm:gap-8">
+          <div className="space-y-3 sm:space-y-6">
+              <div className="flex items-center gap-2 px-1">
+                  <div className="bg-primary p-1.5 rounded-lg shadow-md">
+                      <TrendingUp className="h-3.5 w-3.5 text-white" />
                   </div>
-                  <h2 className="text-base sm:text-xl font-black uppercase tracking-tight">Period Cash Holdings</h2>
+                  <h2 className="text-sm sm:text-xl font-black uppercase tracking-tight">Holding Registry</h2>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
-                  <SummaryCard title="CASH" value={formatKes(paymentStats?.modeSummary['Cash'] || 0)} icon={Banknote} className="border-l-4 border-l-green-500" />
-                  <SummaryCard title="M-PESA" value={formatKes((paymentStats?.modeSummary['M-Pesa'] || 0) + (paymentStats?.modeSummary['Till'] || 0) + (paymentStats?.modeSummary['Paybill'] || 0))} icon={Smartphone} className="border-l-4 border-l-green-600" />
-                  <SummaryCard title="BANK" value={formatKes(paymentStats?.modeSummary['Bank'] || 0)} icon={Landmark} className="border-l-4 border-l-blue-500" />
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  <SummaryCard title="CASH" value={formatKes(paymentStats?.modeSummary['Cash'] || 0)} icon={Banknote} className="border-l-2 border-l-green-500" />
+                  <SummaryCard title="M-PESA" value={formatKes((paymentStats?.modeSummary['M-Pesa'] || 0) + (paymentStats?.modeSummary['Till'] || 0) + (paymentStats?.modeSummary['Paybill'] || 0))} icon={Smartphone} className="border-l-2 border-l-green-600" />
+                  <SummaryCard title="BANK" value={formatKes(paymentStats?.modeSummary['Bank'] || 0)} icon={Landmark} className="border-l-2 border-l-blue-500" />
                   <SummaryCard title="CARD" value={formatKes(paymentStats?.modeSummary['Card'] || 0)} icon={CreditCard} />
                   <SummaryCard title="CHEQUES" value={formatKes(paymentStats?.modeSummary['Cheque'] || 0)} icon={Receipt} />
                   <SummaryCard title="TOTAL" value={formatKes(paymentStats?.periodTotal || 0)} icon={DollarSign} className="bg-primary/5" />
@@ -229,20 +229,20 @@ export function PaymentsClient() {
           </div>
 
           <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden bg-card rounded-xl sm:rounded-[2rem]">
-              <CardHeader className="bg-muted/10 border-b p-4 sm:p-5 text-center sm:text-left">
+              <CardHeader className="bg-muted/10 border-b p-3 sm:p-5 text-center sm:text-left">
                   <CardTitle className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-primary flex items-center justify-center sm:justify-start gap-2">
-                    <PieChartIcon className="h-3 w-3 sm:h-4 sm:w-4" /> Mode Distribution
+                    <PieChartIcon className="h-3 w-3 sm:h-4 sm:w-4" /> Mode Analysis
                   </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 sm:p-6 h-[250px] sm:h-[300px]">
+              <CardContent className="p-3 sm:p-6 h-[200px] sm:h-[300px]">
                   {paymentStats && paymentStats.chartData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
                               <Pie
                                 data={paymentStats.chartData}
                                 cx="50%" cy="50%"
-                                innerRadius={50}
-                                outerRadius={70}
+                                innerRadius={40}
+                                outerRadius={60}
                                 paddingAngle={5}
                                 dataKey="value"
                               >
@@ -250,28 +250,26 @@ export function PaymentsClient() {
                                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                   ))}
                               </Pie>
-                              <Tooltip formatter={(v: any) => formatKes(v)} contentStyle={{ borderRadius: '12px', fontSize: '9px' }} />
-                              <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: '8px', fontWeight: '900', textTransform: 'uppercase' }} />
+                              <Tooltip formatter={(v: any) => formatKes(v)} contentStyle={{ borderRadius: '8px', fontSize: '8px' }} />
                           </PieChart>
                       </ResponsiveContainer>
                   ) : (
-                      <div className="h-full flex items-center justify-center opacity-20 italic text-[10px] font-black uppercase">No Data</div>
+                      <div className="h-full flex items-center justify-center opacity-20 italic text-[9px] font-black uppercase">No Data</div>
                   )}
               </CardContent>
           </Card>
       </section>
 
-      <Card className="shadow-2xl border-none ring-1 ring-black/5 overflow-hidden bg-card rounded-xl sm:rounded-[2rem]">
-        <CardHeader className="bg-muted/10 py-4 sm:py-6 px-4 sm:px-8 border-b">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <CardTitle className="text-sm sm:text-lg font-black uppercase tracking-widest flex items-center gap-2">
-                    <HistoryIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+      <Card className="shadow-xl border-none ring-1 ring-black/5 overflow-hidden bg-card rounded-xl sm:rounded-[2rem]">
+        <CardHeader className="bg-muted/10 py-3 sm:py-6 px-3 sm:px-8 border-b">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+                <CardTitle className="text-[10px] sm:text-lg font-black uppercase tracking-widest flex items-center gap-2">
+                    <HistoryIcon className="h-4 w-4 text-primary" />
                     Ledger Stream
                 </CardTitle>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                     <Select value={typeFilter} onValueChange={setTypeFilter}>
-                        <SelectTrigger className="h-8 sm:h-10 w-full sm:w-40 font-bold text-[9px] sm:text-[10px] uppercase bg-background border-2 rounded-xl">
-                            <Filter className="h-3 w-3 mr-2 text-primary" />
+                        <SelectTrigger className="h-8 sm:h-10 w-28 sm:w-40 font-bold text-[9px] sm:text-[10px] uppercase bg-background border-2 rounded-xl">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -280,26 +278,26 @@ export function PaymentsClient() {
                             <SelectItem value="Credit Note">Credit Notes</SelectItem>
                         </SelectContent>
                     </Select>
-                    <div className="relative w-full sm:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <div className="relative flex-1 sm:w-64">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground opacity-30" />
                         <Input 
-                            placeholder="Search client or ref..." 
+                            placeholder="Find..." 
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="pl-9 h-8 sm:h-10 w-full bg-background font-bold rounded-xl border-2 text-[10px] sm:text-sm"
+                            className="pl-8 h-8 sm:h-10 w-full bg-background font-bold rounded-xl border-2 text-[10px] sm:text-sm"
                         />
                     </div>
                 </div>
             </div>
         </CardHeader>
         <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto no-scrollbar">
                 <Table>
                     <TableHeader className="bg-muted/30">
                         {table.getHeaderGroups().map(hg => (
                             <TableRow key={hg.id}>
                                 {hg.headers.map(h => (
-                                    <TableHead key={h.id} className="text-[9px] sm:text-[10px] font-black uppercase py-4 sm:py-6 px-4 sm:px-8">
+                                    <TableHead key={h.id} className="text-[8px] sm:text-[10px] font-black uppercase py-3 sm:py-6 px-3 sm:px-8 whitespace-nowrap">
                                         {flexRender(h.column.columnDef.header, h.getContext())}
                                     </TableHead>
                                 ))}
@@ -309,9 +307,9 @@ export function PaymentsClient() {
                     <TableBody>
                         {table.getRowModel().rows.length ? (
                             table.getRowModel().rows.map(row => (
-                                <TableRow key={row.id} className="h-14 sm:h-16 hover:bg-muted/5 transition-colors border-b last:border-0">
+                                <TableRow key={row.id} className="h-12 sm:h-16 hover:bg-muted/5 transition-colors border-b last:border-0">
                                     {row.getVisibleCells().map(cell => (
-                                        <TableCell key={cell.id} className="py-2 px-4 sm:px-8 text-[11px] sm:text-sm">
+                                        <TableCell key={cell.id} className="py-1 px-3 sm:px-8 text-[10px] sm:text-sm whitespace-nowrap">
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </TableCell>
                                     ))}
@@ -319,15 +317,15 @@ export function PaymentsClient() {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-40 text-center opacity-30 italic font-bold uppercase text-[10px]">
-                                    No matching logs found.
+                                <TableCell colSpan={6} className="h-32 text-center opacity-30 italic font-bold uppercase text-[9px]">
+                                    No records.
                                 </TableCell>
                             </TableRow>
                         )}
                     </TableBody>
                 </Table>
             </div>
-            <div className="px-4 sm:px-8"><DataTablePagination table={table} /></div>
+            <div className="px-4"><DataTablePagination table={table} /></div>
         </CardContent>
       </Card>
 
