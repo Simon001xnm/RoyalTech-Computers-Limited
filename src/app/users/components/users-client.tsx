@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import type { User } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { UserX, UserPlus, Lock, Unlock, Loader2 } from "lucide-react";
+import { UserX, UserPlus, Lock, Unlock, Loader2, Search } from "lucide-react";
 import { UserForm } from "./user-form";
 import { getUserColumns, type UserColumnActions } from "./user-columns";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@
 import { doc, collection, query, where, deleteDoc, setDoc, updateDoc } from "firebase/firestore";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useSaaS } from "@/components/saas/saas-provider";
+import { cn } from "@/lib/utils";
 
 export function UsersClient() {
   const [searchTerm, setSearchTerm] = useState("");
