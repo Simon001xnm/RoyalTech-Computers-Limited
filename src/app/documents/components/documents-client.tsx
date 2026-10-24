@@ -119,7 +119,6 @@ export function DocumentsClient() {
   
   const [lineItems, setLineItems] = useState<DocumentLineItem[]>([{ description: '', quantity: 1, unitPrice: 0 }]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
-  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (editingDoc) {
@@ -483,14 +482,12 @@ export function DocumentsClient() {
   };
 
   const handleDownloadPdf = async (docToDownload: AppDocument, type: 'A4' | 'Thermal' = 'A4') => {
-    setIsExporting(true);
-    setExportType(type);
-    
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
     
     setSelectedDocument(docToDownload);
     setIsPdfPreviewOpen(true);
+    setExportType(type);
 
     await new Promise(r => setTimeout(r, 1200)); 
 
@@ -536,7 +533,6 @@ export function DocumentsClient() {
         toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
         setIsPdfPreviewOpen(false);
-        setIsExporting(false);
     }
   };
 
