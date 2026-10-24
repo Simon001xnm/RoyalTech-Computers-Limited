@@ -4,11 +4,11 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2 } from 'lucide-react';
+import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
@@ -495,10 +495,38 @@ export function PosClient() {
       </div>
 
       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-        <DialogContent className="w-[95vw] sm:max-w-md p-4 border-none shadow-2xl rounded-xl"><DialogHeader><DialogTitle className="text-sm font-black uppercase truncate">{selectedProduct?.model}</DialogTitle></DialogHeader><div className="space-y-4 pt-2"><div className="grid grid-cols-2 gap-2"><div className="space-y-1"><Label className="text-[8px] font-black uppercase opacity-40">Qty</Label><Input type="number" value={configQty} onChange={e => setSelectionQty(e.target.value)} className="h-9 text-xs font-black" /></div><div className="space-y-1"><Label className="text-[8px] font-black uppercase opacity-40">Rate</Label><Input type="number" value={selectionPrice} onChange={e => setSelectionPrice(e.target.value)} className="h-9 text-xs font-black border-primary" /></div></div><Button className="w-full h-11 font-black uppercase text-[10px] tracking-widest shadow-lg rounded-lg" onClick={handleAddToCart}>Apply to cart</Button></div></DialogContent>
+        <DialogContent className="w-[95vw] sm:max-w-md p-4 border-none shadow-2xl rounded-xl">
+            <DialogHeader><DialogTitle className="text-sm font-black uppercase truncate">{selectedProduct?.model}</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-2">
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                        <Label className="text-[8px] font-black uppercase opacity-40">Qty</Label>
+                        <Input type="number" value={selectionQty} onChange={e => setSelectionQty(e.target.value)} className="h-9 text-xs font-black" />
+                    </div>
+                    <div className="space-y-1">
+                        <Label className="text-[8px] font-black uppercase opacity-40">Rate</Label>
+                        <Input type="number" value={selectionPrice} onChange={e => setSelectionPrice(e.target.value)} className="h-9 text-xs font-black border-primary" />
+                    </div>
+                </div>
+                <Button className="w-full h-11 font-black uppercase text-[10px] tracking-widest shadow-lg rounded-lg" onClick={handleAddToCart}>Apply to cart</Button>
+            </div>
+        </DialogContent>
       </Dialog>
 
-      <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}><DialogContent className="w-[90vw] sm:max-w-md text-center p-8 rounded-[2rem]"><div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4"><Check className="h-8 w-8 text-green-600" /></div><DialogHeader><DialogTitle className="text-xl font-black uppercase">Transaction Done</DialogTitle><DialogDescription className="text-[10px] font-bold uppercase mt-1">RECORDED IN CLOUD SILO</DialogDescription></DialogHeader><div className="pt-6"><Button className="w-full h-12 font-black uppercase text-[10px] tracking-widest rounded-xl shadow-xl" onClick={() => setIsSuccessOpen(false)}>Next Sale</Button></div></DialogContent></Dialog>
+      <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
+        <DialogContent className="w-[90vw] sm:max-w-md text-center p-8 rounded-[2rem]">
+            <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Check className="h-8 w-8 text-green-600" />
+            </div>
+            <DialogHeader>
+                <DialogTitle className="text-xl font-black uppercase">Transaction Done</DialogTitle>
+                <DialogDescription className="text-[10px] font-bold uppercase mt-1">RECORDED IN CLOUD SILO</DialogDescription>
+            </DialogHeader>
+            <div className="pt-6">
+                <Button className="w-full h-12 font-black uppercase text-[10px] tracking-widest rounded-xl shadow-xl" onClick={() => setIsSuccessOpen(false)}>Next Sale</Button>
+            </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
