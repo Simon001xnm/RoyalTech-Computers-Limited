@@ -104,17 +104,17 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
         <div key={pageIdx} className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden">
           {pageIdx === 0 ? (
             <header className="flex justify-between items-start mb-6 pb-6 border-b">
-                <div className="flex items-center gap-6 flex-1 overflow-hidden">
+                <div className="flex items-center gap-6 flex-1 overflow-hidden py-4">
                   {workspace?.logoUrl ? (
                       <img src={workspace.logoUrl} alt="Logo" className="h-28 w-auto object-contain shrink-0" crossOrigin="anonymous" />
                   ) : (
                       <div className="h-24 w-24 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300 shrink-0">LOGO</div>
                   )}
-                  <div className="flex-1 overflow-hidden">
-                    <h1 className={cn("font-black uppercase tracking-tighter leading-[0.9] text-black whitespace-nowrap", dynamicFontClass)} style={{ color: primaryBlue }}>{bizName}</h1>
+                  <div className="flex-1 overflow-hidden py-2">
+                    <h1 className={cn("font-black uppercase tracking-tighter leading-tight text-black whitespace-nowrap", dynamicFontClass)} style={{ color: primaryBlue }}>{bizName}</h1>
                   </div>
                 </div>
-                <div className="text-right ml-4 space-y-1 shrink-0">
+                <div className="text-right ml-4 space-y-1 shrink-0 pt-4">
                     <p className="text-[10px] font-bold leading-tight uppercase text-black">{workspace?.address || 'Nairobi, Kenya'}</p>
                     <p className="text-[10px] font-bold text-black">Tel: {workspace?.phone || 'N/A'}</p>
                     <div className="pt-2">
