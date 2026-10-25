@@ -96,6 +96,8 @@ export interface Asset extends Omit<Auditable, 'createdAt' | 'updatedAt'> {
   tenantId: string;
   model: string;
   serialNumber: string;
+  barcode?: string;
+  sku?: string;
   category?: string;
   subCategory?: string;
   status: 'Available' | 'Leased' | 'Repair' | 'Sold' | 'With Reseller';

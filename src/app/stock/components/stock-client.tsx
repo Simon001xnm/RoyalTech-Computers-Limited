@@ -51,7 +51,9 @@ export function StockClient() {
 
     return sorted.filter((asset) =>
       (asset.model || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (asset.serialNumber || '').toLowerCase().includes(searchTerm.toLowerCase())
+      (asset.serialNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (asset.barcode || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (asset.sku || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [rawAssets, searchTerm]);
 
@@ -64,6 +66,8 @@ export function StockClient() {
             tenantId: tenant.id,
             model: data.model,
             serialNumber: data.serialNumber || '',
+            sku: data.sku || '',
+            barcode: data.barcode || '',
             status: data.status,
             quantity: Number(data.quantity) || 1,
             unit: data.unit || 'Unit',
@@ -127,7 +131,7 @@ export function StockClient() {
       <div className="mb-2 sm:mb-4 relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
         <Input
-          placeholder="Scan serial or search model..."
+          placeholder="Scan barcode, scan serial or search model..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm bg-card h-10 sm:h-11 font-bold pl-10 rounded-xl"

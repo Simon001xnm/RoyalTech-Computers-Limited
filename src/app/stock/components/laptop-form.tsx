@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, DollarSign, CheckCircle2, Scale } from "lucide-react";
+import { CalendarIcon, DollarSign, CheckCircle2, Scale, RefreshCw, Barcode } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -38,6 +38,8 @@ import Link from 'next/link';
 const inventoryFormSchema = z.object({
   model: z.string().min(2, "Model must be at least 2 characters."),
   serialNumber: z.string().optional().default(""),
+  sku: z.string().optional().default(""),
+  barcode: z.string().optional().default(""),
   purchaseDate: z.date({ required_error: "Date is required." }),
   status: z.enum(["Available", "Leased", "Repair", "Sold", "With Reseller"]),
   quantity: z.coerce.number().min(0, "Quantity cannot be negative."),
@@ -73,6 +75,8 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
         sellingPrice: laptop.sellingPrice || 0,
         isSerialized: laptop.isSerialized ?? true,
         serialNumber: laptop.serialNumber || "",
+        sku: laptop.sku || "",
+        barcode: laptop.barcode || "",
         category: laptop.category || "",
         subCategory: laptop.subCategory || "",
         unit: laptop.unit || "Unit",
@@ -80,6 +84,8 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
     : {
         model: "",
         serialNumber: "",
+        sku: "",
+        barcode: "",
         status: "Available",
         quantity: 1,
         purchasePrice: 0,
@@ -105,6 +111,18 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
       form.setValue("unit", "Unit");
     }
   }, [isSerialized, form]);
+
+  const generateSKU = () => {
+    const prefix = "SKU";
+    const year = new Date().getFullYear();
+    const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+    form.setValue("sku", `${prefix}-${year}-${random}`);
+  };
+
+  const generateBarcode = () => {
+    const barcode = Math.floor(100000000000 + Math.random() * 900000000000).toString();
+    form.setValue("barcode", barcode);
+  };
 
   const subCategoryOptions = useMemo(() => {
       if (!company?.categories || !selectedCategoryName) return [];
@@ -174,6 +192,45 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
                     {...field} 
                     disabled={!isSerialized && !field.value} 
                   />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            control={form.control}
+            name="sku"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>SKU / Internal Code</span>
+                  <button type="button" onClick={generateSKU} className="text-[8px] font-black uppercase text-primary hover:underline flex items-center gap-1">
+                    <RefreshCw className="h-2 w-2" /> Auto
+                  </button>
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., LAP-MBP16-01" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="barcode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><Barcode className="h-3 w-3" /> Barcode ID</span>
+                  <button type="button" onClick={generateBarcode} className="text-[8px] font-black uppercase text-primary hover:underline flex items-center gap-1">
+                    <RefreshCw className="h-2 w-2" /> Auto
+                  </button>
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., 600123456789" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

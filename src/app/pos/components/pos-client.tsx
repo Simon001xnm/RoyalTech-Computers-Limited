@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2, X } from 'lucide-react';
+import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2, X, Barcode } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -321,12 +321,12 @@ export function PosClient() {
                                         )}
                                         disabled={!selectedCustomer}
                                     >
-                                        <span className="truncate">{selectedCustomer ? 'Hardware silo...' : '1. Link Account'}</span>
+                                        <span className="truncate">{selectedCustomer ? 'Scan Barcode or Search...' : '1. Link Account'}</span>
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[95vw] sm:w-[600px] p-0" align="start">
                                     <Command>
-                                        <CommandInput placeholder="Scan S/N or Type..." />
+                                        <CommandInput placeholder="Hardware Matrix Search (Scan Barcode Ready)" />
                                         <CommandList>
                                             <CommandEmpty>No stock in silo.</CommandEmpty>
                                             <CommandGroup heading="Hardware Matrix">
@@ -335,7 +335,10 @@ export function PosClient() {
                                                         <div className="flex justify-between w-full items-center">
                                                             <div className="overflow-hidden">
                                                                 <p className="font-bold uppercase text-[10px] truncate">{p.model}</p>
-                                                                <p className="text-[8px] opacity-40 font-mono">S/N: {p.serialNumber}</p>
+                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                    <span className="text-[8px] opacity-40 font-mono">S/N: {p.serialNumber}</span>
+                                                                    {p.barcode && <span className="text-[8px] font-mono text-primary flex items-center gap-1"><Barcode className="h-2 w-2" /> {p.barcode}</span>}
+                                                                </div>
                                                             </div>
                                                             <span className="text-[10px] font-black text-primary ml-2">KES {p.sellingPrice?.toLocaleString()}</span>
                                                         </div>
@@ -481,7 +484,7 @@ export function PosClient() {
                     <div className="pt-4 mt-auto border-t border-black/5 space-y-3">
                         <div className="flex justify-between items-center p-3 bg-black text-white rounded-xl shadow-lg">
                             <div><p className="text-[7px] font-black uppercase opacity-50 mb-0.5">UNSETTLED</p><p className={cn("text-lg font-black tabular-nums", remainingBalance > 0 ? "text-red-400" : "text-green-400")}>KES {remainingBalance.toLocaleString()}</p></div>
-                            <Badge className={cn("text-[8px] font-black uppercase h-5 border-none", remainingBalance <= 0 ? "bg-green-500" : "bg-red-600")}>{remainingBalance <= 0 ? 'Full' : 'Partial'}</Badge>
+                            <Badge className={cn("text-[8px] font-black uppercase h-5 border-none", remainingBalance <= 0 ? "bg-green-50" : "bg-red-600")}>{remainingBalance <= 0 ? 'Full' : 'Partial'}</Badge>
                         </div>
                         <Button onClick={() => handleProcessPOSAction('Receipt')} className="w-full h-14 text-base font-black uppercase tracking-widest shadow-2xl rounded-xl" disabled={isProcessing || cart.length === 0}>{isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Execute Sale'}</Button>
                         <div className="grid grid-cols-2 gap-2">
