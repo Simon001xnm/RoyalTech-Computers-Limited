@@ -9,7 +9,7 @@ import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap, RefreshCw, Settings } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap, RefreshCw, Settings, Wifi, WifiOff } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc, collection, query, where } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -27,6 +27,69 @@ import { ModuleTutorial } from './module-tutorial';
 const AUTH_PATHS = ['/login', '/signup'];
 const PUBLIC_ROOT_PATHS = ['/', '/login', '/signup'];
 const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/legal'];
+
+/**
+ * Global Hardware Scanner Status Indicator
+ */
+function ScannerStatus() {
+    const [isConnected, setIsConnected] = useState(false);
+
+    useEffect(() => {
+        const checkDevices = async () => {
+            if (typeof navigator === 'undefined' || !('hid' in navigator)) return;
+            try {
+                // @ts-ignore
+                const devices = await navigator.hid.getDevices();
+                setIsConnected(devices.length > 0);
+            } catch (e) {}
+        };
+
+        checkDevices();
+
+        const handleConnect = () => setIsConnected(true);
+        const handleDisconnect = async () => {
+            // @ts-ignore
+            const devices = await navigator.hid.getDevices();
+            setIsConnected(devices.length > 0);
+        };
+
+        // @ts-ignore
+        navigator.hid?.addEventListener('connect', handleConnect);
+        // @ts-ignore
+        navigator.hid?.addEventListener('disconnect', handleDisconnect);
+
+        return () => {
+            // @ts-ignore
+            navigator.hid?.removeEventListener('connect', handleConnect);
+            // @ts-ignore
+            navigator.hid?.removeEventListener('disconnect', handleDisconnect);
+        };
+    }, []);
+
+    const handleRequest = async () => {
+        if (typeof navigator !== 'undefined' && 'hid' in navigator) {
+            try {
+                // @ts-ignore
+                await navigator.hid.requestDevice({ filters: [] });
+            } catch (e) {}
+        }
+    };
+
+    return (
+        <Badge 
+            variant={isConnected ? "default" : "destructive"} 
+            className={cn(
+                "h-7 px-2 sm:px-3 font-black uppercase text-[7px] sm:text-[9px] tracking-widest border-2 transition-all cursor-pointer select-none",
+                isConnected ? "bg-green-500 border-green-600 text-white" : "bg-red-500 border-red-600 text-white"
+            )}
+            onClick={handleRequest}
+            title={isConnected ? "Scanner Active" : "Scanner Offline - Click to Connect"}
+        >
+            {isConnected ? <Wifi className="h-2.5 w-2.5 sm:h-3 sm:w-3 sm:mr-1.5" /> : <WifiOff className="h-2.5 w-2.5 sm:h-3 sm:w-3 sm:mr-1.5" />}
+            <span className="hidden xs:inline">{isConnected ? 'Scanner' : 'Offline'}</span>
+        </Badge>
+    );
+}
 
 function DebtIndicator({ tenantId }: { tenantId: string }) {
     const firestore = useFirestore();
@@ -222,13 +285,14 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             </Link>
           </div>
 
-          <div className="hidden lg:flex items-center gap-6">
+          <div className="hidden lg:flex items-center gap-4">
               <div className="flex items-center gap-3 px-4 py-1.5 bg-muted/30 rounded-xl border border-border/50 font-mono text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground shadow-inner">
                 <Clock className="h-3 w-3 text-primary" />
                 {dateTime}
               </div>
 
               <div className="flex items-center gap-2">
+                <ScannerStatus />
                 <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors" onClick={handleRefresh} title="Sync Workspace">
                     <RefreshCw className="h-4 w-4" />
                 </Button>

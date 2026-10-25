@@ -54,7 +54,6 @@ export function PosClient() {
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
   // Scanner States
-  const [isScannerConnected, setIsScannerConnected] = useState(false);
   const [barcodeBuffer, setBarcodeBuffer] = useState("");
   const scannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,46 +93,13 @@ export function PosClient() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [custSearchOpen, setCustSearchOpen] = useState(false);
 
-  // HARDWARE DETECTION LOGIC
-  useEffect(() => {
-    const checkDevices = async () => {
-      if (!('hid' in navigator)) return;
-      try {
-        // @ts-ignore - WebHID is experimental but supported in Chrome
-        const devices = await navigator.hid.getDevices();
-        setIsScannerConnected(devices.length > 0);
-      } catch (e) {}
-    };
-
-    checkDevices();
-
-    const handleConnect = () => setIsScannerConnected(true);
-    const handleDisconnect = async () => {
-        // @ts-ignore
-        const devices = await navigator.hid.getDevices();
-        setIsScannerConnected(devices.length > 0);
-    };
-
-    // @ts-ignore
-    navigator.hid?.addEventListener('connect', handleConnect);
-    // @ts-ignore
-    navigator.hid?.addEventListener('disconnect', handleDisconnect);
-
-    return () => {
-        // @ts-ignore
-        navigator.hid?.removeEventListener('connect', handleConnect);
-        // @ts-ignore
-        navigator.hid?.removeEventListener('disconnect', handleDisconnect);
-    };
-  }, []);
-
-  // AUTO-FOCUS SCANNER
+  // AUTO-FOCUS SCANNER (Only if not focused on another input)
   useEffect(() => {
       const interval = setInterval(() => {
           if (scannerInputRef.current && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
               scannerInputRef.current.focus();
           }
-      }, 1000);
+      }, 2000);
       return () => clearInterval(interval);
   }, []);
 
@@ -194,7 +160,7 @@ export function PosClient() {
     if (!product) return;
     
     const qty = qtyOverride || parseInt(selectionQty) || 1;
-    const price = productOverride ? product.sellingPrice : (parseFloat(selectionPrice) || 0);
+    const price = productOverride ? (product.sellingPrice || 0) : (parseFloat(selectionPrice) || 0);
 
     const existing = cart.find(i => i.productId === product.id && i.sellingPrice === price);
     
@@ -217,12 +183,18 @@ export function PosClient() {
     if (!productOverride) {
         setSelectedProduct(null);
     } else {
-        toast({ title: "Item Scanned", description: `${product.model} added to basket.` });
+        toast({ title: "Item Processed", description: `${product.model} added to basket.` });
     }
   };
 
   const handleScannerInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
+          if (!selectedCustomer) {
+              toast({ variant: 'destructive', title: "Identity Missing", description: "Link an account node before processing codes." });
+              setBarcodeBuffer("");
+              return;
+          }
+
           const code = barcodeBuffer.trim();
           if (!code) return;
 
@@ -235,7 +207,7 @@ export function PosClient() {
           if (found) {
               handleAddToCart(found, 1);
           } else {
-              toast({ variant: 'destructive', title: "Scan Failed", description: `No item found with ID: ${code}` });
+              toast({ variant: 'destructive', title: "Entry Failed", description: `No matching hardware silo for: ${code}` });
           }
           setBarcodeBuffer("");
       }
@@ -371,17 +343,6 @@ export function PosClient() {
     }
   };
 
-  const handleRequestHidPermission = async () => {
-      if (!('hid' in navigator)) {
-          toast({ variant: 'destructive', title: 'Feature Not Supported', description: 'Your browser does not support hardware device detection.' });
-          return;
-      }
-      try {
-          // @ts-ignore
-          await navigator.hid.requestDevice({ filters: [] });
-      } catch (e) {}
-  };
-
   return (
     <div className="space-y-2 sm:space-y-6 overflow-x-hidden pb-10 px-1 sm:px-0">
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-2 sm:gap-8">
@@ -392,27 +353,10 @@ export function PosClient() {
                     <div className="flex flex-col gap-3">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Badge 
-                                    variant={isScannerConnected ? "default" : "destructive"} 
-                                    className={cn(
-                                        "h-7 px-3 font-black uppercase text-[8px] sm:text-[10px] tracking-widest border-2 transition-all",
-                                        isScannerConnected ? "bg-green-500 border-green-600 text-white" : "bg-red-500 border-red-600 text-white"
-                                    )}
-                                    onClick={handleRequestHidPermission}
-                                >
-                                    {isScannerConnected ? <Wifi className="h-3 w-3 mr-1.5" /> : <WifiOff className="h-3 w-3 mr-1.5" />}
-                                    Scanner {isScannerConnected ? 'Connected' : 'Offline'}
+                                <Badge variant="outline" className="h-7 px-3 font-black uppercase text-[8px] sm:text-[10px] tracking-widest border-2">
+                                    <Zap className="h-3 w-3 mr-1.5 text-primary" />
+                                    Active Register
                                 </Badge>
-                                {!isScannerConnected && (
-                                    <Button 
-                                        size="sm" 
-                                        variant="outline" 
-                                        className="h-7 font-black uppercase text-[8px] sm:text-[10px] rounded-lg"
-                                        onClick={handleRequestHidPermission}
-                                    >
-                                        Authorize Hardware
-                                    </Button>
-                                )}
                             </div>
                             <Popover open={custSearchOpen} onOpenChange={setCustSearchOpen}>
                                 <PopoverTrigger asChild>
@@ -448,17 +392,15 @@ export function PosClient() {
                                 <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
                                 <Input 
                                     ref={scannerInputRef}
-                                    placeholder="SCAN HARDWARE..."
+                                    placeholder="SCAN OR TYPE CODE..."
                                     value={barcodeBuffer}
                                     onChange={(e) => setBarcodeBuffer(e.target.value)}
                                     onKeyDown={handleScannerInput}
                                     className="h-10 sm:h-12 pl-10 bg-primary/5 border-2 border-primary/20 font-black text-xs sm:text-sm placeholder:text-primary/30 rounded-xl"
                                 />
-                                {isScannerConnected && (
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
-                                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
-                                    </div>
-                                )}
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-30">
+                                    <p className="text-[7px] font-black uppercase">Enter to Process</p>
+                                </div>
                             </div>
                             
                             <div className="relative">
@@ -479,7 +421,7 @@ export function PosClient() {
                                             )}
                                             disabled={!selectedCustomer}
                                         >
-                                            <span className="truncate">{selectedCustomer ? 'Manual Search...' : '1. Link Account'}</span>
+                                            <span className="truncate">{selectedCustomer ? 'Manual Search Matrix...' : '1. Link Account'}</span>
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[95vw] sm:w-[600px] p-0" align="start">
