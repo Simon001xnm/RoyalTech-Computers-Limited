@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2, X, Barcode, Zap, ZapOff } from 'lucide-react';
+import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2, X, Barcode, Zap, ZapOff, Wifi, WifiOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -54,7 +54,7 @@ export function PosClient() {
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
   // Scanner States
-  const [isScannerActive, setIsScannerActive] = useState(false);
+  const [isScannerConnected, setIsScannerConnected] = useState(false);
   const [barcodeBuffer, setBarcodeBuffer] = useState("");
   const scannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,12 +94,48 @@ export function PosClient() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [custSearchOpen, setCustSearchOpen] = useState(false);
 
-  // FOCUS SCANNER ON ACTIVATE
+  // HARDWARE DETECTION LOGIC
   useEffect(() => {
-      if (isScannerActive && scannerInputRef.current) {
-          scannerInputRef.current.focus();
-      }
-  }, [isScannerActive]);
+    const checkDevices = async () => {
+      if (!('hid' in navigator)) return;
+      try {
+        // @ts-ignore - WebHID is experimental but supported in Chrome
+        const devices = await navigator.hid.getDevices();
+        setIsScannerConnected(devices.length > 0);
+      } catch (e) {}
+    };
+
+    checkDevices();
+
+    const handleConnect = () => setIsScannerConnected(true);
+    const handleDisconnect = async () => {
+        // @ts-ignore
+        const devices = await navigator.hid.getDevices();
+        setIsScannerConnected(devices.length > 0);
+    };
+
+    // @ts-ignore
+    navigator.hid?.addEventListener('connect', handleConnect);
+    // @ts-ignore
+    navigator.hid?.addEventListener('disconnect', handleDisconnect);
+
+    return () => {
+        // @ts-ignore
+        navigator.hid?.removeEventListener('connect', handleConnect);
+        // @ts-ignore
+        navigator.hid?.removeEventListener('disconnect', handleDisconnect);
+    };
+  }, []);
+
+  // AUTO-FOCUS SCANNER
+  useEffect(() => {
+      const interval = setInterval(() => {
+          if (scannerInputRef.current && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+              scannerInputRef.current.focus();
+          }
+      }, 1000);
+      return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!selectedCustomer?.id || !tenant) {
@@ -185,13 +221,11 @@ export function PosClient() {
     }
   };
 
-  // BARCODE SCANNER HANDLER
   const handleScannerInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
           const code = barcodeBuffer.trim();
           if (!code) return;
 
-          // Search logic: barcode -> sku -> serialNumber
           const found = products?.find(p => 
               p.barcode === code || 
               p.sku === code || 
@@ -285,7 +319,7 @@ export function PosClient() {
                 } : null
             },
             createdAt: timestamp,
-            createdBy: { uid: user.uid, name: user.displayName || user.email }
+            createdBy: { uid: user.uid, name: user.displayName || 'User' }
         });
 
         if (actionType === 'Receipt' || actionType === 'Invoice') {
@@ -306,7 +340,7 @@ export function PosClient() {
                   saleId: saleRef.id,
                   documentId: docRef.id,
                   createdAt: timestamp,
-                  createdBy: { uid: user.uid, name: user.displayName || user.email }
+                  createdBy: { uid: user.uid, name: user.displayName || 'User' }
               });
             }
 
@@ -337,6 +371,17 @@ export function PosClient() {
     }
   };
 
+  const handleRequestHidPermission = async () => {
+      if (!('hid' in navigator)) {
+          toast({ variant: 'destructive', title: 'Feature Not Supported', description: 'Your browser does not support hardware device detection.' });
+          return;
+      }
+      try {
+          // @ts-ignore
+          await navigator.hid.requestDevice({ filters: [] });
+      } catch (e) {}
+  };
+
   return (
     <div className="space-y-2 sm:space-y-6 overflow-x-hidden pb-10 px-1 sm:px-0">
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-2 sm:gap-8">
@@ -347,21 +392,27 @@ export function PosClient() {
                     <div className="flex flex-col gap-3">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Badge variant={isScannerActive ? "default" : "outline"} className={cn(
-                                    "h-7 px-3 font-black uppercase text-[8px] sm:text-[10px] tracking-widest border-2",
-                                    isScannerActive ? "bg-green-500 border-green-600 text-white animate-pulse" : "opacity-40"
-                                )}>
-                                    {isScannerActive ? <Zap className="h-3 w-3 mr-1.5 fill-white" /> : <ZapOff className="h-3 w-3 mr-1.5" />}
-                                    Scanner {isScannerActive ? 'Connected' : 'Off'}
-                                </Badge>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="h-7 font-black uppercase text-[8px] sm:text-[10px] rounded-lg"
-                                    onClick={() => setIsScannerActive(!isScannerActive)}
+                                <Badge 
+                                    variant={isScannerConnected ? "default" : "destructive"} 
+                                    className={cn(
+                                        "h-7 px-3 font-black uppercase text-[8px] sm:text-[10px] tracking-widest border-2 transition-all",
+                                        isScannerConnected ? "bg-green-500 border-green-600 text-white" : "bg-red-500 border-red-600 text-white"
+                                    )}
+                                    onClick={handleRequestHidPermission}
                                 >
-                                    Toggle Node
-                                </Button>
+                                    {isScannerConnected ? <Wifi className="h-3 w-3 mr-1.5" /> : <WifiOff className="h-3 w-3 mr-1.5" />}
+                                    Scanner {isScannerConnected ? 'Connected' : 'Offline'}
+                                </Badge>
+                                {!isScannerConnected && (
+                                    <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        className="h-7 font-black uppercase text-[8px] sm:text-[10px] rounded-lg"
+                                        onClick={handleRequestHidPermission}
+                                    >
+                                        Authorize Hardware
+                                    </Button>
+                                )}
                             </div>
                             <Popover open={custSearchOpen} onOpenChange={setCustSearchOpen}>
                                 <PopoverTrigger asChild>
@@ -392,22 +443,24 @@ export function PosClient() {
                             </Popover>
                         </div>
 
-                        {isScannerActive ? (
-                            <div className="relative animate-in slide-in-from-top-2 duration-500">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="relative">
                                 <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
                                 <Input 
                                     ref={scannerInputRef}
-                                    placeholder="READY TO SCAN HARDWARE..."
+                                    placeholder="SCAN HARDWARE..."
                                     value={barcodeBuffer}
                                     onChange={(e) => setBarcodeBuffer(e.target.value)}
                                     onKeyDown={handleScannerInput}
                                     className="h-10 sm:h-12 pl-10 bg-primary/5 border-2 border-primary/20 font-black text-xs sm:text-sm placeholder:text-primary/30 rounded-xl"
                                 />
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
-                                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
-                                </div>
+                                {isScannerConnected && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
+                                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
+                                    </div>
+                                )}
                             </div>
-                        ) : (
+                            
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-30" />
                                 <Popover open={searchOpen} onOpenChange={(open) => {
@@ -426,7 +479,7 @@ export function PosClient() {
                                             )}
                                             disabled={!selectedCustomer}
                                         >
-                                            <span className="truncate">{selectedCustomer ? 'Manual Hardware Search...' : '1. Link Account'}</span>
+                                            <span className="truncate">{selectedCustomer ? 'Manual Search...' : '1. Link Account'}</span>
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[95vw] sm:w-[600px] p-0" align="start">
@@ -455,7 +508,7 @@ export function PosClient() {
                                     </PopoverContent>
                                 </Popover>
                             </div>
-                        )}
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
