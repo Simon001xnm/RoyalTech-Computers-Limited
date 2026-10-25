@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2, X, Barcode } from 'lucide-react';
+import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2, X, Barcode, Zap, ZapOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,7 +16,6 @@ import { collection, query, where, doc, writeBatch, getDocs, addDoc } from 'fire
 import { useSaaS } from '@/components/saas/saas-provider';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import type { DocumentType, Sale } from '@/types';
 import { RecentSales } from './recent-sales';
@@ -36,6 +35,7 @@ type CartItem = {
     quantity: number;
     sellingPrice: number;
     total: number;
+    buyingPrice: number;
 };
 
 export function PosClient() {
@@ -52,6 +52,11 @@ export function PosClient() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [successType, setSuccessType] = useState<DocumentType | null>(null);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+
+  // Scanner States
+  const [isScannerActive, setIsScannerActive] = useState(false);
+  const [barcodeBuffer, setBarcodeBuffer] = useState("");
+  const scannerInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectionQty, setSelectionQty] = useState<string>('1');
@@ -88,6 +93,13 @@ export function PosClient() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [custSearchOpen, setCustSearchOpen] = useState(false);
+
+  // FOCUS SCANNER ON ACTIVATE
+  useEffect(() => {
+      if (isScannerActive && scannerInputRef.current) {
+          scannerInputRef.current.focus();
+      }
+  }, [isScannerActive]);
 
   useEffect(() => {
     if (!selectedCustomer?.id || !tenant) {
@@ -141,28 +153,58 @@ export function PosClient() {
     setSearchOpen(false);
   };
 
-  const handleAddToCart = () => {
-    if (!selectedProduct) return;
-    const qty = parseInt(selectionQty) || 1;
-    const price = parseFloat(selectionPrice) || 0;
+  const handleAddToCart = (productOverride?: any, qtyOverride?: number) => {
+    const product = productOverride || selectedProduct;
+    if (!product) return;
+    
+    const qty = qtyOverride || parseInt(selectionQty) || 1;
+    const price = productOverride ? product.sellingPrice : (parseFloat(selectionPrice) || 0);
 
-    const existing = cart.find(i => i.productId === selectedProduct.id && i.sellingPrice === price);
+    const existing = cart.find(i => i.productId === product.id && i.sellingPrice === price);
     
     if (existing) {
-        setCart(cart.map(i => i.productId === selectedProduct.id && i.sellingPrice === price 
+        setCart(cart.map(i => i.productId === product.id && i.sellingPrice === price 
             ? { ...i, quantity: i.quantity + qty, total: (i.quantity + qty) * i.sellingPrice } 
             : i));
     } else {
         setCart([...cart, {
             id: crypto.randomUUID(),
-            productId: selectedProduct.id,
-            name: selectedProduct.model || selectedProduct.name,
+            productId: product.id,
+            name: product.model || product.name,
             quantity: qty,
             sellingPrice: price,
-            total: qty * price
+            total: qty * price,
+            buyingPrice: product.purchasePrice || 0
         }]);
     }
-    setSelectedProduct(null);
+
+    if (!productOverride) {
+        setSelectedProduct(null);
+    } else {
+        toast({ title: "Item Scanned", description: `${product.model} added to basket.` });
+    }
+  };
+
+  // BARCODE SCANNER HANDLER
+  const handleScannerInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+          const code = barcodeBuffer.trim();
+          if (!code) return;
+
+          // Search logic: barcode -> sku -> serialNumber
+          const found = products?.find(p => 
+              p.barcode === code || 
+              p.sku === code || 
+              p.serialNumber === code
+          );
+
+          if (found) {
+              handleAddToCart(found, 1);
+          } else {
+              toast({ variant: 'destructive', title: "Scan Failed", description: `No item found with ID: ${code}` });
+          }
+          setBarcodeBuffer("");
+      }
   };
 
   const handleRemoveFromCart = (id: string) => {
@@ -296,52 +338,51 @@ export function PosClient() {
   };
 
   return (
-    <div className="space-y-3 sm:space-y-6 overflow-x-hidden pb-10 px-1 sm:px-0">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-3 sm:gap-8">
+    <div className="space-y-2 sm:space-y-6 overflow-x-hidden pb-10 px-1 sm:px-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-2 sm:gap-8">
         
-        <div className="space-y-3 sm:space-y-6">
+        <div className="space-y-2 sm:space-y-6">
             <Card className="shadow-sm border-none ring-1 ring-black/5 overflow-hidden bg-white rounded-xl sm:rounded-[2rem]">
-                <CardHeader className="bg-muted/10 p-3 sm:p-4 border-b">
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-30" />
-                            <Popover open={searchOpen} onOpenChange={(open) => {
-                                if (open && !selectedCustomer) {
-                                    toast({ variant: 'destructive', title: 'Link Required', description: 'Select an account node first.' });
-                                    return;
-                                }
-                                setSearchOpen(open);
-                            }}>
-                                <PopoverTrigger asChild disabled={!selectedCustomer}>
+                <CardHeader className="bg-muted/10 p-2 sm:p-4 border-b">
+                    <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Badge variant={isScannerActive ? "default" : "outline"} className={cn(
+                                    "h-7 px-3 font-black uppercase text-[8px] sm:text-[10px] tracking-widest border-2",
+                                    isScannerActive ? "bg-green-500 border-green-600 text-white animate-pulse" : "opacity-40"
+                                )}>
+                                    {isScannerActive ? <Zap className="h-3 w-3 mr-1.5 fill-white" /> : <ZapOff className="h-3 w-3 mr-1.5" />}
+                                    Scanner {isScannerActive ? 'Connected' : 'Off'}
+                                </Badge>
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 font-black uppercase text-[8px] sm:text-[10px] rounded-lg"
+                                    onClick={() => setIsScannerActive(!isScannerActive)}
+                                >
+                                    Toggle Node
+                                </Button>
+                            </div>
+                            <Popover open={custSearchOpen} onOpenChange={setCustSearchOpen}>
+                                <PopoverTrigger asChild>
                                     <Button 
-                                        variant="outline" 
+                                        variant={selectedCustomer ? "default" : "outline"} 
                                         className={cn(
-                                            "w-full pl-9 h-10 sm:h-12 justify-start font-normal bg-white rounded-xl text-[10px] sm:text-sm",
-                                            !selectedCustomer && "opacity-50"
+                                            "h-8 sm:h-10 px-4 font-black uppercase text-[8px] sm:text-[10px] tracking-widest rounded-xl transition-all",
+                                            selectedCustomer ? "bg-primary text-white" : "border-primary"
                                         )}
-                                        disabled={!selectedCustomer}
                                     >
-                                        <span className="truncate">{selectedCustomer ? 'Scan Barcode or Search...' : '1. Link Account'}</span>
+                                        <span className="truncate max-w-[120px]">{selectedCustomer ? selectedCustomer.name : 'Link Account'}</span>
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[95vw] sm:w-[600px] p-0" align="start">
+                                <PopoverContent className="w-[90vw] sm:w-80 p-0" align="end">
                                     <Command>
-                                        <CommandInput placeholder="Hardware Matrix Search (Scan Barcode Ready)" />
+                                        <CommandInput placeholder="Find identity..." />
                                         <CommandList>
-                                            <CommandEmpty>No stock in silo.</CommandEmpty>
-                                            <CommandGroup heading="Hardware Matrix">
-                                                {products?.filter(p => (p.quantity || 0) > 0).map(p => (
-                                                    <CommandItem key={p.id} onSelect={() => handleSelectProduct(p)} className="p-3">
-                                                        <div className="flex justify-between w-full items-center">
-                                                            <div className="overflow-hidden">
-                                                                <p className="font-bold uppercase text-[10px] truncate">{p.model}</p>
-                                                                <div className="flex items-center gap-2 mt-0.5">
-                                                                    <span className="text-[8px] opacity-40 font-mono">S/N: {p.serialNumber}</span>
-                                                                    {p.barcode && <span className="text-[8px] font-mono text-primary flex items-center gap-1"><Barcode className="h-2 w-2" /> {p.barcode}</span>}
-                                                                </div>
-                                                            </div>
-                                                            <span className="text-[10px] font-black text-primary ml-2">KES {p.sellingPrice?.toLocaleString()}</span>
-                                                        </div>
+                                            <CommandGroup heading="Active Nodes">
+                                                {customers?.map(c => (
+                                                    <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({id: c.id, name: c.name}); setCustSearchOpen(false); }} className="p-3 cursor-pointer">
+                                                        <div className="flex flex-col"><span className="font-bold uppercase text-xs">{c.name}</span></div>
                                                     </CommandItem>
                                                 ))}
                                             </CommandGroup>
@@ -350,33 +391,71 @@ export function PosClient() {
                                 </PopoverContent>
                             </Popover>
                         </div>
-                        <Popover open={custSearchOpen} onOpenChange={setCustSearchOpen}>
-                            <PopoverTrigger asChild>
-                                <Button 
-                                    variant={selectedCustomer ? "default" : "outline"} 
-                                    className={cn(
-                                        "h-10 sm:h-12 px-4 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all",
-                                        selectedCustomer ? "bg-primary text-white" : "border-primary"
-                                    )}
-                                >
-                                    <span className="truncate max-w-[120px]">{selectedCustomer ? selectedCustomer.name : 'Link Account'}</span>
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[90vw] sm:w-80 p-0" align="end">
-                                <Command>
-                                    <CommandInput placeholder="Find identity..." />
-                                    <CommandList>
-                                        <CommandGroup heading="Active Nodes">
-                                            {customers?.map(c => (
-                                                <CommandItem key={c.id} onSelect={() => { setSelectedCustomer({id: c.id, name: c.name}); setCustSearchOpen(false); }} className="p-3 cursor-pointer">
-                                                    <div className="flex flex-col"><span className="font-bold uppercase text-xs">{c.name}</span></div>
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
+
+                        {isScannerActive ? (
+                            <div className="relative animate-in slide-in-from-top-2 duration-500">
+                                <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                                <Input 
+                                    ref={scannerInputRef}
+                                    placeholder="READY TO SCAN HARDWARE..."
+                                    value={barcodeBuffer}
+                                    onChange={(e) => setBarcodeBuffer(e.target.value)}
+                                    onKeyDown={handleScannerInput}
+                                    className="h-10 sm:h-12 pl-10 bg-primary/5 border-2 border-primary/20 font-black text-xs sm:text-sm placeholder:text-primary/30 rounded-xl"
+                                />
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
+                                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-30" />
+                                <Popover open={searchOpen} onOpenChange={(open) => {
+                                    if (open && !selectedCustomer) {
+                                        toast({ variant: 'destructive', title: 'Link Required', description: 'Select an account node first.' });
+                                        return;
+                                    }
+                                    setSearchOpen(open);
+                                }}>
+                                    <PopoverTrigger asChild disabled={!selectedCustomer}>
+                                        <Button 
+                                            variant="outline" 
+                                            className={cn(
+                                                "w-full pl-9 h-10 sm:h-12 justify-start font-normal bg-white rounded-xl text-[10px] sm:text-sm",
+                                                !selectedCustomer && "opacity-50"
+                                            )}
+                                            disabled={!selectedCustomer}
+                                        >
+                                            <span className="truncate">{selectedCustomer ? 'Manual Hardware Search...' : '1. Link Account'}</span>
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[95vw] sm:w-[600px] p-0" align="start">
+                                        <Command>
+                                            <CommandInput placeholder="Hardware Matrix Search" />
+                                            <CommandList>
+                                                <CommandEmpty>No stock in silo.</CommandEmpty>
+                                                <CommandGroup heading="Hardware Matrix">
+                                                    {products?.filter(p => (p.quantity || 0) > 0).map(p => (
+                                                        <CommandItem key={p.id} onSelect={() => handleSelectProduct(p)} className="p-3">
+                                                            <div className="flex justify-between w-full items-center">
+                                                                <div className="overflow-hidden">
+                                                                    <p className="font-bold uppercase text-[10px] truncate">{p.model}</p>
+                                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                                        <span className="text-[8px] opacity-40 font-mono">S/N: {p.serialNumber}</span>
+                                                                        {p.barcode && <span className="text-[8px] font-mono text-primary flex items-center gap-1"><Barcode className="h-2 w-2" /> {p.barcode}</span>}
+                                                                    </div>
+                                                                </div>
+                                                                <span className="text-[10px] font-black text-primary ml-2">KES {p.sellingPrice?.toLocaleString()}</span>
+                                                            </div>
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        )}
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -421,9 +500,9 @@ export function PosClient() {
             </div>
         </div>
 
-        <div className="space-y-3 sm:space-y-6">
+        <div className="space-y-2 sm:space-y-6">
             <Card className="shadow-xl border-none ring-1 ring-black/5 flex flex-col h-fit bg-white rounded-xl sm:rounded-[2rem]">
-                <CardHeader className="bg-primary/5 py-4 px-4 sm:px-6 border-b">
+                <CardHeader className="bg-primary/5 py-3 px-4 sm:px-6 border-b">
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary">Settlement</CardTitle>
                         <div className="flex items-center gap-2">
@@ -432,29 +511,29 @@ export function PosClient() {
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-                    <div className="space-y-2">
+                <CardContent className="p-3 sm:p-6 space-y-3 sm:space-y-6">
+                    <div className="space-y-1.5">
                         <div className="flex justify-between text-[10px] font-bold opacity-40"><span>Subtotal</span><span>KES {subtotal.toLocaleString()}</span></div>
                         <div className="flex justify-between items-center gap-4">
                             <span className="text-[10px] font-bold opacity-40 uppercase">Discount</span>
-                            <Input type="number" value={discount || ''} onChange={e => setDiscount(parseFloat(e.target.value) || 0)} className="h-8 w-20 text-right font-black rounded-lg text-xs" />
+                            <Input type="number" value={discount || ''} onChange={e => setDiscount(parseFloat(e.target.value) || 0)} className="h-7 w-20 text-right font-black rounded-lg text-xs" />
                         </div>
                         {applyVat && <div className="flex justify-between text-[10px] font-black text-primary"><span>VAT Component</span><span>KES {vatAmount.toLocaleString()}</span></div>}
-                        <div className="pt-3 border-t border-black/5 flex justify-between items-end">
-                            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">NET DUE</span>
+                        <div className="pt-2 border-t border-black/5 flex justify-between items-end">
+                            <span className="text-[9px] font-black uppercase tracking-widest opacity-40">NET DUE</span>
                             <span className="text-xl sm:text-3xl font-black tracking-tighter">KES {total.toLocaleString()}</span>
                         </div>
                     </div>
 
-                    <div className="space-y-3 pt-2">
+                    <div className="space-y-2 pt-1">
                         <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Payment Matrix</p>
-                        <div className="grid grid-cols-2 gap-1.5">
+                        <div className="grid grid-cols-2 gap-1">
                             {(['Cash', 'M-Pesa', 'Bank', 'Card'] as const).map(m => (
                                 <Button 
                                     key={m} 
                                     variant={activePaymentMethod === m ? 'default' : 'outline'} 
                                     size="sm" 
-                                    className="h-8 text-[9px] font-black uppercase rounded-lg border-2"
+                                    className="h-7 text-[8px] font-black uppercase rounded-lg border-2"
                                     onClick={() => setActivePaymentMethod(m)}
                                 >
                                     {m}
@@ -463,33 +542,33 @@ export function PosClient() {
                         </div>
 
                         {activePaymentMethod && (
-                            <div className="p-3 bg-muted/30 rounded-xl space-y-2 border border-primary/10 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <div className="flex justify-between items-center"><Label className="text-[9px] font-black uppercase">{activePaymentMethod} Entry</Label><button onClick={() => setActivePaymentMethod(null)}><X className="h-3 w-3 opacity-30" /></button></div>
-                                <Input type="number" placeholder="Amt" value={currentPaymentAmount} onChange={e => setCurrentPaymentAmount(e.target.value)} className="h-9 font-black bg-white text-sm rounded-lg" autoFocus />
-                                {['M-Pesa', 'Bank', 'Card'].includes(activePaymentMethod) && <Input placeholder="Ref #" value={currentPaymentRef} onChange={e => setCurrentPaymentRef(e.target.value)} className="h-8 font-mono text-[9px] bg-white rounded-lg uppercase" />}
-                                <Button className="w-full h-9 font-black uppercase text-[9px] tracking-widest shadow-md rounded-lg" onClick={handleAddPayment}>Apply</Button>
+                            <div className="p-2 bg-muted/30 rounded-xl space-y-2 border border-primary/10 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="flex justify-between items-center"><Label className="text-[8px] font-black uppercase">{activePaymentMethod} Entry</Label><button onClick={() => setActivePaymentMethod(null)}><X className="h-3 w-3 opacity-30" /></button></div>
+                                <Input type="number" placeholder="Amt" value={currentPaymentAmount} onChange={e => setCurrentPaymentAmount(e.target.value)} className="h-8 font-black bg-white text-xs rounded-lg" autoFocus />
+                                {['M-Pesa', 'Bank', 'Card'].includes(activePaymentMethod) && <Input placeholder="Ref #" value={currentPaymentRef} onChange={e => setCurrentPaymentRef(e.target.value)} className="h-7 font-mono text-[8px] bg-white rounded-lg uppercase" />}
+                                <Button className="w-full h-8 font-black uppercase text-[8px] tracking-widest shadow-md rounded-lg" onClick={handleAddPayment}>Apply</Button>
                             </div>
                         )}
 
-                        <div className="space-y-1.5 max-h-[120px] overflow-y-auto no-scrollbar">
+                        <div className="space-y-1 max-h-[100px] overflow-y-auto no-scrollbar">
                             {payments.map((p, idx) => (
-                                <div key={idx} className="flex justify-between items-center p-2 bg-card rounded-lg border border-black/5 shadow-sm">
-                                    <div className="flex flex-col"><span className="text-[9px] font-black uppercase">{p.method}</span>{p.reference && <span className="text-[7px] opacity-40 font-mono uppercase truncate max-w-[60px]">{p.reference}</span>}</div>
-                                    <div className="flex items-center gap-2"><span className="text-[10px] font-black">KES {p.amount.toLocaleString()}</span><button onClick={() => setPayments(payments.filter((_, i) => i !== idx))}><Trash2 className="h-3 w-3 text-destructive/30" /></button></div>
+                                <div key={idx} className="flex justify-between items-center p-1.5 bg-card rounded-lg border border-black/5 shadow-sm">
+                                    <div className="flex flex-col"><span className="text-[8px] font-black uppercase">{p.method}</span>{p.reference && <span className="text-[6px] opacity-40 font-mono uppercase truncate max-w-[60px]">{p.reference}</span>}</div>
+                                    <div className="flex items-center gap-2"><span className="text-[9px] font-black">KES {p.amount.toLocaleString()}</span><button onClick={() => setPayments(payments.filter((_, i) => i !== idx))}><Trash2 className="h-2.5 w-2.5 text-destructive/30" /></button></div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    <div className="pt-4 mt-auto border-t border-black/5 space-y-3">
-                        <div className="flex justify-between items-center p-3 bg-black text-white rounded-xl shadow-lg">
-                            <div><p className="text-[7px] font-black uppercase opacity-50 mb-0.5">UNSETTLED</p><p className={cn("text-lg font-black tabular-nums", remainingBalance > 0 ? "text-red-400" : "text-green-400")}>KES {remainingBalance.toLocaleString()}</p></div>
-                            <Badge className={cn("text-[8px] font-black uppercase h-5 border-none", remainingBalance <= 0 ? "bg-green-50" : "bg-red-600")}>{remainingBalance <= 0 ? 'Full' : 'Partial'}</Badge>
+                    <div className="pt-3 mt-auto border-t border-black/5 space-y-2">
+                        <div className="flex justify-between items-center p-2.5 bg-black text-white rounded-xl shadow-lg">
+                            <div><p className="text-[6px] font-black uppercase opacity-50 mb-0.5">UNSETTLED</p><p className={cn("text-base font-black tabular-nums", remainingBalance > 0 ? "text-red-400" : "text-green-400")}>KES {remainingBalance.toLocaleString()}</p></div>
+                            <Badge className={cn("text-[7px] font-black uppercase h-4 border-none", remainingBalance <= 0 ? "bg-green-50" : "bg-red-600")}>{remainingBalance <= 0 ? 'Full' : 'Partial'}</Badge>
                         </div>
-                        <Button onClick={() => handleProcessPOSAction('Receipt')} className="w-full h-14 text-base font-black uppercase tracking-widest shadow-2xl rounded-xl" disabled={isProcessing || cart.length === 0}>{isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Execute Sale'}</Button>
-                        <div className="grid grid-cols-2 gap-2">
-                            <Button variant="outline" onClick={() => handleProcessPOSAction('Invoice')} disabled={isProcessing || cart.length === 0} className="h-10 font-black uppercase text-[9px] border-2 rounded-xl"><FileText className="h-3.5 w-3.5 mr-1.5" /> Invoice</Button>
-                            <Button variant="outline" onClick={() => handleProcessPOSAction('Quotation')} disabled={isProcessing || cart.length === 0} className="h-10 font-black uppercase text-[9px] border-2 rounded-xl"><FilePlus2 className="h-3.5 w-3.5 mr-1.5" /> Quote</Button>
+                        <Button onClick={() => handleProcessPOSAction('Receipt')} className="w-full h-11 sm:h-14 text-sm sm:text-base font-black uppercase tracking-widest shadow-2xl rounded-xl" disabled={isProcessing || cart.length === 0}>{isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Execute Sale'}</Button>
+                        <div className="grid grid-cols-2 gap-1.5">
+                            <Button variant="outline" onClick={() => handleProcessPOSAction('Invoice')} disabled={isProcessing || cart.length === 0} className="h-8 font-black uppercase text-[8px] border-2 rounded-xl"><FileText className="h-3 w-3 mr-1" /> Invoice</Button>
+                            <Button variant="outline" onClick={() => handleProcessPOSAction('Quotation')} disabled={isProcessing || cart.length === 0} className="h-8 font-black uppercase text-[8px] border-2 rounded-xl"><FilePlus2 className="h-3 w-3 mr-1" /> Quote</Button>
                         </div>
                     </div>
                 </CardContent>
@@ -511,7 +590,7 @@ export function PosClient() {
                         <Input type="number" value={selectionPrice} onChange={e => setSelectionPrice(e.target.value)} className="h-9 text-xs font-black border-primary" />
                     </div>
                 </div>
-                <Button className="w-full h-11 font-black uppercase text-[10px] tracking-widest shadow-lg rounded-lg" onClick={handleAddToCart}>Apply to cart</Button>
+                <Button className="w-full h-11 font-black uppercase text-[10px] tracking-widest shadow-lg rounded-lg" onClick={() => handleAddToCart()}>Apply to cart</Button>
             </div>
         </DialogContent>
       </Dialog>
