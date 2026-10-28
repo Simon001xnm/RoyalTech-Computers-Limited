@@ -2,14 +2,14 @@
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { APP_NAME } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap, RefreshCw, Settings, Wifi, WifiOff } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap, RefreshCw, Settings, Wifi, WifiOff, Barcode } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc, collection, query, where } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -79,7 +79,7 @@ function ScannerStatus() {
         <Badge 
             variant={isConnected ? "default" : "destructive"} 
             className={cn(
-                "h-7 px-2 sm:px-3 font-black uppercase text-[7px] sm:text-[9px] tracking-widest border-2 transition-all cursor-pointer select-none",
+                "h-7 px-2 sm:px-3 font-black uppercase text-[7px] sm:text-[9px] tracking-widest border-2 transition-all cursor-pointer select-none shrink-0",
                 isConnected ? "bg-green-500 border-green-600 text-white" : "bg-red-500 border-red-600 text-white"
             )}
             onClick={handleRequest}
@@ -151,6 +151,8 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     const searchParams = useSearchParams();
     const [isDark, setIsDark] = useState(false);
     const [dateTime, setDateTime] = useState<string>("");
+    const [barcodeBuffer, setBarcodeBuffer] = useState("");
+    const headerInputRef = useRef<HTMLInputElement>(null);
 
     const currentPeriod = searchParams.get('period') || 'month';
     const isSuperAdmin = userProfile?.role === 'super_admin';
@@ -195,6 +197,18 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
         window.location.reload();
     };
 
+    const handleScannerInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            const code = barcodeBuffer.trim();
+            if (code) {
+                // Emit global event for POS to consume
+                window.dispatchEvent(new CustomEvent('erp-barcode-scan', { detail: code }));
+                setBarcodeBuffer("");
+                toast({ title: "Code Transmitted", description: `Processing: ${code}` });
+            }
+        }
+    };
+
     const companyRef = useMemoFirebase(() => 
       userProfile?.tenantId ? doc(firestore, 'companies', userProfile.tenantId) : null,
       [firestore, userProfile?.tenantId]
@@ -211,6 +225,8 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             auth.signOut();
         }
     };
+
+    const { toast } = useToast();
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -272,52 +288,62 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
       </Sidebar>
 
       <SidebarInset className="min-h-screen bg-muted/10 relative">
-        <header className="sticky top-1 sm:top-4 z-30 mx-1 sm:mx-4 flex h-12 sm:h-16 items-center justify-between border bg-background/95 backdrop-blur-sm px-2 sm:px-6 no-print rounded-lg sm:rounded-2xl shadow-sm">
+        <header className="sticky top-1 sm:top-4 z-30 mx-1 sm:mx-4 flex h-12 sm:h-16 items-center justify-between border bg-background/95 backdrop-blur-sm px-2 sm:px-4 no-print rounded-lg sm:rounded-2xl shadow-sm">
           <div className="flex items-center gap-1 sm:gap-4 overflow-hidden">
             <SidebarTrigger className="h-8 w-8" />
             <Link href="/" className="flex items-center gap-1.5 font-bold text-sm sm:text-lg overflow-hidden">
                 <div className="bg-primary p-0.5 sm:p-1 rounded-md sm:rounded-lg shadow-sm shrink-0">
                     <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                 </div>
-                <span className="font-black uppercase tracking-tighter truncate max-w-[100px] sm:max-w-none">
+                <span className="font-black uppercase tracking-tighter truncate max-w-[80px] sm:max-w-none">
                     {isSuperAdmin ? "Control Hub" : (company?.name || APP_NAME)}
                 </span>
             </Link>
           </div>
 
-          <div className="hidden lg:flex items-center gap-4">
-              <div className="flex items-center gap-3 px-4 py-1.5 bg-muted/30 rounded-xl border border-border/50 font-mono text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground shadow-inner">
-                <Clock className="h-3 w-3 text-primary" />
-                {dateTime}
+          <div className="flex items-center gap-2 flex-1 max-w-[400px] px-2">
+              <div className="relative w-full">
+                  <Barcode className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-primary opacity-40" />
+                  <Input 
+                    ref={headerInputRef}
+                    placeholder="SCAN/TYPE CODE..." 
+                    value={barcodeBuffer}
+                    onChange={(e) => setBarcodeBuffer(e.target.value)}
+                    onKeyDown={handleScannerInput}
+                    className="h-8 sm:h-10 pl-8 bg-muted/20 border-none font-black text-[8px] sm:text-[10px] rounded-xl placeholder:text-muted-foreground/30 focus-visible:ring-primary/20"
+                  />
               </div>
-
-              <div className="flex items-center gap-2">
-                <ScannerStatus />
-                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors" onClick={handleRefresh} title="Sync Workspace">
-                    <RefreshCw className="h-4 w-4" />
-                </Button>
-                {!isSuperAdmin && (
-                    <>
-                        <Separator orientation="vertical" className="h-4 mx-1" />
-                        <Select value={currentPeriod} onValueChange={handlePeriodChange}>
-                            <SelectTrigger className="h-9 w-40 font-black text-[10px] uppercase bg-white border-2 rounded-xl">
-                                <Filter className="h-3 w-3 mr-2 text-primary" />
-                                <SelectValue placeholder="Period" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="today">Today's Flow</SelectItem>
-                                <SelectItem value="week">Weekly Summary</SelectItem>
-                                <SelectItem value="month">Monthly Audit</SelectItem>
-                                <SelectItem value="year">Annual Performance</SelectItem>
-                                <SelectItem value="custom">Custom Filter</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </>
-                )}
-              </div>
+              <ScannerStatus />
           </div>
           
-          <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 bg-muted/30 rounded-xl border border-border/50 font-mono text-[9px] font-black uppercase tracking-widest text-muted-foreground shadow-inner">
+                <Clock className="h-2.5 w-2.5 text-primary" />
+                {dateTime}
+            </div>
+            
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors hidden sm:flex" onClick={handleRefresh} title="Sync Workspace">
+                <RefreshCw className="h-4 w-4" />
+            </Button>
+
+            {!isSuperAdmin && (
+                <div className="hidden sm:block">
+                    <Select value={currentPeriod} onValueChange={handlePeriodChange}>
+                        <SelectTrigger className="h-8 w-32 font-black text-[9px] uppercase bg-white border-2 rounded-xl">
+                            <Filter className="h-2.5 w-2.5 mr-1.5 text-primary" />
+                            <SelectValue placeholder="Period" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="today">Today</SelectItem>
+                            <SelectItem value="week">Week</SelectItem>
+                            <SelectItem value="month">Month</SelectItem>
+                            <SelectItem value="year">Year</SelectItem>
+                            <SelectItem value="custom">Custom</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
+            
             {!isSuperAdmin && <ModuleTutorial />}
             {!isSuperAdmin && tenant?.id && <DebtIndicator tenantId={tenant.id} />}
             <NotificationCenter />
