@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2, X, Barcode, Zap, ZapOff, Wifi, WifiOff } from 'lucide-react';
+import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2, X, Barcode, Zap, Package, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import type { DocumentType, Sale } from '@/types';
 import { RecentSales } from './recent-sales';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const VAT_RATE = 0.16;
 
@@ -57,6 +58,8 @@ export function PosClient() {
   const [selectionQty, setSelectionQty] = useState<string>('1');
   const [selectionPrice, setSelectionPrice] = useState<string>('');
 
+  const [localSearch, setLocalSearch] = useState("");
+
   const [payments, setPayments] = useState<PaymentSplit[]>([]);
   const [activePaymentMethod, setActivePaymentMethod] = useState<PaymentSplit['method'] | null>(null);
   const [currentPaymentAmount, setCurrentPaymentAmount] = useState<string>('');
@@ -86,7 +89,6 @@ export function PosClient() {
   }, [firestore, tenant?.id]);
   const { data: rawDocuments } = useCollection(docsQuery);
 
-  const [searchOpen, setSearchOpen] = useState(false);
   const [custSearchOpen, setCustSearchOpen] = useState(false);
 
   // GLOBAL SCAN LISTENER
@@ -105,7 +107,7 @@ export function PosClient() {
           );
 
           if (found) {
-              handleAddToCart(found, 1);
+              handleAutoAdd(found);
           } else {
               toast({ variant: 'destructive', title: "Entry Failed", description: `Hardware not found: ${code}` });
           }
@@ -156,6 +158,18 @@ export function PosClient() {
     };
   }, [cart, discount, payments, applyVat]);
 
+  const filteredCatalog = useMemo(() => {
+      if (!products) return [];
+      const available = products.filter(p => (p.quantity || 0) > 0);
+      if (!localSearch.trim()) return available.slice(0, 12); // Show top 12 initially
+      const searchLower = localSearch.toLowerCase();
+      return available.filter(p => 
+        (p.model || '').toLowerCase().includes(searchLower) ||
+        (p.sku || '').toLowerCase().includes(searchLower) ||
+        (p.serialNumber || '').toLowerCase().includes(searchLower)
+      );
+  }, [products, localSearch]);
+
   const handleSelectProduct = (product: any) => {
     if (!selectedCustomer) {
         toast({ variant: 'destructive', title: 'Identity Link Required', description: 'Select an account node first.' });
@@ -164,39 +178,51 @@ export function PosClient() {
     setSelectedProduct(product);
     setSelectionQty('1');
     setSelectionPrice(String(product.sellingPrice || 0)); 
-    setSearchOpen(false);
   };
 
-  const handleAddToCart = (productOverride?: any, qtyOverride?: number) => {
-    const product = productOverride || selectedProduct;
-    if (!product) return;
-    
-    const qty = qtyOverride || parseInt(selectionQty) || 1;
-    const price = productOverride ? (product.sellingPrice || 0) : (parseFloat(selectionPrice) || 0);
+  const handleAutoAdd = (product: any) => {
+      const existing = cart.find(i => i.productId === product.id && i.sellingPrice === product.sellingPrice);
+      if (existing) {
+          setCart(cart.map(i => i.productId === product.id && i.sellingPrice === product.sellingPrice 
+            ? { ...i, quantity: i.quantity + 1, total: (i.quantity + 1) * i.sellingPrice } 
+            : i));
+      } else {
+          setCart([...cart, {
+              id: crypto.randomUUID(),
+              productId: product.id,
+              name: product.model || product.name,
+              quantity: 1,
+              sellingPrice: product.sellingPrice || 0,
+              total: product.sellingPrice || 0,
+              buyingPrice: product.purchasePrice || 0
+          }]);
+      }
+      toast({ title: "Hardware Added", description: `1x ${product.model} added to basket.` });
+  };
 
-    const existing = cart.find(i => i.productId === product.id && i.sellingPrice === price);
+  const handleAddToCart = () => {
+    if (!selectedProduct) return;
+    const qty = parseInt(selectionQty) || 1;
+    const price = parseFloat(selectionPrice) || 0;
+
+    const existing = cart.find(i => i.productId === selectedProduct.id && i.sellingPrice === price);
     
     if (existing) {
-        setCart(cart.map(i => i.productId === product.id && i.sellingPrice === price 
+        setCart(cart.map(i => i.productId === selectedProduct.id && i.sellingPrice === price 
             ? { ...i, quantity: i.quantity + qty, total: (i.quantity + qty) * i.sellingPrice } 
             : i));
     } else {
         setCart([...cart, {
             id: crypto.randomUUID(),
-            productId: product.id,
-            name: product.model || product.name,
+            productId: selectedProduct.id,
+            name: selectedProduct.model || selectedProduct.name,
             quantity: qty,
             sellingPrice: price,
             total: qty * price,
-            buyingPrice: product.purchasePrice || 0
+            buyingPrice: selectedProduct.purchasePrice || 0
         }]);
     }
-
-    if (!productOverride) {
-        setSelectedProduct(null);
-    } else {
-        toast({ title: "Hardware Processed", description: `${product.model} added to basket.` });
-    }
+    setSelectedProduct(null);
   };
 
   const handleRemoveFromCart = (id: string) => {
@@ -376,89 +402,79 @@ export function PosClient() {
                                     </Command>
                                 </PopoverContent>
                             </Popover>
-
-                            <Popover open={searchOpen} onOpenChange={(open) => {
-                                if (open && !selectedCustomer) {
-                                    toast({ variant: 'destructive', title: 'Link Required', description: 'Select an account node first.' });
-                                    return;
-                                }
-                                setSearchOpen(open);
-                            }}>
-                                <PopoverTrigger asChild disabled={!selectedCustomer}>
-                                    <Button 
-                                        variant="outline" 
-                                        size="icon"
-                                        className={cn(
-                                            "h-9 w-9 rounded-xl border-2 transition-all",
-                                            !selectedCustomer && "opacity-20"
-                                        )}
-                                        disabled={!selectedCustomer}
-                                    >
-                                        <Search className="h-4 w-4" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[95vw] sm:w-[600px] p-0" align="start">
-                                    <Command>
-                                        <CommandInput placeholder="Manual Hardware Matrix Search..." />
-                                        <CommandList>
-                                            <CommandEmpty>No stock in silo.</CommandEmpty>
-                                            <CommandGroup heading="Hardware Matrix">
-                                                {products?.filter(p => (p.quantity || 0) > 0).map(p => (
-                                                    <CommandItem key={p.id} onSelect={() => handleSelectProduct(p)} className="p-3">
-                                                        <div className="flex justify-between w-full items-center">
-                                                            <div className="overflow-hidden text-left">
-                                                                <p className="font-bold uppercase text-[10px] truncate">{p.model}</p>
-                                                                <div className="flex items-center gap-2 mt-0.5">
-                                                                    <span className="text-[8px] opacity-40 font-mono">S/N: {p.serialNumber}</span>
-                                                                    {p.sku && <span className="text-[8px] font-mono text-primary flex items-center gap-1">{p.sku}</span>}
-                                                                </div>
-                                                            </div>
-                                                            <span className="text-[10px] font-black text-primary ml-2">KES {p.sellingPrice?.toLocaleString()}</span>
-                                                        </div>
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-0">
-                    <div className="min-h-[350px] sm:min-h-[500px] overflow-x-auto no-scrollbar">
-                        <Table>
-                            <TableHeader className="bg-muted/50">
-                                <TableRow>
-                                    <TableHead className="text-[8px] font-black uppercase whitespace-nowrap px-3 py-4">Hardware Item</TableHead>
-                                    <TableHead className="w-10 text-center text-[8px] font-black uppercase px-1 py-4">Qty</TableHead>
-                                    <TableHead className="w-16 text-right text-[8px] font-black uppercase px-1 py-4">Rate</TableHead>
-                                    <TableHead className="w-20 text-right text-[8px] font-black uppercase px-3 py-4">Net</TableHead>
-                                    <TableHead className="w-8 py-4"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {cart.map((item) => (
-                                    <TableRow key={item.id} className="border-b h-14 hover:bg-muted/5 transition-colors">
-                                        <TableCell className="px-3"><p className="font-bold text-[10px] uppercase truncate max-w-[120px] sm:max-w-none">{item.name}</p></TableCell>
-                                        <TableCell className="text-center font-bold text-[10px] px-1">{item.quantity}</TableCell>
-                                        <TableCell className="text-right font-bold text-[10px] px-1">{item.sellingPrice.toLocaleString()}</TableCell>
-                                        <TableCell className="text-right font-black text-[10px] text-primary px-3">{(item.total).toLocaleString()}</TableCell>
-                                        <TableCell className="text-right pr-2">
-                                            <button onClick={() => handleRemoveFromCart(item.id)} className="text-destructive/30 hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                                        </TableCell>
-                                    </TableRow>
+                <CardContent className="p-3 sm:p-5 space-y-4">
+                    <div className="space-y-2">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
+                            <Input 
+                                placeholder="Manual Catalog Search..." 
+                                value={localSearch}
+                                onChange={e => setLocalSearch(e.target.value)}
+                                className="pl-10 h-10 sm:h-12 bg-muted/20 border-none font-bold rounded-xl text-sm"
+                                disabled={!selectedCustomer}
+                            />
+                        </div>
+                        
+                        <ScrollArea className="h-[120px] sm:h-[180px] w-full rounded-xl border-2 border-dashed border-muted bg-muted/5 p-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                {filteredCatalog.map(p => (
+                                    <button 
+                                        key={p.id} 
+                                        onClick={() => handleSelectProduct(p)}
+                                        className="flex flex-col items-start p-2 bg-white rounded-lg border border-black/5 shadow-sm hover:ring-2 hover:ring-primary/20 transition-all text-left group overflow-hidden"
+                                    >
+                                        <p className="text-[9px] font-black uppercase truncate w-full mb-1">{p.model}</p>
+                                        <div className="flex justify-between items-center w-full">
+                                            <span className="text-[10px] font-black text-primary">KES {p.sellingPrice?.toLocaleString()}</span>
+                                            <Plus className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    </button>
                                 ))}
-                                {cart.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="h-80 text-center opacity-10">
-                                            <ShoppingCart className="h-16 w-16 mx-auto mb-4" />
-                                            <p className="text-[9px] font-black uppercase tracking-[0.3em]">Basket Empty</p>
-                                        </TableCell>
-                                    </TableRow>
+                                {filteredCatalog.length === 0 && (
+                                    <div className="col-span-full h-24 flex items-center justify-center opacity-20 uppercase font-black text-[9px] tracking-widest">No Hardware Found</div>
                                 )}
-                            </TableBody>
-                        </Table>
+                            </div>
+                        </ScrollArea>
+                    </div>
+
+                    <div className="border-t pt-4">
+                        <div className="min-h-[200px] sm:min-h-[300px] overflow-x-auto no-scrollbar">
+                            <Table>
+                                <TableHeader className="bg-muted/50">
+                                    <TableRow>
+                                        <TableHead className="text-[8px] font-black uppercase whitespace-nowrap px-3 py-4">Hardware Item</TableHead>
+                                        <TableHead className="w-10 text-center text-[8px] font-black uppercase px-1 py-4">Qty</TableHead>
+                                        <TableHead className="w-16 text-right text-[8px] font-black uppercase px-1 py-4">Rate</TableHead>
+                                        <TableHead className="w-20 text-right text-[8px] font-black uppercase px-3 py-4">Net</TableHead>
+                                        <TableHead className="w-8 py-4"></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {cart.map((item) => (
+                                        <TableRow key={item.id} className="border-b h-12 hover:bg-muted/5 transition-colors">
+                                            <TableCell className="px-3"><p className="font-bold text-[10px] uppercase truncate max-w-[120px] sm:max-w-none">{item.name}</p></TableCell>
+                                            <TableCell className="text-center font-bold text-[10px] px-1">{item.quantity}</TableCell>
+                                            <TableCell className="text-right font-bold text-[10px] px-1">{item.sellingPrice.toLocaleString()}</TableCell>
+                                            <TableCell className="text-right font-black text-[10px] text-primary px-3">{(item.total).toLocaleString()}</TableCell>
+                                            <TableCell className="text-right pr-2">
+                                                <button onClick={() => handleRemoveFromCart(item.id)} className="text-destructive/30 hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {cart.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="h-40 text-center opacity-10">
+                                                <ShoppingCart className="h-10 w-10 mx-auto mb-2" />
+                                                <p className="text-[8px] font-black uppercase tracking-[0.3em]">Basket Empty</p>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
