@@ -23,6 +23,7 @@ import { format } from 'date-fns';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { Badge } from '../ui/badge';
 import { ModuleTutorial } from './module-tutorial';
+import { useToast } from '@/hooks/use-toast';
 
 const AUTH_PATHS = ['/login', '/signup'];
 const PUBLIC_ROOT_PATHS = ['/', '/login', '/signup'];
@@ -149,6 +150,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     const firestore = useFirestore();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { toast } = useToast();
     const [isDark, setIsDark] = useState(false);
     const [dateTime, setDateTime] = useState<string>("");
     const [barcodeBuffer, setBarcodeBuffer] = useState("");
@@ -225,8 +227,6 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             auth.signOut();
         }
     };
-
-    const { toast } = useToast();
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -388,7 +388,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
           </div>
         </header>
 
-        <main className="flex-1 p-1.5 sm:p-4 lg:p-8 overflow-x-hidden">
+        <main className="flex-1 p-1 sm:p-4 lg:p-8 overflow-x-hidden">
           {children}
         </main>
       </SidebarInset>

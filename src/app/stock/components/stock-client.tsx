@@ -6,7 +6,7 @@ import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "fir
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Package, Search } from "lucide-react";
+import { PlusCircle, Package, Search } from "lucide-material";
 import { LaptopForm } from "./laptop-form";
 import { getLaptopColumns } from "./laptop-columns";
 import { Input } from "@/components/ui/input";
@@ -131,10 +131,10 @@ export function StockClient() {
       <div className="mb-2 sm:mb-4 relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
         <Input
-          placeholder="Scan barcode, scan serial or search model..."
+          placeholder="Scan barcode/serial or search model..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm bg-card h-10 sm:h-11 font-bold pl-10 rounded-xl"
+          className="max-w-sm bg-card h-10 sm:h-11 font-bold pl-10 rounded-xl text-xs sm:text-sm"
         />
       </div>
       
@@ -148,7 +148,7 @@ export function StockClient() {
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
                         {headerGroup.headers.map((header) => (
-                            <TableHead key={header.id} className="font-black uppercase text-[8px] sm:text-[10px] py-4 px-2 sm:px-6 whitespace-nowrap">
+                            <TableHead key={header.id} className="font-black uppercase text-[8px] sm:text-[10px] py-4 px-2 sm:px-4 whitespace-nowrap">
                             {flexRender(header.column.columnDef.header, header.getContext())}
                             </TableHead>
                         ))}
@@ -160,7 +160,7 @@ export function StockClient() {
                         table.getRowModel().rows.map((row) => (
                         <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                             {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id} className="py-2 sm:py-4 px-2 sm:px-6 text-[11px] sm:text-sm">
+                            <TableCell key={cell.id} className="py-2 sm:py-4 px-2 sm:px-4 text-[11px] sm:text-sm truncate">
                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </TableCell>
                             ))}

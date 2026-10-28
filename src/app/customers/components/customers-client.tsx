@@ -140,7 +140,7 @@ export function CustomersClient() {
           placeholder="Search name or email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm bg-card h-10 sm:h-11 font-bold pl-9 rounded-xl"
+          className="max-w-sm bg-card h-10 sm:h-11 font-bold pl-9 rounded-xl text-xs sm:text-sm"
         />
       </div>
       
@@ -151,13 +151,13 @@ export function CustomersClient() {
             <div className="overflow-x-auto no-scrollbar">
                 <Table>
                     <TableHeader className="bg-muted/50">
-                        {table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id} className="font-black uppercase text-[8px] sm:text-[10px] py-4 px-2 sm:px-6 whitespace-nowrap">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}
+                        {table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id} className="font-black uppercase text-[8px] sm:text-[10px] py-4 px-2 sm:px-4 whitespace-nowrap">{flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}
                     </TableHeader>
                     <TableBody>
                         {table.getRowModel().rows.length ? (
                             table.getRowModel().rows.map(row => (
                                 <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-muted/5 transition-colors">
-                                    {row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-3 px-2 sm:px-6 text-[11px] sm:text-xs font-medium whitespace-nowrap">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
+                                    {row.getVisibleCells().map(cell => (<TableCell key={cell.id} className="py-3 px-2 sm:px-4 text-[11px] sm:text-xs font-medium truncate max-w-[150px]">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}
                                 </TableRow>
                             ))
                         ) : (
