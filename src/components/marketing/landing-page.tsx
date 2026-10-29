@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -37,6 +38,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import placeholderImages from '@/app/lib/placeholder-images.json';
 
 export function LandingPage() {
   const industries = [
@@ -97,7 +99,12 @@ export function LandingPage() {
             <div className="relative animate-in fade-in zoom-in-95 duration-1000 delay-300">
                 <div className="absolute -inset-4 bg-gradient-to-tr from-[#eab308]/20 to-transparent rounded-full blur-3xl opacity-30" />
                 <Card className="relative border-none shadow-2xl overflow-hidden rounded-[2.5rem] bg-muted/20 p-2 ring-1 ring-black/5">
-                    <img src="https://picsum.photos/seed/pos/800/600" alt="POS Console" className="rounded-[2rem] w-full h-auto" />
+                    <img 
+                      src={placeholderImages.branding.hero_pos.url} 
+                      alt="Shop Manager POS Hardware" 
+                      className="rounded-[2rem] w-full h-auto object-cover aspect-[4/3]"
+                      data-ai-hint={placeholderImages.branding.hero_pos.hint}
+                    />
                 </Card>
             </div>
         </div>

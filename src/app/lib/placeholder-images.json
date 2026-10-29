@@ -1,3 +1,4 @@
+
 {
   "avatars": [
     {
@@ -30,6 +31,10 @@
     "login_bg": {
       "url": "https://picsum.photos/seed/matesh_login_bg/800/1200",
       "hint": "technology office"
+    },
+    "hero_pos": {
+      "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSEr-73rxWi4UPwBpW65SX9FuRavn_Ofymy2bEpb6UuxQ&s=10",
+      "hint": "pos hardware"
     }
   }
 }
