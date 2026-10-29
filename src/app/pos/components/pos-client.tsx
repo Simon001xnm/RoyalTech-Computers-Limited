@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -104,7 +104,7 @@ export function PosClient() {
       };
       window.addEventListener('erp-barcode-scan', handleGlobalScan);
       return () => window.removeEventListener('erp-barcode-scan', handleGlobalScan);
-  }, [products, selectedCustomer]);
+  }, [products, selectedCustomer, toast]);
 
   useEffect(() => {
     if (!selectedCustomer?.id || !tenant) { setCustomerBalance(0); return; }
@@ -172,6 +172,16 @@ export function PosClient() {
         setCart([...cart, { id: crypto.randomUUID(), productId: selectedProduct.id, name: selectedProduct.model || selectedProduct.name, quantity: qty, sellingPrice: price, total: qty * price, buyingPrice: selectedProduct.purchasePrice || 0 }]);
     }
     setSelectedProduct(null);
+  };
+
+  const handleAddPayment = () => {
+    if (!activePaymentMethod || !currentPaymentAmount) return;
+    const amt = parseFloat(currentPaymentAmount);
+    if (isNaN(amt) || amt <= 0) return;
+    setPayments([...payments, { method: activePaymentMethod, amount: amt, reference: currentPaymentRef }]);
+    setCurrentPaymentAmount('');
+    setCurrentPaymentRef('');
+    setActivePaymentMethod(null);
   };
 
   const handleProcessPOSAction = async (actionType: 'Receipt' | 'Invoice' | 'Quotation') => {

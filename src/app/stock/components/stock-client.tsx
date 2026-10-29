@@ -6,7 +6,7 @@ import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "fir
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Package, Search } from "lucide-material";
+import { PlusCircle, Package, Search } from "lucide-react";
 import { LaptopForm } from "./laptop-form";
 import { getLaptopColumns } from "./laptop-columns";
 import { Input } from "@/components/ui/input";
