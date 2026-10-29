@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import placeholderImages from '@/app/lib/placeholder-images.json';
 
 const quotes = [
   { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" },
@@ -111,12 +112,14 @@ export default function LoginPage() {
         
         <div className="w-full sm:w-[50%] bg-black p-10 text-white flex flex-col justify-between relative overflow-hidden shrink-0">
              
-            <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-40 h-40 rounded-full bg-white/5 blur-xl" />
-                <div className="absolute bottom-[15%] left-[5%] w-32 h-32 rounded-full bg-gradient-to-br from-white/10 to-transparent shadow-2xl" />
-                <div className="absolute top-[10%] right-[15%] w-20 h-20 rounded-full bg-gradient-to-br from-white/10 to-transparent shadow-lg" />
-                <div className="absolute top-[20%] left-[-20%] w-[300px] h-20 bg-gradient-to-r from-[#eab308]/20 to-transparent rounded-full rotate-[35deg]" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-24 bg-gradient-to-l from-[#eab308]/10 to-transparent rounded-full rotate-[-45deg]" />
+            <div className="absolute inset-0 z-0">
+                <img 
+                  src={placeholderImages.branding.login_bg.url} 
+                  alt="Login Background" 
+                  className="w-full h-full object-cover opacity-20"
+                  data-ai-hint={placeholderImages.branding.login_bg.hint}
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-black via-black/80 to-transparent" />
             </div>
 
             <div className="relative z-10">

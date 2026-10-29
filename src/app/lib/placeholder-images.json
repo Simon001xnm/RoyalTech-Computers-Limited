@@ -1,4 +1,3 @@
-
 {
   "avatars": [
     {
@@ -29,12 +28,24 @@
   ],
   "branding": {
     "login_bg": {
-      "url": "https://picsum.photos/seed/matesh_login_bg/800/1200",
-      "hint": "technology office"
+      "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR4OUbaKyWwmqCq48eNJRRmXllYsOf42HvG8lAtudRScA&s=10",
+      "hint": "office space"
     },
     "hero_pos": {
       "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSEr-73rxWi4UPwBpW65SX9FuRavn_Ofymy2bEpb6UuxQ&s=10",
       "hint": "pos hardware"
+    },
+    "review_section": {
+      "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcST-r2ID66EWSNN1uTdRLCogmL_xcISZnw4z6qjeOAkGg&s=10",
+      "hint": "business analytics"
+    },
+    "support_section": {
+      "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQUFfORNaheclx_W7TPgX3AIcCP1TmHUZDZvmAJ5QP4TA&s=10",
+      "hint": "technical support"
+    },
+    "solutions_section": {
+      "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRnbX6iyochM9jlyEAR8yxf1K4hKxLFFDboGlMbNoOmIw&s=10",
+      "hint": "software demo"
     }
   }
 }

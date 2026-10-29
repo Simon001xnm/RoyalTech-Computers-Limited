@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -50,7 +49,7 @@ export function LandingPage() {
     { name: 'Pizzerias', icon: Utensils, desc: 'Delivery tracking and specific topping mods.' },
     { name: 'Donut Shops', icon: Coffee, desc: 'Fast morning checkout and bulk order logic.' },
     { name: 'Small Businesses', icon: Building2, desc: 'Simple tools to grow and track shop profit.' },
-    { name: 'Dispensaries', icon: Scale, desc: 'Inventory visibility and careful payment consulting.' },
+    { name: 'Dispensaries', icon: Scale, desc: 'Inventory visibility and product tracking.' },
     { name: 'Service Businesses', icon: Scissors, desc: 'Staff tracking, history, and booking links.' }
   ];
 
@@ -137,7 +136,7 @@ export function LandingPage() {
       {/* STRATEGIC REVIEW SECTION */}
       <section className="py-24 bg-white px-4 sm:px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div className="space-y-8">
+            <div className="space-y-8 order-2 lg:order-1">
                 <div className="space-y-4">
                     <Badge className="bg-[#eab308] text-black font-black uppercase text-[10px] px-3 h-6">Review First Approach</Badge>
                     <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tighter leading-[0.95]">Start with a Review <br /> before making a change.</h2>
@@ -156,18 +155,35 @@ export function LandingPage() {
                 </div>
             </div>
             
-            <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-4">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-primary">Common Problems We Solve</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {commonProblems.map((prob, i) => (
-                            <div key={i} className="flex items-center gap-3 p-3 bg-muted/20 rounded-xl border border-black/5 group hover:bg-white hover:shadow-lg transition-all">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-[#22c55e] shrink-0" />
-                                <span className="text-[10px] font-black uppercase tracking-tight opacity-70 group-hover:opacity-100">{prob}</span>
-                            </div>
-                        ))}
+            <div className="relative order-1 lg:order-2">
+                <Card className="border-none shadow-2xl overflow-hidden rounded-[2.5rem] bg-muted/20 p-2 ring-1 ring-black/5">
+                    <img 
+                      src={placeholderImages.branding.review_section.url} 
+                      alt="System Review" 
+                      className="rounded-[2rem] w-full h-auto object-cover aspect-video"
+                      data-ai-hint={placeholderImages.branding.review_section.hint}
+                    />
+                </Card>
+            </div>
+        </div>
+      </section>
+
+      {/* COMMON PROBLEMS GRID */}
+      <section className="py-20 bg-muted/5 px-4 sm:px-6 border-y">
+        <div className="max-w-7xl mx-auto space-y-12">
+            <div className="text-center space-y-2">
+                <h3 className="text-xs font-black uppercase tracking-[0.3em] text-primary">Operational Matrix</h3>
+                <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tighter">Common Problems We Solve</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {commonProblems.map((prob, i) => (
+                    <div key={i} className="flex items-center gap-4 p-5 bg-white rounded-2xl border border-black/5 group hover:shadow-xl hover:border-primary/20 transition-all">
+                        <div className="bg-green-500/10 p-2 rounded-full">
+                            <CheckCircle2 className="h-4 w-4 text-[#22c55e] shrink-0" />
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-tight opacity-70 group-hover:opacity-100">{prob}</span>
                     </div>
-                </div>
+                ))}
             </div>
         </div>
       </section>
@@ -196,14 +212,22 @@ export function LandingPage() {
                         </div>
                     </div>
                 </div>
-                <div className="bg-white/5 p-8 sm:p-12 rounded-[3rem] border border-white/10 space-y-8 shadow-2xl">
-                    <div className="space-y-6">
+                <div className="relative">
+                    <Card className="border-none shadow-2xl overflow-hidden rounded-[2.5rem] bg-white/5 p-2 ring-1 ring-white/10">
+                        <img 
+                          src={placeholderImages.branding.support_section.url} 
+                          alt="Local Support Node" 
+                          className="rounded-[2rem] w-full h-auto object-cover aspect-video"
+                          data-ai-hint={placeholderImages.branding.support_section.hint}
+                        />
+                    </Card>
+                    <div className="mt-8 bg-white/5 p-8 sm:p-10 rounded-[3rem] border border-white/10 space-y-6 shadow-2xl">
                         <h3 className="text-2xl font-black uppercase tracking-tight">Reduce Your Fees</h3>
                         <p className="text-sm text-white/60 font-medium leading-relaxed uppercase">Most businesses pay between 2.5% – 3.5% per transaction. We review your setup and work to lower your costs. Many businesses can reduce their fees WITHOUT switching providers.</p>
+                        <Button asChild className="h-16 px-10 w-full font-black uppercase tracking-widest bg-[#eab308] text-black hover:bg-[#eab308]/90 rounded-2xl shadow-xl transition-all">
+                            <Link href="/support/contact">Get A Statement Review</Link>
+                        </Button>
                     </div>
-                    <Button asChild className="h-16 px-10 w-full font-black uppercase tracking-widest bg-[#eab308] text-black hover:bg-[#eab308]/90 rounded-2xl shadow-xl transition-all">
-                        <Link href="/support/contact">Get A Statement Review</Link>
-                    </Button>
                 </div>
             </div>
         </div>
