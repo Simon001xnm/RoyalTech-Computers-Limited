@@ -6,7 +6,7 @@ import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "fir
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Package, Search, DownloadCloud } from "lucide-react";
+import { PlusCircle, Search } from "lucide-react";
 import { LaptopForm } from "./laptop-form";
 import { getLaptopColumns } from "./laptop-columns";
 import { Input } from "@/components/ui/input";
@@ -94,7 +94,7 @@ export function StockClient() {
         setIsFormOpen(false);
         setEditingAsset(null);
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Action Failed', description: error.message });
+        toast({ variant: 'destructive', title: 'Action Failed' });
     } finally {
         setIsSubmitting(false);
     }
@@ -140,7 +140,7 @@ export function StockClient() {
       
       {isLoading ? (
         <div className="p-12 text-center animate-pulse font-semibold text-sm tracking-wide text-muted-foreground">
-            Synchronizing Cloud Silo...
+            Syncing inventory silo...
         </div>
       ) : (
         <div className="rounded-xl sm:rounded-[2rem] border-none ring-1 ring-black/5 shadow-sm bg-card overflow-hidden">

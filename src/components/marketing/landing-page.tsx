@@ -6,37 +6,21 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
     Zap, 
-    ArrowRight, 
-    ShieldCheck, 
     CheckCircle2, 
-    TrendingUp,
-    Star,
-    Building2,
-    Activity,
-    ShoppingCart,
-    DollarSign,
-    Receipt,
-    Scale,
-    CreditCard,
-    Package,
-    Wallet,
-    Users,
-    Utensils,
-    Scissors,
-    Beer,
-    Coffee,
-    Truck,
-    Clock,
-    MapPin,
-    Phone,
-    Mail,
-    FileSearch,
-    AlertCircle,
-    UserCheck,
-    Printer
+    Star, 
+    Building2, 
+    Package, 
+    Utensils, 
+    Scissors, 
+    Beer, 
+    Coffee, 
+    Truck, 
+    Clock, 
+    Phone, 
+    Mail, 
+    FileSearch 
 } from 'lucide-react';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
 import placeholderImages from '@/app/lib/placeholder-images.json';
 
 export function LandingPage() {
@@ -64,7 +48,7 @@ export function LandingPage() {
     { name: "Marisol M.", loc: "Nairobi, KE", text: "Great service, great product. Shop Manager is the real deal! If you need a POS reach out to them." },
     { name: "Lori Vavak", loc: "Kiambu, KE", text: "One of the best customer services. The team is amazing, patient, and available at all hours." },
     { name: "Mickey Nichols", loc: "Mombasa, KE", text: "Been with them for years. Reliable for our bar system and always willing to troubleshoot." },
-    { name: "Sam H.", loc: "Nakuru, KE", text: "The team is always there for us. Top-tier support even on weekends." }
+    { name: "Sam H.", loc: "Nakuru, KE", text: "Simon (the owner) will call and take care of issues even on weekends. Top tier support." }
   ];
 
   return (
@@ -82,7 +66,7 @@ export function LandingPage() {
                     <span className="text-[#eab308]">Scale Your Profits.</span>
                 </h1>
                 <p className="text-sm sm:text-lg text-muted-foreground font-medium max-w-lg leading-relaxed mx-auto lg:mx-0">
-                    Poor records and stock shrinkage kill most businesses. Shop Manager provides the high-speed scanning and M-Pesa reconciliation you need to keep your shop running perfectly.
+                    Stock shrinkage and manual errors are the silent killers of retail. Shop Manager provides the high-speed scanning and automated M-Pesa reconciliation you need to keep your shop running perfectly.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-4 px-4 sm:px-0">
                     <Button asChild className="h-16 px-12 font-bold text-base bg-black text-white hover:bg-black/90 rounded-2xl shadow-xl active:scale-95 transition-all">
@@ -138,7 +122,7 @@ export function LandingPage() {
             <div className="space-y-8 order-2 lg:order-1">
                 <div className="space-y-4">
                     <Badge className="bg-[#eab308] text-black font-bold text-xs px-4 h-7">Expert Review</Badge>
-                    <h2 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight">Review First, <br /> Change Second.</h2>
+                    <h2 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight">Review First, Change Second.</h2>
                 </div>
                 <p className="text-sm sm:text-lg text-muted-foreground font-medium leading-relaxed">
                     Not every business needs a complete overhaul. We start by reviewing your current setup, payment processing, and merchant statements to identify where you're losing money.
@@ -195,7 +179,7 @@ export function LandingPage() {
                 <div className="space-y-8">
                     <div className="space-y-4">
                         <Badge className="bg-[#eab308] text-black font-bold text-xs px-4 h-7">Nairobi Support Node</Badge>
-                        <h2 className="text-4xl sm:text-6xl font-bold tracking-tight leading-tight">Local Support <br /> For Local Shops.</h2>
+                        <h2 className="text-4xl sm:text-6xl font-bold tracking-tight leading-tight">Local Support For Local Shops.</h2>
                     </div>
                     <p className="text-base sm:text-xl text-white/50 font-medium leading-relaxed">
                         Nairobi businesses need support that understands East African operations. We provide local setup, training, and 24/7 technical assistance.
@@ -297,4 +281,27 @@ export function LandingPage() {
       </section>
     </div>
   );
+}
+
+function Scale(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+      <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+      <path d="M7 21h10" />
+      <path d="M12 3v18" />
+      <path d="M3 7h18" />
+    </svg>
+  )
 }

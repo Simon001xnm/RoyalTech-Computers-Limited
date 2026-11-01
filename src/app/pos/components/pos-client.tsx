@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Trash2, Loader2, Check, Search, Wallet, Banknote, Landmark, CreditCard, FileText, FilePlus2, X, Barcode, Zap, Package, Plus, ArrowDown } from 'lucide-react';
+import { ShoppingCart, Trash2, Loader2, Check, Search, X, Zap, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -17,7 +17,7 @@ import { useSaaS } from '@/components/saas/saas-provider';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import type { DocumentType, Sale } from '@/types';
+import type { DocumentType } from '@/types';
 import { RecentSales } from './recent-sales';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -51,7 +51,6 @@ export function PosClient() {
   const [discount, setDiscount] = useState<number>(0);
   const [applyVat, setApplyVat] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [successType, setSuccessType] = useState<DocumentType | null>(null);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -212,8 +211,8 @@ export function PosClient() {
             }
         }
         await batch.commit();
-        setSuccessType(effectiveDocType); setIsSuccessOpen(true); setCart([]); setPayments([]); setSelectedCustomer(null); setDiscount(0); setApplyVat(false);
-        toast({ title: `Transaction Finished` });
+        setIsSuccessOpen(true); setCart([]); setPayments([]); setSelectedCustomer(null); setDiscount(0); setApplyVat(false);
+        toast({ title: `Transaction Processed` });
     } catch (e: any) { toast({ variant: 'destructive', title: `Save Failed` }); } finally { setIsProcessing(false); }
   };
 
@@ -303,7 +302,7 @@ export function PosClient() {
                     <div className="pt-6 mt-auto border-t border-black/5 space-y-3">
                         <div className="flex justify-between items-center p-4 bg-black text-white rounded-2xl shadow-lg"><div><p className="text-[9px] font-bold uppercase opacity-40 mb-1 tracking-wide">Balance Due</p><p className={cn("text-xl font-bold tabular-nums", remainingBalance > 0 ? "text-red-400" : "text-green-400")}>KES {remainingBalance.toLocaleString()}</p></div><Badge className={cn("text-[10px] font-bold h-6 border-none px-3", remainingBalance <= 0 ? "bg-green-500" : "bg-red-600")}>{remainingBalance <= 0 ? 'Settled' : 'Credit'}</Badge></div>
                         <Button onClick={() => handleProcessPOSAction('Receipt')} className="w-full h-16 text-base font-bold shadow-xl rounded-2xl active:scale-95 transition-all" disabled={isProcessing || cart.length === 0}>Finalize Transaction</Button>
-                        <div className="grid grid-cols-2 gap-3"><Button variant="outline" onClick={() => handleProcessPOSAction('Invoice')} disabled={isProcessing || cart.length === 0} className="h-11 font-semibold text-xs border-2 rounded-xl active:scale-95"><FileText className="h-4 w-4 mr-2" /> Invoice</Button><Button variant="outline" onClick={() => handleProcessPOSAction('Quotation')} disabled={isProcessing || cart.length === 0} className="h-11 font-semibold text-xs border-2 rounded-xl active:scale-95"><FilePlus2 className="h-4 w-4 mr-2" /> Quotation</Button></div>
+                        <div className="grid grid-cols-2 gap-3"><Button variant="outline" onClick={() => handleProcessPOSAction('Invoice')} disabled={isProcessing || cart.length === 0} className="h-11 font-semibold text-xs border-2 rounded-xl active:scale-95">Invoice</Button><Button variant="outline" onClick={() => handleProcessPOSAction('Quotation')} disabled={isProcessing || cart.length === 0} className="h-11 font-semibold text-xs border-2 rounded-xl active:scale-95">Quotation</Button></div>
                     </div>
                 </CardContent>
             </Card>
