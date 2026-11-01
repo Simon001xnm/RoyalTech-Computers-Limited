@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
     Zap, 
     CheckCircle2, 
@@ -11,7 +11,6 @@ import {
     Building2, 
     Package, 
     Utensils, 
-    Scissors, 
     Beer, 
     Coffee, 
     Truck, 
@@ -30,11 +29,8 @@ export function LandingPage() {
     { name: 'Food Trucks', icon: Truck, desc: 'Mobile POS with cellular sync for on-the-go sales.' },
     { name: 'Retail Stores', icon: Package, desc: 'Barcode scanning, inventory, and categories.' },
     { name: 'Cafes', icon: Coffee, desc: 'Quick-pay, loyalty points, and simple modifiers.' },
-    { name: 'Pizzerias', icon: Utensils, desc: 'Delivery tracking and specific topping mods.' },
-    { name: 'Donut Shops', icon: Coffee, desc: 'Fast morning checkout and bulk order logic.' },
     { name: 'Small Businesses', icon: Building2, desc: 'Simple tools to grow and track shop profit.' },
-    { name: 'Dispensaries', icon: Scale, desc: 'Inventory visibility and product tracking.' },
-    { name: 'Service Businesses', icon: Scissors, desc: 'Staff tracking, history, and booking links.' }
+    { name: 'Service Businesses', icon: Building2, desc: 'Staff tracking, history, and booking links.' }
   ];
 
   const commonProblems = [
@@ -45,10 +41,10 @@ export function LandingPage() {
   ];
 
   const testimonials = [
-    { name: "Marisol M.", loc: "Nairobi, KE", text: "Great service, great product. Shop Manager is the real deal! If you need a POS reach out to them." },
-    { name: "Lori Vavak", loc: "Kiambu, KE", text: "One of the best customer services. The team is amazing, patient, and available at all hours." },
-    { name: "Mickey Nichols", loc: "Mombasa, KE", text: "Been with them for years. Reliable for our bar system and always willing to troubleshoot." },
-    { name: "Sam H.", loc: "Nakuru, KE", text: "Simon (the owner) will call and take care of issues even on weekends. Top tier support." }
+    { name: "Mary Wanjiku", loc: "Nairobi, KE", text: "Great service, great product. Simon is the man! If you need a system for your shop, reach out to them. You will be glad you did." },
+    { name: "Loice Wambui", loc: "Nakuru, KE", text: "One of the best customer services. Simon and his team are amazing, patient, and available at all hours. They helped us set up perfectly." },
+    { name: "Michael Otieno", loc: "Mombasa, KE", text: "Been with them for years. Reliable for our bar system and always willing to troubleshoot even late at night." },
+    { name: "Samuel Kamau", loc: "Nairobi, KE", text: "Simon (the owner) will call and take care of issues even on weekends. Top tier support that actually understands our business." }
   ];
 
   return (
@@ -281,27 +277,4 @@ export function LandingPage() {
       </section>
     </div>
   );
-}
-
-function Scale(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
-      <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
-      <path d="M7 21h10" />
-      <path d="M12 3v18" />
-      <path d="M3 7h18" />
-    </svg>
-  )
 }

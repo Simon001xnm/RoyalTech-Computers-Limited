@@ -150,7 +150,7 @@ export function StockClient() {
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
                         {headerGroup.headers.map((header) => (
-                            <TableHead key={header.id} className="font-bold text-[10px] sm:text-xs py-4 px-2 sm:px-4 whitespace-nowrap">
+                            <TableHead key={header.id} className="font-bold text-[10px] sm:text-xs py-4 px-2 sm:px-4 whitespace-nowrap text-muted-foreground uppercase tracking-widest">
                             {flexRender(header.column.columnDef.header, header.getContext())}
                             </TableHead>
                         ))}
