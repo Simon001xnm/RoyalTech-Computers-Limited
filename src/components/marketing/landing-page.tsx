@@ -11,123 +11,139 @@ import {
     Building2, 
     Package, 
     Utensils, 
-    Beer, 
     Coffee, 
-    Truck, 
-    Clock, 
-    Phone, 
-    Mail, 
-    FileSearch,
-    ArrowRight,
-    Sparkles,
+    Smartphone,
+    Globe,
     Activity,
     MousePointer2,
-    Globe,
-    Layers,
-    MoveUpRight
+    Sparkles,
+    ArrowRight,
+    MoveUpRight,
+    Search,
+    ShieldCheck,
+    Briefcase,
+    Scissors,
+    Wine
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import placeholderImages from '@/app/lib/placeholder-images.json';
 
+/**
+ * @fileOverview Premium Floating Landing Page
+ * Implements a glassmorphic design where content panels float over a persistent background.
+ * Optimized for consultative POS business logic with high-end motion design.
+ */
 export function LandingPage() {
   const animations = {
-    fadeIn: { initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.8 } },
-    stagger: { initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { staggerChildren: 0.1 } }
+    fadeIn: { 
+        initial: { opacity: 0, y: 30 }, 
+        whileInView: { opacity: 1, y: 0 }, 
+        viewport: { once: true, margin: "-100px" }, 
+        transition: { duration: 0.8, ease: "easeOut" } 
+    },
+    stagger: { 
+        initial: { opacity: 0, y: 20 }, 
+        whileInView: { opacity: 1, y: 0 }, 
+        viewport: { once: true }, 
+        transition: { staggerChildren: 0.1 } 
+    }
   };
 
+  const floatingGlass = "bg-white/70 dark:bg-black/70 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-[0_30px_100px_rgba(0,0,0,0.1)] rounded-[2.5rem]";
+
   const testimonials = [
-    { name: "Mary Wanjiku", loc: "Nairobi, KE", text: "Great service, great Product. Simon is the man! If you need a system reach out to them. You will be glad you did." },
+    { name: "Mary Wanjiku", loc: "Nairobi, KE", text: "Great service, great product. Simon is the man! If you need a system reach out to them. You will be glad you did." },
     { name: "Loice Wambui", loc: "Nakuru, KE", text: "One of the best customer services. Simon and his team are amazing, patient, and available at all hours. 7 days a week." },
     { name: "Michael Otieno", loc: "Mombasa, KE", text: "Been with them for years. Reliable for our bar system and always willing to troubleshoot even late at night." },
     { name: "Samuel Kamau", loc: "Nairobi, KE", text: "Simon (the owner) will call and take care of issues even on weekends. Top tier support that actually understands our business." }
   ];
 
   return (
-    <div className="space-y-0 overflow-x-hidden selection:bg-[#eab308] selection:text-black">
+    <div className="space-y-12 sm:space-y-24">
       
       {/* HERO SECTION */}
-      <section className="relative pt-24 pb-20 lg:pt-32 lg:pb-40 bg-white">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+      <section className="relative px-6 pt-10 sm:pt-20">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <motion.div 
-                className="space-y-8 text-center lg:text-left"
-                initial={{ opacity: 0, x: -30 }}
+                className="space-y-8 text-center lg:text-left z-10"
+                initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 1 }}
             >
-                <div className="inline-flex items-center gap-2 bg-[#eab308]/10 text-[#eab308] px-4 py-2 rounded-full border border-[#eab308]/20 shadow-sm mx-auto lg:mx-0">
-                    <Sparkles className="h-4 w-4 fill-[#eab308]" />
-                    <span className="text-[11px] font-bold tracking-widest text-black">Advanced UI/UX Engineering</span>
+                <div className="inline-flex items-center gap-2 bg-[#eab308]/10 text-black dark:text-white px-4 py-2 rounded-full border border-[#eab308]/20 backdrop-blur-md mx-auto lg:mx-0">
+                    <Sparkles className="h-4 w-4 text-[#eab308] fill-[#eab308]" />
+                    <span className="text-[11px] font-bold tracking-widest">Premium Business Infrastructure</span>
                 </div>
-                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-tight text-black">
-                    Engineered Business <br /> 
-                    <span className="text-[#eab308]">Experiences.</span>
+                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[0.95]">
+                    Engineered for <br /> 
+                    <span className="text-[#eab308]">Stability.</span>
                 </h1>
                 <p className="text-lg sm:text-xl text-muted-foreground font-medium max-w-xl leading-relaxed mx-auto lg:mx-0">
-                    Software should feel like a premium app and an interactive presentation. We build tools that help Nairobi businesses run faster with zero friction.
+                    Stop losing money to stock shrinkage and manual errors. We build POS systems that feel like premium apps and run your business with zero friction.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-4">
-                    <Button asChild className="h-16 px-12 font-bold text-base bg-black text-white hover:bg-black/90 rounded-2xl shadow-2xl active:scale-95 transition-all">
-                        <Link href="/signup">Start Your Journey</Link>
+                    <Button asChild className="h-16 px-12 font-bold text-base bg-black text-white dark:bg-white dark:text-black hover:scale-105 rounded-2xl shadow-2xl transition-all">
+                        <Link href="/signup">Start Free Trial</Link>
                     </Button>
-                    <Button asChild variant="outline" className="h-16 px-12 font-bold text-base border-2 border-black/10 rounded-2xl bg-white hover:bg-muted/50 active:scale-95 transition-all">
-                        <Link href="/support/contact">Book a Presentation</Link>
+                    <Button asChild variant="outline" className="h-16 px-12 font-bold text-base border-2 bg-white/20 backdrop-blur-md rounded-2xl hover:bg-white/40 transition-all">
+                        <Link href="/support/contact">Book a Demo</Link>
                     </Button>
                 </div>
             </motion.div>
             
             <motion.div 
                 className="relative"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1.2, delay: 0.2 }}
+                initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                transition={{ duration: 1.2, delay: 0.2, ease: "backOut" }}
             >
-                <div className="absolute -inset-10 bg-gradient-to-tr from-[#eab308]/20 to-transparent rounded-full blur-3xl opacity-40 animate-pulse" />
-                <Card className="relative border-none shadow-[0_50px_100px_rgba(0,0,0,0.15)] overflow-hidden rounded-[3rem] bg-muted/20 p-2 ring-1 ring-black/5 group">
-                    <motion.img 
+                <div className="absolute -inset-10 bg-[#eab308]/20 rounded-full blur-[120px] opacity-40 animate-pulse" />
+                <Card className={cn(floatingGlass, "p-3 relative z-10 overflow-hidden ring-1 ring-white/20 group")}>
+                    <img 
                       src={placeholderImages.branding.hero_pos.url} 
-                      alt="Premium Experience" 
-                      className="rounded-[2.5rem] w-full h-auto object-cover aspect-[4/3] transition-transform duration-700 group-hover:scale-105"
-                      data-ai-hint="premium hardware"
+                      alt="POS Hardware" 
+                      className="rounded-[1.8rem] w-full h-auto object-cover aspect-[4/3] transition-transform duration-1000 group-hover:scale-105"
                     />
+                    <div className="absolute bottom-6 left-6 right-6 p-6 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 text-white">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[#eab308] mb-1">Live Node</p>
+                        <p className="text-sm font-bold">Local Support active in Nairobi, Kenya</p>
+                    </div>
                 </Card>
             </motion.div>
         </div>
       </section>
 
-      {/* VALUE PROPOSITION */}
-      <section className="py-24 bg-[#0a0a0a] text-white px-6">
-        <div className="max-w-7xl mx-auto space-y-20">
-            <motion.div 
-                className="text-center space-y-4"
-                {...animations.fadeIn}
-            >
-                <h2 className="text-4xl sm:text-5xl font-bold tracking-tight">What makes us stunning?</h2>
-                <p className="text-lg text-white/40 font-medium max-w-2xl mx-auto">Superior design meets advanced motion engineering.</p>
+      {/* INDUSTRIES GRID */}
+      <section id="industries" className="px-6 py-12">
+        <div className="max-w-7xl mx-auto space-y-16">
+            <motion.div className="text-center space-y-4" {...animations.fadeIn}>
+                <h2 className="text-4xl font-bold tracking-tight">Industries We Serve</h2>
+                <p className="text-muted-foreground font-medium max-w-2xl mx-auto">Different businesses need different workflows. We tailor the experience to your niche.</p>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                    { id: '01', title: 'Visual Design', desc: 'Refined typography, selected colors, and perfect visual hierarchy.', icon: Globe },
-                    { id: '02', title: 'Motion Design', desc: 'Elements animate into view and transition between sections seamlessly.', icon: Zap },
-                    { id: '03', title: 'Interactive', desc: 'Dynamic backgrounds, reactive cards, and cursor effects.', icon: MousePointer2 },
-                    { id: '04', title: 'Premium UI/UX', desc: 'Intuitive interactions and frictionless user journeys.', icon: CheckCircle2 }
+                    { title: 'Restaurants & Bars', desc: 'Kitchen printers, tips, table management, and tabs.', icon: Utensils, color: 'bg-orange-500' },
+                    { title: 'Retail Stores', desc: 'Barcode scanning, inventory, and category management.', icon: Package, color: 'bg-blue-600' },
+                    { title: 'Salons & Spas', desc: 'Service menus, staff tracking, and client history.', icon: Scissors, color: 'bg-purple-600' },
+                    { title: 'Liquor & Retail', desc: 'Fast scanning, cash controls, and strict permissions.', icon: Wine, color: 'bg-red-600' }
                 ].map((item, i) => (
                     <motion.div 
-                        key={item.id}
-                        className="p-10 bg-white/5 rounded-[2.5rem] border border-white/10 space-y-6 hover:bg-white/10 transition-all group"
+                        key={i}
+                        className={cn(floatingGlass, "p-8 space-y-6 hover:translate-y-[-10px] transition-all group")}
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ delay: i * 0.1 }}
                     >
-                        <div className="bg-primary p-4 rounded-2xl w-fit group-hover:scale-110 transition-transform">
-                            <item.icon className="h-6 w-6 text-white" />
+                        <div className={cn("p-4 rounded-2xl w-fit shadow-lg group-hover:scale-110 transition-transform text-white", item.color)}>
+                            <item.icon className="h-6 w-6" />
                         </div>
                         <div className="space-y-2">
-                            <h3 className="text-xl font-bold">{item.id}. {item.title}</h3>
-                            <p className="text-sm text-white/40 leading-relaxed font-medium">{item.desc}</p>
+                            <h3 className="text-xl font-bold tracking-tight">{item.title}</h3>
+                            <p className="text-sm text-muted-foreground leading-relaxed font-medium">{item.desc}</p>
                         </div>
                     </motion.div>
                 ))}
@@ -135,77 +151,94 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* TECH STACK */}
-      <section className="py-32 bg-white px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-            <motion.div className="space-y-12" {...animations.fadeIn}>
-                <div className="space-y-4">
-                    <Badge className="bg-[#eab308] text-black font-bold text-[10px] px-4 h-7 tracking-widest">BUILT FOR PERFORMANCE</Badge>
-                    <h2 className="text-5xl sm:text-6xl font-bold tracking-tight leading-tight">Master the <br /><span className="text-[#eab308]">Stack.</span></h2>
+      {/* STRATEGIC REVIEW SECTION */}
+      <section className="px-6 py-12">
+        <motion.div 
+            className={cn(floatingGlass, "max-w-7xl mx-auto overflow-hidden")}
+            {...animations.fadeIn}
+        >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 items-stretch">
+                <div className="p-10 sm:p-20 space-y-8">
+                    <Badge className="bg-[#eab308] text-black font-bold text-[10px] px-4 h-7 tracking-widest">STRATEGIC CONSULTATION</Badge>
+                    <h2 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">Review before <br />making a <span className="text-[#eab308]">Change.</span></h2>
+                    <p className="text-base text-muted-foreground font-medium leading-relaxed">
+                        Sometimes the better first step is reviewing your current setup. We analyze your merchant statements, inventory tools, and cash processes to identify leaks before you spend a shilling on new hardware.
+                    </p>
+                    <Button variant="outline" className="h-12 border-2 font-bold rounded-xl gap-2">
+                        Get Free Statement Review <ArrowRight className="h-4 w-4" />
+                    </Button>
                 </div>
-                <div className="space-y-6">
-                    {[
-                        { name: 'Next.js + React', desc: 'Building sophisticated, interactive dashboards.', color: 'bg-black' },
-                        { name: 'Framer Motion', desc: 'Used for interactive interfaces and page transitions.', color: 'bg-primary' },
-                        { name: 'Tailwind CSS', desc: 'Building polished, responsive layouts quickly.', color: 'bg-blue-600' }
-                    ].map((tech, i) => (
-                        <div key={i} className="flex gap-6 items-start group cursor-default">
-                            <div className={cn("h-12 w-12 rounded-2xl shrink-0 flex items-center justify-center text-white font-bold text-xl shadow-lg", tech.color)}>
-                                {i + 1}
-                            </div>
-                            <div className="space-y-1 pt-1">
-                                <h4 className="text-lg font-bold">{tech.name}</h4>
-                                <p className="text-sm text-muted-foreground font-medium">{tech.desc}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </motion.div>
-            
-            <motion.div 
-                className="relative"
-                initial={{ opacity: 0, x: 40 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 1 }}
-            >
-                <Card className="border-none shadow-[0_50px_100px_rgba(0,0,0,0.1)] overflow-hidden rounded-[3rem] bg-muted/20 p-2 ring-1 ring-black/5">
+                <div className="relative min-h-[300px] lg:min-h-full">
                     <img 
-                      src={placeholderImages.branding.solutions_section.url} 
-                      alt="Software Demo" 
-                      className="rounded-[2.5rem] w-full h-auto object-cover aspect-video"
-                      data-ai-hint="software demo"
+                      src={placeholderImages.branding.review_section.url} 
+                      alt="Business Review" 
+                      className="absolute inset-0 w-full h-full object-cover grayscale opacity-80"
+                      data-ai-hint="business review"
                     />
-                </Card>
-                <div className="absolute -bottom-10 -left-10 bg-black text-white p-10 rounded-[2.5rem] shadow-2xl space-y-4 max-w-[280px] hidden md:block">
-                    <p className="text-[10px] font-bold tracking-widest text-[#eab308]">EXPERT INSIGHT</p>
-                    <p className="text-sm font-bold leading-relaxed italic">"The best systems don't have the most animations. They have the right ones at the right time."</p>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/70 via-transparent to-transparent dark:from-black/70" />
                 </div>
-            </motion.div>
+            </div>
+        </motion.div>
+      </section>
+
+      {/* PROBLEM SOLVER MATRIX */}
+      <section className="px-6 py-12">
+        <div className="max-w-7xl mx-auto space-y-16">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <motion.div className="space-y-4" {...animations.fadeIn}>
+                    <h2 className="text-4xl font-bold tracking-tight">Common Problems We Solve</h2>
+                    <p className="text-muted-foreground font-medium max-w-xl">Turning operational headaches into streamlined workflows.</p>
+                </motion.div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                    'Slow Checkout Process', 'Inventory Shrinkage', 'Confusing Financial Reports',
+                    'High Processing Fees', 'Poor Local Support', 'Staff Training Issues',
+                    'Cash Drawer Shortages', 'Untracked Voids & Refunds', 'Outdated Terminal Hardware'
+                ].map((problem, i) => (
+                    <motion.div 
+                        key={i}
+                        className={cn(floatingGlass, "p-5 flex items-center gap-4 group cursor-default")}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.05 }}
+                    >
+                        <div className="bg-[#eab308]/20 p-2 rounded-lg group-hover:bg-[#eab308] transition-colors">
+                            <CheckCircle2 className="h-4 w-4 text-[#eab308] group-hover:text-black" />
+                        </div>
+                        <span className="text-[13px] font-bold tracking-tight">{problem}</span>
+                    </motion.div>
+                ))}
+            </div>
         </div>
       </section>
 
       {/* TESTIMONIALS */}
-      <section className="py-24 bg-white px-6">
+      <section className="px-6 py-12">
         <div className="max-w-7xl mx-auto space-y-16">
-            <div className="text-center space-y-4">
-                <h2 className="text-4xl sm:text-5xl font-bold tracking-tight">Trusted by operators</h2>
-                <p className="text-sm text-muted-foreground font-semibold tracking-widest">REAL FEEDBACK FROM ACROSS KENYA</p>
-            </div>
+            <motion.div className="text-center space-y-4" {...animations.fadeIn}>
+                <h2 className="text-4xl font-bold tracking-tight">Trusted by Nairobi Operators</h2>
+                <p className="text-sm text-muted-foreground font-bold tracking-widest uppercase opacity-40">Real Feedback from the Field</p>
+            </motion.div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {testimonials.map((t, i) => (
                     <motion.div 
                         key={i} 
-                        className="p-8 bg-muted/5 rounded-[2.5rem] border border-black/5 space-y-6 hover:shadow-2xl transition-all"
+                        className={cn(floatingGlass, "p-8 space-y-6 hover:shadow-2xl transition-all relative overflow-hidden group")}
                         whileHover={{ y: -10 }}
                     >
-                        <div className="flex gap-1"><Star className="h-4 w-4 fill-[#eab308] text-[#eab308]" /> <Star className="h-4 w-4 fill-[#eab308] text-[#eab308]" /> <Star className="h-4 w-4 fill-[#eab308] text-[#eab308]" /> <Star className="h-4 w-4 fill-[#eab308] text-[#eab308]" /> <Star className="h-4 w-4 fill-[#eab308] text-[#eab308]" /></div>
+                        <div className="flex gap-1">
+                            {[1,2,3,4,5].map(s => <Star key={s} className="h-3 w-3 fill-[#eab308] text-[#eab308]" />)}
+                        </div>
                         <p className="text-sm font-medium leading-relaxed italic text-muted-foreground">&ldquo;{t.text}&rdquo;</p>
-                        <div className="pt-4 border-t border-black/5">
+                        <div className="pt-4 border-t border-black/5 dark:border-white/5">
                             <p className="text-sm font-bold">{t.name}</p>
                             <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest">{t.loc}</p>
                         </div>
+                        <QuoteIcon className="absolute -bottom-4 -right-4 h-24 w-24 opacity-[0.03] group-hover:opacity-10 transition-opacity" />
                     </motion.div>
                 ))}
             </div>
@@ -213,33 +246,39 @@ export function LandingPage() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="py-32 px-6">
-        <div className="max-w-7xl mx-auto p-12 sm:p-24 bg-[#1a1a1a] rounded-[40px] sm:rounded-[5rem] text-center space-y-16 relative overflow-hidden shadow-2xl border-b-8 border-b-[#eab308]">
-             <div className="relative z-10 space-y-12">
-                <div className="space-y-6">
-                    <h2 className="text-5xl sm:text-7xl font-bold tracking-tight text-white leading-tight">
-                        Ready to <br /> <span className="text-[#eab308]">Optimize?</span>
-                    </h2>
-                    <p className="text-white/40 font-medium text-lg sm:text-xl max-w-2xl mx-auto">Build the future of your business with engineered design.</p>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row justify-center gap-6">
-                    <Button asChild size="lg" className="h-20 px-12 font-bold tracking-widest text-sm shadow-2xl bg-[#eab308] text-black hover:bg-[#eab308]/90 rounded-3xl active:scale-95 transition-all">
-                        <Link href="/signup">Start Free Trial</Link>
-                    </Button>
-                    <Button asChild variant="outline" size="lg" className="h-20 px-12 font-bold tracking-widest text-sm border-2 border-white/20 text-white hover:bg-white/5 rounded-3xl active:scale-95 transition-all">
-                        <Link href="/support/contact">Speak With an Expert</Link>
-                    </Button>
-                </div>
-             </div>
-        </div>
+      <section className="px-6 py-24">
+        <motion.div 
+            className={cn(floatingGlass, "max-w-7xl mx-auto p-12 sm:p-24 text-center space-y-12 overflow-hidden border-b-8 border-b-[#eab308]")}
+            {...animations.fadeIn}
+        >
+             <div className="space-y-6">
+                <h2 className="text-5xl sm:text-7xl font-bold tracking-tight leading-tight">
+                    Ready to <span className="text-[#eab308]">Optimize?</span>
+                </h2>
+                <p className="text-muted-foreground font-medium text-lg sm:text-xl max-w-2xl mx-auto">
+                    Take the first step toward a more stable, error-free business node.
+                </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row justify-center gap-6">
+                <Button asChild size="lg" className="h-20 px-12 font-bold tracking-widest text-sm shadow-2xl bg-[#eab308] text-black hover:bg-[#d9a307] rounded-3xl active:scale-95 transition-all">
+                    <Link href="/signup">Start Free Trial</Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="h-20 px-12 font-bold tracking-widest text-sm border-2 bg-white/20 backdrop-blur-md hover:bg-white/40 rounded-3xl transition-all">
+                    <Link href="/support/contact">Talk to an Expert</Link>
+                </Button>
+            </div>
+        </motion.div>
       </section>
 
-      <footer className="py-20 text-center border-t border-black/5 bg-white">
-          <p className="text-[10px] font-bold tracking-[0.5em] text-muted-foreground opacity-30 uppercase">
-              Shop Manager &bull; Engineered Resilience &bull; v3.26
-          </p>
-      </footer>
     </div>
   );
+}
+
+function QuoteIcon(props: any) {
+    return (
+        <svg {...props} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C19.5693 16 20.017 15.5523 20.017 15V9C20.017 8.44772 19.5693 8 19.017 8H15.017C14.4647 8 14.017 8.44772 14.017 9V11C14.017 11.5523 13.5693 12 13.017 12H11.017C10.4647 12 10.017 11.5523 10.017 11V9C10.017 6.79086 11.8079 5 14.017 5H15.017C15.5693 5 16.017 4.55228 16.017 4V3C16.017 2.44772 15.5693 2 15.017 2H14.017C10.151 2 7.017 5.13401 7.017 9V15C7.017 18.3137 9.70329 21 13.017 21H14.017ZM6.017 21L6.017 18C6.017 16.8954 6.91241 16 8.017 16H11.017C11.5693 16 12.017 15.5523 12.017 15V9C12.017 8.44772 11.5693 8 11.017 8H7.017C6.46472 8 6.017 8.44772 6.017 9V11C6.017 11.5523 5.56928 12 5.017 12H3.017C2.46472 12 2.017 11.5523 2.017 11V9C2.017 6.79086 3.80787 5 6.017 5H7.017C7.56928 5 8.017 4.55228 8.017 4V3C8.017 2.44772 7.56928 2 7.017 2H6.017C2.151 2 -0.983 5.13401 -0.983 9V15C-0.983 18.3137 1.70329 21 5.017 21H6.017Z" />
+        </svg>
+    )
 }
