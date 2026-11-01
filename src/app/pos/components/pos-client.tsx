@@ -94,13 +94,13 @@ export function PosClient() {
   useEffect(() => {
       const handleGlobalScan = (e: any) => {
           if (!selectedCustomer) {
-              toast({ variant: 'destructive', title: "Identity Missing", description: "Link an account node first." });
+              toast({ variant: 'destructive', title: "Identity Required", description: "Please link a client account first." });
               return;
           }
           const code = e.detail;
           const found = products?.find(p => p.barcode === code || p.sku === code || p.serialNumber === code);
           if (found) handleAutoAdd(found);
-          else toast({ variant: 'destructive', title: "Entry Failed", description: `Hardware not found: ${code}` });
+          else toast({ variant: 'destructive', title: "Not Found", description: `Hardware not identified: ${code}` });
       };
       window.addEventListener('erp-barcode-scan', handleGlobalScan);
       return () => window.removeEventListener('erp-barcode-scan', handleGlobalScan);
@@ -143,7 +143,7 @@ export function PosClient() {
 
   const handleSelectProduct = (product: any) => {
     if (!selectedCustomer) {
-        toast({ variant: 'destructive', title: 'Identity Link Required', description: 'Select an account node first.' });
+        toast({ variant: 'destructive', title: 'Action Required', description: 'Link a client account before adding items.' });
         return;
     }
     setSelectedProduct(product);
@@ -158,7 +158,7 @@ export function PosClient() {
       } else {
           setCart([...cart, { id: crypto.randomUUID(), productId: product.id, name: product.model || product.name, quantity: 1, sellingPrice: product.sellingPrice || 0, total: product.sellingPrice || 0, buyingPrice: product.purchasePrice || 0 }]);
       }
-      toast({ title: "Hardware Added", description: `1x ${product.model} added to basket.` });
+      toast({ title: "Item Added", description: `${product.model} added to basket.` });
   };
 
   const handleAddToCart = () => {
@@ -213,29 +213,29 @@ export function PosClient() {
         }
         await batch.commit();
         setSuccessType(effectiveDocType); setIsSuccessOpen(true); setCart([]); setPayments([]); setSelectedCustomer(null); setDiscount(0); setApplyVat(false);
-        toast({ title: `Transaction Protocol Executed` });
-    } catch (e: any) { toast({ variant: 'destructive', title: `System Save Error` }); } finally { setIsProcessing(false); }
+        toast({ title: `Transaction Finished` });
+    } catch (e: any) { toast({ variant: 'destructive', title: `Save Failed` }); } finally { setIsProcessing(false); }
   };
 
   return (
-    <div className="space-y-2 sm:space-y-6 overflow-x-hidden pb-10 px-1 sm:px-0">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-2 sm:gap-8">
-        <div className="space-y-2 sm:space-y-6">
+    <div className="space-y-4 overflow-x-hidden pb-10 px-1 sm:px-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-4 sm:gap-8">
+        <div className="space-y-4">
             <Card className="shadow-sm border-none ring-1 ring-black/5 overflow-hidden bg-white rounded-xl sm:rounded-[2rem]">
-                <CardHeader className="bg-muted/10 p-3 sm:p-5 border-b">
+                <CardHeader className="bg-muted/10 p-4 sm:p-5 border-b">
                     <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                            <Badge variant="outline" className="h-7 px-2 font-black uppercase text-[8px] sm:text-[9px] tracking-widest border-2 shrink-0">
-                                <Zap className="h-3 w-3 mr-1 text-primary" /> Live Node
+                        <div className="flex items-center gap-3 overflow-hidden">
+                            <Badge variant="outline" className="h-7 px-3 font-semibold text-[10px] tracking-wide border-2 shrink-0">
+                                <Zap className="h-3.5 w-3.5 mr-1.5 text-primary" /> Active Node
                             </Badge>
                             <div className="flex flex-col overflow-hidden">
-                                <span className="text-[10px] font-black uppercase truncate text-primary">{selectedCustomer ? selectedCustomer.name : 'NO CLIENT LINKED'}</span>
-                                {selectedCustomer && <p className="text-[7px] font-bold opacity-40 uppercase">Account Linked</p>}
+                                <span className="text-sm font-bold truncate text-primary">{selectedCustomer ? selectedCustomer.name : 'Unlinked Account'}</span>
+                                {selectedCustomer && <p className="text-[10px] font-medium opacity-50">Client Identity Linked</p>}
                             </div>
                         </div>
                         <Popover open={custSearchOpen} onOpenChange={setCustSearchOpen}>
-                            <PopoverTrigger asChild><Button variant={selectedCustomer ? "default" : "outline"} className={cn("h-9 px-4 font-black uppercase text-[8px] sm:text-[10px] tracking-widest rounded-xl transition-all", selectedCustomer ? "bg-primary text-white" : "border-primary")}>Link Account</Button></PopoverTrigger>
-                            <PopoverContent className="w-[90vw] sm:w-80 p-0" align="end"><Command><CommandInput placeholder="Find identity..." /><CommandList><CommandGroup heading="Active Nodes">{customers?.map(c => (<CommandItem key={c.id} onSelect={() => { setSelectedCustomer({id: c.id, name: c.name}); setCustSearchOpen(false); }} className="p-3 cursor-pointer"><div className="flex flex-col"><span className="font-bold uppercase text-xs">{c.name}</span></div></CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent>
+                            <PopoverTrigger asChild><Button variant={selectedCustomer ? "default" : "outline"} className={cn("h-9 px-4 font-semibold text-xs rounded-xl transition-all", selectedCustomer ? "bg-primary text-white" : "border-primary")}>Link Account</Button></PopoverTrigger>
+                            <PopoverContent className="w-[90vw] sm:w-80 p-0" align="end"><Command><CommandInput placeholder="Find identity..." /><CommandList><CommandGroup heading="Recent Clients">{customers?.map(c => (<CommandItem key={c.id} onSelect={() => { setSelectedCustomer({id: c.id, name: c.name}); setCustSearchOpen(false); }} className="p-3 cursor-pointer"><div className="flex flex-col"><span className="font-bold text-sm">{c.name}</span></div></CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent>
                         </Popover>
                     </div>
                 </CardHeader>
@@ -244,66 +244,66 @@ export function PosClient() {
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
                             <Input 
-                                placeholder="Hardware Inventory Search..." 
+                                placeholder="Search inventory items..." 
                                 value={localSearch}
                                 onChange={e => setLocalSearch(e.target.value)}
-                                className="pl-10 h-10 sm:h-12 bg-white border-2 border-primary/10 font-bold rounded-xl text-sm shadow-sm"
+                                className="pl-10 h-11 sm:h-12 bg-white border-2 border-primary/10 font-semibold rounded-xl text-sm shadow-sm"
                                 disabled={!selectedCustomer}
                             />
                         </div>
                     </div>
-                    <ScrollArea className="h-[250px] sm:h-[400px] w-full p-3 sm:p-5">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    <ScrollArea className="h-[300px] sm:h-[450px] w-full p-4 sm:p-5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                             {filteredCatalog.map(p => (
-                                <button key={p.id} onClick={() => handleSelectProduct(p)} className="flex flex-col items-start p-2 bg-white rounded-lg border border-black/5 shadow-sm hover:ring-2 hover:ring-primary/20 transition-all text-left group overflow-hidden relative">
-                                    <div className="absolute top-1 right-1"><div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" /></div>
-                                    <p className="text-[9px] font-black uppercase truncate w-full mb-1">{p.model}</p>
+                                <button key={p.id} onClick={() => handleSelectProduct(p)} className="flex flex-col items-start p-3 bg-white rounded-xl border border-black/5 shadow-sm hover:ring-2 hover:ring-primary/20 transition-all text-left group overflow-hidden relative">
+                                    <div className="absolute top-2 right-2"><div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" /></div>
+                                    <p className="text-xs font-bold truncate w-full mb-1">{p.model}</p>
                                     <div className="flex justify-between items-center w-full">
-                                        <span className="text-[10px] font-black text-primary">KES {p.sellingPrice?.toLocaleString()}</span>
+                                        <span className="text-xs font-semibold text-primary">KES {p.sellingPrice?.toLocaleString()}</span>
                                         <Plus className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </div>
                                 </button>
                             ))}
-                            {filteredCatalog.length === 0 && <div className="col-span-full h-32 flex items-center justify-center opacity-20 uppercase font-black text-[9px] tracking-[0.3em]">Silo Empty</div>}
+                            {filteredCatalog.length === 0 && <div className="col-span-full h-32 flex items-center justify-center opacity-30 font-semibold text-sm">No items found in this silo.</div>}
                         </div>
                     </ScrollArea>
                     <div className="border-t">
-                        <div className="min-h-[150px] sm:min-h-[250px] overflow-x-auto no-scrollbar">
+                        <div className="min-h-[200px] overflow-x-auto no-scrollbar">
                             <Table>
-                                <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[8px] font-black uppercase whitespace-nowrap px-3 py-4">Hardware</TableHead><TableHead className="w-10 text-center text-[8px] font-black uppercase px-1 py-4">Qty</TableHead><TableHead className="w-16 text-right text-[8px] font-black uppercase px-1 py-4">Rate</TableHead><TableHead className="w-20 text-right text-[8px] font-black uppercase px-3 py-4">Net</TableHead><TableHead className="w-8 py-4"></TableHead></TableRow></TableHeader>
+                                <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[11px] font-bold whitespace-nowrap px-4 py-4">Item</TableHead><TableHead className="w-12 text-center text-[11px] font-bold px-1 py-4">Qty</TableHead><TableHead className="w-20 text-right text-[11px] font-bold px-1 py-4">Rate</TableHead><TableHead className="w-24 text-right text-[11px] font-bold px-4 py-4">Total</TableHead><TableHead className="w-8 py-4"></TableHead></TableRow></TableHeader>
                                 <TableBody>
                                     {cart.map((item) => (
-                                        <TableRow key={item.id} className="border-b h-12 hover:bg-muted/5 transition-colors"><TableCell className="px-3"><p className="font-bold text-[10px] uppercase truncate max-w-[120px] sm:max-w-none">{item.name}</p></TableCell><TableCell className="text-center font-bold text-[10px] px-1">{item.quantity}</TableCell><TableCell className="text-right font-bold text-[10px] px-1">{item.sellingPrice.toLocaleString()}</TableCell><TableCell className="text-right font-black text-[10px] text-primary px-3">{(item.total).toLocaleString()}</TableCell><TableCell className="text-right pr-2"><button onClick={() => setCart(cart.filter(i => i.id !== item.id))} className="text-destructive/30 hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button></TableCell></TableRow>
+                                        <TableRow key={item.id} className="border-b h-12 hover:bg-muted/5 transition-colors"><TableCell className="px-4"><p className="font-semibold text-xs truncate max-w-[120px] sm:max-w-none">{item.name}</p></TableCell><TableCell className="text-center font-semibold text-xs px-1">{item.quantity}</TableCell><TableCell className="text-right font-semibold text-xs px-1">{item.sellingPrice.toLocaleString()}</TableCell><TableCell className="text-right font-bold text-xs text-primary px-4">{(item.total).toLocaleString()}</TableCell><TableCell className="text-right pr-3"><button onClick={() => setCart(cart.filter(i => i.id !== item.id))} className="text-destructive/30 hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button></TableCell></TableRow>
                                     ))}
-                                    {cart.length === 0 && <TableRow><TableCell colSpan={5} className="h-32 text-center opacity-10"><ShoppingCart className="h-8 w-8 mx-auto mb-2" /><p className="text-[8px] font-black uppercase tracking-[0.2em]">Basket Empty</p></TableCell></TableRow>}
+                                    {cart.length === 0 && <TableRow><TableCell colSpan={5} className="h-40 text-center opacity-20"><ShoppingCart className="h-10 w-10 mx-auto mb-3" /><p className="text-sm font-semibold">Shopping basket is empty</p></TableCell></TableRow>}
                                 </TableBody>
                             </Table>
                         </div>
                     </div>
                 </CardContent>
             </Card>
-            <div className="hidden sm:block"><RecentSales onViewReceipt={() => {}} /></div>
+            <RecentSales onViewReceipt={() => {}} />
         </div>
-        <div className="space-y-2 sm:space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             <Card className="shadow-xl border-none ring-1 ring-black/5 flex flex-col h-fit bg-white rounded-xl sm:rounded-[2rem]">
-                <CardHeader className="bg-primary/5 py-4 px-4 sm:px-6 border-b"><div className="flex items-center justify-between"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary">Summary</CardTitle><div className="flex items-center gap-2"><Switch checked={applyVat} onCheckedChange={setApplyVat} id="vat-mode-main" className="scale-75" /><Label htmlFor="vat-mode-main" className="text-[8px] font-black uppercase cursor-pointer">16% VAT</Label></div></div></CardHeader>
-                <CardContent className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-bold opacity-40 uppercase tracking-tighter"><span>Subtotal</span><span>KES {subtotal.toLocaleString()}</span></div>
-                        <div className="flex justify-between items-center gap-4"><span className="text-[10px] font-bold opacity-40 uppercase tracking-tighter">Discount</span><Input type="number" value={discount || ''} onChange={e => setDiscount(parseFloat(e.target.value) || 0)} className="h-8 w-20 text-right font-black rounded-lg text-xs" placeholder="0.00" /></div>
-                        {applyVat && <div className="flex justify-between text-[10px] font-black text-primary uppercase tracking-tighter"><span>VAT Component</span><span>KES {vatAmount.toLocaleString()}</span></div>}
-                        <div className="pt-4 border-t border-black/5 flex justify-between items-end"><span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Net Due</span><span className="text-2xl sm:text-4xl font-black tracking-tighter">KES {total.toLocaleString()}</span></div>
+                <CardHeader className="bg-primary/5 py-4 px-5 border-b"><div className="flex items-center justify-between"><CardTitle className="text-sm font-bold text-primary">Summary</CardTitle><div className="flex items-center gap-2"><Switch checked={applyVat} onCheckedChange={setApplyVat} id="vat-mode-main" className="scale-75" /><Label htmlFor="vat-mode-main" className="text-[11px] font-semibold cursor-pointer">16% VAT</Label></div></div></CardHeader>
+                <CardContent className="p-5 sm:p-8 space-y-6">
+                    <div className="space-y-3">
+                        <div className="flex justify-between text-xs font-medium opacity-50"><span>Subtotal</span><span>KES {subtotal.toLocaleString()}</span></div>
+                        <div className="flex justify-between items-center gap-4"><span className="text-xs font-medium opacity-50">Discount</span><Input type="number" value={discount || ''} onChange={e => setDiscount(parseFloat(e.target.value) || 0)} className="h-9 w-24 text-right font-bold rounded-lg text-sm" placeholder="0.00" /></div>
+                        {applyVat && <div className="flex justify-between text-xs font-bold text-primary"><span>VAT (16%)</span><span>KES {vatAmount.toLocaleString()}</span></div>}
+                        <div className="pt-4 border-t border-black/5 flex justify-between items-end"><span className="text-[11px] font-bold opacity-40 uppercase tracking-wide">Net Payable</span><span className="text-3xl sm:text-4xl font-bold tracking-tight">KES {total.toLocaleString()}</span></div>
                     </div>
-                    <div className="space-y-3 pt-2">
-                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest text-center opacity-60">Payment Matrix</p>
-                        <div className="grid grid-cols-2 gap-1.5">{(['Cash', 'M-Pesa', 'Bank', 'Card'] as const).map(m => (<Button key={m} variant={activePaymentMethod === m ? 'default' : 'outline'} size="sm" className="h-10 text-[9px] font-black uppercase rounded-xl border-2" onClick={() => setActivePaymentMethod(m)}>{m}</Button>))}</div>
-                        {activePaymentMethod && (<div className="p-3 bg-muted/30 rounded-2xl space-y-3 border-2 border-primary/10 animate-in fade-in slide-in-from-top-2 duration-300 shadow-inner"><div className="flex justify-between items-center"><Label className="text-[9px] font-black uppercase">{activePaymentMethod} Detail</Label><button onClick={() => setActivePaymentMethod(null)}><X className="h-4 w-4 opacity-30" /></button></div><Input type="number" placeholder="Amount" value={currentPaymentAmount} onChange={e => setCurrentPaymentAmount(e.target.value)} className="h-10 font-black bg-white text-sm rounded-xl" autoFocus />{['M-Pesa', 'Bank', 'Card'].includes(activePaymentMethod) && <Input placeholder="Ref Code" value={currentPaymentRef} onChange={e => setCurrentPaymentRef(e.target.value)} className="h-9 font-mono text-[9px] bg-white rounded-xl uppercase" />}<Button className="w-full h-10 font-black uppercase text-[10px] tracking-widest shadow-md rounded-xl" onClick={handleAddPayment}>Allocate Flow</Button></div>)}
-                        <div className="space-y-1.5 max-h-[150px] overflow-y-auto no-scrollbar">{payments.map((p, idx) => (<div key={idx} className="flex justify-between items-center p-3 bg-card rounded-xl border border-black/5 shadow-sm group hover:ring-2 hover:ring-primary/5 transition-all"><div className="flex flex-col"><span className="text-[9px] font-black uppercase">{p.method}</span>{p.reference && <span className="text-[7px] opacity-40 font-mono uppercase truncate max-w-[100px]">{p.reference}</span>}</div><div className="flex items-center gap-3"><span className="text-[10px] font-black text-primary">KES {p.amount.toLocaleString()}</span><button onClick={() => setPayments(payments.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4 text-destructive/30 hover:text-destructive transition-colors" /></button></div></div>))}</div>
+                    <div className="space-y-4 pt-2">
+                        <p className="text-[11px] font-bold text-muted-foreground tracking-widest text-center opacity-60 uppercase">Payment Method</p>
+                        <div className="grid grid-cols-2 gap-2">{(['Cash', 'M-Pesa', 'Bank', 'Card'] as const).map(m => (<Button key={m} variant={activePaymentMethod === m ? 'default' : 'outline'} size="sm" className="h-11 text-xs font-semibold rounded-xl border-2" onClick={() => setActivePaymentMethod(m)}>{m}</Button>))}</div>
+                        {activePaymentMethod && (<div className="p-4 bg-muted/30 rounded-2xl space-y-4 border-2 border-primary/10 animate-in fade-in slide-in-from-top-2 duration-300 shadow-inner"><div className="flex justify-between items-center"><Label className="text-xs font-bold">{activePaymentMethod} Amount</Label><button onClick={() => setActivePaymentMethod(null)}><X className="h-4 w-4 opacity-30" /></button></div><Input type="number" placeholder="Enter amount..." value={currentPaymentAmount} onChange={e => setCurrentPaymentAmount(e.target.value)} className="h-11 font-bold bg-white text-base rounded-xl" autoFocus />{['M-Pesa', 'Bank', 'Card'].includes(activePaymentMethod) && <Input placeholder="Reference ID" value={currentPaymentRef} onChange={e => setCurrentPaymentRef(e.target.value)} className="h-10 font-mono text-xs bg-white rounded-xl uppercase" />}<Button className="w-full h-11 font-bold text-sm shadow-md rounded-xl" onClick={handleAddPayment}>Confirm Amount</Button></div>)}
+                        <div className="space-y-2 max-h-[180px] overflow-y-auto no-scrollbar">{payments.map((p, idx) => (<div key={idx} className="flex justify-between items-center p-3.5 bg-card rounded-xl border border-black/5 shadow-sm group hover:ring-2 hover:ring-primary/5 transition-all"><div className="flex flex-col"><span className="text-xs font-bold">{p.method}</span>{p.reference && <span className="text-[10px] opacity-40 font-mono uppercase truncate max-w-[120px]">{p.reference}</span>}</div><div className="flex items-center gap-3"><span className="text-sm font-bold text-primary">KES {p.amount.toLocaleString()}</span><button onClick={() => setPayments(payments.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4 text-destructive/30 hover:text-destructive transition-colors" /></button></div></div>))}</div>
                     </div>
-                    <div className="pt-4 mt-auto border-t border-black/5 space-y-2.5">
-                        <div className="flex justify-between items-center p-3 bg-black text-white rounded-2xl shadow-xl"><div><p className="text-[7px] font-black uppercase opacity-40 mb-0.5 tracking-widest">Unsettled</p><p className={cn("text-lg font-black tabular-nums tracking-tighter", remainingBalance > 0 ? "text-red-400" : "text-green-400")}>KES {remainingBalance.toLocaleString()}</p></div><Badge className={cn("text-[8px] font-black uppercase h-5 border-none", remainingBalance <= 0 ? "bg-green-500" : "bg-red-600")}>{remainingBalance <= 0 ? 'Settled' : 'Credit'}</Badge></div>
-                        <Button onClick={() => handleProcessPOSAction('Receipt')} className="w-full h-14 sm:h-16 text-base font-black uppercase tracking-widest shadow-2xl rounded-2xl active:scale-95 transition-all" disabled={isProcessing || cart.length === 0}>Finalize Sale</Button>
-                        <div className="grid grid-cols-2 gap-2"><Button variant="outline" onClick={() => handleProcessPOSAction('Invoice')} disabled={isProcessing || cart.length === 0} className="h-10 font-black uppercase text-[9px] border-2 rounded-xl active:scale-95"><FileText className="h-3.5 w-3.5 mr-1.5" /> Invoice</Button><Button variant="outline" onClick={() => handleProcessPOSAction('Quotation')} disabled={isProcessing || cart.length === 0} className="h-10 font-black uppercase text-[9px] border-2 rounded-xl active:scale-95"><FilePlus2 className="h-3.5 w-3.5 mr-1.5" /> Quote</Button></div>
+                    <div className="pt-6 mt-auto border-t border-black/5 space-y-3">
+                        <div className="flex justify-between items-center p-4 bg-black text-white rounded-2xl shadow-lg"><div><p className="text-[9px] font-bold uppercase opacity-40 mb-1 tracking-wide">Balance Due</p><p className={cn("text-xl font-bold tabular-nums", remainingBalance > 0 ? "text-red-400" : "text-green-400")}>KES {remainingBalance.toLocaleString()}</p></div><Badge className={cn("text-[10px] font-bold h-6 border-none px-3", remainingBalance <= 0 ? "bg-green-500" : "bg-red-600")}>{remainingBalance <= 0 ? 'Settled' : 'Credit'}</Badge></div>
+                        <Button onClick={() => handleProcessPOSAction('Receipt')} className="w-full h-16 text-base font-bold shadow-xl rounded-2xl active:scale-95 transition-all" disabled={isProcessing || cart.length === 0}>Finalize Transaction</Button>
+                        <div className="grid grid-cols-2 gap-3"><Button variant="outline" onClick={() => handleProcessPOSAction('Invoice')} disabled={isProcessing || cart.length === 0} className="h-11 font-semibold text-xs border-2 rounded-xl active:scale-95"><FileText className="h-4 w-4 mr-2" /> Invoice</Button><Button variant="outline" onClick={() => handleProcessPOSAction('Quotation')} disabled={isProcessing || cart.length === 0} className="h-11 font-semibold text-xs border-2 rounded-xl active:scale-95"><FilePlus2 className="h-4 w-4 mr-2" /> Quotation</Button></div>
                     </div>
                 </CardContent>
             </Card>
@@ -311,23 +311,23 @@ export function PosClient() {
       </div>
 
       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-        <DialogContent className="w-[95vw] sm:max-w-md p-6 border-none shadow-2xl rounded-2xl sm:rounded-[2rem] bg-card">
-            <DialogHeader><DialogTitle className="text-lg font-black uppercase tracking-tight truncate">{selectedProduct?.model}</DialogTitle></DialogHeader>
+        <DialogContent className="w-[95vw] sm:max-w-md p-6 border-none shadow-2xl rounded-2xl bg-card">
+            <DialogHeader><DialogTitle className="text-lg font-bold truncate">{selectedProduct?.model}</DialogTitle></DialogHeader>
             <div className="space-y-6 pt-4">
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60">Quantity</Label><Input type="number" value={selectionQty} onChange={e => setSelectionQty(e.target.value)} className="h-12 text-lg font-black rounded-xl" /></div>
-                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase opacity-60 text-primary">Rate</Label><Input type="number" value={selectionPrice} onChange={e => setSelectionPrice(e.target.value)} className="h-12 text-lg font-black border-2 border-primary/20 rounded-xl" /></div>
+                    <div className="space-y-2"><Label className="text-xs font-semibold text-muted-foreground">Quantity</Label><Input type="number" value={selectionQty} onChange={e => setSelectionQty(e.target.value)} className="h-12 text-lg font-bold rounded-xl" /></div>
+                    <div className="space-y-2"><Label className="text-xs font-semibold text-primary">Unit Price</Label><Input type="number" value={selectionPrice} onChange={e => setSelectionPrice(e.target.value)} className="h-12 text-lg font-bold border-2 border-primary/20 rounded-xl" /></div>
                 </div>
-                <Button className="w-full h-14 font-black uppercase tracking-widest shadow-xl rounded-2xl active:scale-95 transition-all" onClick={handleAddToCart}>Add to Cart</Button>
+                <Button className="w-full h-14 font-bold text-base shadow-xl rounded-2xl active:scale-95 transition-all" onClick={handleAddToCart}>Add to Basket</Button>
             </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
-        <DialogContent className="w-[90vw] sm:max-w-md text-center p-10 rounded-[2.5rem] border-none shadow-2xl">
+        <DialogContent className="w-[90vw] sm:max-w-md text-center p-12 rounded-[2.5rem] border-none shadow-2xl">
             <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner"><Check className="h-10 w-10 text-green-600" /></div>
-            <DialogHeader><DialogTitle className="text-2xl font-black uppercase tracking-tighter">Success</DialogTitle><DialogDescription className="text-[10px] font-bold uppercase mt-2 tracking-[0.2em] opacity-40">TRANSACTION SECURED</DialogDescription></DialogHeader>
-            <div className="pt-8"><Button className="w-full h-14 font-black uppercase tracking-widest rounded-2xl shadow-xl bg-black text-white" onClick={() => setIsSuccessOpen(false)}>Next Sale</Button></div>
+            <DialogHeader><DialogTitle className="text-2xl font-bold tracking-tight">Transaction Successful</DialogTitle><DialogDescription className="text-sm font-medium mt-2 text-muted-foreground">Your records have been synchronized with the cloud.</DialogDescription></DialogHeader>
+            <div className="pt-10"><Button className="w-full h-14 font-bold text-lg rounded-2xl shadow-xl bg-black text-white" onClick={() => setIsSuccessOpen(false)}>Next Customer</Button></div>
         </DialogContent>
       </Dialog>
     </div>

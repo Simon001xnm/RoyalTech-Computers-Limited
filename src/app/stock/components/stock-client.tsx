@@ -6,7 +6,7 @@ import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "fir
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Package, Search } from "lucide-react";
+import { PlusCircle, Package, Search, DownloadCloud } from "lucide-react";
 import { LaptopForm } from "./laptop-form";
 import { getLaptopColumns } from "./laptop-columns";
 import { Input } from "@/components/ui/input";
@@ -119,10 +119,10 @@ export function StockClient() {
   });
 
   return (
-    <div className="space-y-3 sm:space-y-6 px-1 sm:px-0">
+    <div className="space-y-4 px-1 sm:px-0">
       <PageHeader 
         title="Inventory List" 
-        description="Managed hardware & items."
+        description="Manage hardware, parts, and consumable shop items."
         actionLabel="Register Item"
         onAction={() => { setEditingAsset(null); setIsFormOpen(true); }}
         ActionIcon={PlusCircle}
@@ -131,15 +131,17 @@ export function StockClient() {
       <div className="mb-2 sm:mb-4 relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
         <Input
-          placeholder="Scan barcode/serial or search model..."
+          placeholder="Scan barcode or search model..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm bg-card h-10 sm:h-11 font-bold pl-10 rounded-xl text-xs sm:text-sm"
+          className="max-w-sm bg-card h-10 sm:h-11 font-medium pl-10 rounded-xl text-sm"
         />
       </div>
       
       {isLoading ? (
-        <div className="p-12 text-center animate-pulse font-black uppercase text-[9px] sm:text-[10px] tracking-widest text-muted-foreground">Synchronizing Cloud Silo...</div>
+        <div className="p-12 text-center animate-pulse font-semibold text-sm tracking-wide text-muted-foreground">
+            Synchronizing Cloud Silo...
+        </div>
       ) : (
         <div className="rounded-xl sm:rounded-[2rem] border-none ring-1 ring-black/5 shadow-sm bg-card overflow-hidden">
             <div className="overflow-x-auto no-scrollbar">
@@ -148,7 +150,7 @@ export function StockClient() {
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
                         {headerGroup.headers.map((header) => (
-                            <TableHead key={header.id} className="font-black uppercase text-[8px] sm:text-[10px] py-4 px-2 sm:px-4 whitespace-nowrap">
+                            <TableHead key={header.id} className="font-bold text-[10px] sm:text-xs py-4 px-2 sm:px-4 whitespace-nowrap">
                             {flexRender(header.column.columnDef.header, header.getContext())}
                             </TableHead>
                         ))}
@@ -160,7 +162,7 @@ export function StockClient() {
                         table.getRowModel().rows.map((row) => (
                         <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                             {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id} className="py-2 sm:py-4 px-2 sm:px-4 text-[11px] sm:text-sm truncate">
+                            <TableCell key={cell.id} className="py-2 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm truncate">
                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </TableCell>
                             ))}
@@ -168,7 +170,7 @@ export function StockClient() {
                         ))
                     ) : (
                         <TableRow>
-                        <TableCell colSpan={columns.length} className="h-40 text-center text-muted-foreground italic text-xs uppercase opacity-30 font-black">No matching inventory</TableCell>
+                        <TableCell colSpan={columns.length} className="h-40 text-center text-muted-foreground italic text-xs font-medium">No matching inventory found.</TableCell>
                         </TableRow>
                     )}
                     </TableBody>
@@ -181,8 +183,8 @@ export function StockClient() {
       <Dialog open={isFormOpen} onOpenChange={(o) => { if (!o) { setIsFormOpen(false); setEditingAsset(null); }}}>
         <DialogContent className="w-[98vw] sm:max-w-2xl max-h-[95vh] overflow-y-auto border-none shadow-2xl rounded-2xl sm:rounded-[2rem] p-0">
           <DialogHeader className="p-6 sm:p-8 border-b bg-muted/10">
-            <DialogTitle className="text-xl sm:text-2xl font-black uppercase tracking-tight">{editingAsset ? "Modify Records" : "Register Logic"}</DialogTitle>
-            <DialogDescription className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Cloud Node Registry</DialogDescription>
+            <DialogTitle className="text-xl sm:text-2xl font-bold">{editingAsset ? "Edit Item Details" : "Register New Item"}</DialogTitle>
+            <DialogDescription className="text-xs font-medium text-muted-foreground mt-1">Provide specific details for hardware and stock tracking.</DialogDescription>
           </DialogHeader>
           <div className="p-6 sm:p-8 pt-4">
             <LaptopForm laptop={editingAsset} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isLoading={isSubmitting} />
@@ -193,14 +195,14 @@ export function StockClient() {
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <DialogContent className="w-[95vw] sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase text-destructive">Void Item</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-destructive">Remove Item</DialogTitle>
             <DialogDescription className="font-medium text-base pt-2">
-              Remove <strong>{assetToDelete?.model}</strong> from the shop silo?
+              Are you sure you want to remove <strong>{assetToDelete?.model}</strong> from the shop inventory?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 mt-6">
             <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="font-bold h-12 rounded-xl">Cancel</Button>
-            <Button variant="destructive" onClick={async () => { if (assetToDelete) await deleteDoc(doc(firestore, 'assets', assetToDelete.id)); setIsDeleteConfirmOpen(false); }} className="font-black uppercase h-12 rounded-xl">Void Records</Button>
+            <Button variant="destructive" onClick={async () => { if (assetToDelete) await deleteDoc(doc(firestore, 'assets', assetToDelete.id)); setIsDeleteConfirmOpen(false); }} className="font-bold h-12 rounded-xl">Confirm Deletion</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
