@@ -74,23 +74,22 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6 sm:space-y-8 text-center lg:text-left animate-in fade-in slide-in-from-left-4 duration-1000">
                 <div className="inline-flex items-center gap-2 bg-[#eab308]/10 text-[#eab308] px-4 py-1.5 rounded-full border border-[#eab308]/20 shadow-sm mx-auto lg:mx-0">
-                    <Star className="h-3 w-3 fill-[#eab308]" />
-                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-black">Point of Sale Systems & Payment Processing</span>
+                    <Zap className="h-3 w-3 fill-[#eab308]" />
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-black">Built for high-growth African retail</span>
                 </div>
                 <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black uppercase tracking-tighter leading-[0.9] text-black">
-                    Smarter POS for <br />
-                    <span className="text-[#eab308]">Nairobi Businesses.</span>
+                    Stop Losing Stock. <br />
+                    <span className="text-[#eab308]">Start Scaling Profit.</span>
                 </h1>
                 <p className="text-sm sm:text-lg text-muted-foreground font-bold uppercase tracking-tight max-w-lg leading-tight mx-auto lg:mx-0">
-                    Lower your processing fees. Get real local support. <br className="hidden sm:block" />
-                    Run your business faster with Shop Manager.
+                    80% of businesses fail because of poor records and stock shrinkage. Shop Manager is the local choice for Nairobi owners who need high-speed scanning, automatic M-Pesa reconciliation, and bank-grade cloud records that never crash.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-4 px-4 sm:px-0">
                     <Button asChild className="h-16 px-12 font-black uppercase tracking-widest bg-black text-white hover:bg-black/90 rounded-2xl shadow-2xl active:scale-95 transition-all">
-                        <Link href="/support/contact">Book a Demo</Link>
+                        <Link href="/signup">Start Free Trial</Link>
                     </Button>
                     <Button asChild variant="outline" className="h-16 px-12 font-black uppercase tracking-widest border-2 border-black/10 rounded-2xl bg-white hover:bg-muted/50 active:scale-95 transition-all">
-                        <Link href="/signup">Try for Free</Link>
+                        <Link href="/support/contact">Book a Live Demo</Link>
                     </Button>
                 </div>
             </div>
