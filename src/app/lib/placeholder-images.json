@@ -1,3 +1,4 @@
+
 {
   "avatars": [
     {
@@ -14,38 +15,32 @@
       "id": "avatar-3",
       "url": "https://picsum.photos/seed/avatar3/128/128",
       "hint": "tech specialist"
-    },
-    {
-      "id": "avatar-4",
-      "url": "https://picsum.photos/seed/avatar4/128/128",
-      "hint": "creative designer"
-    },
-    {
-      "id": "avatar-5",
-      "url": "https://picsum.photos/seed/avatar5/128/128",
-      "hint": "business executive"
     }
   ],
   "branding": {
     "login_bg": {
-      "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR4OUbaKyWwmqCq48eNJRRmXllYsOf42HvG8lAtudRScA&s=10",
+      "url": "https://images.openai.com/static-rsc-4/1qxwff47dg1sARvOyPLzeRZ1Xn3az95jKxH_52_E5qHkxq4WhDK2dYVEFNelrvRfKxbd7K7GZ-5Gu6TBgCOFtIlmM8MJ794HBmNESwnAXzGWsQiXhdbFOkYSUbtDTvIaFq2GYdFq9I3E0uZ2eojlKpiuKVS1JPb6OER-q0F6Iv5n2uPal0qNLczMMs9JUlgj?purpose=fullsize",
       "hint": "office space"
     },
     "hero_pos": {
-      "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSEr-73rxWi4UPwBpW65SX9FuRavn_Ofymy2bEpb6UuxQ&s=10",
+      "url": "https://images.openai.com/static-rsc-4/1yovFUH-LVAHJ6WXtGFd1ud7rkiS2mCEOj8ggmOYU812_yDgx9L9u2qPuEyXDr9vNoonEepy5iUe5PKMuv2C8Y8gTfE8DZRxH7prLCNUpRh9-lPNG7_M5doW-2OeqRCzWC1Wratv6jJF6VUYOmyp5Rgl7k9C8eoPBLjIGFJVoO5ZmwnJoRhA84dT5ZR_Yy16?purpose=fullsize",
       "hint": "pos hardware"
     },
     "review_section": {
-      "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcST-r2ID66EWSNN1uTdRLCogmL_xcISZnw4z6qjeOAkGg&s=10",
+      "url": "https://images.openai.com/static-rsc-4/eRBEJIMc9bD7LGWgvEzCfD_irBOVWjDQHJy9j-8UkIfyQFAn4m9t0k5dj688foySyZKXukF9JNrI0GYX4isvkF0AXD51DRbEFpZapa3hhIS9gbfDmHznOJ6RGB5-z7G3VprtFZGAfIQU7nXVYCrNwK7OfNHsKwAiAeBSbHsntS9AfW_pU9wLY7c0cH6gDXtX?purpose=fullsize",
       "hint": "business analytics"
     },
     "support_section": {
-      "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQUFfORNaheclx_W7TPgX3AIcCP1TmHUZDZvmAJ5QP4TA&s=10",
+      "url": "https://images.openai.com/static-rsc-4/DQkt_HiF7vi630GaZvjYorfQREyk9BLWIKOm3QiVLqUtdfjxHpaa-QZhAujdnVPgBPMyYSO6USK8zOQh3JdDLRctp134DQtjbcl4BcLAnQqP7P4sAlGWXxQqjCauirlfHebSsDX-koLV-ouXV6HwH3WX8sZpvH8sI9FKRa86nWgEWwntTdQDt5qrlNb-PR-f?purpose=fullsize",
       "hint": "technical support"
     },
-    "solutions_section": {
-      "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRnbX6iyochM9jlyEAR8yxf1K4hKxLFFDboGlMbNoOmIw&s=10",
+    "solutions_showcase": {
+      "url": "https://images.openai.com/static-rsc-4/9SVGxtnyfaSGCk9pJ0uWheBgnZiNK2v3LLjOiO1EFmo4uqIJ7pzA_Cq4P6J_F443XkX_JLNDzBKtBw2E2l3DW-XoQmk9_UgnZpE81eBZQZu6kt6TenqvVynq7LfM-4EhpKclfzxK_2JRg4zRKnsfLOTfYfdfapVcsSxMKtO8YX3TQCyc6fsK-eR3GGOrHaTk?purpose=fullsize",
       "hint": "software demo"
+    },
+    "dashboard_preview": {
+      "url": "https://images.openai.com/static-rsc-4/iJh8rBlD_bNnAp_A-CcwSiHSmTnEjru4DZmsxn9JBPp4nlk8OeJc5HqHpzJlYZbOLQ5Ci-FmbXhkBs_y5zGW0iTOjUu3K0B5lVg9a2SxZSuRIyj-9eqflmHgsbxnF-t0_PgJvNnVuMUc18J3YAnv-qqJpD32UZVUkVQWMMMEM29rlzCU97iN0V_GKQNh38Am?purpose=fullsize",
+      "hint": "financial dashboard"
     }
   }
 }

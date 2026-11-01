@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from "react";
@@ -6,7 +7,7 @@ import { collection, query, where, addDoc, updateDoc, doc, deleteDoc } from "fir
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Search } from "lucide-react";
+import { PlusCircle, Search, DownloadCloud } from "lucide-react";
 import { LaptopForm } from "./laptop-form";
 import { getLaptopColumns } from "./laptop-columns";
 import { Input } from "@/components/ui/input";
@@ -139,7 +140,8 @@ export function StockClient() {
       </div>
       
       {isLoading ? (
-        <div className="p-12 text-center animate-pulse font-semibold text-sm tracking-wide text-muted-foreground">
+        <div className="p-12 text-center animate-pulse font-semibold text-sm tracking-wide text-muted-foreground flex items-center justify-center gap-3">
+            <DownloadCloud className="h-5 w-5 animate-bounce" />
             Syncing inventory silo...
         </div>
       ) : (

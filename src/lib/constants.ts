@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from 'lucide-react';
 import { 
     LayoutDashboard, 
@@ -13,7 +14,8 @@ import {
     ShieldCheck,
     Globe,
     Share2,
-    WalletCards
+    WalletCards,
+    Zap
 } from 'lucide-react';
 
 export const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
@@ -40,11 +42,14 @@ export interface NavItem {
 
 /**
  * SIMPLE NAVIGATION
- * Using Title Case for all labels to maintain professional simplicity.
+ * Added Solutions Ecosystem for cross-sell discoverability.
  */
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', href: '/', label: 'Main Dashboard', icon: LayoutDashboard },
   
+  // SOLUTIONS ECOSYSTEM
+  { id: 'solutions', href: '/solutions', label: 'Ecosystem Hub', icon: Zap },
+
   // SALES
   { id: 'pos', href: '/pos', label: 'Sell Items', icon: ShoppingCart },
   { id: 'documents', href: '/documents', label: 'Paperwork', icon: FileText },
