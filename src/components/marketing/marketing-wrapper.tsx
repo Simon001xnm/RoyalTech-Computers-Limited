@@ -45,13 +45,13 @@ export function MarketingWrapper({ children }: MarketingWrapperProps) {
           <img 
             src={placeholderImages.branding.login_bg.url} 
             alt="Premium Business Infrastructure in Kenya" 
-            className="w-full h-full object-cover opacity-60 dark:opacity-40 transition-opacity duration-1000"
+            className="w-full h-full object-cover opacity-80 transition-opacity duration-1000"
           />
           <div className={cn(
             "absolute inset-0 transition-colors duration-1000",
             isDark 
-              ? "bg-gradient-to-br from-black via-black/40 to-transparent" 
-              : "bg-gradient-to-br from-white via-white/40 to-transparent"
+              ? "bg-gradient-to-br from-black via-black/20 to-transparent" 
+              : "bg-gradient-to-br from-white via-white/20 to-transparent"
           )} />
       </div>
 
