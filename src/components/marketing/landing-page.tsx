@@ -8,20 +8,13 @@ import {
     Zap, 
     CheckCircle2, 
     Star, 
-    Building2, 
     Package, 
     Utensils, 
-    Coffee, 
     Smartphone,
-    Globe,
     Activity,
-    MousePointer2,
     Sparkles,
     ArrowRight,
-    MoveUpRight,
-    Search,
     ShieldCheck,
-    Briefcase,
     Scissors,
     Wine
 } from 'lucide-react';
@@ -33,7 +26,6 @@ import placeholderImages from '@/app/lib/placeholder-images.json';
 /**
  * @fileOverview Premium Floating Landing Page
  * Implements a glassmorphic design where content panels float over a persistent background.
- * Optimized for consultative POS business logic with high-end motion design.
  */
 export function LandingPage() {
   const animations = {
@@ -42,12 +34,6 @@ export function LandingPage() {
         whileInView: { opacity: 1, y: 0 }, 
         viewport: { once: true, margin: "-100px" }, 
         transition: { duration: 0.8, ease: "easeOut" } 
-    },
-    stagger: { 
-        initial: { opacity: 0, y: 20 }, 
-        whileInView: { opacity: 1, y: 0 }, 
-        viewport: { once: true }, 
-        transition: { staggerChildren: 0.1 } 
     }
   };
 
@@ -76,18 +62,18 @@ export function LandingPage() {
                     <Sparkles className="h-4 w-4 text-[#eab308] fill-[#eab308]" />
                     <span className="text-[11px] font-bold tracking-widest">Premium Business Infrastructure</span>
                 </div>
-                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[0.95]">
-                    Engineered for <br /> 
-                    <span className="text-[#eab308]">Stability.</span>
+                <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-tight">
+                    Business Stability <br /> 
+                    <span className="text-[#eab308]">Engineered.</span>
                 </h1>
-                <p className="text-lg sm:text-xl text-muted-foreground font-medium max-w-xl leading-relaxed mx-auto lg:mx-0">
-                    Stop losing money to stock shrinkage and manual errors. We build POS systems that feel like premium apps and run your business with zero friction.
+                <p className="text-base sm:text-lg text-muted-foreground font-medium max-w-xl leading-relaxed mx-auto lg:mx-0">
+                    Stop losing money to stock shrinkage and manual errors. Shop Manager is a carefully engineered experience that feels like a premium app while providing the stability your retail or service node requires.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-4">
-                    <Button asChild className="h-16 px-12 font-bold text-base bg-black text-white dark:bg-white dark:text-black hover:scale-105 rounded-2xl shadow-2xl transition-all">
+                    <Button asChild className="h-14 px-10 font-bold text-base bg-black text-white dark:bg-white dark:text-black hover:scale-105 rounded-2xl shadow-2xl transition-all">
                         <Link href="/signup">Start Free Trial</Link>
                     </Button>
-                    <Button asChild variant="outline" className="h-16 px-12 font-bold text-base border-2 bg-white/20 backdrop-blur-md rounded-2xl hover:bg-white/40 transition-all">
+                    <Button asChild variant="outline" className="h-14 px-10 font-bold text-base border-2 bg-white/20 backdrop-blur-md rounded-2xl hover:bg-white/40 transition-all">
                         <Link href="/support/contact">Book a Demo</Link>
                     </Button>
                 </div>
@@ -107,7 +93,6 @@ export function LandingPage() {
                       className="rounded-[1.8rem] w-full h-auto object-cover aspect-[4/3] transition-transform duration-1000 group-hover:scale-105"
                     />
                     <div className="absolute bottom-6 left-6 right-6 p-6 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 text-white">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[#eab308] mb-1">Live Node</p>
                         <p className="text-sm font-bold">Local Support active in Nairobi, Kenya</p>
                     </div>
                 </Card>
@@ -119,8 +104,8 @@ export function LandingPage() {
       <section id="industries" className="px-6 py-12">
         <div className="max-w-7xl mx-auto space-y-16">
             <motion.div className="text-center space-y-4" {...animations.fadeIn}>
-                <h2 className="text-4xl font-bold tracking-tight">Industries We Serve</h2>
-                <p className="text-muted-foreground font-medium max-w-2xl mx-auto">Different businesses need different workflows. We tailor the experience to your niche.</p>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Industries We Serve</h2>
+                <p className="text-muted-foreground font-medium max-w-2xl mx-auto">Different businesses need different POS workflows. We tailor the experience to your specific node.</p>
             </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -160,7 +145,7 @@ export function LandingPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 items-stretch">
                 <div className="p-10 sm:p-20 space-y-8">
                     <Badge className="bg-[#eab308] text-black font-bold text-[10px] px-4 h-7 tracking-widest">STRATEGIC CONSULTATION</Badge>
-                    <h2 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">Review before <br />making a <span className="text-[#eab308]">Change.</span></h2>
+                    <h2 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight">Review before making a change.</h2>
                     <p className="text-base text-muted-foreground font-medium leading-relaxed">
                         Sometimes the better first step is reviewing your current setup. We analyze your merchant statements, inventory tools, and cash processes to identify leaks before you spend a shilling on new hardware.
                     </p>
@@ -173,7 +158,6 @@ export function LandingPage() {
                       src={placeholderImages.branding.review_section.url} 
                       alt="Business Review" 
                       className="absolute inset-0 w-full h-full object-cover grayscale opacity-80"
-                      data-ai-hint="business review"
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-white/70 via-transparent to-transparent dark:from-black/70" />
                 </div>
@@ -186,7 +170,7 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto space-y-16">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <motion.div className="space-y-4" {...animations.fadeIn}>
-                    <h2 className="text-4xl font-bold tracking-tight">Common Problems We Solve</h2>
+                    <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Common Problems We Solve</h2>
                     <p className="text-muted-foreground font-medium max-w-xl">Turning operational headaches into streamlined workflows.</p>
                 </motion.div>
             </div>
@@ -219,7 +203,7 @@ export function LandingPage() {
       <section className="px-6 py-12">
         <div className="max-w-7xl mx-auto space-y-16">
             <motion.div className="text-center space-y-4" {...animations.fadeIn}>
-                <h2 className="text-4xl font-bold tracking-tight">Trusted by Nairobi Operators</h2>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Trusted by Nairobi Operators</h2>
                 <p className="text-sm text-muted-foreground font-bold tracking-widest uppercase opacity-40">Real Feedback from the Field</p>
             </motion.div>
             
@@ -252,7 +236,7 @@ export function LandingPage() {
             {...animations.fadeIn}
         >
              <div className="space-y-6">
-                <h2 className="text-5xl sm:text-7xl font-bold tracking-tight leading-tight">
+                <h2 className="text-4xl sm:text-7xl font-bold tracking-tight leading-tight">
                     Ready to <span className="text-[#eab308]">Optimize?</span>
                 </h2>
                 <p className="text-muted-foreground font-medium text-lg sm:text-xl max-w-2xl mx-auto">

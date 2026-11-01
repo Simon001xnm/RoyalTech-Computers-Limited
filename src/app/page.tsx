@@ -365,7 +365,7 @@ function DashboardPage() {
                     <div className="h-[200px] sm:h-[300px] w-full px-2">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={performanceStats} margin={{ top: 20, right: 10, left: -30, bottom: 0 }}>
-                                <defs><linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/><stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/></linearGradient></defs>
+                                <defs><linearGradient id="colorRev" x1="0" x1="0" x2="0" y2="1"><stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/><stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/></linearGradient></defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.05} />
                                 <XAxis dataKey="name" fontSize={8} axisLine={false} tickLine={false} />
                                 <YAxis fontSize={8} axisLine={false} tickLine={false} />
@@ -394,7 +394,6 @@ function DashboardPage() {
           <Card className="shadow-2xl border-none ring-1 ring-black/5 bg-card overflow-hidden rounded-xl sm:rounded-[2rem] flex flex-col h-fit">
             <CardHeader className="bg-primary/5 border-b p-3 sm:p-5 flex flex-row items-center justify-between">
                 <CardTitle className="text-xs font-bold flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> Quick Sell</CardTitle>
-                <Badge variant="outline" className="text-[7px] font-bold px-1.5 h-4">Live Node</Badge>
             </CardHeader>
             <CardContent className="p-3 sm:p-6 space-y-4">
                 <div className="grid grid-cols-3 gap-1.5">
