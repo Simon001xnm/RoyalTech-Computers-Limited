@@ -38,9 +38,13 @@ export default function ServicesSolutionPage() {
                     Appointments <br />
                     <span className="text-purple-600">& Service Flows.</span>
                 </h1>
-                <p className="text-lg text-muted-foreground font-medium max-w-xl leading-relaxed opacity-90 drop-shadow-sm">
-                    Designed for Salons, Spas, and Consultancies. Manage your roster, track staff commissions, and automate customer bookings with ease.
-                </p>
+                
+                <div className="p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl max-w-xl mx-auto lg:mx-0 group hover:bg-white/15 transition-all">
+                    <p className="text-lg text-muted-foreground font-medium leading-relaxed opacity-90 text-shadow-sm">
+                        Designed for Salons, Spas, and Consultancies. Manage your roster, track staff commissions, and automate customer bookings with ease.
+                    </p>
+                </div>
+
                 <div className="flex gap-4">
                     <Button className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] shadow-[0_15px_30px_rgba(147,51,234,0.3)] rounded-2xl bg-purple-600 hover:bg-purple-700 text-white border-none">Get Started</Button>
                     <Button variant="outline" className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] border-2 rounded-2xl bg-white/90 backdrop-blur-sm shadow-lg">Request Demo</Button>

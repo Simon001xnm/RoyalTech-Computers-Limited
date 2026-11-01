@@ -15,7 +15,7 @@ export default function HospitalitySolutionPage() {
 
   const steps = [
     { title: 'Floor Control', desc: 'Servers select active tables from a live digital map of your establishment.', icon: Monitor },
-    { title: 'Instant KDS', desc: 'Orders are beamed to the kitchen display node instantly. No more paper chits.', icon: ChefHat },
+    { title: 'Instant KDS', desc: 'Orders are beamed to the kitchen display instantly. No more paper chits.', icon: ChefHat },
     { title: 'M-Pesa Billing', desc: 'Generate bills and trigger M-Pesa STK pushes directly from the table.', icon: BellRing }
   ];
 
@@ -38,9 +38,13 @@ export default function HospitalitySolutionPage() {
                     Seamless Dining <br />
                     <span className="text-orange-500">& Table Control.</span>
                 </h1>
-                <p className="text-lg text-muted-foreground font-medium max-w-xl leading-relaxed opacity-90 drop-shadow-sm">
-                    Designed for Nairobi's vibrant culinary scene. Manage tables, automate kitchen orders, and process bills with integrated M-Pesa payments.
-                </p>
+                
+                <div className="p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl max-w-xl mx-auto lg:mx-0 group hover:bg-white/15 transition-all">
+                    <p className="text-lg text-muted-foreground font-medium leading-relaxed opacity-90 text-shadow-sm">
+                        Designed for Nairobi's vibrant culinary scene. Manage tables, automate kitchen orders, and process bills with integrated M-Pesa payments.
+                    </p>
+                </div>
+
                 <div className="flex gap-4">
                     <Button className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] shadow-[0_15px_30px_rgba(249,115,22,0.3)] rounded-2xl bg-orange-500 hover:bg-orange-600 text-white border-none">Get Started</Button>
                     <Button variant="outline" className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] border-2 rounded-2xl bg-white/90 backdrop-blur-sm shadow-lg">Request Demo</Button>
@@ -81,7 +85,7 @@ export default function HospitalitySolutionPage() {
 
         {/* CORE FEATURES */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-12 pb-20">
-            <div className={cn(floatingGlass, "p-10 space-y-6 group hover:shadow-2xl transition-all")}>
+            <div className={cn(floatingGlass, "p-10 space-y-6 group hover:shadow-2xl transition-all shadow-[0_15px_30px_rgba(0,0,0,0.1)]")}>
                 <Badge className="bg-orange-500 text-white font-bold uppercase text-[9px] shadow-sm">Table Management</Badge>
                 <h2 className="text-3xl font-bold uppercase tracking-tight leading-none text-shadow-sm">Real-time Layout Control</h2>
                 <p className="text-sm text-muted-foreground font-medium leading-relaxed opacity-90">
@@ -95,11 +99,11 @@ export default function HospitalitySolutionPage() {
                     ))}
                 </ul>
             </div>
-            <div className={cn(floatingGlass, "p-10 space-y-6 group hover:shadow-2xl transition-all")}>
+            <div className={cn(floatingGlass, "p-10 space-y-6 group hover:shadow-2xl transition-all shadow-[0_15px_30px_rgba(0,0,0,0.1)]")}>
                 <Badge className="bg-orange-500 text-white font-bold uppercase text-[9px] shadow-sm">Kitchen Display</Badge>
                 <h2 className="text-3xl font-bold uppercase tracking-tight leading-none text-shadow-sm">Paperless Kitchen Flow</h2>
                 <p className="text-sm text-muted-foreground font-medium leading-relaxed opacity-90">
-                    Eliminate order errors. Orders from the table go directly to the kitchen display node, updating chefs instantly on modifications.
+                    Eliminate order errors. Orders from the table go directly to the kitchen display, updating chefs instantly on modifications.
                 </p>
                 <ul className="space-y-3 pt-2">
                     {['Timer alerts for delays', 'Recipe management', 'Ingredient level tracking'].map(item => (

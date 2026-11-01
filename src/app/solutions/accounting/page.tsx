@@ -38,9 +38,13 @@ export default function AccountingSolutionPage() {
                     Financial Mastery & <br />
                     <span className="text-green-600">Unified Ledger.</span>
                 </h1>
-                <p className="text-lg text-muted-foreground font-medium max-w-xl leading-relaxed opacity-90 drop-shadow-sm">
-                    Engineered for Kenyan SMEs. Track every shilling with automated reports, expense management, and KRA-ready auditing.
-                </p>
+                
+                <div className="p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl max-w-xl mx-auto lg:mx-0 group hover:bg-white/15 transition-all">
+                    <p className="text-lg text-muted-foreground font-medium leading-relaxed opacity-90 text-shadow-sm">
+                        Engineered for Kenyan SMEs. Track every shilling with automated reports, expense management, and KRA-ready auditing.
+                    </p>
+                </div>
+
                 <div className="flex gap-4">
                     <Button className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] shadow-[0_15px_30px_rgba(22,163,74,0.3)] rounded-2xl bg-green-600 hover:bg-green-700 text-white border-none">Start Free Audit</Button>
                     <Button variant="outline" className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] border-2 rounded-2xl bg-white/90 backdrop-blur-sm shadow-lg">View Features</Button>
@@ -53,7 +57,7 @@ export default function AccountingSolutionPage() {
                 transition={{ duration: 0.8, delay: 0.2 }}
             >
                 <Card className={cn(floatingGlass, "p-4 relative z-10 shadow-[0_50px_100px_rgba(0,0,0,0.3)]")}>
-                    <img src={placeholderImages.branding.dashboard_preview.url} alt="Financial Dashboard" className="rounded-[2rem] w-full object-cover aspect-[4/3]" />
+                    <img src={placeholderImages.branding.dashboard_preview.url} alt="Financial Analytics" className="rounded-[2rem] w-full object-cover aspect-[4/3]" />
                 </Card>
             </motion.div>
         </section>

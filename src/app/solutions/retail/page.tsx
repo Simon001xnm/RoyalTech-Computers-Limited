@@ -8,13 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import placeholderImages from '@/app/lib/placeholder-images.json';
 import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
 
 export default function RetailSolutionPage() {
   const floatingGlass = "bg-white/95 dark:bg-black/95 backdrop-blur-2xl border border-white/30 dark:border-white/10 shadow-[0_30px_70px_rgba(0,0,0,0.25)] rounded-[2.5rem]";
 
   const howItWorks = [
     { title: 'Barcode Capture', desc: 'Scan any item using standard USB or Wireless hardware. The system identifies the model and price instantly.', icon: Barcode },
-    { title: 'Inventory Sync', desc: 'Every sale automatically deducts stock levels across all your shop nodes in real-time.', icon: RefreshCcw },
+    { title: 'Inventory Sync', desc: 'Every sale automatically deducts stock levels across all your shop systems in real-time.', icon: RefreshCcw },
     { title: 'Ledger Entry', desc: 'The transaction is logged into your daily sales report and client debt profile simultaneously.', icon: DollarSign }
   ];
 
@@ -37,9 +38,13 @@ export default function RetailSolutionPage() {
                     Smart Inventory for <br />
                     <span className="text-[#eab308]">Kenyan Retailers.</span>
                 </h1>
-                <p className="text-lg text-muted-foreground font-medium max-w-xl leading-relaxed opacity-90 text-shadow">
-                    Stop losing money to stock shrinkage. Our system provides real-time counts, barcode integration, and automated reorder alerts for shops in Nairobi and across Kenya.
-                </p>
+                
+                <div className="p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl max-w-xl mx-auto lg:mx-0 group hover:bg-white/15 transition-all">
+                    <p className="text-lg text-muted-foreground font-medium leading-relaxed opacity-90 text-shadow-sm">
+                        Stop losing money to stock shrinkage. Our system provides real-time counts, barcode integration, and automated reorder alerts for shops in Nairobi and across Kenya.
+                    </p>
+                </div>
+
                 <div className="flex gap-4">
                     <Button className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] shadow-[0_15px_30px_rgba(234,179,8,0.3)] rounded-2xl bg-[#eab308] text-black hover:bg-[#d9a307] border-none">Get Started</Button>
                     <Button variant="outline" className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] border-2 rounded-2xl bg-white/90 backdrop-blur-sm shadow-lg">Request Demo</Button>
@@ -52,7 +57,7 @@ export default function RetailSolutionPage() {
                 transition={{ duration: 0.8, delay: 0.2 }}
             >
                 <Card className={cn(floatingGlass, "p-4 relative z-10 shadow-[0_50px_100px_rgba(0,0,0,0.3)]")}>
-                    <img src={placeholderImages.branding.hero_pos.url} alt="Retail POS" className="rounded-[2rem] w-full object-cover aspect-[4/3]" />
+                    <img src={placeholderImages.branding.hero_pos.url} alt="Retail System" className="rounded-[2rem] w-full object-cover aspect-[4/3]" />
                 </Card>
             </motion.div>
         </section>
@@ -85,7 +90,7 @@ export default function RetailSolutionPage() {
                 { title: 'Stock Auditing', desc: 'Real-time tracking of every unit from arrival to final sale.', icon: Package },
                 { title: 'Sales Analytics', desc: 'Detailed reports on your best-moving products and margins.', icon: TrendingUp },
             ].map((f, i) => (
-                <div key={i} className={cn(floatingGlass, "p-8 space-y-6 hover:shadow-2xl transition-all group")}>
+                <div key={i} className={cn(floatingGlass, "p-8 space-y-6 hover:shadow-2xl transition-all group shadow-[0_15px_30px_rgba(0,0,0,0.1)]")}>
                     <div className="bg-primary/5 p-4 rounded-2xl w-fit group-hover:bg-primary group-hover:text-white transition-colors mb-6 shadow-inner">
                         <f.icon className="h-6 w-6" />
                     </div>

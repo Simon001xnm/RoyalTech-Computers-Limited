@@ -38,9 +38,13 @@ export default function CrmSolutionPage() {
                     Unified Client <br />
                     <span className="text-blue-500">& Debt Management.</span>
                 </h1>
-                <p className="text-lg text-muted-foreground font-medium max-w-xl leading-relaxed opacity-90 drop-shadow-sm">
-                    Never lose a client contact. Manage profiles, track outstanding balances, and nurture relationships with Nairobi's most intuitive CRM.
-                </p>
+                
+                <div className="p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl max-w-xl mx-auto lg:mx-0 group hover:bg-white/15 transition-all">
+                    <p className="text-lg text-muted-foreground font-medium leading-relaxed opacity-90 text-shadow-sm">
+                        Never lose a client contact. Manage profiles, track outstanding balances, and nurture relationships with Nairobi's most intuitive CRM.
+                    </p>
+                </div>
+
                 <div className="flex gap-4">
                     <Button className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] shadow-[0_15px_30px_rgba(59,130,246,0.3)] rounded-2xl bg-blue-500 hover:bg-blue-600 text-white border-none">Register Client Hub</Button>
                     <Button variant="outline" className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] border-2 rounded-2xl bg-white/90 backdrop-blur-sm shadow-lg">Explore Features</Button>
@@ -53,7 +57,7 @@ export default function CrmSolutionPage() {
                 transition={{ duration: 0.8, delay: 0.2 }}
             >
                 <Card className={cn(floatingGlass, "p-4 relative z-10 shadow-[0_50px_100px_rgba(0,0,0,0.3)]")}>
-                    <img src={placeholderImages.branding.solutions_showcase.url} alt="CRM Overview" className="rounded-[2rem] w-full object-cover aspect-[4/3]" />
+                    <img src={placeholderImages.branding.solutions_showcase.url} alt="CRM System" className="rounded-[2rem] w-full object-cover aspect-[4/3]" />
                 </Card>
             </motion.div>
         </section>

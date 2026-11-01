@@ -38,9 +38,13 @@ export default function SchoolSolutionPage() {
                     Integrated School <br />
                     <span className="text-blue-600">Management System.</span>
                 </h1>
-                <p className="text-lg text-muted-foreground font-medium max-w-xl leading-relaxed opacity-90 drop-shadow-sm">
-                    A sophisticated platform for modern Kenyan schools. Centralize student records, fee collection, and academic results in one secure cloud environment.
-                </p>
+                
+                <div className="p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl max-w-xl mx-auto lg:mx-0 group hover:bg-white/15 transition-all">
+                    <p className="text-lg text-muted-foreground font-medium leading-relaxed opacity-90 text-shadow-sm">
+                        A sophisticated platform for modern Kenyan schools. Centralize student records, fee collection, and academic results in one secure cloud environment.
+                    </p>
+                </div>
+
                 <div className="flex gap-4">
                     <Button className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] shadow-[0_15px_30px_rgba(37,99,235,0.3)] rounded-2xl bg-blue-600 hover:bg-blue-700 text-white border-none">Request a Demo</Button>
                     <Button variant="outline" className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] border-2 rounded-2xl bg-white/90 backdrop-blur-sm shadow-lg">View Pricing</Button>
