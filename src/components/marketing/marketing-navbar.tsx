@@ -1,26 +1,25 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Zap, Moon, Sun } from 'lucide-react';
+import { Zap, Moon, Sun, ChevronDown, Monitor, GraduationCap, Settings2, ShoppingCart, Calculator, Users } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/firebase';
 import { initiateGoogleSignIn } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface MarketingNavbarProps {
     isDark: boolean;
     onToggleTheme: () => void;
 }
 
-/**
- * @fileOverview Floating Glassmorphic Navigation
- */
 export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps) {
   const auth = useAuth();
   const { toast } = useToast();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -29,6 +28,15 @@ export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps)
       toast({ variant: 'destructive', title: 'Error', description: "Google Sign-In failed." });
     }
   };
+
+  const industries = [
+    { name: 'Retail & Hardware', href: '/solutions/retail', icon: ShoppingCart },
+    { name: 'Hospitality & Bars', href: '/solutions/hospitality', icon: Monitor },
+    { name: 'School Management', href: '/solutions/school', icon: GraduationCap },
+    { name: 'Salons & Services', href: '/solutions/services', icon: Settings2 },
+    { name: 'Accounting Tools', href: '/solutions/accounting', icon: Calculator },
+    { name: 'CRM & Client List', href: '/solutions/crm', icon: Users },
+  ];
 
   return (
     <div className="fixed top-6 w-full z-50 px-6">
@@ -53,8 +61,38 @@ export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps)
             
             <div className="flex items-center gap-2 lg:gap-6">
                 <div className="hidden md:flex items-center gap-8 text-[11px] font-bold uppercase tracking-widest mr-4">
-                    <Link href="/#industries" className="hover:text-[#eab308] transition-colors">Industries</Link>
-                    <Link href="/company/about" className="hover:text-[#eab308] transition-colors">Solutions</Link>
+                    <DropdownMenu onOpenChange={setIsDropdownOpen}>
+                        <DropdownMenuTrigger asChild>
+                            <button className="flex items-center gap-1.5 hover:text-[#eab308] transition-colors outline-none">
+                                Solutions <ChevronDown className={cn("h-3 w-3 transition-transform", isDropdownOpen && "rotate-180")} />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className={cn(
+                            "w-64 p-2 rounded-2xl border-none shadow-2xl mt-4 animate-in fade-in slide-in-from-top-2",
+                            isDark ? "bg-black/90 text-white ring-1 ring-white/10" : "bg-white/90 text-black ring-1 ring-black/5",
+                            "backdrop-blur-xl"
+                        )}>
+                            <div className="grid gap-1">
+                                {industries.map((item) => (
+                                    <DropdownMenuItem key={item.href} asChild>
+                                        <Link href={item.href} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#eab308] hover:text-black cursor-pointer transition-all">
+                                            <item.icon className="h-4 w-4 shrink-0" />
+                                            <span className="font-bold text-[10px] uppercase tracking-widest">{item.name}</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                ))}
+                                <div className="border-t border-white/10 my-1 pt-1">
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/solutions" className="flex items-center justify-between p-3 rounded-xl hover:bg-[#eab308] hover:text-black cursor-pointer transition-all">
+                                            <span className="font-black text-[10px] uppercase tracking-widest text-primary">View All Ecosystem</span>
+                                            <Zap className="h-3 w-3 fill-current" />
+                                        </Link>
+                                    </DropdownMenuItem>
+                                </div>
+                            </div>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Link href="/resources/docs" className="hover:text-[#eab308] transition-colors">Resources</Link>
                     <Link href="/support/contact" className="hover:text-[#eab308] transition-colors">Contact</Link>
                 </div>
                 
