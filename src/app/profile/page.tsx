@@ -290,7 +290,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-4 sm:space-y-8 max-w-7xl mx-auto pb-20 px-1 sm:px-0">
-      <PageHeader title="Shop Settings" description="Branding & Logistics Node." />
+      <PageHeader title="Shop Settings" description="Branding & Logistics Hub." />
 
       <div className="grid gap-4 sm:gap-8 lg:grid-cols-[320px_1fr]">
         <div className="space-y-4 sm:space-y-6">
@@ -326,7 +326,7 @@ export default function ProfilePage() {
             <CardHeader className="bg-muted/10 border-b py-3 px-5">
                 <CardTitle className="text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-2">
                     <Building2 className="h-3 w-3 text-primary" />
-                    My Nodes
+                    My Workspaces
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -372,7 +372,7 @@ export default function ProfilePage() {
                     <div className="flex items-center justify-center sm:justify-start gap-4">
                         <div className="bg-black p-2.5 sm:p-3 rounded-xl sm:rounded-2xl shadow-lg"><Settings2 className="h-5 w-5 sm:h-6 sm:w-6 text-white" /></div>
                         <div>
-                            <CardTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter">Identity Node</CardTitle>
+                            <CardTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter">Business Profile</CardTitle>
                             <CardDescription className="text-[10px] sm:text-sm">Logic & Branding Config.</CardDescription>
                         </div>
                     </div>
@@ -395,13 +395,13 @@ export default function ProfilePage() {
                             <TabsContent value="profile" className="mt-0 space-y-6 sm:space-y-8">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                     <div className="space-y-2"><Label className="text-[9px] sm:text-[10px] font-black uppercase">Legal Name</Label><Input value={compData.name} onChange={e => handleInputChange('name', e.target.value)} className="h-10 sm:h-11 font-bold rounded-xl" /></div>
-                                    <div className="space-y-2"><Label className="text-[9px] sm:text-[10px] font-black uppercase">Silo Template</Label>
+                                    <div className="space-y-2"><Label className="text-[9px] sm:text-[10px] font-black uppercase">Business Type</Label>
                                         <Select onValueChange={v => handleInputChange('businessType', v)} value={compData.businessType}>
                                             <SelectTrigger className="h-10 sm:h-11 font-bold rounded-xl"><SelectValue /></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="retail">Retail POS + Inventory</SelectItem>
-                                                <SelectItem value="tech">Technical Repair Node</SelectItem>
-                                                <SelectItem value="service">Business</SelectItem>
+                                                <SelectItem value="tech">Technical Repair Hub</SelectItem>
+                                                <SelectItem value="service">Standard Business</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -426,7 +426,7 @@ export default function ProfilePage() {
                                         </div>
                                     </div>
                                     <div className="space-y-4">
-                                        <Label className="text-[10px] font-black uppercase flex items-center gap-2 text-primary border-b pb-1"><Smartphone className="h-3 w-3" /> M-Pesa Node</Label>
+                                        <Label className="text-[10px] font-black uppercase flex items-center gap-2 text-primary border-b pb-1"><Smartphone className="h-3 w-3" /> M-Pesa Hub</Label>
                                         <div className="space-y-3">
                                             <Input value={compData.paybillNumber} onChange={e => handleInputChange('paybillNumber', e.target.value)} placeholder="Paybill No" className="h-10 rounded-xl font-mono text-xs" />
                                             <Input value={compData.paybillAccount} onChange={e => handleInputChange('paybillAccount', e.target.value)} placeholder="Account ID" className="h-10 rounded-xl font-mono text-xs" />
@@ -530,7 +530,7 @@ export default function ProfilePage() {
                 </CardContent>
                 <CardFooter className="justify-end bg-muted/10 border-t p-6 sm:p-8">
                     <Button onClick={handleSaveCompany} disabled={isSaving} className="h-14 w-full sm:w-auto px-12 font-black uppercase tracking-widest shadow-2xl bg-black text-white hover:bg-black/90 rounded-2xl active:scale-95">
-                        {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} Sync Node
+                        {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />} Sync Details
                     </Button>
                 </CardFooter>
             </Card>

@@ -270,7 +270,8 @@ function DashboardPage() {
         const batch = writeBatch(firestore);
         const timestamp = new Date().toISOString();
         const typeCount = documents?.filter(d => d.type === posAction).length || 0;
-        const docTitle = `${posAction} #${String(typeCount + 1).padStart(3, '0')}`;
+        const seq = typeCount + 1;
+        const docTitle = `${posAction} #${String(seq).padStart(3, '0')}`;
         const documentData = {
             tenantId: tenant.id, type: posAction, title: docTitle, generatedDate: timestamp, relatedTo: selectedCustomer.name,
             data: { items: cart.map(i => ({ ...i, productId: i.id, type: 'asset' })), subtotal: cartSubtotal, vat: cartVat, total: cartTotal, amountPaid: posAction === 'Receipt' ? cartTotal : 0, balance: posAction === 'Receipt' ? 0 : cartTotal, customer: selectedCustomer, applyVat, invoiceNumber: docTitle, paymentMethod: 'Cash',
@@ -359,7 +360,7 @@ function DashboardPage() {
             <Card className="shadow-xl border-none ring-1 ring-black/5 bg-card overflow-hidden rounded-xl sm:rounded-[2rem]">
                 <CardHeader className="p-3 sm:p-6 border-b-0 flex flex-row items-center gap-3">
                     <div className="bg-[#4f46e5] p-2 rounded-lg shadow-lg"><ActivityIcon className="h-4 w-4 text-white" /></div>
-                    <CardTitle className="text-sm sm:text-lg font-bold">Intelligence Node</CardTitle>
+                    <CardTitle className="text-sm sm:text-lg font-bold">Insights Dashboard</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="h-[200px] sm:h-[300px] w-full px-2">
@@ -401,7 +402,7 @@ function DashboardPage() {
                 </div>
                 <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
                     <PopoverTrigger asChild disabled={!posAction}><Button variant="outline" className="w-full h-10 justify-between text-[9px] font-bold bg-background border-2 rounded-lg"><span className="truncate">{selectedCustomer ? selectedCustomer.name : '1. Link Account'}</span><Search className="h-3 w-3 opacity-20" /></Button></PopoverTrigger>
-                    <PopoverContent className="w-[280px] p-0" align="start"><Command><CommandInput placeholder="Find client..." /><CommandList><CommandEmpty>No nodes.</CommandEmpty><CommandGroup>{customers?.slice(0, 20).map(c => (<CommandItem key={c.id} onSelect={() => { setSelectedCustomer({ id: c.id, name: c.name }); setCustomerSearchOpen(false); }} className="p-3 font-bold text-[10px]">{c.name}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent>
+                    <PopoverContent className="w-[280px] p-0" align="start"><Command><CommandInput placeholder="Find client..." /><CommandList><CommandEmpty>No results.</CommandEmpty><CommandGroup>{customers?.slice(0, 20).map(c => (<CommandItem key={c.id} onSelect={() => { setSelectedCustomer({ id: c.id, name: c.name }); setCustomerSearchOpen(false); }} className="p-3 font-bold text-[10px]">{c.name}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent>
                 </Popover>
                 <Popover open={productSearchOpen} onOpenChange={setProductSearchOpen}>
                     <PopoverTrigger asChild disabled={!selectedCustomer}><Button variant="outline" className="w-full h-10 justify-between text-[9px] font-bold bg-background border-2 rounded-lg"><span className="truncate">2. Add Hardware</span><Plus className="h-3 w-3 opacity-20" /></Button></PopoverTrigger>
@@ -430,7 +431,7 @@ function DashboardPage() {
 
       <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
         <DialogContent className="w-[100vw] sm:max-w-5xl h-[100vh] sm:h-[95vh] flex flex-col p-0 border-none shadow-none bg-transparent">
-          <DialogHeader className="p-3 sm:p-6 bg-white border-b no-print flex flex-row items-center justify-between shrink-0"><DialogTitle className="text-sm sm:text-xl font-bold">Document Node</DialogTitle><Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!)} className="h-8 font-bold uppercase text-[8px] tracking-widest border-2">{isExporting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Download className="h-3 w-3 mr-1" />} Save PDF</Button></DialogHeader>
+          <DialogHeader className="p-3 sm:p-6 bg-white border-b no-print flex flex-row items-center justify-between shrink-0"><DialogTitle className="text-sm sm:text-xl font-bold">Document Hub</DialogTitle><Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedDocument!)} className="h-8 font-bold uppercase text-[8px] tracking-widest border-2">{isExporting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Download className="h-3 w-3 mr-1" />} Save PDF</Button></DialogHeader>
           <div className="flex-grow overflow-auto bg-slate-400/30 flex justify-center p-2"><div id="dashboard-export-target" className="shrink-0 relative origin-top scale-[0.4] sm:scale-[0.7] md:scale-100 bg-white shadow-2xl">{renderPdfPreview()}</div></div>
         </DialogContent>
       </Dialog>

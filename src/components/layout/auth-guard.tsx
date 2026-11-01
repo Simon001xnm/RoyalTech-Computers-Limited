@@ -362,7 +362,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-[10px] font-black uppercase tracking-widest text-primary">
-                          {isSuperAdmin ? "Platform Controller" : "Current Node"}
+                          {isSuperAdmin ? "Platform Controller" : "Current System"}
                       </p>
                       <p className="text-xs font-black uppercase tracking-tight leading-none truncate">
                         {isSuperAdmin ? "Business Hub" : (company?.name || 'My Shop')}

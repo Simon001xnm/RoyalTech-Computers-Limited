@@ -399,7 +399,7 @@ export function LaptopForm({ laptop, onSubmit, onCancel, isLoading }: InventoryF
           </Button>
           <Button type="submit" disabled={isLoading} className="h-12 px-12 font-black uppercase tracking-widest shadow-xl">
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-            {laptop ? "Sync Changes" : "Commit to Shop"}
+            {laptop ? "Sync Changes" : "Commit to Inventory"}
           </Button>
         </div>
       </form>

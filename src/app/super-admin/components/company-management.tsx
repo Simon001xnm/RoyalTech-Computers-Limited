@@ -90,14 +90,14 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                     timestamp: new Date().toISOString(),
                     level: 'error',
                     module: 'System',
-                    event: `NODE PURGED: ${node.name}`,
+                    event: `ACCOUNT PURGED: ${node.name}`,
                     userId: user?.uid,
                     metadata: { nodeId: node.id, actor: user?.email, bulk: nodesToDelete.length > 1 }
                 });
                 batch.delete(doc(firestore, 'companies', node.id));
             }
             await batch.commit();
-            toast({ title: nodesToDelete.length > 1 ? "Bulk Purge Complete" : "Node Purged" });
+            toast({ title: nodesToDelete.length > 1 ? "Bulk Purge Complete" : "Account Purged" });
             setNodesToDelete([]);
             setRowSelection({});
             setConfirmPassword("");
@@ -160,7 +160,7 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
             accessorKey: "createdAt",
             header: ({ column }) => (
                 <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:text-white p-0 font-black uppercase text-[10px]">
-                    Deployment
+                    Setup Date
                     <ArrowUpDown className="ml-2 h-3 w-3" />
                 </Button>
             ),
@@ -175,7 +175,7 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
             id: "dataWeight",
             header: ({ column }) => (
                 <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="hover:text-white p-0 font-black uppercase text-[10px]">
-                    Flow Velocity
+                    Storage
                     <ArrowUpDown className="ml-2 h-3 w-3" />
                 </Button>
             ),
@@ -210,12 +210,12 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56 border-white/10 bg-[#1a1a1a] text-white shadow-2xl">
-                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Node Operations</DropdownMenuLabel>
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Operations</DropdownMenuLabel>
                             <DropdownMenuItem 
                                 className="text-xs font-bold py-2 focus:bg-white/5 focus:text-white cursor-pointer text-primary"
                                 onClick={() => router.push(`/super-admin/data-flow/${row.original.id}`)}
                             >
-                                <SearchCode className="h-3.5 w-3.5 mr-2" /> Inspect Data Silo
+                                <SearchCode className="h-3.5 w-3.5 mr-2" /> Inspect Storage
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-xs font-bold py-2 focus:bg-white/5 focus:text-white cursor-pointer"><ShieldCheck className="h-3.5 w-3.5 mr-2 text-primary" /> Modify Subscription</DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-white/5" />
@@ -223,7 +223,7 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                                 className="text-xs font-bold text-destructive py-2 focus:bg-destructive/10 focus:text-destructive cursor-pointer"
                                 onClick={() => setNodesToDelete([row.original])}
                             >
-                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Decommission Node
+                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Decommission Account
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -244,13 +244,13 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
             <CardHeader className="bg-white/[0.02] p-6 border-b border-white/5">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <CardTitle className="text-xl font-black uppercase tracking-tight text-white">Data Flow Matrix</CardTitle>
-                        <CardDescription className="font-bold text-[10px] uppercase tracking-widest text-primary">Active Tenant Silo Registry</CardDescription>
+                        <CardTitle className="text-xl font-black uppercase tracking-tight text-white">Storage Matrix</CardTitle>
+                        <CardDescription className="font-bold text-[10px] uppercase tracking-widest text-primary">Active Tenant Repository</CardDescription>
                     </div>
                     <div className="flex items-center gap-4">
                         {Object.keys(rowSelection).length > 0 && (
                             <Button variant="destructive" size="sm" className="h-9 px-4 font-black uppercase text-[10px]" onClick={() => setNodesToDelete(table.getSelectedRowModel().rows.map(r => r.original))}>
-                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Purge {Object.keys(rowSelection).length} Nodes
+                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Purge {Object.keys(rowSelection).length} Accounts
                             </Button>
                         )}
                         <div className="relative">
@@ -273,7 +273,7 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                                 </TableRow>
                             ))
                         ) : (
-                            <TableRow><TableCell colSpan={columns.length} className="p-24 text-center text-white/20 uppercase font-black text-[10px] tracking-[0.4em]">No matching business nodes</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={columns.length} className="p-24 text-center text-white/20 uppercase font-black text-[10px] tracking-[0.4em]">No matching accounts</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>
@@ -286,7 +286,7 @@ export function CompanyManagement({ companies }: CompanyManagementProps) {
                 <DialogHeader className="space-y-4">
                     <div className="mx-auto bg-destructive/10 w-16 h-16 rounded-full flex items-center justify-center"><AlertTriangle className="h-8 w-8 text-destructive" /></div>
                     <DialogTitle className="text-2xl font-black uppercase text-center text-white">Nuclear Decommission</DialogTitle>
-                    <DialogDescription className="text-center text-white/60 font-medium">Permanently purge {nodesToDelete.length} node(s) and destroy all associated data silos.</DialogDescription>
+                    <DialogDescription className="text-center text-white/60 font-medium">Permanently purge {nodesToDelete.length} account(s) and destroy all associated data storage.</DialogDescription>
                 </DialogHeader>
                 <div className="py-6 space-y-4 border-t border-white/5 mt-4">
                     <div className="p-4 bg-destructive/5 rounded-xl border border-destructive/20 space-y-2">

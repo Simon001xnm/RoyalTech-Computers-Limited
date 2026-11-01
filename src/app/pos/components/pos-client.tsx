@@ -225,7 +225,7 @@ export function PosClient() {
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3 overflow-hidden">
                             <Badge variant="outline" className="h-7 px-3 font-semibold text-[10px] tracking-wide border-2 shrink-0">
-                                <Zap className="h-3.5 w-3.5 mr-1.5 text-primary" /> Active Node
+                                <Zap className="h-3.5 w-3.5 mr-1.5 text-primary" /> System Active
                             </Badge>
                             <div className="flex flex-col overflow-hidden">
                                 <span className="text-sm font-bold truncate text-primary">{selectedCustomer ? selectedCustomer.name : 'Unlinked Account'}</span>
@@ -263,7 +263,7 @@ export function PosClient() {
                                     </div>
                                 </button>
                             ))}
-                            {filteredCatalog.length === 0 && <div className="col-span-full h-32 flex items-center justify-center opacity-30 font-semibold text-sm">No items found in this silo.</div>}
+                            {filteredCatalog.length === 0 && <div className="col-span-full h-32 flex items-center justify-center opacity-30 font-semibold text-sm">No items found.</div>}
                         </div>
                     </ScrollArea>
                     <div className="border-t">
@@ -325,7 +325,7 @@ export function PosClient() {
       <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
         <DialogContent className="w-[90vw] sm:max-w-md text-center p-12 rounded-[2.5rem] border-none shadow-2xl">
             <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner"><Check className="h-10 w-10 text-green-600" /></div>
-            <DialogHeader><DialogTitle className="text-2xl font-bold tracking-tight">Transaction Successful</DialogTitle><DialogDescription className="text-sm font-medium mt-2 text-muted-foreground">Your records have been synchronized with the cloud.</DialogDescription></DialogHeader>
+            <DialogHeader><DialogTitle className="text-2xl font-bold tracking-tight">Transaction Successful</DialogTitle><DialogDescription className="text-sm font-medium mt-2 text-muted-foreground">Your records have been synchronized with the system.</DialogDescription></DialogHeader>
             <div className="pt-10"><Button className="w-full h-14 font-bold text-lg rounded-2xl shadow-xl bg-black text-white" onClick={() => setIsSuccessOpen(false)}>Next Customer</Button></div>
         </DialogContent>
       </Dialog>
