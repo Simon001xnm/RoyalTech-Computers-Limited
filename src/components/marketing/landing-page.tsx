@@ -16,7 +16,10 @@ import {
     ArrowRight,
     ShieldCheck,
     Scissors,
-    Wine
+    Wine,
+    Monitor,
+    Calculator,
+    Users
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -33,7 +36,7 @@ export function LandingPage() {
     }
   };
 
-  const floatingGlass = "bg-white/95 dark:bg-black/95 backdrop-blur-2xl border border-white/30 dark:border-white/10 shadow-[0_30px_70px_rgba(0,0,0,0.25)] rounded-[2.5rem]";
+  const floatingGlass = "bg-white/70 dark:bg-black/70 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl rounded-[2.5rem]";
 
   const testimonials = [
     { name: "Mary Wanjiku", loc: "Nairobi, Kenya", text: "Great service, great product. Simon is the man! If you need a reliable business system in Nairobi, reach out to them. You will be glad you did." },
@@ -62,15 +65,19 @@ export function LandingPage() {
                     Business Management <br /> 
                     <span className="text-[#eab308]">Simplified for Kenya.</span>
                 </h1>
-                <p className="text-base sm:text-lg text-muted-foreground font-medium max-w-xl leading-relaxed mx-auto lg:mx-0 opacity-90 drop-shadow-sm">
-                    Stop losing money to stock shrinkage and manual errors. Shop Manager is the premium management system engineered for retailers in Nairobi and beyond, featuring seamless M-Pesa integration and high-speed hardware scanning.
-                </p>
+                
+                <div className="p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl max-w-xl mx-auto lg:mx-0 group hover:bg-white/15 transition-all">
+                    <p className="text-base sm:text-lg text-foreground font-medium leading-relaxed opacity-90 text-shadow-sm">
+                        Stop losing money to stock shrinkage and manual errors. Shop Manager is the premium management system engineered for retailers in Nairobi and beyond, featuring seamless M-Pesa integration and high-speed hardware scanning.
+                    </p>
+                </div>
+
                 <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-4">
-                    <Button asChild className="h-14 px-10 font-bold text-base bg-[#eab308] text-black hover:bg-[#d9a307] hover:scale-105 rounded-2xl shadow-[0_15px_30px_rgba(234,179,8,0.3)] transition-all border-none">
+                    <Button asChild className="h-14 px-10 font-bold text-base bg-[#eab308] text-black hover:bg-[#d9a307] hover:scale-105 rounded-2xl shadow-2xl transition-all border-none">
                         <Link href="/signup">Start Free Trial</Link>
                     </Button>
-                    <Button asChild variant="outline" className="h-14 px-10 font-bold text-base border-2 border-black/10 bg-white/90 backdrop-blur-md rounded-2xl hover:bg-white hover:scale-105 transition-all shadow-lg">
-                        <Link href="/support/contact">Book a Demo</Link>
+                    <Button asChild variant="outline" className="h-14 px-10 font-bold text-base border-2 border-white/30 bg-white/10 backdrop-blur-md rounded-2xl hover:bg-white/20 hover:scale-105 transition-all shadow-xl text-foreground">
+                        <Link href="/support/contact">Request Demo</Link>
                     </Button>
                 </div>
             </motion.div>
@@ -81,15 +88,15 @@ export function LandingPage() {
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 transition={{ duration: 1.2, delay: 0.2, ease: "backOut" }}
             >
-                <div className="absolute -inset-10 bg-[#eab308]/40 rounded-full blur-[120px] opacity-70 animate-pulse" />
-                <Card className={cn(floatingGlass, "p-4 relative z-10 overflow-hidden ring-2 ring-white/30 group shadow-[0_50px_100px_rgba(0,0,0,0.4)]")}>
+                <div className="absolute -inset-10 bg-[#eab308]/30 rounded-full blur-[120px] opacity-50 animate-pulse" />
+                <Card className={cn(floatingGlass, "p-4 relative z-10 overflow-hidden ring-2 ring-white/30 group shadow-2xl")}>
                     <img 
                       src={placeholderImages.branding.hero_pos.url} 
                       alt="Modern Business Hardware in Kenya" 
                       className="rounded-[2rem] w-full h-auto object-cover aspect-[4/3] transition-transform duration-1000 group-hover:scale-105"
                     />
                     <div className="absolute bottom-6 left-6 right-6 p-6 bg-black/85 backdrop-blur-2xl rounded-2xl border border-white/20 text-white shadow-2xl">
-                        <p className="text-sm font-bold opacity-100 tracking-tight">Local Support Systems Active in Nairobi and Mombasa</p>
+                        <p className="text-sm font-bold opacity-100 tracking-tight text-shadow-sm">Local Support Active in Nairobi and Mombasa</p>
                     </div>
                 </Card>
             </motion.div>
@@ -100,8 +107,8 @@ export function LandingPage() {
       <section id="industries" className="px-6 py-12">
         <div className="max-w-7xl mx-auto space-y-16">
             <motion.div className="text-center space-y-4" {...animations.fadeIn}>
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-shadow-sm">Best Solutions for Every Kenyan Business</h2>
-                <p className="text-muted-foreground font-medium max-w-2xl mx-auto opacity-90">From boutiques in Westlands to restaurants in Mombasa, we tailor the management experience to your specific business model.</p>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-shadow-md">Best Solutions for Every Kenyan Business</h2>
+                <p className="text-muted-foreground font-medium max-w-2xl mx-auto opacity-80 text-shadow-sm">From boutiques in Westlands to restaurants in Mombasa, we tailor the management experience to your specific business model.</p>
             </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -113,7 +120,7 @@ export function LandingPage() {
                 ].map((item, i) => (
                     <motion.div 
                         key={i}
-                        className={cn(floatingGlass, "p-8 space-y-6 hover:translate-y-[-10px] transition-all group shadow-[0_20px_40px_rgba(0,0,0,0.15)]")}
+                        className={cn(floatingGlass, "p-8 space-y-6 hover:translate-y-[-10px] transition-all group shadow-2xl")}
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
@@ -123,8 +130,8 @@ export function LandingPage() {
                             <item.icon className="h-6 w-6 drop-shadow-md" />
                         </div>
                         <div className="space-y-2">
-                            <h3 className="text-xl font-bold tracking-tight">{item.title}</h3>
-                            <p className="text-sm text-muted-foreground leading-relaxed font-medium opacity-90">{item.desc}</p>
+                            <h3 className="text-xl font-bold tracking-tight text-shadow-sm">{item.title}</h3>
+                            <p className="text-sm text-muted-foreground leading-relaxed font-medium opacity-80">{item.desc}</p>
                         </div>
                     </motion.div>
                 ))}
@@ -135,17 +142,17 @@ export function LandingPage() {
       {/* STRATEGIC REVIEW SECTION */}
       <section className="px-6 py-12">
         <motion.div 
-            className={cn(floatingGlass, "max-w-7xl mx-auto overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.2)]")}
+            className={cn(floatingGlass, "max-w-7xl mx-auto overflow-hidden shadow-2xl")}
             {...animations.fadeIn}
         >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 items-stretch">
                 <div className="p-10 sm:p-20 space-y-8">
                     <Badge className="bg-[#eab308] text-black font-bold text-[10px] px-4 h-7 tracking-widest uppercase shadow-md">Nairobi Business Audit</Badge>
-                    <h2 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight text-shadow-sm">Identify leaks before making a change.</h2>
-                    <p className="text-base text-muted-foreground font-medium leading-relaxed opacity-90">
+                    <h2 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight text-shadow-md">Identify leaks before making a change.</h2>
+                    <p className="text-base text-muted-foreground font-medium leading-relaxed opacity-80 text-shadow-sm">
                         Many Kenyan businesses lose up to 15% of revenue to untracked inventory. We analyze your current processes and merchant statements to identify gaps before you upgrade your system.
                     </p>
-                    <Button variant="outline" className="h-12 border-2 border-[#eab308] text-black font-bold rounded-xl gap-2 bg-[#eab308]/10 hover:bg-[#eab308] transition-all shadow-lg">
+                    <Button variant="outline" className="h-12 border-2 border-[#eab308] text-foreground font-bold rounded-xl gap-2 bg-[#eab308]/10 hover:bg-[#eab308] transition-all shadow-xl">
                         Get a Free Business Review <ArrowRight className="h-4 w-4" />
                     </Button>
                 </div>
@@ -155,7 +162,7 @@ export function LandingPage() {
                       alt="Business Analytics for Kenyan Companies" 
                       className="absolute inset-0 w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-transparent to-transparent dark:from-black/95" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/80 via-transparent to-transparent dark:from-black/80" />
                 </div>
             </div>
         </motion.div>
@@ -165,7 +172,7 @@ export function LandingPage() {
       <section className="px-6 py-12">
         <div className="max-w-7xl mx-auto space-y-16">
             <motion.div className="text-center space-y-4" {...animations.fadeIn}>
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-shadow-sm">Trusted by Nairobi and Mombasa Business Owners</h2>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-shadow-md">Trusted by Nairobi and Mombasa Business Owners</h2>
                 <p className="text-sm text-muted-foreground font-bold tracking-widest uppercase opacity-70">Verified Success Stories</p>
             </motion.div>
             
@@ -173,15 +180,15 @@ export function LandingPage() {
                 {testimonials.map((t, i) => (
                     <motion.div 
                         key={i} 
-                        className={cn(floatingGlass, "p-8 space-y-6 hover:shadow-2xl hover:scale-[1.02] transition-all relative overflow-hidden group shadow-[0_15px_30px_rgba(0,0,0,0.1)]")}
+                        className={cn(floatingGlass, "p-8 space-y-6 hover:shadow-2xl hover:scale-[1.02] transition-all relative overflow-hidden group shadow-2xl")}
                         whileHover={{ y: -10 }}
                     >
                         <div className="flex gap-1">
                             {[1,2,3,4,5].map(s => <Star key={s} className="h-3 w-3 fill-[#eab308] text-[#eab308]" />)}
                         </div>
-                        <p className="text-sm font-medium leading-relaxed italic text-muted-foreground opacity-100">&ldquo;{t.text}&rdquo;</p>
+                        <p className="text-sm font-medium leading-relaxed italic text-foreground opacity-100">&ldquo;{t.text}&rdquo;</p>
                         <div className="pt-4 border-t border-black/10 dark:border-white/10">
-                            <p className="text-sm font-bold">{t.name}</p>
+                            <p className="text-sm font-bold text-shadow-sm">{t.name}</p>
                             <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest">{t.loc}</p>
                         </div>
                     </motion.div>
@@ -193,7 +200,7 @@ export function LandingPage() {
       {/* FINAL CTA */}
       <section className="px-6 py-24">
         <motion.div 
-            className={cn(floatingGlass, "max-w-7xl mx-auto p-12 sm:p-24 text-center space-y-12 overflow-hidden border-b-8 border-b-[#eab308] shadow-[0_60px_120px_rgba(0,0,0,0.4)]")}
+            className={cn(floatingGlass, "max-w-7xl mx-auto p-12 sm:p-24 text-center space-y-12 overflow-hidden border-b-8 border-b-[#eab308] shadow-2xl")}
             {...animations.fadeIn}
         >
              <div className="space-y-6">
@@ -206,10 +213,10 @@ export function LandingPage() {
             </div>
             
             <div className="flex flex-col sm:flex-row justify-center gap-6">
-                <Button asChild size="lg" className="h-20 px-12 font-bold tracking-widest text-sm shadow-[0_20px_40px_rgba(234,179,8,0.4)] bg-[#eab308] text-black hover:bg-[#d9a307] rounded-3xl hover:scale-105 transition-all border-none">
+                <Button asChild size="lg" className="h-20 px-12 font-bold tracking-widest text-sm shadow-2xl bg-[#eab308] text-black hover:bg-[#d9a307] rounded-3xl hover:scale-105 transition-all border-none">
                     <Link href="/signup">Setup My Shop</Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="h-20 px-12 font-bold tracking-widest text-sm border-2 border-black/20 bg-white/90 backdrop-blur-md hover:bg-white hover:scale-105 rounded-3xl transition-all shadow-xl">
+                <Button asChild variant="outline" size="lg" className="h-20 px-12 font-bold tracking-widest text-sm border-2 border-white/30 bg-white/10 backdrop-blur-md hover:bg-white/20 hover:scale-105 rounded-3xl transition-all shadow-2xl text-foreground">
                     <Link href="/support/contact">Talk to an Expert</Link>
                 </Button>
             </div>
