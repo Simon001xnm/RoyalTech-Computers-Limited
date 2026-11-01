@@ -399,9 +399,9 @@ export default function ProfilePage() {
                                         <Select onValueChange={v => handleInputChange('businessType', v)} value={compData.businessType}>
                                             <SelectTrigger className="h-10 sm:h-11 font-bold rounded-xl"><SelectValue /></SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="retail">Retail / Hardware</SelectItem>
-                                                <SelectItem value="tech">Computers & IT</SelectItem>
-                                                <SelectItem value="service">Service Node</SelectItem>
+                                                <SelectItem value="retail">Retail POS + Inventory</SelectItem>
+                                                <SelectItem value="tech">Technical Repair Node</SelectItem>
+                                                <SelectItem value="service">Business</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>

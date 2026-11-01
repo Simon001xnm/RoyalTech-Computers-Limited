@@ -67,7 +67,7 @@ export function LandingPage() {
                     <span className="text-[#eab308]">Engineered.</span>
                 </h1>
                 <p className="text-base sm:text-lg text-muted-foreground font-medium max-w-xl leading-relaxed mx-auto lg:mx-0">
-                    Stop losing money to stock shrinkage and manual errors. Shop Manager is a carefully engineered experience that feels like a premium app while providing the stability your retail or service node requires.
+                    Stop losing money to stock shrinkage and manual errors. Shop Manager is a carefully engineered experience that feels like a movie and a premium app while providing the stability your retail or business requires.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-4">
                     <Button asChild className="h-14 px-10 font-bold text-base bg-black text-white dark:bg-white dark:text-black hover:scale-105 rounded-2xl shadow-2xl transition-all">
@@ -105,7 +105,7 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto space-y-16">
             <motion.div className="text-center space-y-4" {...animations.fadeIn}>
                 <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Industries We Serve</h2>
-                <p className="text-muted-foreground font-medium max-w-2xl mx-auto">Different businesses need different POS workflows. We tailor the experience to your specific node.</p>
+                <p className="text-muted-foreground font-medium max-w-2xl mx-auto">Different businesses need different POS workflows. We tailor the experience to your specific business model.</p>
             </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -240,7 +240,7 @@ export function LandingPage() {
                     Ready to <span className="text-[#eab308]">Optimize?</span>
                 </h2>
                 <p className="text-muted-foreground font-medium text-lg sm:text-xl max-w-2xl mx-auto">
-                    Take the first step toward a more stable, error-free business node.
+                    Take the first step toward a more stable, error-free business.
                 </p>
             </div>
             
