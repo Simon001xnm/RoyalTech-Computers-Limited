@@ -288,14 +288,14 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
       </Sidebar>
 
       <SidebarInset className="min-h-screen bg-muted/10 relative">
-        <header className="sticky top-1 sm:top-4 z-30 mx-1 sm:mx-4 flex h-12 sm:h-16 items-center justify-between border bg-background/95 backdrop-blur-sm px-2 sm:px-4 no-print rounded-lg sm:rounded-2xl shadow-sm">
+        <header className="sticky top-1 sm:top-4 z-30 mx-1 sm:mx-4 flex h-12 sm:h-16 items-center justify-between border bg-background/95 backdrop-blur-sm px-2 sm:px-4 no-print rounded-lg sm:rounded-2xl shadow-sm text-foreground">
           <div className="flex items-center gap-1 sm:gap-4 overflow-hidden">
             <SidebarTrigger className="h-8 w-8" />
             <Link href="/" className="flex items-center gap-1.5 font-bold text-sm sm:text-lg overflow-hidden">
                 <div className="bg-primary p-0.5 sm:p-1 rounded-md sm:rounded-lg shadow-sm shrink-0">
                     <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                 </div>
-                <span className="font-black uppercase tracking-tighter truncate max-w-[80px] sm:max-w-none">
+                <span className="font-black uppercase tracking-tighter truncate max-w-[80px] sm:max-w-none text-foreground">
                     {isSuperAdmin ? "Control Hub" : (company?.name || APP_NAME)}
                 </span>
             </Link>

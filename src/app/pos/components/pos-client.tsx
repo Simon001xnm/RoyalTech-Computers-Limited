@@ -254,7 +254,7 @@ export function PosClient() {
                     <ScrollArea className="h-[300px] sm:h-[450px] w-full p-4 sm:p-5">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                             {filteredCatalog.map(p => (
-                                <button key={p.id} onClick={() => handleSelectProduct(p)} className="flex flex-col items-start p-3 bg-white rounded-xl border border-black/5 shadow-sm hover:ring-2 hover:ring-primary/20 transition-all text-left group overflow-hidden relative">
+                                <button key={p.id} onClick={() => handleSelectProduct(p)} className="flex flex-col items-start p-3 bg-white rounded-xl border border-black/5 shadow-sm hover:ring-2 hover:ring-primary/20 transition-all text-left group overflow-hidden relative text-foreground">
                                     <div className="absolute top-2 right-2"><div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" /></div>
                                     <p className="text-xs font-bold truncate w-full mb-1">{p.model}</p>
                                     <div className="flex justify-between items-center w-full">
