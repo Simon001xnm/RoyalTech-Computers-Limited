@@ -91,6 +91,21 @@ body {
   }
 }
 
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .text-shadow-md {
+    text-shadow: 0 4px 8px rgba(0,0,0,0.12);
+  }
+  .text-shadow-lg {
+    text-shadow: 0 8px 16px rgba(0,0,0,0.15);
+  }
+  .text-shadow-white {
+    text-shadow: 0 2px 4px rgba(255,255,255,0.5);
+  }
+}
+
 @media print {
   @page {
     size: A4;
