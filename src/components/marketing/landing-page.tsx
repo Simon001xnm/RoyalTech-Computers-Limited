@@ -62,7 +62,7 @@ export function LandingPage() {
                     Business Management <br /> 
                     <span className="text-[#eab308]">Simplified for Kenya.</span>
                 </h1>
-                <p className="text-base sm:text-lg text-muted-foreground font-medium max-w-xl leading-relaxed mx-auto lg:mx-0">
+                <p className="text-base sm:text-lg text-muted-foreground font-medium max-w-xl leading-relaxed mx-auto lg:mx-0 opacity-80">
                     Stop losing money to stock shrinkage and manual errors. Shop Manager is the premium business management system engineered for retailers in Nairobi and beyond, featuring seamless M-Pesa integration and high-speed hardware scanning.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-4">
@@ -89,7 +89,7 @@ export function LandingPage() {
                       className="rounded-[1.8rem] w-full h-auto object-cover aspect-[4/3] transition-transform duration-1000 group-hover:scale-105"
                     />
                     <div className="absolute bottom-6 left-6 right-6 p-6 bg-black/80 backdrop-blur-xl rounded-2xl border border-white/10 text-white">
-                        <p className="text-sm font-bold">Local Support Nodes Active in Nairobi and Mombasa</p>
+                        <p className="text-sm font-bold opacity-90">Local Support Nodes Active in Nairobi and Mombasa</p>
                     </div>
                 </Card>
             </motion.div>
@@ -101,7 +101,7 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto space-y-16">
             <motion.div className="text-center space-y-4" {...animations.fadeIn}>
                 <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Best Solutions for Every Kenyan Business</h2>
-                <p className="text-muted-foreground font-medium max-w-2xl mx-auto">From boutiques in Westlands to restaurants in Mombasa, we tailor the management experience to your specific business model.</p>
+                <p className="text-muted-foreground font-medium max-w-2xl mx-auto opacity-80">From boutiques in Westlands to restaurants in Mombasa, we tailor the management experience to your specific business model.</p>
             </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -124,7 +124,7 @@ export function LandingPage() {
                         </div>
                         <div className="space-y-2">
                             <h3 className="text-xl font-bold tracking-tight">{item.title}</h3>
-                            <p className="text-sm text-muted-foreground leading-relaxed font-medium">{item.desc}</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed font-medium opacity-80">{item.desc}</p>
                         </div>
                     </motion.div>
                 ))}
@@ -142,7 +142,7 @@ export function LandingPage() {
                 <div className="p-10 sm:p-20 space-y-8">
                     <Badge className="bg-[#eab308] text-black font-bold text-[10px] px-4 h-7 tracking-widest uppercase">Nairobi Business Audit</Badge>
                     <h2 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight">Identify leaks before making a change.</h2>
-                    <p className="text-base text-muted-foreground font-medium leading-relaxed">
+                    <p className="text-base text-muted-foreground font-medium leading-relaxed opacity-80">
                         Many Kenyan businesses lose up to 15% of revenue to untracked inventory. We analyze your current processes and merchant statements to identify gaps before you upgrade your system.
                     </p>
                     <Button variant="outline" className="h-12 border-2 border-[#eab308] text-black font-bold rounded-xl gap-2 bg-[#eab308]/10 hover:bg-[#eab308] transition-all">
@@ -179,7 +179,7 @@ export function LandingPage() {
                         <div className="flex gap-1">
                             {[1,2,3,4,5].map(s => <Star key={s} className="h-3 w-3 fill-[#eab308] text-[#eab308]" />)}
                         </div>
-                        <p className="text-sm font-medium leading-relaxed italic text-muted-foreground">&ldquo;{t.text}&rdquo;</p>
+                        <p className="text-sm font-medium leading-relaxed italic text-muted-foreground opacity-90">&ldquo;{t.text}&rdquo;</p>
                         <div className="pt-4 border-t border-black/10 dark:border-white/10">
                             <p className="text-sm font-bold">{t.name}</p>
                             <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{t.loc}</p>
@@ -200,7 +200,7 @@ export function LandingPage() {
                 <h2 className="text-4xl sm:text-7xl font-bold tracking-tight leading-tight">
                     Ready to <span className="text-[#eab308]">Optimize Your Shop?</span>
                 </h2>
-                <p className="text-muted-foreground font-medium text-lg sm:text-xl max-w-2xl mx-auto">
+                <p className="text-muted-foreground font-medium text-lg sm:text-xl max-w-2xl mx-auto opacity-80">
                     Take the first step toward a more stable, error-free Kenyan business today.
                 </p>
             </div>

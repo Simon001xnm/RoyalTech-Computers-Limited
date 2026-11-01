@@ -3,12 +3,18 @@
 import React from 'react';
 import { MarketingWrapper } from '@/components/marketing/marketing-wrapper';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Package, Barcode, TrendingUp, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ShoppingCart, Package, Barcode, TrendingUp, CheckCircle2, ArrowRight, RefreshCcw, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import placeholderImages from '@/app/lib/placeholder-images.json';
 
 export default function RetailSolutionPage() {
+  const howItWorks = [
+    { title: 'Barcode Capture', desc: 'Scan any item using standard USB or Wireless hardware. The system identifies the model and price instantly.', icon: Barcode },
+    { title: 'Inventory Sync', desc: 'Every sale automatically deducts stock levels across all your shop nodes in real-time.', icon: RefreshCcw },
+    { title: 'Ledger Entry', desc: 'The transaction is logged into your daily sales report and client debt profile simultaneously.', icon: DollarSign }
+  ];
+
   return (
     <MarketingWrapper>
       <div className="max-w-7xl mx-auto px-6 space-y-24">
@@ -28,12 +34,12 @@ export default function RetailSolutionPage() {
                     Smart Inventory for <br />
                     <span className="text-[#eab308]">Kenyan Retailers.</span>
                 </h1>
-                <p className="text-lg text-muted-foreground font-medium max-w-xl leading-relaxed">
+                <p className="text-lg text-muted-foreground font-medium max-w-xl leading-relaxed opacity-80">
                     Stop losing money to stock shrinkage. Our system provides real-time counts, barcode integration, and automated reorder alerts for shops in Nairobi and across Kenya.
                 </p>
                 <div className="flex gap-4">
-                    <Button className="h-14 px-10 font-black uppercase tracking-widest text-[11px] shadow-xl rounded-2xl bg-primary text-white">Get Started</Button>
-                    <Button variant="outline" className="h-14 px-10 font-black uppercase tracking-widest text-[11px] border-2 rounded-2xl bg-white/50">Request Demo</Button>
+                    <Button className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] shadow-xl rounded-2xl bg-[#eab308] text-black hover:bg-[#d9a307] border-none">Get Started</Button>
+                    <Button variant="outline" className="h-14 px-10 font-bold uppercase tracking-widest text-[11px] border-2 rounded-2xl bg-white/50 backdrop-blur-sm">Request Demo</Button>
                 </div>
             </motion.div>
             <motion.div 
@@ -46,36 +52,51 @@ export default function RetailSolutionPage() {
             </motion.div>
         </section>
 
-        {/* FEATURES */}
-        <section className="space-y-12">
+        {/* HOW IT WORKS */}
+        <section className="space-y-16">
             <div className="text-center space-y-4">
-                <h2 className="text-3xl font-black uppercase tracking-tight">Engineered for Accuracy</h2>
-                <p className="text-muted-foreground font-medium max-w-2xl mx-auto">Precision tools designed to keep your shop profitable and organized.</p>
+                <Badge variant="outline" className="font-black uppercase text-[9px] tracking-widest px-4 h-7 border-primary/20">The Process</Badge>
+                <h2 className="text-3xl font-black uppercase tracking-tight">How Retail Node Works</h2>
+                <p className="text-muted-foreground font-medium max-w-2xl mx-auto opacity-80">A high-fidelity flow designed for speed and accuracy on the shop floor.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {[
-                    { title: 'Barcode Scanning', desc: 'Add items to sales instantly using standard hardware scanners.', icon: Barcode },
-                    { title: 'Stock Auditing', desc: 'Real-time tracking of every unit from arrival to final sale.', icon: Package },
-                    { title: 'Sales Analytics', desc: 'Detailed reports on your best-moving products and margins.', icon: TrendingUp },
-                ].map((f, i) => (
-                    <div key={i} className="bg-white/40 backdrop-blur-lg p-8 rounded-3xl border border-white/20 shadow-sm hover:shadow-xl transition-all group">
-                        <div className="bg-primary/5 p-4 rounded-2xl w-fit group-hover:bg-primary group-hover:text-white transition-colors mb-6">
-                            <f.icon className="h-6 w-6" />
+                {howItWorks.map((step, i) => (
+                    <div key={i} className="bg-white/60 backdrop-blur-xl p-8 rounded-[2rem] border border-white/20 shadow-xl relative group">
+                        <div className="absolute -top-4 -left-4 w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center font-black text-sm shadow-lg">{i + 1}</div>
+                        <div className="bg-primary/5 p-4 rounded-2xl w-fit mb-6 group-hover:bg-primary group-hover:text-white transition-colors duration-500">
+                            <step.icon className="h-6 w-6" />
                         </div>
-                        <h3 className="text-xl font-black uppercase tracking-tight mb-2">{f.title}</h3>
-                        <p className="text-sm text-muted-foreground font-medium leading-relaxed">{f.desc}</p>
+                        <h3 className="text-lg font-black uppercase tracking-tight mb-2">{step.title}</h3>
+                        <p className="text-sm text-muted-foreground font-medium leading-relaxed opacity-80">{step.desc}</p>
                     </div>
                 ))}
             </div>
         </section>
 
+        {/* FEATURES */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+                { title: 'Barcode Scanning', desc: 'Add items to sales instantly using standard hardware scanners.', icon: Barcode },
+                { title: 'Stock Auditing', desc: 'Real-time tracking of every unit from arrival to final sale.', icon: Package },
+                { title: 'Sales Analytics', desc: 'Detailed reports on your best-moving products and margins.', icon: TrendingUp },
+            ].map((f, i) => (
+                <div key={i} className="bg-white/40 backdrop-blur-lg p-8 rounded-3xl border border-white/20 shadow-sm hover:shadow-xl transition-all group">
+                    <div className="bg-primary/5 p-4 rounded-2xl w-fit group-hover:bg-primary group-hover:text-white transition-colors mb-6">
+                        <f.icon className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-xl font-black uppercase tracking-tight mb-2">{f.title}</h3>
+                    <p className="text-sm text-muted-foreground font-medium leading-relaxed opacity-80">{f.desc}</p>
+                </div>
+            ))}
+        </section>
+
         {/* CTA */}
-        <section className="bg-black text-white p-12 sm:p-20 rounded-[3rem] text-center space-y-8 relative overflow-hidden shadow-2xl">
+        <section className="bg-black text-white p-12 sm:p-20 rounded-[3rem] text-center space-y-8 relative overflow-hidden shadow-2xl border-b-8 border-[#eab308]">
             <div className="relative z-10 space-y-4">
                 <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tighter">Ready to Scale Your Shop?</h2>
-                <p className="text-gray-400 font-medium text-sm max-w-2xl mx-auto">Join retailers across Nairobi using Business Hub to streamline their stock management.</p>
+                <p className="text-gray-400 font-medium text-sm max-w-2xl mx-auto opacity-80">Join retailers across Nairobi using Business Hub to streamline their stock management.</p>
                 <div className="pt-6">
-                    <Button className="h-16 px-12 bg-[#eab308] text-black font-black uppercase tracking-widest text-sm rounded-2xl hover:bg-[#d9a307] transition-all">Setup My Retail Node</Button>
+                    <Button className="h-16 px-12 bg-[#eab308] text-black font-black uppercase tracking-widest text-sm rounded-2xl hover:bg-[#d9a307] transition-all border-none">Setup My Retail Node</Button>
                 </div>
             </div>
         </section>

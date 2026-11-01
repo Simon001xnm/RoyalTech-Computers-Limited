@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/firebase';
 import { initiateGoogleSignIn } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface MarketingNavbarProps {
@@ -68,24 +68,24 @@ export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps)
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className={cn(
-                            "w-64 p-2 rounded-2xl border-none shadow-2xl mt-4 animate-in fade-in slide-in-from-top-2",
+                            "w-72 p-2 rounded-2xl border-none shadow-2xl mt-4 animate-in fade-in slide-in-from-top-2",
                             isDark ? "bg-black/90 text-white ring-1 ring-white/10" : "bg-white/90 text-black ring-1 ring-black/5",
                             "backdrop-blur-xl"
                         )}>
                             <div className="grid gap-1">
                                 {industries.map((item) => (
                                     <DropdownMenuItem key={item.href} asChild>
-                                        <Link href={item.href} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#eab308] hover:text-black cursor-pointer transition-all">
-                                            <item.icon className="h-4 w-4 shrink-0" />
-                                            <span className="font-bold text-[10px] uppercase tracking-widest">{item.name}</span>
+                                        <Link href={item.href} className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/50 cursor-pointer transition-all">
+                                            <item.icon className="h-5 w-5 shrink-0 text-muted-foreground" />
+                                            <span className="font-bold text-[11px] uppercase tracking-widest">{item.name}</span>
                                         </Link>
                                     </DropdownMenuItem>
                                 ))}
-                                <div className="border-t border-white/10 my-1 pt-1">
+                                <div className="border-t border-black/5 dark:border-white/10 my-1 pt-1">
                                     <DropdownMenuItem asChild>
-                                        <Link href="/solutions" className="flex items-center justify-between p-3 rounded-xl hover:bg-[#eab308] hover:text-black cursor-pointer transition-all">
-                                            <span className="font-black text-[10px] uppercase tracking-widest text-primary">View All Ecosystem</span>
-                                            <Zap className="h-3 w-3 fill-current" />
+                                        <Link href="/solutions" className="flex items-center justify-between p-4 rounded-xl hover:bg-muted/50 cursor-pointer transition-all group">
+                                            <span className="font-black text-[11px] uppercase tracking-widest text-[#7c3aed]">View All Ecosystem</span>
+                                            <Zap className="h-4 w-4 fill-[#1a1a1a] text-[#1a1a1a] group-hover:fill-[#7c3aed] group-hover:text-[#7c3aed] transition-colors" />
                                         </Link>
                                     </DropdownMenuItem>
                                 </div>
