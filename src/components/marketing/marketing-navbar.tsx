@@ -55,13 +55,13 @@ export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps)
 
   return (
     <>
-        <div className="fixed top-6 w-full z-50 px-6">
+        <div className="fixed top-4 w-full z-50 px-6">
             <motion.nav 
                 initial={{ y: -100, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.8, ease: "circOut" }}
                 className={cn(
-                    "max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-6 rounded-2xl sm:rounded-[2rem] border transition-all duration-500",
+                    "max-w-7xl mx-auto h-14 sm:h-16 flex items-center justify-between px-4 sm:px-6 rounded-xl sm:rounded-2xl border transition-all duration-500",
                     isDark 
                         ? "bg-black/80 border-white/10 text-white" 
                         : "bg-white/80 border-black/5 text-black",
@@ -69,15 +69,15 @@ export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps)
                 )}
             >
                 <Link href="/" className="flex items-center gap-3 group">
-                    <div className="bg-[#1a1a1a] p-2 rounded-xl shadow-lg ring-1 ring-[#eab308]/20 group-hover:scale-110 transition-transform">
-                        <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-[#eab308] fill-[#eab308]" />
+                    <div className="bg-[#1a1a1a] p-1.5 rounded-lg shadow-lg ring-1 ring-[#eab308]/20 group-hover:scale-110 transition-transform">
+                        <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-[#eab308] fill-[#eab308]" />
                     </div>
-                    <span className="font-black text-lg tracking-tighter uppercase hidden xs:block">BusinessHub</span>
+                    <span className="font-black text-base tracking-tighter uppercase hidden xs:block">BusinessHub</span>
                 </Link>
                 
                 {/* DESKTOP NAVIGATION */}
                 <div className="hidden md:flex items-center gap-2 lg:gap-6">
-                    <div className="flex items-center gap-8 text-[11px] font-bold uppercase tracking-widest mr-4">
+                    <div className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-widest mr-4">
                         <DropdownMenu onOpenChange={setIsDropdownOpen}>
                             <DropdownMenuTrigger asChild>
                                 <button className="flex items-center gap-1.5 hover:text-[#eab308] transition-colors outline-none">
@@ -119,20 +119,20 @@ export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps)
                             size="icon" 
                             onClick={onToggleTheme}
                             className={cn(
-                                "rounded-xl h-9 w-9 sm:h-10 sm:w-10 transition-colors",
+                                "rounded-xl h-8 w-8 sm:h-9 sm:w-9 transition-colors",
                                 isDark ? "text-[#eab308] hover:bg-white/5" : "text-black/60 hover:bg-black/5"
                             )}
                         >
                             {isDark ? <Sun className="h-4 w-4 sm:h-5 sm:w-5" /> : <Moon className="h-4 w-4 sm:h-5 sm:w-5" />}
                         </Button>
 
-                        <div className="h-6 w-[1px] mx-1 hidden sm:block bg-current opacity-10" />
+                        <div className="h-5 w-[1px] mx-1 hidden sm:block bg-current opacity-10" />
 
                         <Button 
                             variant="outline" 
                             onClick={handleGoogleSignIn}
                             className={cn(
-                                "font-bold uppercase text-[9px] tracking-widest h-9 sm:h-10 border-2 transition-all hidden lg:flex rounded-xl",
+                                "font-bold uppercase text-[9px] tracking-widest h-8 sm:h-9 border-2 transition-all hidden lg:flex rounded-lg",
                                 isDark ? "border-white/10 hover:bg-white/5" : "border-black/5 hover:bg-black/5"
                             )}
                         >
@@ -140,39 +140,39 @@ export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps)
                         </Button>
 
                         <Button asChild variant="outline" className={cn(
-                            "font-bold uppercase text-[9px] sm:text-[10px] tracking-widest px-4 sm:px-5 h-9 sm:h-10 border-2 transition-all rounded-xl",
+                            "font-bold uppercase text-[9px] tracking-widest px-4 h-8 sm:h-9 border-2 transition-all rounded-lg",
                             isDark ? "border-[#22c55e]/50 text-[#22c55e] hover:bg-[#22c55e]/10" : "border-[#22c55e]/30 text-[#15803d] hover:bg-[#22c55e]/5"
                         )}>
                             <Link href="/login">Sign In</Link>
                         </Button>
                         
-                        <Button asChild className="font-bold uppercase text-[9px] sm:text-[10px] tracking-widest shadow-xl px-4 sm:px-5 h-9 sm:h-10 bg-[#22c55e] text-white hover:bg-[#16a34a] border-none active:scale-95 transition-all rounded-xl">
+                        <Button asChild className="font-bold uppercase text-[9px] tracking-widest shadow-lg px-4 h-8 sm:h-9 bg-[#22c55e] text-white hover:bg-[#16a34a] border-none active:scale-95 transition-all rounded-lg">
                             <Link href="/signup">Get Started</Link>
                         </Button>
                     </div>
                 </div>
 
                 {/* MOBILE MENU TOGGLE */}
-                <div className="flex md:hidden items-center gap-4">
+                <div className="flex md:hidden items-center gap-2">
                     <Button 
                         variant="ghost" 
                         size="icon" 
                         onClick={onToggleTheme}
                         className={cn(
-                            "rounded-xl h-10 w-10",
+                            "rounded-lg h-9 w-9",
                             isDark ? "text-[#eab308]" : "text-black/60"
                         )}
                     >
-                        {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                        {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                     </Button>
                     <button 
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                         className={cn(
-                            "p-2 rounded-xl transition-all",
+                            "p-2 rounded-lg transition-all",
                             isDark ? "text-white hover:bg-white/10" : "text-black hover:bg-black/5"
                         )}
                     >
-                        {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                        {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                     </button>
                 </div>
             </motion.nav>
@@ -186,7 +186,7 @@ export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps)
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     className={cn(
-                        "fixed inset-0 z-[40] pt-24 px-6 pb-10 flex flex-col md:hidden",
+                        "fixed inset-0 z-[40] pt-20 px-6 pb-10 flex flex-col md:hidden",
                         isDark ? "bg-black/95 text-white" : "bg-white/95 text-black",
                         "backdrop-blur-2xl"
                     )}
@@ -194,18 +194,18 @@ export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps)
                     <div className="flex-grow overflow-y-auto no-scrollbar space-y-8">
                         <div className="space-y-4">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-50 px-2">Solutions Ecosystem</h3>
-                            <div className="grid grid-cols-1 gap-2">
+                            <div className="grid grid-cols-1 gap-1">
                                 {industries.map((item) => (
                                     <Link 
                                         key={item.href} 
                                         href={item.href} 
                                         onClick={() => setIsMobileMenuOpen(false)}
-                                        className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted/50 transition-all border border-transparent hover:border-black/5"
+                                        className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/50 transition-all border border-transparent hover:border-black/5"
                                     >
-                                        <div className="p-2 bg-primary/5 rounded-xl">
+                                        <div className="p-2 bg-primary/5 rounded-lg">
                                             <item.icon className="h-5 w-5 text-primary" />
                                         </div>
-                                        <span className="font-bold text-sm uppercase tracking-tight">{item.name}</span>
+                                        <span className="font-bold text-xs uppercase tracking-tight">{item.name}</span>
                                     </Link>
                                 ))}
                             </div>
@@ -213,18 +213,18 @@ export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps)
 
                         <div className="space-y-4">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-50 px-2">Knowledge Hub</h3>
-                            <div className="grid grid-cols-1 gap-2">
+                            <div className="grid grid-cols-1 gap-1">
                                 <Link 
                                     href="/resources/docs" 
                                     onClick={() => setIsMobileMenuOpen(false)}
-                                    className="p-4 rounded-2xl font-bold text-sm uppercase tracking-tight hover:bg-muted/50 transition-all"
+                                    className="p-4 rounded-xl font-bold text-xs uppercase tracking-tight hover:bg-muted/50 transition-all"
                                 >
                                     User Documentation
                                 </Link>
                                 <Link 
                                     href="/support/contact" 
                                     onClick={() => setIsMobileMenuOpen(false)}
-                                    className="p-4 rounded-2xl font-bold text-sm uppercase tracking-tight hover:bg-muted/50 transition-all"
+                                    className="p-4 rounded-xl font-bold text-xs uppercase tracking-tight hover:bg-muted/50 transition-all"
                                 >
                                     Talk to an Expert
                                 </Link>
@@ -234,10 +234,10 @@ export function MarketingNavbar({ isDark, onToggleTheme }: MarketingNavbarProps)
 
                     <div className="pt-8 border-t border-black/5 dark:border-white/10 space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <Button asChild variant="outline" className="h-14 rounded-2xl font-bold uppercase text-[11px] tracking-widest border-2">
+                            <Button asChild variant="outline" className="h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest border-2">
                                 <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Sign In</Link>
                             </Button>
-                            <Button asChild className="h-14 rounded-2xl font-bold uppercase text-[11px] tracking-widest bg-[#22c55e] text-white border-none shadow-xl">
+                            <Button asChild className="h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest bg-[#22c55e] text-white border-none shadow-xl">
                                 <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link>
                             </Button>
                         </div>
