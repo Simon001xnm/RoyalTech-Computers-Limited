@@ -23,10 +23,6 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import placeholderImages from '@/app/lib/placeholder-images.json';
 
-/**
- * @fileOverview Premium Floating Landing Page
- * Implements a glassmorphic design where content panels float over a persistent background.
- */
 export function LandingPage() {
   const animations = {
     fadeIn: { 
@@ -37,19 +33,19 @@ export function LandingPage() {
     }
   };
 
-  const floatingGlass = "bg-white/70 dark:bg-black/70 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-[0_30px_100px_rgba(0,0,0,0.1)] rounded-[2.5rem]";
+  const floatingGlass = "bg-white/80 dark:bg-black/80 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-[0_30px_100px_rgba(0,0,0,0.1)] rounded-[2.5rem]";
 
   const testimonials = [
-    { name: "Mary Wanjiku", loc: "Nairobi, KE", text: "Great service, great product. Simon is the man! If you need a system reach out to them. You will be glad you did." },
-    { name: "Loice Wambui", loc: "Nakuru, KE", text: "One of the best customer services. Simon and his team are amazing, patient, and available at all hours. 7 days a week." },
-    { name: "Michael Otieno", loc: "Mombasa, KE", text: "Been with them for years. Reliable for our bar system and always willing to troubleshoot even late at night." },
-    { name: "Samuel Kamau", loc: "Nairobi, KE", text: "Simon (the owner) will call and take care of issues even on weekends. Top tier support that actually understands our business." }
+    { name: "Mary Wanjiku", loc: "Nairobi, Kenya", text: "Great service, great product. Simon is the man! If you need a reliable business system in Nairobi, reach out to them. You will be glad you did." },
+    { name: "Loice Wambui", loc: "Nakuru, Kenya", text: "The best customer service in the industry. Simon and his team are amazing, patient, and available at all hours. Perfect for our retail shop." },
+    { name: "Michael Otieno", loc: "Mombasa, Kenya", text: "Been using Shop Manager for years. Reliable for our bar system and the local Mombasa support team is always willing to troubleshoot." },
+    { name: "Samuel Kamau", loc: "Nairobi, Kenya", text: "Simon (the owner) will call and take care of issues even on weekends. Top tier support that actually understands the Kenyan business environment." }
   ];
 
   return (
     <div className="space-y-12 sm:space-y-24">
       
-      {/* HERO SECTION */}
+      {/* HERO SECTION - SEO TARGETED */}
       <section className="relative px-6 pt-10 sm:pt-20">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <motion.div 
@@ -60,21 +56,21 @@ export function LandingPage() {
             >
                 <div className="inline-flex items-center gap-2 bg-[#eab308]/10 text-black dark:text-white px-4 py-2 rounded-full border border-[#eab308]/20 backdrop-blur-md mx-auto lg:mx-0">
                     <Sparkles className="h-4 w-4 text-[#eab308] fill-[#eab308]" />
-                    <span className="text-[11px] font-bold tracking-widest">Premium Business Infrastructure</span>
+                    <span className="text-[11px] font-bold tracking-widest">The #1 POS System in Kenya</span>
                 </div>
                 <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-tight">
-                    Business Stability <br /> 
-                    <span className="text-[#eab308]">Engineered.</span>
+                    Business Management <br /> 
+                    <span className="text-[#eab308]">Simplified for Kenya.</span>
                 </h1>
                 <p className="text-base sm:text-lg text-muted-foreground font-medium max-w-xl leading-relaxed mx-auto lg:mx-0">
-                    Stop losing money to stock shrinkage and manual errors. Shop Manager is a carefully engineered experience that feels like a movie and a premium app while providing the stability your retail or business requires.
+                    Stop losing money to stock shrinkage and manual errors. Shop Manager is the premium business management system engineered for retailers in Nairobi and beyond, featuring seamless M-Pesa integration and high-speed hardware scanning.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-4">
                     <Button asChild className="h-14 px-10 font-bold text-base bg-black text-white dark:bg-white dark:text-black hover:scale-105 rounded-2xl shadow-2xl transition-all">
-                        <Link href="/signup">Start Free Trial</Link>
+                        <Link href="/signup">Start Your Free Trial</Link>
                     </Button>
-                    <Button asChild variant="outline" className="h-14 px-10 font-bold text-base border-2 bg-white/20 backdrop-blur-md rounded-2xl hover:bg-white/40 transition-all">
-                        <Link href="/support/contact">Book a Demo</Link>
+                    <Button asChild variant="outline" className="h-14 px-10 font-bold text-base border-2 bg-white/40 backdrop-blur-md rounded-2xl hover:bg-white/60 transition-all">
+                        <Link href="/support/contact">Book a Nairobi Demo</Link>
                     </Button>
                 </div>
             </motion.div>
@@ -85,15 +81,15 @@ export function LandingPage() {
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 transition={{ duration: 1.2, delay: 0.2, ease: "backOut" }}
             >
-                <div className="absolute -inset-10 bg-[#eab308]/20 rounded-full blur-[120px] opacity-40 animate-pulse" />
+                <div className="absolute -inset-10 bg-[#eab308]/20 rounded-full blur-[120px] opacity-60 animate-pulse" />
                 <Card className={cn(floatingGlass, "p-3 relative z-10 overflow-hidden ring-1 ring-white/20 group")}>
                     <img 
                       src={placeholderImages.branding.hero_pos.url} 
-                      alt="POS Hardware" 
+                      alt="Modern POS Hardware in Kenya" 
                       className="rounded-[1.8rem] w-full h-auto object-cover aspect-[4/3] transition-transform duration-1000 group-hover:scale-105"
                     />
-                    <div className="absolute bottom-6 left-6 right-6 p-6 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 text-white">
-                        <p className="text-sm font-bold">Local Support active in Nairobi, Kenya</p>
+                    <div className="absolute bottom-6 left-6 right-6 p-6 bg-black/70 backdrop-blur-xl rounded-2xl border border-white/10 text-white">
+                        <p className="text-sm font-bold">Local Support Nodes Active in Nairobi and Mombasa</p>
                     </div>
                 </Card>
             </motion.div>
@@ -104,16 +100,16 @@ export function LandingPage() {
       <section id="industries" className="px-6 py-12">
         <div className="max-w-7xl mx-auto space-y-16">
             <motion.div className="text-center space-y-4" {...animations.fadeIn}>
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Industries We Serve</h2>
-                <p className="text-muted-foreground font-medium max-w-2xl mx-auto">Different businesses need different POS workflows. We tailor the experience to your specific business model.</p>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Best Solutions for Every Kenyan Business</h2>
+                <p className="text-muted-foreground font-medium max-w-2xl mx-auto">From boutiques in Westlands to restaurants in Mombasa, we tailor the management experience to your specific business model.</p>
             </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                    { title: 'Restaurants & Bars', desc: 'Kitchen printers, tips, table management, and tabs.', icon: Utensils, color: 'bg-orange-500' },
-                    { title: 'Retail Stores', desc: 'Barcode scanning, inventory, and category management.', icon: Package, color: 'bg-blue-600' },
-                    { title: 'Salons & Spas', desc: 'Service menus, staff tracking, and client history.', icon: Scissors, color: 'bg-purple-600' },
-                    { title: 'Liquor & Retail', desc: 'Fast scanning, cash controls, and strict permissions.', icon: Wine, color: 'bg-red-600' }
+                    { title: 'Restaurants & Bars', desc: 'Kitchen displays, tips management, table tracking, and M-Pesa checkout.', icon: Utensils, color: 'bg-orange-500' },
+                    { title: 'Retail & Hardware', desc: 'Barcode scanning, bulk inventory imports, and category management.', icon: Package, color: 'bg-blue-600' },
+                    { title: 'Salons & Spas', desc: 'Service menus, staff commission tracking, and customer visit history.', icon: Scissors, color: 'bg-purple-600' },
+                    { title: 'Liquor Stores', desc: 'Fast inventory counts, cash controls, and strict employee permissions.', icon: Wine, color: 'bg-red-600' }
                 ].map((item, i) => (
                     <motion.div 
                         key={i}
@@ -136,7 +132,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* STRATEGIC REVIEW SECTION */}
+      {/* STRATEGIC REVIEW SECTION - VIBRANT COLOR */}
       <section className="px-6 py-12">
         <motion.div 
             className={cn(floatingGlass, "max-w-7xl mx-auto overflow-hidden")}
@@ -144,22 +140,22 @@ export function LandingPage() {
         >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 items-stretch">
                 <div className="p-10 sm:p-20 space-y-8">
-                    <Badge className="bg-[#eab308] text-black font-bold text-[10px] px-4 h-7 tracking-widest">STRATEGIC CONSULTATION</Badge>
-                    <h2 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight">Review before making a change.</h2>
+                    <Badge className="bg-[#eab308] text-black font-bold text-[10px] px-4 h-7 tracking-widest">Nairobi Business Audit</Badge>
+                    <h2 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight">Identify leaks before making a change.</h2>
                     <p className="text-base text-muted-foreground font-medium leading-relaxed">
-                        Sometimes the better first step is reviewing your current setup. We analyze your merchant statements, inventory tools, and cash processes to identify leaks before you spend a shilling on new hardware.
+                        Many Kenyan businesses lose up to 15% of revenue to untracked inventory. We analyze your current processes and merchant statements to identify gaps before you upgrade your system.
                     </p>
-                    <Button variant="outline" className="h-12 border-2 font-bold rounded-xl gap-2">
-                        Get Free Statement Review <ArrowRight className="h-4 w-4" />
+                    <Button variant="outline" className="h-12 border-2 font-bold rounded-xl gap-2 bg-white/50 backdrop-blur-sm">
+                        Get a Free Business Review <ArrowRight className="h-4 w-4" />
                     </Button>
                 </div>
                 <div className="relative min-h-[300px] lg:min-h-full">
                     <img 
                       src={placeholderImages.branding.review_section.url} 
-                      alt="Business Review" 
-                      className="absolute inset-0 w-full h-full object-cover grayscale opacity-80"
+                      alt="Business Analytics for Kenyan Companies" 
+                      className="absolute inset-0 w-full h-full object-cover opacity-100"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/70 via-transparent to-transparent dark:from-black/70" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/80 via-transparent to-transparent dark:from-black/80" />
                 </div>
             </div>
         </motion.div>
@@ -170,16 +166,16 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto space-y-16">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <motion.div className="space-y-4" {...animations.fadeIn}>
-                    <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Common Problems We Solve</h2>
-                    <p className="text-muted-foreground font-medium max-w-xl">Turning operational headaches into streamlined workflows.</p>
+                    <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Common Challenges for Shops in Kenya</h2>
+                    <p className="text-muted-foreground font-medium max-w-xl">Turning complex retail operations into simple, profitable workflows.</p>
                 </motion.div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                    'Slow Checkout Process', 'Inventory Shrinkage', 'Confusing Financial Reports',
-                    'High Processing Fees', 'Poor Local Support', 'Staff Training Issues',
-                    'Cash Drawer Shortages', 'Untracked Voids & Refunds', 'Outdated Terminal Hardware'
+                    'Slow M-Pesa Reconciliation', 'Stock Discrepancies', 'Vague Profit Reports',
+                    'High Subscription Costs', 'Poor Local Technical Support', 'Staff Training Difficulty',
+                    'Cash Drawer Shortages', 'Untracked Customer Voids', 'KRA Compliance Issues'
                 ].map((problem, i) => (
                     <motion.div 
                         key={i}
@@ -203,8 +199,8 @@ export function LandingPage() {
       <section className="px-6 py-12">
         <div className="max-w-7xl mx-auto space-y-16">
             <motion.div className="text-center space-y-4" {...animations.fadeIn}>
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Trusted by Nairobi Operators</h2>
-                <p className="text-sm text-muted-foreground font-bold tracking-widest uppercase opacity-40">Real Feedback from the Field</p>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Trusted by Nairobi and Mombasa Business Owners</h2>
+                <p className="text-sm text-muted-foreground font-bold tracking-widest uppercase opacity-60">Verified Success Stories</p>
             </motion.div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -218,11 +214,10 @@ export function LandingPage() {
                             {[1,2,3,4,5].map(s => <Star key={s} className="h-3 w-3 fill-[#eab308] text-[#eab308]" />)}
                         </div>
                         <p className="text-sm font-medium leading-relaxed italic text-muted-foreground">&ldquo;{t.text}&rdquo;</p>
-                        <div className="pt-4 border-t border-black/5 dark:border-white/5">
+                        <div className="pt-4 border-t border-black/10 dark:border-white/10">
                             <p className="text-sm font-bold">{t.name}</p>
-                            <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest">{t.loc}</p>
+                            <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{t.loc}</p>
                         </div>
-                        <QuoteIcon className="absolute -bottom-4 -right-4 h-24 w-24 opacity-[0.03] group-hover:opacity-10 transition-opacity" />
                     </motion.div>
                 ))}
             </div>
@@ -237,19 +232,19 @@ export function LandingPage() {
         >
              <div className="space-y-6">
                 <h2 className="text-4xl sm:text-7xl font-bold tracking-tight leading-tight">
-                    Ready to <span className="text-[#eab308]">Optimize?</span>
+                    Ready to <span className="text-[#eab308]">Optimize Your Shop?</span>
                 </h2>
                 <p className="text-muted-foreground font-medium text-lg sm:text-xl max-w-2xl mx-auto">
-                    Take the first step toward a more stable, error-free business.
+                    Take the first step toward a more stable, error-free Kenyan business today.
                 </p>
             </div>
             
             <div className="flex flex-col sm:flex-row justify-center gap-6">
                 <Button asChild size="lg" className="h-20 px-12 font-bold tracking-widest text-sm shadow-2xl bg-[#eab308] text-black hover:bg-[#d9a307] rounded-3xl active:scale-95 transition-all">
-                    <Link href="/signup">Start Free Trial</Link>
+                    <Link href="/signup">Setup My Shop Node</Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="h-20 px-12 font-bold tracking-widest text-sm border-2 bg-white/20 backdrop-blur-md hover:bg-white/40 rounded-3xl transition-all">
-                    <Link href="/support/contact">Talk to an Expert</Link>
+                <Button asChild variant="outline" size="lg" className="h-20 px-12 font-bold tracking-widest text-sm border-2 bg-white/40 backdrop-blur-md hover:bg-white/60 rounded-3xl transition-all">
+                    <Link href="/support/contact">Talk to a Kenya Expert</Link>
                 </Button>
             </div>
         </motion.div>
@@ -257,12 +252,4 @@ export function LandingPage() {
 
     </div>
   );
-}
-
-function QuoteIcon(props: any) {
-    return (
-        <svg {...props} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C19.5693 16 20.017 15.5523 20.017 15V9C20.017 8.44772 19.5693 8 19.017 8H15.017C14.4647 8 14.017 8.44772 14.017 9V11C14.017 11.5523 13.5693 12 13.017 12H11.017C10.4647 12 10.017 11.5523 10.017 11V9C10.017 6.79086 11.8079 5 14.017 5H15.017C15.5693 5 16.017 4.55228 16.017 4V3C16.017 2.44772 15.5693 2 15.017 2H14.017C10.151 2 7.017 5.13401 7.017 9V15C7.017 18.3137 9.70329 21 13.017 21H14.017ZM6.017 21L6.017 18C6.017 16.8954 6.91241 16 8.017 16H11.017C11.5693 16 12.017 15.5523 12.017 15V9C12.017 8.44772 11.5693 8 11.017 8H7.017C6.46472 8 6.017 8.44772 6.017 9V11C6.017 11.5523 5.56928 12 5.017 12H3.017C2.46472 12 2.017 11.5523 2.017 11V9C2.017 6.79086 3.80787 5 6.017 5H7.017C7.56928 5 8.017 4.55228 8.017 4V3C8.017 2.44772 7.56928 2 7.017 2H6.017C2.151 2 -0.983 5.13401 -0.983 9V15C-0.983 18.3137 1.70329 21 5.017 21H6.017Z" />
-        </svg>
-    )
 }

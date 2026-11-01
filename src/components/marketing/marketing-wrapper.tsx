@@ -11,9 +11,9 @@ interface MarketingWrapperProps {
 }
 
 /**
- * @fileOverview Premium Marketing Wrapper with Persistent Background
+ * @fileOverview Premium Marketing Wrapper with High-Vibrancy Persistent Background
  * Implements a fixed background layer with content floating above it.
- * Supports light/dark glassmorphism across all children.
+ * Removed all grayscale filters to ensure a rich, full-color experience.
  */
 export function MarketingWrapper({ children }: MarketingWrapperProps) {
   const [isDark, setIsDark] = useState(false);
@@ -40,18 +40,18 @@ export function MarketingWrapper({ children }: MarketingWrapperProps) {
         "min-h-screen relative transition-colors duration-700 selection:bg-[#eab308] selection:text-black",
         isDark ? "bg-[#0a0a0a] text-white dark" : "bg-white text-black"
     )}>
-      {/* PERSISTENT BACKGROUND LAYER */}
+      {/* PERSISTENT FULL-COLOR BACKGROUND LAYER */}
       <div className="fixed inset-0 z-0">
           <img 
             src={placeholderImages.branding.login_bg.url} 
-            alt="Background" 
-            className="w-full h-full object-cover opacity-30 dark:opacity-20 transition-opacity duration-1000"
+            alt="Premium Business Infrastructure in Kenya" 
+            className="w-full h-full object-cover opacity-60 dark:opacity-40 transition-opacity duration-1000"
           />
           <div className={cn(
             "absolute inset-0 transition-colors duration-1000",
             isDark 
-              ? "bg-gradient-to-br from-black via-black/80 to-transparent" 
-              : "bg-gradient-to-br from-white via-white/80 to-transparent"
+              ? "bg-gradient-to-br from-black via-black/40 to-transparent" 
+              : "bg-gradient-to-br from-white via-white/40 to-transparent"
           )} />
       </div>
 

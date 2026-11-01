@@ -20,10 +20,20 @@ const VERSION = "3.26";
 
 export const metadata: Metadata = {
   title: {
-    default: `${APP_NAME} v${VERSION}`,
+    default: `Shop Manager Kenya - Best Business Management & POS System in Nairobi`,
     template: `%s | ${APP_NAME}`,
   },
-  description: `Professional business suite for managing records and operations.`,
+  description: `The #1 Business Management System for Kenyan SMEs. Integrated POS, Inventory, and Accounting for shops in Nairobi, Mombasa, and Nakuru. Seamless M-Pesa reconciliation and KRA compliant reporting.`,
+  keywords: [
+    "Business Management System Kenya",
+    "POS System Nairobi",
+    "Retail Software Kenya",
+    "Inventory Management Nairobi",
+    "M-Pesa POS Integration",
+    "Shop Manager Kenya",
+    "SME Software Nairobi",
+    "Cloud Accounting Kenya"
+  ],
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -32,7 +42,9 @@ export const metadata: Metadata = {
   },
   other: {
     "system-version": VERSION,
-    "system-tier": "v3-pro"
+    "system-tier": "v3-pro",
+    "geo-region": "KE",
+    "geo-placename": "Nairobi"
   }
 };
 
@@ -56,8 +68,6 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                // HIGH PRIORITY RESILIENCE ENGINE
-                // Catches ChunkLoadErrors, fetch failures, and network timeouts immediately.
                 function recover() {
                   if (window.location.hash !== '#retry') {
                     console.warn('Network or fetch failure detected. Executing micro-sync recovery...');
