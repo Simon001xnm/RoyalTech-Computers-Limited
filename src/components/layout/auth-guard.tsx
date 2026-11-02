@@ -6,7 +6,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
-import { APP_NAME } from '@/lib/constants';
+import { APP_NAME, PRICING } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -20,11 +20,12 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 import { useSaaS } from '@/components/saas/saas-provider';
 import { Badge } from '../ui/badge';
 import { ModuleTutorial } from './module-tutorial';
 import { useToast } from '@/hooks/use-toast';
+import { SubscriptionPaymentModal } from '@/components/saas/subscription-payment-modal';
 
 const AUTH_PATHS = ['/login', '/signup'];
 const PUBLIC_ROOT_PATHS = ['/', '/login', '/signup'];
@@ -82,7 +83,7 @@ function ScannerStatus() {
             variant={isConnected ? "default" : "destructive"} 
             className={cn(
                 "h-7 px-2 sm:px-3 font-black uppercase text-[7px] sm:text-[9px] tracking-widest border-2 transition-all cursor-pointer select-none shrink-0",
-                isConnected ? "bg-green-500 border-green-600 text-white" : "bg-red-500 border-red-600 text-white"
+                isConnected ? "bg-green-50 border-green-600 text-white" : "bg-red-50 border-red-600 text-white"
             )}
             onClick={handleRequest}
             title={isConnected ? "Scanner Active" : "Scanner Offline - Click to Connect"}
@@ -248,6 +249,14 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             auth.signOut();
         }
     };
+
+    // SUBSCRIPTION WALL LOGIC
+    const isTrialExpired = useMemo(() => {
+        if (!company || isSuperAdmin || company.plan !== 'free') return false;
+        const createdDate = parseISO(company.createdAt);
+        const daysActive = differenceInDays(new Date(), createdDate);
+        return daysActive >= PRICING.TRIAL_DAYS;
+    }, [company, isSuperAdmin]);
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -415,6 +424,12 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
         <main className="flex-1 p-1 sm:p-4 lg:p-8 overflow-x-hidden">
           {children}
         </main>
+        
+        <SubscriptionPaymentModal 
+            open={isTrialExpired} 
+            onClose={() => {}} 
+            shopName={company?.name || 'My Shop'} 
+        />
       </SidebarInset>
     </SidebarProvider>
   );

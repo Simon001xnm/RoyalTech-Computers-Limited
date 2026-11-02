@@ -29,6 +29,14 @@ export const MPESA_CONFIG = {
   CALLBACK_URL: "https://businesshub.co.ke/api/mpesa/callback",
 };
 
+// PRICING CONFIGURATION
+export const PRICING = {
+    ONE_TIME_SETUP: 25000,
+    ANNUAL_SUBSCRIPTION: 15000,
+    TRIAL_DAYS: 7,
+    PAYPAL_LINK: "https://www.paypal.com/ncp/payment/NM6ABHACZT34S"
+};
+
 export type BusinessCategory = 'retail' | 'tech' | 'service' | 'sacco' | 'hospitality' | 'barber' | 'other';
 
 export interface NavItem {

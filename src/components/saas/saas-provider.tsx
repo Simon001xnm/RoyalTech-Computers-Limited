@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
@@ -6,11 +7,12 @@ import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/fire
 import type { Tenant, SubscriptionPlan, SaaSContextState, SubscriptionTier } from '@/types/saas';
 import { useToast } from '@/hooks/use-toast';
 import type { User as AppUser, Company } from '@/types';
+import { PRICING } from '@/lib/constants';
 
 const DEFAULT_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
-  free: { id: 'plan_free', name: 'Standard Workspace', tier: 'free', maxAssets: 50, maxSalesPerMonth: 100, enableBranding: false, enableTracking: false, priceMonthly: 0, currency: 'KES' },
-  basic: { id: 'plan_basic', name: 'Growth Plan', tier: 'basic', maxAssets: 500, maxSalesPerMonth: 1000, enableBranding: true, enableTracking: false, priceMonthly: 2500, currency: 'KES' },
-  pro: { id: 'plan_pro', name: 'Enterprise Elite', tier: 'pro', maxAssets: 9999, maxSalesPerMonth: 9999, enableBranding: true, enableTracking: true, priceMonthly: 7500, currency: 'KES' },
+  free: { id: 'plan_trial', name: 'Trial Workspace', tier: 'free', maxAssets: 50, maxSalesPerMonth: 100, enableBranding: false, enableTracking: false, priceMonthly: 0, currency: 'KES' },
+  basic: { id: 'plan_standard', name: 'Standard Node', tier: 'basic', maxAssets: 9999, maxSalesPerMonth: 9999, enableBranding: true, enableTracking: true, priceMonthly: PRICING.ANNUAL_SUBSCRIPTION, currency: 'KES' },
+  pro: { id: 'plan_pro', name: 'Enterprise Hub', tier: 'pro', maxAssets: 9999, maxSalesPerMonth: 9999, enableBranding: true, enableTracking: true, priceMonthly: PRICING.ANNUAL_SUBSCRIPTION, currency: 'KES' },
   legacy_pro: { id: 'plan_legacy', name: 'Legacy Pro (v1.0)', tier: 'legacy_pro', maxAssets: 9999, maxSalesPerMonth: 9999, enableBranding: true, enableTracking: true, priceMonthly: 0, currency: 'KES' },
 };
 
@@ -18,8 +20,7 @@ const SaaSContext = createContext<SaaSContextState | undefined>(undefined);
 
 /**
  * @fileOverview SaaS Logic Provider
- * Handles multi-tenant context and strict tenant resolution.
- * Performance-optimized to provide "Zero-Millisecond" data readiness.
+ * Updated to support Setup + Annual pricing model.
  */
 export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -40,7 +41,6 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userRef);
 
-  // STRICT SAAS PROTECTION: Use the User Profile as the absolute anchor for the tenant ID
   const effectiveTenantId = userProfile?.tenantId || cachedTenantId;
 
   const companyRef = useMemoFirebase(() => 
@@ -49,7 +49,6 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   );
   const { data: activeCompany, isLoading: isCompanyLoading } = useDoc<any>(companyRef);
 
-  // Fetch all workspaces the user has access to
   useEffect(() => {
     if (!userProfile?.tenantIds || userProfile.tenantIds.length === 0) {
         setAvailableWorkspaces([]);
@@ -87,7 +86,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
         id: activeCompany.id,
         name: activeCompany.name,
         ownerId: activeCompany.createdBy?.uid || 'unknown',
-        tier: (activeCompany.plan as SubscriptionTier) || 'legacy_pro',
+        tier: (activeCompany.plan as SubscriptionTier) || 'free',
         status: (activeCompany.status as any) || 'active',
         createdAt: activeCompany.createdAt,
         features: ['all']
@@ -96,7 +95,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
 
   const activePlan = useMemo(() => {
       if (!tenantData) return null;
-      return DEFAULT_PLANS[tenantData.tier] || DEFAULT_PLANS.legacy_pro;
+      return DEFAULT_PLANS[tenantData.tier] || DEFAULT_PLANS.free;
   }, [tenantData]);
 
   const switchTenant = async (newTenantId: string) => {
