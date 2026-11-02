@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -26,7 +25,8 @@ import {
     Clock,
     Wrench,
     BookOpen,
-    Rocket
+    Rocket,
+    Search
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -158,7 +158,7 @@ export function LandingPage() {
                                 '24/7 Priority Engineer Support'
                             ].map(feature => (
                                 <div key={feature} className="flex items-center gap-3">
-                                    <div className="bg-green-500/10 p-1 rounded-full"><CheckCircle2 className="h-4 w-4 text-green-600" /></div>
+                                    <div className="bg-green-50/10 p-1 rounded-full"><CheckCircle2 className="h-4 w-4 text-green-600" /></div>
                                     <span className="text-[11px] font-bold uppercase tracking-tight opacity-70">{feature}</span>
                                 </div>
                             ))}
@@ -235,7 +235,7 @@ export function LandingPage() {
                             <item.icon className="h-6 w-6 drop-shadow-md" />
                         </div>
                         <div className="space-y-2">
-                            <h3 className="text-xl font-bold tracking-tight text-shadow-sm">{item.title}</h3>
+                            <h3 className="text-xl font-bold uppercase tracking-tight text-shadow-sm">{item.title}</h3>
                             <p className="text-sm text-muted-foreground leading-relaxed font-medium opacity-80">{item.desc}</p>
                         </div>
                     </motion.div>
