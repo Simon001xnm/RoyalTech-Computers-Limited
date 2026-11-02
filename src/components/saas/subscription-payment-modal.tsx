@@ -18,7 +18,8 @@ import { initiateStkPush } from '@/app/pos/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { useFirestore, useSaaS } from '@/firebase';
+import { useFirestore } from '@/firebase';
+import { useSaaS } from '@/components/saas/saas-provider';
 import { doc, updateDoc } from 'firebase/firestore';
 
 interface SubscriptionPaymentModalProps {
