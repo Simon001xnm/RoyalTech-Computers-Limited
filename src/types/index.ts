@@ -66,6 +66,12 @@ export interface Company extends Auditable {
   bankAccName2?: string;
   bankCode?: string;
 
+  // M-Pesa / Mobile Money
+  paybillNumber?: string;
+  paybillAccount?: string;
+  tillNumber?: string;
+  mobileMoneyPhone?: string;
+
   // Theming
   primaryColor?: string; // Hex color
   secondaryColor?: string; // Hex color
