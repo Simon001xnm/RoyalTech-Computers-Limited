@@ -10,7 +10,7 @@ import { APP_NAME, PRICING } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap, RefreshCw, Settings, Wifi, WifiOff, Barcode, ShieldAlert } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap, RefreshCw, Settings, Wifi, WifiOff, Barcode, ShieldAlert, CreditCard } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc, collection, query, where } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -31,6 +31,56 @@ import { SubscriptionReminder } from './subscription-reminder';
 const AUTH_PATHS = ['/login', '/signup'];
 const PUBLIC_ROOT_PATHS = ['/', '/login', '/signup'];
 const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/legal'];
+
+/**
+ * Real-time Trial Status for Header
+ */
+function TrialStatus({ company }: { company: Company | null | undefined }) {
+    const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+    
+    const trialDaysLeft = useMemo(() => {
+        if (!company || company.plan !== 'free' || company.status === 'awaiting_payment_verification') return null;
+        const createdDate = parseISO(company.createdAt);
+        const daysPassed = differenceInDays(new Date(), createdDate);
+        return Math.max(0, PRICING.TRIAL_DAYS - daysPassed);
+    }, [company]);
+
+    if (trialDaysLeft === null) return null;
+
+    const isUrgent = trialDaysLeft <= 2;
+
+    return (
+        <>
+            <div className="flex items-center gap-2">
+                <Badge 
+                    variant="outline" 
+                    className={cn(
+                        "h-8 px-3 font-black uppercase text-[8px] sm:text-[10px] tracking-widest border-2 flex items-center gap-2",
+                        isUrgent ? "border-red-500 bg-red-50 text-red-700 animate-pulse" : "border-yellow-500 bg-yellow-50 text-yellow-700"
+                    )}
+                >
+                    <Zap className="h-3 w-3 fill-current" />
+                    {trialDaysLeft} Days Left
+                </Badge>
+                <Button 
+                    size="sm" 
+                    onClick={() => setIsPaymentOpen(true)}
+                    className="h-8 px-4 font-black uppercase text-[9px] tracking-widest shadow-lg bg-green-600 hover:bg-green-700 text-white border-none rounded-xl"
+                >
+                    <CreditCard className="h-3 w-3 mr-1.5" />
+                    Pay Now
+                </Button>
+            </div>
+
+            <SubscriptionPaymentModal 
+                open={isPaymentOpen} 
+                onClose={() => setIsPaymentOpen(false)} 
+                shopName={company?.name || 'My Shop'} 
+                allowClose={true}
+            />
+        </>
+    );
+}
 
 /**
  * Global Hardware Scanner Status Indicator
@@ -253,14 +303,14 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
 
     // SUBSCRIPTION WALL LOGIC
     const isTrialExpired = useMemo(() => {
-        if (!company || isSuperAdmin || company.plan !== 'free') return false;
+        if (!company || isSuperAdmin || company.plan !== 'free' || company.status === 'awaiting_payment_verification') return false;
         const createdDate = parseISO(company.createdAt);
         const daysActive = differenceInDays(new Date(), createdDate);
         return daysActive >= PRICING.TRIAL_DAYS;
     }, [company, isSuperAdmin]);
 
     const isTrialing = useMemo(() => {
-        if (!company || isSuperAdmin || company.plan !== 'free') return false;
+        if (!company || isSuperAdmin || company.plan !== 'free' || company.status === 'awaiting_payment_verification') return false;
         const createdDate = parseISO(company.createdAt);
         const daysActive = differenceInDays(new Date(), createdDate);
         return daysActive < PRICING.TRIAL_DAYS;
@@ -355,6 +405,8 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
           </div>
           
           <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
+            <TrialStatus company={company} />
+
             <div className="hidden xl:flex flex-col items-end px-4 py-2 bg-muted/30 rounded-xl border border-border/50 font-mono text-muted-foreground shadow-inner">
                 <div className="flex items-center gap-2">
                     <Clock className="h-2.5 w-2.5 text-primary" />

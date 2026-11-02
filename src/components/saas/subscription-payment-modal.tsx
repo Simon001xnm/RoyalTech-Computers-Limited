@@ -26,12 +26,13 @@ interface SubscriptionPaymentModalProps {
   open: boolean;
   onClose: () => void;
   shopName: string;
+  allowClose?: boolean;
 }
 
 /**
  * @fileOverview Mandatory Subscription Payment Gateway
  */
-export function SubscriptionPaymentModal({ open, onClose, shopName }: SubscriptionPaymentModalProps) {
+export function SubscriptionPaymentModal({ open, onClose, shopName, allowClose = false }: SubscriptionPaymentModalProps) {
   const [method, setMethod] = useState<'mpesa' | 'paypal'>('mpesa');
   const [phone, setPhone] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -58,6 +59,7 @@ export function SubscriptionPaymentModal({ open, onClose, shopName }: Subscripti
                     updatedAt: new Date().toISOString()
                 });
             }
+            if (allowClose) onClose();
         } else {
             toast({ variant: 'destructive', title: "M-Pesa Failed", description: res.error });
         }
@@ -74,11 +76,12 @@ export function SubscriptionPaymentModal({ open, onClose, shopName }: Subscripti
             updatedAt: new Date().toISOString()
         });
         toast({ title: "PayPal Gateway Opened", description: "Awaiting confirmation from admin." });
+        if (allowClose) onClose();
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) return; }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o && allowClose) onClose(); }}>
       <DialogContent className="sm:max-w-xl p-0 overflow-hidden border-none shadow-2xl rounded-[2rem] no-print">
         <div className="bg-destructive/10 p-8 text-center border-b border-destructive/20 relative overflow-hidden">
              <div className="absolute top-0 right-0 opacity-5 -mr-10 -mt-10">
@@ -87,7 +90,9 @@ export function SubscriptionPaymentModal({ open, onClose, shopName }: Subscripti
              <div className="bg-white p-4 rounded-full w-fit mx-auto mb-6 shadow-xl ring-4 ring-destructive/10">
                 <Lock className="h-10 w-10 text-destructive" />
              </div>
-             <DialogTitle className="text-3xl font-black uppercase tracking-tighter text-destructive">Trial Period Expired</DialogTitle>
+             <DialogTitle className="text-3xl font-black uppercase tracking-tighter text-destructive">
+                {allowClose ? "Early Settlement" : "Trial Period Expired"}
+             </DialogTitle>
              <DialogDescription className="font-bold text-[11px] uppercase tracking-[0.2em] mt-2 text-destructive/60">
                  Workspace Identity: {shopName}
              </DialogDescription>
@@ -165,7 +170,7 @@ export function SubscriptionPaymentModal({ open, onClose, shopName }: Subscripti
                                 <CheckCircle2 className="h-8 w-8 text-blue-600" />
                                 <p className="text-xs font-bold text-blue-900">Secure international checkout. Pay via PayPal balance or Debit/Credit card.</p>
                             </div>
-                            <Button onClick={handlePaypalPay} className="w-full h-16 text-lg font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl">
+                            <Button onClick={handlePaypalPay} className="w-full h-16 text-lg font-black uppercase tracking-widest bg-blue-600 hover:bg-green-700 text-white rounded-2xl shadow-xl">
                                 <ExternalLink className="mr-2 h-6 w-6" />
                                 Proceed to PayPal
                             </Button>
