@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
@@ -149,10 +150,14 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     const { tenant } = useSaaS();
     const firestore = useFirestore();
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const { toast } = useToast();
     const [isDark, setIsDark] = useState(false);
-    const [dateTime, setDateTime] = useState<string>("");
+    const [dateTime, setDateTime] = useState({
+        time: "--:--:--",
+        date: "..."
+    });
     const [barcodeBuffer, setBarcodeBuffer] = useState("");
     const headerInputRef = useRef<HTMLInputElement>(null);
 
@@ -170,7 +175,10 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     useEffect(() => {
         const updateTime = () => {
             const now = new Date();
-            setDateTime(format(now, "hh:mm:ss a"));
+            setDateTime({
+                time: format(now, "hh:mm:ss a"),
+                date: format(now, "EEEE, dd MMM yyyy")
+            });
         };
         updateTime();
         const interval = setInterval(updateTime, 1000);
@@ -192,7 +200,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     const handlePeriodChange = (value: string) => {
         const params = new URLSearchParams(searchParams.toString());
         params.set('period', value);
-        router.push(`?${params.toString()}`);
+        router.push(`${pathname}?${params.toString()}`);
     };
 
     const handleRefresh = () => {
@@ -206,7 +214,20 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                 // Emit global event for POS to consume
                 window.dispatchEvent(new CustomEvent('erp-barcode-scan', { detail: code }));
                 setBarcodeBuffer("");
-                toast({ title: "Code Transmitted", description: `Processing: ${code}` });
+                
+                if (pathname !== '/pos') {
+                    toast({ 
+                        title: "Code Scanned", 
+                        description: `Identified: ${code}. Open Point of Sale to process?`,
+                        action: (
+                            <Button size="sm" onClick={() => router.push('/pos')} className="font-bold text-[10px] uppercase">
+                                Open POS
+                            </Button>
+                        )
+                    });
+                } else {
+                    toast({ title: "Scanner Synchronized", description: `Processing code: ${code}` });
+                }
             }
         }
     };
@@ -288,7 +309,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
       </Sidebar>
 
       <SidebarInset className="min-h-screen bg-muted/10 relative">
-        <header className="sticky top-1 sm:top-4 z-30 mx-1 sm:mx-4 flex h-12 sm:h-16 items-center justify-between border bg-background/95 backdrop-blur-sm px-2 sm:px-4 no-print rounded-lg sm:rounded-2xl shadow-sm text-foreground">
+        <header className="sticky top-1 sm:top-4 z-30 mx-1 sm:mx-4 flex h-12 sm:h-20 items-center justify-between border bg-background/95 backdrop-blur-sm px-2 sm:px-4 no-print rounded-lg sm:rounded-2xl shadow-sm text-foreground">
           <div className="flex items-center gap-1 sm:gap-4 overflow-hidden">
             <SidebarTrigger className="h-8 w-8" />
             <Link href="/" className="flex items-center gap-1.5 font-bold text-sm sm:text-lg overflow-hidden">
@@ -310,16 +331,19 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
                     value={barcodeBuffer}
                     onChange={(e) => setBarcodeBuffer(e.target.value)}
                     onKeyDown={handleScannerInput}
-                    className="h-8 sm:h-10 pl-8 bg-muted/20 border-none font-black text-[8px] sm:text-[10px] rounded-xl placeholder:text-muted-foreground/30 focus-visible:ring-primary/20"
+                    className="h-8 sm:h-11 pl-8 bg-muted/20 border-none font-black text-[8px] sm:text-[10px] rounded-xl placeholder:text-muted-foreground/30 focus-visible:ring-primary/20"
                   />
               </div>
               <ScannerStatus />
           </div>
           
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 bg-muted/30 rounded-xl border border-border/50 font-mono text-[9px] font-black uppercase tracking-widest text-muted-foreground shadow-inner">
-                <Clock className="h-2.5 w-2.5 text-primary" />
-                {dateTime}
+          <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
+            <div className="hidden xl:flex flex-col items-end px-4 py-2 bg-muted/30 rounded-xl border border-border/50 font-mono text-muted-foreground shadow-inner">
+                <div className="flex items-center gap-2">
+                    <Clock className="h-2.5 w-2.5 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">{dateTime.time}</span>
+                </div>
+                <div className="text-[9px] font-bold uppercase opacity-40 tracking-tighter mt-0.5">{dateTime.date}</div>
             </div>
             
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors hidden sm:flex" onClick={handleRefresh} title="Sync Workspace">
@@ -329,7 +353,7 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
             {!isSuperAdmin && (
                 <div className="hidden sm:block">
                     <Select value={currentPeriod} onValueChange={handlePeriodChange}>
-                        <SelectTrigger className="h-8 w-32 font-black text-[9px] uppercase bg-white border-2 rounded-xl">
+                        <SelectTrigger className="h-9 w-32 font-black text-[9px] uppercase bg-white border-2 rounded-xl">
                             <Filter className="h-2.5 w-2.5 mr-1.5 text-primary" />
                             <SelectValue placeholder="Period" />
                         </SelectTrigger>
