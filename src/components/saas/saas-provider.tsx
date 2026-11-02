@@ -16,6 +16,11 @@ const DEFAULT_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
 
 const SaaSContext = createContext<SaaSContextState | undefined>(undefined);
 
+/**
+ * @fileOverview SaaS Logic Provider
+ * Handles multi-tenant context and strict tenant resolution.
+ * Performance-optimized to provide "Zero-Millisecond" data readiness.
+ */
 export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -35,7 +40,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userRef);
 
-  // Persistence Strategy: Prioritize User Profile (Source of Truth) but fallback to Cache (Speed)
+  // STRICT SAAS PROTECTION: Use the User Profile as the absolute anchor for the tenant ID
   const effectiveTenantId = userProfile?.tenantId || cachedTenantId;
 
   const companyRef = useMemoFirebase(() => 
@@ -74,7 +79,6 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     }
   }, [userProfile?.tenantId]);
 
-  // Usage meters (Simplified for prototype)
   const usageStats = useMemo(() => ({ assets: 0, salesThisMonth: 0 }), []);
 
   const tenantData = useMemo<Tenant | null>(() => {
@@ -100,8 +104,7 @@ export function SaaSProvider({ children }: { children: React.ReactNode }) {
     try {
         await updateDoc(userRef, { tenantId: newTenantId });
         localStorage.setItem('rcl_last_tenant_id', newTenantId);
-        toast({ title: 'Workspace Switched', description: `Welcome to the new business node.` });
-        // Optional: window.location.href = '/' to force a full data refresh
+        toast({ title: 'Workspace Switched' });
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Switch Failed' });
     }

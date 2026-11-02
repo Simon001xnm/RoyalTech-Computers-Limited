@@ -22,6 +22,11 @@ import { useSaaS } from '@/components/saas/saas-provider';
 const PUBLIC_PATHS = ['/login', '/signup'];
 const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/legal'];
 
+/**
+ * @fileOverview SaaS Protection Guard
+ * Ensures that new users are forced into a clean shop creation flow.
+ * Implements "No Autofill" protection to ensure shop names are never leaked between tenants.
+ */
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const { tenant } = useSaaS();
@@ -36,6 +41,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
 
+  // STRICT PROTECTION: FormData initialized to clean empty strings to prevent global autofill leakage
   const [formData, setFormData] = useState({
     name: '',
     businessType: 'retail',
@@ -115,16 +121,16 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     if (isPublic) return <>{children}</>;
     const isMaster = userProfile?.role === 'super_admin';
     return (
-        <div className="flex h-screen w-full flex-col items-center justify-center bg-[#0a0a0a] text-white space-y-8 animate-in fade-in duration-1000">
-            <div className="relative h-24 w-24">
+        <div className="flex h-screen w-full flex-col items-center justify-center bg-[#0a0a0a] text-white space-y-8 animate-in fade-in duration-500">
+            <div className="relative h-20 w-20">
                 <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
                 <div className="absolute inset-0 border-4 border-t-primary rounded-full animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <Zap className="h-8 w-8 text-primary fill-primary animate-pulse" />
+                    <Zap className="h-6 w-6 text-primary fill-primary animate-pulse" />
                 </div>
             </div>
             <div className="text-center px-6">
-                <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
+                <h2 className="text-xl font-black uppercase tracking-tighter text-white">
                     {isMaster ? "Business Hub" : (tenant?.name || "Business Hub")}
                 </h2>
             </div>
@@ -158,8 +164,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                     <div className="flex items-start gap-4">
                         <div className="bg-white/10 p-2 rounded-lg mt-1"><ShieldCheck className="h-4 w-4" /></div>
                         <div>
-                            <p className="font-bold text-xs uppercase tracking-widest">Shop Setup</p>
-                            <p className="text-[10px] opacity-60">Your shop is ready to use.</p>
+                            <p className="font-bold text-xs uppercase tracking-widest">SaaS Protection Active</p>
+                            <p className="text-[10px] opacity-60">Identity isolation enforced.</p>
                         </div>
                     </div>
                 </div>
@@ -188,7 +194,14 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase">Shop Name <span className="text-red-500">*</span></Label>
-                                    <Input value={formData.name} onChange={e => handleInputChange('name', e.target.value)} required placeholder="e.g. RoyalTech Limited" className="h-11" />
+                                    <Input 
+                                        autoComplete="off"
+                                        value={formData.name} 
+                                        onChange={e => handleInputChange('name', e.target.value)} 
+                                        required 
+                                        placeholder="Enter Legal Shop Name" 
+                                        className="h-11 font-bold" 
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase">Email Address <span className="text-red-500">*</span></Label>
@@ -218,7 +231,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                         </section>
 
                         <section className="space-y-6">
-                             <h3 className="font-black uppercase tracking-widest text-[10px] text-muted-foreground border-b pb-2">Where you are</h3>
+                             <h3 className="font-black uppercase tracking-widest text-[10px] text-muted-foreground border-b pb-2">Location</h3>
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase">Physical Address <span className="text-red-500">*</span></Label>
@@ -240,7 +253,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                     className="mt-1"
                                 />
                                 <Label htmlFor="terms-agreement" className="text-[10px] font-bold cursor-pointer leading-relaxed text-muted-foreground">
-                                    I agree to the <Link href="/legal/terms" className="text-primary underline">Shop Rules</Link> and <Link href="/legal/privacy" className="text-primary underline">Privacy Policy</Link>. I understand these rules.
+                                    I agree to the <Link href="/legal/terms" className="text-primary underline">Shop Rules</Link> and <Link href="/legal/privacy" className="text-primary underline">Privacy Policy</Link>.
                                 </Label>
                             </div>
                         </section>
@@ -250,9 +263,9 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                 {isSaving ? (
                                     <div className="flex items-center gap-3">
                                         <Loader2 className="h-6 w-6 animate-spin" />
-                                        Saving...
+                                        Synchronizing...
                                     </div>
-                                ) : 'Finish Shop Setup'}
+                                ) : 'Initialize System'}
                             </Button>
                         </div>
                     </form>

@@ -11,6 +11,7 @@ interface MarketingFooterProps {
 
 /**
  * @fileOverview Glassmorphic Marketing Footer
+ * Removed "Premium Infrastructure Node" branding per user request.
  */
 export function MarketingFooter({ isDark }: MarketingFooterProps) {
   return (
@@ -82,9 +83,6 @@ export function MarketingFooter({ isDark }: MarketingFooterProps) {
               isDark ? "text-white" : "text-black"
             )}>
               © 2026 Simon Styles Corporation Pvt. Ltd. All Rights Reserved.
-            </p>
-            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                Premium Infrastructure Node &bull; Nairobi, KE
             </p>
         </div>
       </div>
