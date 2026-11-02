@@ -24,6 +24,7 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
   const secondaryIndigo = "#f8fafc";
   
   const website = workspace?.website || "";
+  const prefix = workspace?.deliveryPrefix || 'DLV';
 
   const deliveryNo = (docSnapshot.title || '').includes('#') 
     ? docSnapshot.title.split('#').pop() 
@@ -35,7 +36,7 @@ export function DeliveryNotePdf({ document: docSnapshot }: { document: AppDocume
         <div className="space-y-3">
             <h1 className="text-[28px] font-bold tracking-tight" style={{ color: primaryIndigo }}>Delivery Note</h1>
             <div className="space-y-1 text-[12px] font-medium text-black">
-                <p><span className="w-24 inline-block opacity-60 text-black">Number</span> <span className="font-bold text-black">{workspace?.deliveryPrefix || 'DLV'}{deliveryNo}</span></p>
+                <p><span className="w-24 inline-block opacity-60 text-black">{prefix} Number</span> <span className="font-bold text-black">{prefix}{deliveryNo}</span></p>
                 <p><span className="w-24 inline-block opacity-60 text-black">Date</span> <span className="font-bold text-black">{format(new Date(docSnapshot.generatedDate), "MMM dd, yyyy")}</span></p>
             </div>
         </div>

@@ -68,6 +68,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
   const primaryBlue = "#1e3a8a";
 
   const bizName = workspace?.name || 'MATESH TECHNOLOGIES LIMITED';
+  const prefix = workspace?.invoicePrefix || 'INV';
   
   const dynamicFontClass = useMemo(() => {
     const len = bizName.length;
@@ -136,14 +137,14 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     <p className="text-[10px] font-bold leading-tight uppercase text-black">{workspace?.address || 'Nairobi, Kenya'}</p>
                     <p className="text-[10px] font-bold text-black">Tel: {workspace?.phone || 'N/A'}</p>
                     <div className="pt-2">
-                        <p className="text-[12px] font-black uppercase" style={{ color: primaryBlue }}>INVOICE NO: #{invoiceNo}</p>
+                        <p className="text-[12px] font-black uppercase" style={{ color: primaryBlue }}>{prefix} NO: #{invoiceNo}</p>
                         <p className="text-[10px] font-bold text-black opacity-50 uppercase">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
                     </div>
                 </div>
             </header>
           ) : (
             <div className="mb-6 border-b pb-4 flex justify-between items-end">
-                <p className="text-[12px] font-black uppercase opacity-40 tracking-widest text-black">Invoice Continued: #{invoiceNo}</p>
+                <p className="text-[12px] font-black uppercase opacity-40 tracking-widest text-black">{prefix} Continued: #{invoiceNo}</p>
                 <p className="text-[11px] font-black text-black">Page {pageIdx + 1}</p>
             </div>
           )}
@@ -238,7 +239,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                     <div className="flex justify-between items-start gap-12">
                         <div className="flex-1 space-y-4">
                             <div className="p-4 bg-slate-50 border rounded-xl">
-                                <p className="text-[9px] font-black uppercase text-blue-900/40 tracking-widest mb-1.5">Invoice Terms</p>
+                                <p className="text-[9px] font-black uppercase text-blue-900/40 tracking-widest mb-1.5">{prefix} Terms</p>
                                 <p className="font-bold text-[10px] leading-relaxed italic text-black">
                                     Payment is due by the date stated on this invoice. Please quote the invoice number when making payment.
                                 </p>
@@ -250,7 +251,7 @@ export function InvoicePdf({ document: docSnapshot }: { document: AppDocument })
                         
                         <div className="w-[350px] space-y-0">
                             <div className="flex justify-between items-center p-3 bg-slate-50/50 border-b border-white">
-                                <span className="font-bold text-black opacity-50 uppercase text-[10px]">Invoice Subtotal</span>
+                                <span className="font-bold text-black opacity-50 uppercase text-[10px]">{prefix} Subtotal</span>
                                 <span className="font-black text-[12px] text-black">{formatCurrency(subtotal)}</span>
                             </div>
                             {vat > 0 && (

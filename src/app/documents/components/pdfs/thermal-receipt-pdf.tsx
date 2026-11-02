@@ -40,6 +40,7 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
     new Intl.NumberFormat("en-KE", { style: "decimal", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
   const bizName = workspace?.name || liveCompany?.name || 'MATESH TECHNOLOGIES LIMITED';
+  const prefix = workspace?.receiptPrefix || 'RCT';
 
   return (
     <div className="flex flex-col items-center bg-white p-0 overflow-visible">
@@ -50,7 +51,7 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
           <h1 className="text-[24px] font-black uppercase leading-none tracking-tighter pb-1">
             {bizName}
           </h1>
-          <p className="text-[12px] font-black">*** OFFICIAL RECEIPT ***</p>
+          <p className="text-[12px] font-black">*** OFFICIAL {prefix.toUpperCase()} ***</p>
           <div className="text-[10px] space-y-1 opacity-90 pb-2">
               {workspace?.address && <p>{workspace.address}</p>}
               {workspace?.phone && <p>Tel: {workspace.phone}</p>}
@@ -63,7 +64,7 @@ export function ThermalReceiptPdf({ document: docSnapshot }: { document: AppDocu
         {/* METADATA */}
         <div className="w-full space-y-2.5 mb-5 text-[10px]">
           <div className="flex justify-between py-0.5">
-            <span className="font-bold">RCPT NO:</span>
+            <span className="font-bold">{prefix} NO:</span>
             <span className="font-black">#{docSnapshot.title?.split('#').pop() || '001'}</span>
           </div>
           <div className="flex justify-between py-0.5">

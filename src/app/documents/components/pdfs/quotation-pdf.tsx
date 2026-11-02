@@ -64,6 +64,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
   const primaryBlue = "#1e3a8a";
 
   const bizName = workspace?.name || 'MATESH TECHNOLOGIES LIMITED';
+  const prefix = workspace?.quotePrefix || 'QTN';
   
   const dynamicFontClass = useMemo(() => {
     const len = bizName.length;
@@ -118,14 +119,14 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                     <p className="text-[10px] font-bold leading-tight uppercase text-black">{workspace?.address || 'Nairobi, Kenya'}</p>
                     <p className="text-[10px] font-bold text-black">Tel: {workspace?.phone || 'N/A'}</p>
                     <div className="pt-2">
-                        <p className="text-[12px] font-black uppercase" style={{ color: primaryBlue }}>QUOTATION NO: #{quoteNo}</p>
+                        <p className="text-[12px] font-black uppercase" style={{ color: primaryBlue }}>{prefix} NO: #{quoteNo}</p>
                         <p className="text-[10px] font-bold text-black opacity-50 uppercase">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
                     </div>
                 </div>
             </header>
           ) : (
             <div className="mb-6 border-b pb-4 flex justify-between items-end">
-                <p className="text-[12px] font-black uppercase opacity-40 tracking-widest text-black">Quote Continued: #{quoteNo}</p>
+                <p className="text-[12px] font-black uppercase opacity-40 tracking-widest text-black">{prefix} Continued: #{quoteNo}</p>
                 <p className="text-[11px] font-black text-black">Page {pageIdx + 1}</p>
             </div>
           )}
@@ -169,7 +170,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                     </div>
                 </div>
                 <div className="bg-blue-50/40 p-5 flex flex-col justify-center border-l border-black/5 rounded-r-xl">
-                    <p className="text-[11px] font-black text-black uppercase tracking-widest mb-2">Total Quote Value</p>
+                    <p className="text-[11px] font-black text-black uppercase tracking-widest mb-2">Total {prefix} Value</p>
                     <div className="pb-3">
                         <p className="text-[26px] font-black tracking-tighter leading-none" style={{ color: primaryBlue }}>KES {formatCurrency(total)}</p>
                     </div>
@@ -228,7 +229,7 @@ export function QuotationPdf({ document: docSnapshot }: { document: AppDocument 
                         </div>
                         <div className="w-[350px] space-y-0">
                             <div className="flex justify-between items-center p-3 bg-slate-50/50 border-b border-white">
-                                <span className="font-bold text-black opacity-50 uppercase text-[10px]">Quote Subtotal</span>
+                                <span className="font-bold text-black opacity-50 uppercase text-[10px]">{prefix} Subtotal</span>
                                 <span className="font-black text-[12px] text-black">{formatCurrency(subtotal)}</span>
                             </div>
                             {vat > 0 && (

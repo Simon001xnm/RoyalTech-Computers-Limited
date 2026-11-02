@@ -320,8 +320,8 @@ export default function ProfilePage() {
                     <Camera className="h-10 w-10 text-white" />
                 </div>
               </div>
-              <div className="mt-8 space-y-2 overflow-hidden px-4">
-                <CardTitle className="text-2xl sm:text-3xl font-black uppercase tracking-tighter leading-none truncate">
+              <div className="mt-8 space-y-2 overflow-hidden px-6">
+                <CardTitle className="text-lg sm:text-xl font-black uppercase tracking-tighter leading-tight break-words">
                     {compData.name || 'Your Hub Name'}
                 </CardTitle>
                 <div className="flex items-center justify-center gap-2">

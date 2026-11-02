@@ -69,6 +69,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
   const successGreen = "#15803d"; 
 
   const bizName = workspace?.name || 'MATESH TECHNOLOGIES LIMITED';
+  const prefix = workspace?.receiptPrefix || 'RCT';
   
   const dynamicFontClass = useMemo(() => {
     const len = bizName.length;
@@ -105,7 +106,8 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
   return (
     <div className="flex flex-col items-center gap-0 bg-slate-200 p-0 no-scrollbar">
       {pages.map((pageItems, pageIdx) => (
-        <div key={pageIdx} className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden">
+        <div key={pageIdx} className="a4-pdf-page p-[10mm] font-sans text-black bg-white w-[210mm] h-[297mm] flex flex-col box-border shadow-2xl relative overflow-hidden"
+        >
           {pageIdx === 0 ? (
             <header className="flex justify-between items-start mb-6 pb-6 border-b">
                 <div className="flex items-center gap-6 flex-1 overflow-hidden">
@@ -116,21 +118,21 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                   )}
                   <div className="flex-1 overflow-hidden">
                     <h1 className={cn("font-black uppercase tracking-tighter leading-[0.9] text-black whitespace-nowrap", dynamicFontClass)} style={{ color: primaryBlue }}>{bizName}</h1>
-                    <p className="font-black text-[11px] mt-1 uppercase tracking-widest text-black" style={{ color: successGreen }}>Official Payment Receipt</p>
+                    <p className="font-black text-[11px] mt-1 uppercase tracking-widest text-black" style={{ color: successGreen }}>Official Payment {prefix}</p>
                   </div>
                 </div>
                 <div className="text-right ml-4 space-y-1 shrink-0">
                     <p className="text-[10px] font-bold leading-tight uppercase text-black">{workspace?.address || 'Nairobi, Kenya'}</p>
                     <p className="text-[10px] font-bold text-black">Tel: {workspace?.phone || 'N/A'}</p>
                     <div className="pt-2">
-                        <p className="text-[12px] font-black uppercase" style={{ color: primaryBlue }}>RECEIPT NO: #{receiptNo}</p>
+                        <p className="text-[12px] font-black uppercase" style={{ color: primaryBlue }}>{prefix} NO: #{receiptNo}</p>
                         <p className="text-[10px] font-bold text-black opacity-50 uppercase">Date: {format(new Date(docSnapshot.generatedDate), "dd MMM yyyy")}</p>
                     </div>
                 </div>
             </header>
           ) : (
             <div className="mb-6 border-b pb-4 flex justify-between items-end">
-                <p className="text-[12px] font-black uppercase opacity-40 tracking-widest text-black">Receipt Continued: #{receiptNo}</p>
+                <p className="text-[12px] font-black uppercase opacity-40 tracking-widest text-black">{prefix} Continued: #{receiptNo}</p>
                 <p className="text-[11px] font-black text-black">Page {pageIdx + 1}</p>
             </div>
           )}
@@ -225,7 +227,7 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                     <div className="flex justify-between items-start gap-12">
                         <div className="flex-1 space-y-4">
                             <div className="p-4 bg-slate-50 border rounded-xl">
-                                <p className="text-[9px] font-black uppercase text-blue-900/40 tracking-widest mb-1.5">Receipt Terms</p>
+                                <p className="text-[9px] font-black uppercase text-blue-900/40 tracking-widest mb-1.5">{prefix} Terms</p>
                                 <p className="font-bold text-[10px] leading-relaxed italic text-black">
                                     This receipt confirms payment received for the transaction stated above. Please retain it as proof of payment.
                                 </p>

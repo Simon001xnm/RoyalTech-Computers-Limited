@@ -356,6 +356,10 @@ export function DocumentsClient() {
             paybillAccount: workspaceProfile.paybillAccount || '',
             tillNumber: workspaceProfile.tillNumber || '',
             mobileMoneyPhone: workspaceProfile.mobileMoneyPhone || '',
+            invoicePrefix: workspaceProfile.invoicePrefix || 'INV',
+            receiptPrefix: workspaceProfile.receiptPrefix || 'RCT',
+            quotePrefix: workspaceProfile.quotePrefix || 'QTN',
+            deliveryPrefix: workspaceProfile.deliveryPrefix || 'DLV',
         } : null
     };
 
