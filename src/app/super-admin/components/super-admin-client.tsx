@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -111,10 +110,11 @@ export function SuperAdminClient() {
     try {
         await updateDoc(doc(firestore, 'companies', id), {
             status: 'active',
+            // Still on 'free' plan until payment is verified
             plan: 'free',
             updatedAt: new Date().toISOString()
         });
-        toast({ title: "Node Installed & Approved", description: `${name} can now access their trial.` });
+        toast({ title: "Node Approved for Trial", description: `${name} can now access the system.` });
     } catch (e) { toast({ variant: 'destructive', title: "Approval Failed" }); }
   };
 
@@ -122,10 +122,11 @@ export function SuperAdminClient() {
     try {
         await updateDoc(doc(firestore, 'companies', id), {
             status: 'active',
+            // ONLY moving away from 'free' plan removes the navbar timer and payment buttons
             plan: 'basic',
             updatedAt: new Date().toISOString()
         });
-        toast({ title: "Payment Verified", description: `${name} has been upgraded to Standard Node.` });
+        toast({ title: "Payment Verified", description: `${name} marked as PAID. Node upgraded to Standard.` });
     } catch (e) { toast({ variant: 'destructive', title: "Verification Failed" }); }
   };
 
@@ -217,10 +218,10 @@ export function SuperAdminClient() {
                                         <div className="h-10 w-10 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500"><DollarSign className="h-5 w-5" /></div>
                                         <div>
                                             <p className="text-xs font-black uppercase text-white">{node.name}</p>
-                                            <Badge variant="outline" className="text-[7px] font-black border-green-500/20 text-green-500/60 uppercase">Claimed Settlement: KES 40,000</Badge>
+                                            <Badge variant="outline" className="text-[7px] font-black border-green-500/20 text-green-500/60 uppercase">Settlement Review Required</Badge>
                                         </div>
                                     </div>
-                                    <Button className="h-8 px-4 text-[9px] font-black uppercase tracking-widest bg-green-600 hover:bg-green-700" onClick={() => handleVerifyPayment(node.id, node.name)}>Verify & Activate</Button>
+                                    <Button className="h-8 px-4 text-[9px] font-black uppercase tracking-widest bg-green-600 hover:bg-green-700" onClick={() => handleVerifyPayment(node.id, node.name)}>Mark as Paid</Button>
                                 </div>
                             ))}
                             {pendingPayments.length === 0 && <div className="p-20 text-center opacity-10 font-black uppercase text-[10px] tracking-widest">No pending verifications</div>}

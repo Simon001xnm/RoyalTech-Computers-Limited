@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
@@ -34,13 +33,14 @@ const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/l
 
 /**
  * Real-time Trial Status for Header
+ * Persistent until plan is upgraded from 'free'.
  */
 function TrialStatus({ company }: { company: Company | null | undefined }) {
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
     const trialDaysLeft = useMemo(() => {
-        if (!company || company.plan !== 'free' || company.status === 'awaiting_payment_verification') return null;
-        const createdDate = parseISO(company.createdAt);
+        if (!company || company.plan !== 'free') return null;
+        const createdDate = company.createdAt ? parseISO(company.createdAt) : new Date();
         const daysPassed = differenceInDays(new Date(), createdDate);
         return Math.max(0, PRICING.TRIAL_DAYS - daysPassed);
     }, [company]);
@@ -48,6 +48,7 @@ function TrialStatus({ company }: { company: Company | null | undefined }) {
     if (trialDaysLeft === null) return null;
 
     const isUrgent = trialDaysLeft <= 2;
+    const isAwaitingVerification = company?.status === 'awaiting_payment_verification';
 
     return (
         <>
@@ -65,10 +66,13 @@ function TrialStatus({ company }: { company: Company | null | undefined }) {
                 <Button 
                     size="sm" 
                     onClick={() => setIsPaymentOpen(true)}
-                    className="h-8 px-4 font-black uppercase text-[9px] tracking-widest shadow-lg bg-green-600 hover:bg-green-700 text-white border-none rounded-xl"
+                    className={cn(
+                        "h-8 px-4 font-black uppercase text-[9px] tracking-widest shadow-lg border-none rounded-xl",
+                        isAwaitingVerification ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"
+                    )}
                 >
                     <CreditCard className="h-3 w-3 mr-1.5" />
-                    Pay Now
+                    {isAwaitingVerification ? 'Pending Verify' : 'Pay Now'}
                 </Button>
             </div>
 
@@ -302,16 +306,18 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
     };
 
     // SUBSCRIPTION WALL LOGIC
+    // Persistent until plan is upgraded from 'free'.
     const isTrialExpired = useMemo(() => {
-        if (!company || isSuperAdmin || company.plan !== 'free' || company.status === 'awaiting_payment_verification') return false;
-        const createdDate = parseISO(company.createdAt);
+        if (!company || isSuperAdmin || company.plan !== 'free') return false;
+        // Even if awaiting verification, if trial is expired, the wall stays until admin marks as paid (upgrades plan)
+        const createdDate = company.createdAt ? parseISO(company.createdAt) : new Date();
         const daysActive = differenceInDays(new Date(), createdDate);
         return daysActive >= PRICING.TRIAL_DAYS;
     }, [company, isSuperAdmin]);
 
     const isTrialing = useMemo(() => {
-        if (!company || isSuperAdmin || company.plan !== 'free' || company.status === 'awaiting_payment_verification') return false;
-        const createdDate = parseISO(company.createdAt);
+        if (!company || isSuperAdmin || company.plan !== 'free') return false;
+        const createdDate = company.createdAt ? parseISO(company.createdAt) : new Date();
         const daysActive = differenceInDays(new Date(), createdDate);
         return daysActive < PRICING.TRIAL_DAYS;
     }, [company, isSuperAdmin]);
