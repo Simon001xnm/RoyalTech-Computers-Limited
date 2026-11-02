@@ -42,14 +42,11 @@ export interface NavItem {
 
 /**
  * SIMPLE NAVIGATION
- * Added Solutions Ecosystem for cross-sell discoverability.
+ * Removed Ecosystem Hub from internal navigation.
  */
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', href: '/', label: 'Main Dashboard', icon: LayoutDashboard },
   
-  // SOLUTIONS ECOSYSTEM
-  { id: 'solutions', href: '/solutions', label: 'Ecosystem Hub', icon: Zap },
-
   // SALES
   { id: 'pos', href: '/pos', label: 'Sell Items', icon: ShoppingCart },
   { id: 'documents', href: '/documents', label: 'Paperwork', icon: FileText },
