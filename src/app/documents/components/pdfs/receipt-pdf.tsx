@@ -117,8 +117,8 @@ export function ReceiptPdf({ document: docSnapshot }: { document: AppDocument })
                       <div className="h-24 w-24 bg-gray-50 flex items-center justify-center text-[12px] font-black border-2 border-dashed border-gray-200 text-gray-300 shrink-0">LOGO</div>
                   )}
                   <div className="flex-1 overflow-hidden">
-                    <h1 className={cn("font-black uppercase tracking-tighter leading-[0.9] text-black whitespace-nowrap", dynamicFontClass)} style={{ color: primaryBlue }}>{bizName}</h1>
-                    <p className="font-black text-[11px] mt-1 uppercase tracking-widest text-black" style={{ color: successGreen }}>Official Payment {prefix}</p>
+                    <h1 className={cn("font-black uppercase tracking-tighter leading-tight text-black whitespace-nowrap", dynamicFontClass)} style={{ color: primaryBlue }}>{bizName}</h1>
+                    <p className="font-black text-[11px] mt-1.5 uppercase tracking-widest text-black leading-normal pb-1" style={{ color: successGreen }}>OFFICIAL PAYMENT {prefix}</p>
                   </div>
                 </div>
                 <div className="text-right ml-4 space-y-1 shrink-0">
