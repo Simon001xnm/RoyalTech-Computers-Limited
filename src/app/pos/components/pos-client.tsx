@@ -196,7 +196,7 @@ export function PosClient() {
         const docTitle = `${effectiveDocType} #${String(seq).padStart(3, '0')}`;
         const baseData = { tenantId: tenant.id, date: timestamp, customerId: selectedCustomer.id, customerName: selectedCustomer.name, invoiceNumber: docTitle, items: cart.map(item => ({...item, type: 'asset'})), subtotal, vatAmount, discount, total, amountPaid, balance: remainingBalance, previousBalance: customerBalance, payments, applyVat, status: saleStatus, paymentMethod: payments.length > 1 ? 'Split' : (payments[0]?.method || 'Cash'), createdAt: timestamp, createdBy: { uid: user.uid, name: user.displayName || 'User' } };
         const docRef = doc(collection(firestore, 'documents'));
-        batch.set(docRef, { tenantId: tenant.id, type: effectiveDocType, title: docTitle, generatedDate: timestamp, relatedTo: selectedCustomer.name, data: { ...baseData, customer: selectedCustomer, workspace: workspaceProfile ? { name: workspaceProfile.name || '', address: workspaceProfile.address || '', phone: workspaceProfile.phone || '', email: workspaceProfile.email || '', website: workspaceProfile.website || '', logoUrl: workspaceProfile.logoUrl || null, taxPin: workspaceProfile.taxPin || null } : null }, createdAt: timestamp, createdBy: { uid: user.uid, name: user.displayName || 'User' } });
+        batch.set(docRef, documentData);
         if (actionType === 'Receipt' || actionType === 'Invoice') {
             const saleRef = doc(collection(firestore, 'sales_transactions'));
             batch.set(saleRef, { ...baseData, documentId: docRef.id });
@@ -269,10 +269,10 @@ export function PosClient() {
                     <div className="border-t">
                         <div className="min-h-[200px] overflow-x-auto no-scrollbar">
                             <Table>
-                                <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[11px] font-bold whitespace-nowrap px-4 py-4">Item</TableHead><TableHead className="w-12 text-center text-[11px] font-bold px-1 py-4">Qty</TableHead><TableHead className="w-20 text-right text-[11px] font-bold px-1 py-4">Rate</TableHead><TableHead className="w-24 text-right text-[11px] font-bold px-4 py-4">Total</TableHead><TableHead className="w-8 py-4"></TableHead></TableRow></TableHeader>
+                                <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-[11px] font-bold whitespace-nowrap px-4 py-4">Item</TableHead><TableHead className="w-28 text-center text-[11px] font-bold px-1 py-4">Qty</TableHead><TableHead className="w-20 text-right text-[11px] font-bold px-1 py-4">Rate</TableHead><TableHead className="w-24 text-right text-[11px] font-bold px-4 py-4">Total</TableHead><TableHead className="w-8 py-4"></TableHead></TableRow></TableHeader>
                                 <TableBody>
                                     {cart.map((item) => (
-                                        <TableRow key={item.id} className="border-b h-12 hover:bg-muted/5 transition-colors"><TableCell className="px-4"><p className="font-semibold text-xs truncate max-w-[120px] sm:max-w-none">{item.name}</p></TableCell><TableCell className="text-center font-semibold text-xs px-1">{item.quantity}</TableCell><TableCell className="text-right font-semibold text-xs px-1">{item.sellingPrice.toLocaleString()}</TableCell><TableCell className="text-right font-bold text-xs text-primary px-4">{(item.total).toLocaleString()}</TableCell><TableCell className="text-right pr-3"><button onClick={() => setCart(cart.filter(i => i.id !== item.id))} className="text-destructive/30 hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button></TableCell></TableRow>
+                                        <TableRow key={item.id} className="border-b h-12 hover:bg-muted/5 transition-colors"><TableCell className="px-4"><p className="font-semibold text-xs truncate max-w-[120px] sm:max-w-none">{item.name}</p></TableCell><TableCell className="text-center font-bold text-xs px-1">{item.quantity}</TableCell><TableCell className="text-right font-semibold text-xs px-1">{item.sellingPrice.toLocaleString()}</TableCell><TableCell className="text-right font-bold text-xs text-primary px-4">{(item.total).toLocaleString()}</TableCell><TableCell className="text-right pr-3"><button onClick={() => setCart(cart.filter(i => i.id !== item.id))} className="text-destructive/30 hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button></TableCell></TableRow>
                                     ))}
                                     {cart.length === 0 && <TableRow><TableCell colSpan={5} className="h-40 text-center opacity-20"><ShoppingCart className="h-10 w-10 mx-auto mb-3" /><p className="text-sm font-semibold">Shopping basket is empty</p></TableCell></TableRow>}
                                 </TableBody>
@@ -314,8 +314,8 @@ export function PosClient() {
             <DialogHeader><DialogTitle className="text-lg font-bold truncate">{selectedProduct?.model}</DialogTitle></DialogHeader>
             <div className="space-y-6 pt-4">
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label className="text-xs font-semibold text-muted-foreground">Quantity</Label><Input type="number" value={selectionQty} onChange={e => setSelectionQty(e.target.value)} className="h-16 text-2xl font-black rounded-2xl" /></div>
-                    <div className="space-y-2"><Label className="text-xs font-semibold text-primary">Unit Price</Label><Input type="number" value={selectionPrice} onChange={e => setSelectionPrice(e.target.value)} className="h-16 text-2xl font-black border-2 border-primary/20 rounded-2xl" /></div>
+                    <div className="space-y-2"><Label className="text-xs font-semibold text-muted-foreground">Quantity</Label><Input type="number" value={selectionQty} onChange={e => setSelectionQty(e.target.value)} className="h-16 text-2xl font-black rounded-2xl w-full" /></div>
+                    <div className="space-y-2"><Label className="text-xs font-semibold text-primary">Unit Price</Label><Input type="number" value={selectionPrice} onChange={e => setSelectionPrice(e.target.value)} className="h-16 text-2xl font-black border-2 border-primary/20 rounded-2xl w-full" /></div>
                 </div>
                 <Button className="w-full h-14 font-bold text-base shadow-xl rounded-2xl active:scale-95 transition-all" onClick={handleAddToCart}>Add to Basket</Button>
             </div>

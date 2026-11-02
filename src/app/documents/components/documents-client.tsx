@@ -790,8 +790,8 @@ export function DocumentsClient() {
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead className="text-[9px] font-black uppercase px-2 py-3">Description</TableHead>
-                                <TableHead className="w-12 text-[9px] font-black uppercase px-1 py-3 text-center">Qty</TableHead>
-                                <TableHead className="w-20 text-[9px] font-black uppercase px-1 py-3 text-right">Price</TableHead>
+                                <TableHead className="w-28 text-[9px] font-black uppercase px-1 py-3 text-center">Qty</TableHead>
+                                <TableHead className="w-24 text-[9px] font-black uppercase px-1 py-3 text-right">Price</TableHead>
                                 <TableHead className="w-8 px-1 py-3"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -799,7 +799,7 @@ export function DocumentsClient() {
                             {lineItems.map((item, index) => (
                                 <TableRow key={index} className="border-b last:border-0">
                                     <TableCell className="p-1 px-2"><Input className="h-11 border-none bg-transparent text-[11px] sm:text-sm p-0 font-medium" placeholder="Item..." value={item.description ?? ''} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
-                                    <TableCell className="p-1"><Input type="number" className="h-11 border-none bg-transparent text-[11px] sm:text-sm p-0 text-center" value={item.quantity ?? ''} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
+                                    <TableCell className="p-1"><Input type="number" className="h-11 border-none bg-transparent text-[11px] sm:text-sm px-4 text-center font-bold" value={item.quantity ?? ''} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
                                     <TableCell className="p-1"><Input type="number" className="h-11 border-none bg-transparent text-[11px] sm:text-sm p-0 text-right font-bold" value={item.unitPrice ?? ''} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
                                     <TableCell className="p-1 text-center"><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter((_, i) => i !== index))} disabled={lineItems.length === 1} className="h-7 w-7 opacity-30 hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></TableCell>
                                 </TableRow>
