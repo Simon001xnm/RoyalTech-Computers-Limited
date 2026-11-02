@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -19,12 +20,19 @@ import {
     Wine,
     Monitor,
     Calculator,
-    Users
+    Users,
+    HardDrive,
+    GraduationCap,
+    Clock,
+    Wrench,
+    BookOpen,
+    Rocket
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import placeholderImages from '@/app/lib/placeholder-images.json';
+import { PRICING } from '@/lib/constants';
 
 export function LandingPage() {
   const animations = {
@@ -38,11 +46,11 @@ export function LandingPage() {
 
   const floatingGlass = "bg-white/70 dark:bg-black/70 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl rounded-[2.5rem]";
 
-  const testimonials = [
-    { name: "Mary Wanjiku", loc: "Nairobi, Kenya", text: "Great service, great product. Simon is the man! If you need a reliable business system in Nairobi, reach out to them. You will be glad you did." },
-    { name: "Loice Wambui", loc: "Nakuru, Kenya", text: "The best customer service in the industry. Simon and his team are amazing, patient, and available at all hours. Perfect for our retail shop." },
-    { name: "Michael Otieno", loc: "Mombasa, Kenya", text: "Been using Shop Manager for years. Reliable for our bar system and the local Mombasa support team is always willing to troubleshoot." },
-    { name: "Samuel Kamau", loc: "Nairobi, Kenya", text: "Simon (the owner) will call and take care of issues even on weekends. Top tier support that actually understands the Kenyan business environment." }
+  const installationSteps = [
+    { title: 'System Audit', desc: 'We analyze your current shop workflows and hardware compatibility.', icon: Search },
+    { title: 'Cloud Deployment', desc: 'Our engineering team initializes your secure business storage and node.', icon: HardDrive },
+    { title: 'On-site Training', desc: 'We provide hands-on training for your staff on POS and inventory.', icon: BookOpen },
+    { title: 'Live Handover', desc: 'Your shop goes live with 24/7 priority support active.', icon: Rocket }
   ];
 
   return (
@@ -103,6 +111,103 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* PRICING SECTION */}
+      <section id="pricing" className="px-6 py-12">
+        <div className="max-w-7xl mx-auto space-y-16">
+            <motion.div className="text-center space-y-4" {...animations.fadeIn}>
+                <Badge variant="outline" className="font-bold uppercase text-[10px] tracking-widest px-4 h-7 border-primary/20 bg-white/50 text-primary">Simple Pricing</Badge>
+                <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-shadow-md">Invest in Your Growth</h2>
+                <p className="text-muted-foreground font-medium max-w-2xl mx-auto opacity-80">No complex monthly fees. A simple, transparent investment for a lifetime of stable operations.</p>
+            </motion.div>
+
+            <div className="flex justify-center">
+                <motion.div 
+                    className={cn(floatingGlass, "w-full max-w-lg p-10 sm:p-16 border-t-8 border-t-[#eab308] relative")}
+                    initial={{ opacity: 0, y: 50 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                >
+                    <div className="absolute -top-5 right-10 bg-[#eab308] text-black font-black text-[10px] px-6 py-2 rounded-full shadow-xl uppercase tracking-[0.2em]">
+                        7-Day Free Trial Included
+                    </div>
+                    
+                    <div className="space-y-8">
+                        <div className="space-y-4">
+                            <h3 className="text-2xl font-black uppercase tracking-tighter">Enterprise Hub</h3>
+                            <p className="text-sm text-muted-foreground font-medium opacity-80">Complete management suite for professional retailers.</p>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="flex items-end gap-2">
+                                <span className="text-5xl font-black tracking-tighter">KES {PRICING.ONE_TIME_SETUP.toLocaleString()}</span>
+                                <span className="text-xs font-bold uppercase opacity-40 mb-2">/ One-time Setup</span>
+                            </div>
+                            <div className="flex items-end gap-2">
+                                <span className="text-3xl font-black tracking-tighter">KES {PRICING.ANNUAL_SUBSCRIPTION.toLocaleString()}</span>
+                                <span className="text-xs font-bold uppercase opacity-40 mb-1.5">/ Annual License</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4 pt-6">
+                            {[
+                                'Real-time Inventory & Low Stock Alerts',
+                                'Professional A4 & Thermal Receipts',
+                                'M-Pesa STK Push Integration',
+                                'KRA Compliant Financial Reports',
+                                'Staff Role & Permission Management',
+                                '24/7 Priority Engineer Support'
+                            ].map(feature => (
+                                <div key={feature} className="flex items-center gap-3">
+                                    <div className="bg-green-500/10 p-1 rounded-full"><CheckCircle2 className="h-4 w-4 text-green-600" /></div>
+                                    <span className="text-[11px] font-bold uppercase tracking-tight opacity-70">{feature}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="pt-8">
+                            <Button asChild className="w-full h-16 text-sm font-black uppercase tracking-widest bg-[#eab308] text-black hover:bg-[#d9a307] rounded-3xl shadow-2xl">
+                                <Link href="/signup">Start Free Trial Now</Link>
+                            </Button>
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
+        </div>
+      </section>
+
+      {/* INSTALLATION STEPS */}
+      <section id="installation" className="px-6 py-12">
+        <div className="max-w-7xl mx-auto space-y-16">
+            <motion.div className="text-center space-y-4" {...animations.fadeIn}>
+                <Badge className="bg-primary text-white font-bold text-[9px] px-4 h-7 tracking-widest uppercase">The Process</Badge>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-shadow-md">How We Install Your System</h2>
+                <p className="text-muted-foreground font-medium max-w-2xl mx-auto opacity-80">Our engineering team handles everything from deployment to staff training.</p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {installationSteps.map((step, i) => (
+                    <motion.div 
+                        key={i}
+                        className={cn(floatingGlass, "p-8 space-y-6 relative overflow-hidden group")}
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.1 }}
+                    >
+                        <div className="absolute -right-4 -top-4 text-8xl font-black text-primary/5 select-none">{i + 1}</div>
+                        <div className="bg-primary/5 p-4 rounded-2xl w-fit shadow-inner group-hover:bg-primary group-hover:text-white transition-all">
+                            <step.icon className="h-6 w-6" />
+                        </div>
+                        <div className="space-y-2 relative z-10">
+                            <h3 className="text-xl font-bold uppercase tracking-tight">{step.title}</h3>
+                            <p className="text-sm text-muted-foreground leading-relaxed font-medium opacity-80">{step.desc}</p>
+                        </div>
+                    </motion.div>
+                ))}
+            </div>
+        </div>
+      </section>
+
       {/* INDUSTRIES GRID */}
       <section id="industries" className="px-6 py-12">
         <div className="max-w-7xl mx-auto space-y-16">
@@ -132,64 +237,6 @@ export function LandingPage() {
                         <div className="space-y-2">
                             <h3 className="text-xl font-bold tracking-tight text-shadow-sm">{item.title}</h3>
                             <p className="text-sm text-muted-foreground leading-relaxed font-medium opacity-80">{item.desc}</p>
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
-        </div>
-      </section>
-
-      {/* STRATEGIC REVIEW SECTION */}
-      <section className="px-6 py-12">
-        <motion.div 
-            className={cn(floatingGlass, "max-w-7xl mx-auto overflow-hidden shadow-2xl")}
-            {...animations.fadeIn}
-        >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 items-stretch">
-                <div className="p-10 sm:p-20 space-y-8">
-                    <Badge className="bg-[#eab308] text-black font-bold text-[10px] px-4 h-7 tracking-widest uppercase shadow-md">Nairobi Business Audit</Badge>
-                    <h2 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight text-shadow-md">Identify leaks before making a change.</h2>
-                    <p className="text-base text-muted-foreground font-medium leading-relaxed opacity-80 text-shadow-sm">
-                        Many Kenyan businesses lose up to 15% of revenue to untracked inventory. We analyze your current processes and merchant statements to identify gaps before you upgrade your system.
-                    </p>
-                    <Button variant="outline" className="h-12 border-2 border-[#eab308] text-foreground font-bold rounded-xl gap-2 bg-[#eab308]/10 hover:bg-[#eab308] transition-all shadow-xl">
-                        Get a Free Business Review <ArrowRight className="h-4 w-4" />
-                    </Button>
-                </div>
-                <div className="relative min-h-[300px] lg:min-h-full shadow-inner">
-                    <img 
-                      src={placeholderImages.branding.review_section.url} 
-                      alt="Business Analytics for Kenyan Companies" 
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/80 via-transparent to-transparent dark:from-black/80" />
-                </div>
-            </div>
-        </motion.div>
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section className="px-6 py-12">
-        <div className="max-w-7xl mx-auto space-y-16">
-            <motion.div className="text-center space-y-4" {...animations.fadeIn}>
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-shadow-md">Trusted by Nairobi and Mombasa Business Owners</h2>
-                <p className="text-sm text-muted-foreground font-bold tracking-widest uppercase opacity-70">Verified Success Stories</p>
-            </motion.div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {testimonials.map((t, i) => (
-                    <motion.div 
-                        key={i} 
-                        className={cn(floatingGlass, "p-8 space-y-6 hover:shadow-2xl hover:scale-[1.02] transition-all relative overflow-hidden group shadow-2xl")}
-                        whileHover={{ y: -10 }}
-                    >
-                        <div className="flex gap-1">
-                            {[1,2,3,4,5].map(s => <Star key={s} className="h-3 w-3 fill-[#eab308] text-[#eab308]" />)}
-                        </div>
-                        <p className="text-sm font-medium leading-relaxed italic text-foreground opacity-100">&ldquo;{t.text}&rdquo;</p>
-                        <div className="pt-4 border-t border-black/10 dark:border-white/10">
-                            <p className="text-sm font-bold text-shadow-sm">{t.name}</p>
-                            <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest">{t.loc}</p>
                         </div>
                     </motion.div>
                 ))}

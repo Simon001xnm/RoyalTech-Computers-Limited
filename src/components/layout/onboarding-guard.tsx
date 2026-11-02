@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -24,8 +25,6 @@ const PUBLIC_PREFIXES = ['/solutions', '/resources', '/support', '/company', '/l
 
 /**
  * @fileOverview SaaS Protection Guard
- * Ensures that new users are forced into a clean shop creation flow.
- * Implements "No Autofill" protection to ensure shop names are never leaked between tenants.
  */
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -41,7 +40,6 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
 
-  // STRICT PROTECTION: FormData initialized to clean empty strings to prevent global autofill leakage
   const [formData, setFormData] = useState({
     name: '',
     businessType: 'retail',
@@ -92,8 +90,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
         id: companyId,
         tenantId: companyId,
         ...formData,
-        status: 'active',
-        plan: 'legacy_pro',
+        status: 'pending', // INITIAL STATUS: Must be approved by Super Admin
+        plan: 'free', 
         createdAt: new Date().toISOString(),
         createdBy: { uid: user.uid, name: user.displayName || 'Owner' }
       };
@@ -108,8 +106,8 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
       });
 
       localStorage.setItem('rcl_last_tenant_id', companyId);
-      logger.business('Identity', 'Shop Setup Done', { companyName: formData.name, companyId });
-      toast({ title: 'Shop Ready!' });
+      logger.business('Identity', 'Shop Setup Initiated', { companyName: formData.name, companyId });
+      toast({ title: 'Application Submitted!', description: 'Awaiting engineer installation approval.' });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Setup Error' });
     } finally {
@@ -157,7 +155,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                     </div>
                     <h2 className="text-3xl font-black tracking-tighter uppercase leading-none mb-4">Start your shop</h2>
                     <p className="text-primary-foreground/70 text-sm font-medium leading-relaxed">
-                        Enter your shop details to get started.
+                        Enter your shop details to begin the installation protocol.
                     </p>
                 </div>
                 <div className="relative z-10 space-y-6">
@@ -265,7 +263,7 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
                                         <Loader2 className="h-6 w-6 animate-spin" />
                                         Synchronizing...
                                     </div>
-                                ) : 'Initialize System'}
+                                ) : 'Initialize Installation'}
                             </Button>
                         </div>
                     </form>

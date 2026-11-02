@@ -12,12 +12,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ShieldAlert, Zap, Loader2, Smartphone, CreditCard, CheckCircle2, Lock } from 'lucide-react';
+import { ShieldAlert, Zap, Loader2, Smartphone, CreditCard, CheckCircle2, Lock, ExternalLink } from 'lucide-react';
 import { PRICING } from '@/lib/constants';
 import { initiateStkPush } from '@/app/pos/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useFirestore, useSaaS } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 interface SubscriptionPaymentModalProps {
   open: boolean;
@@ -27,13 +29,14 @@ interface SubscriptionPaymentModalProps {
 
 /**
  * @fileOverview Mandatory Subscription Payment Gateway
- * Displays the KES 25,000 + 15,000 requirement.
  */
 export function SubscriptionPaymentModal({ open, onClose, shopName }: SubscriptionPaymentModalProps) {
   const [method, setMethod] = useState<'mpesa' | 'paypal'>('mpesa');
   const [phone, setPhone] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const { tenant } = useSaaS();
+  const firestore = useFirestore();
 
   const totalPayable = PRICING.ONE_TIME_SETUP + PRICING.ANNUAL_SUBSCRIPTION;
 
@@ -47,6 +50,13 @@ export function SubscriptionPaymentModal({ open, onClose, shopName }: Subscripti
         const res = await initiateStkPush(phone, totalPayable);
         if (res.success) {
             toast({ title: "Payment Initiated", description: "Please check your phone to enter M-Pesa PIN." });
+            // Set status to awaiting verification after STK push attempt
+            if (tenant?.id) {
+                await updateDoc(doc(firestore, 'companies', tenant.id), {
+                    status: 'awaiting_payment_verification',
+                    updatedAt: new Date().toISOString()
+                });
+            }
         } else {
             toast({ variant: 'destructive', title: "M-Pesa Failed", description: res.error });
         }
@@ -55,12 +65,19 @@ export function SubscriptionPaymentModal({ open, onClose, shopName }: Subscripti
     }
   };
 
-  const handlePaypalPay = () => {
+  const handlePaypalPay = async () => {
     window.open(PRICING.PAYPAL_LINK, '_blank');
+    if (tenant?.id) {
+        await updateDoc(doc(firestore, 'companies', tenant.id), {
+            status: 'awaiting_payment_verification',
+            updatedAt: new Date().toISOString()
+        });
+        toast({ title: "PayPal Gateway Opened", description: "Awaiting confirmation from admin." });
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) return; /* Prevent closing if trial expired */ }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) return; }}>
       <DialogContent className="sm:max-w-xl p-0 overflow-hidden border-none shadow-2xl rounded-[2rem] no-print">
         <div className="bg-destructive/10 p-8 text-center border-b border-destructive/20 relative overflow-hidden">
              <div className="absolute top-0 right-0 opacity-5 -mr-10 -mt-10">
@@ -148,7 +165,7 @@ export function SubscriptionPaymentModal({ open, onClose, shopName }: Subscripti
                                 <p className="text-xs font-bold text-blue-900">Secure international checkout. Pay via PayPal balance or Debit/Credit card.</p>
                             </div>
                             <Button onClick={handlePaypalPay} className="w-full h-16 text-lg font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl">
-                                <CreditCard className="mr-2 h-6 w-6" />
+                                <ExternalLink className="mr-2 h-6 w-6" />
                                 Proceed to PayPal
                             </Button>
                         </div>

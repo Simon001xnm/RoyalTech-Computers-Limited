@@ -10,7 +10,7 @@ import { APP_NAME, PRICING } from '@/lib/constants';
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap, RefreshCw, Settings, Wifi, WifiOff, Barcode } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, Lock, Building2, Search, Sun, Moon, Clock, Filter, Wallet, Zap, RefreshCw, Settings, Wifi, WifiOff, Barcode, ShieldAlert } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { doc, collection, query, where } from 'firebase/firestore';
 import type { User as AppUser, Company } from '@/types';
@@ -26,6 +26,7 @@ import { Badge } from '../ui/badge';
 import { ModuleTutorial } from './module-tutorial';
 import { useToast } from '@/hooks/use-toast';
 import { SubscriptionPaymentModal } from '@/components/saas/subscription-payment-modal';
+import { SubscriptionReminder } from './subscription-reminder';
 
 const AUTH_PATHS = ['/login', '/signup'];
 const PUBLIC_ROOT_PATHS = ['/', '/login', '/signup'];
@@ -258,6 +259,13 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
         return daysActive >= PRICING.TRIAL_DAYS;
     }, [company, isSuperAdmin]);
 
+    const isTrialing = useMemo(() => {
+        if (!company || isSuperAdmin || company.plan !== 'free') return false;
+        const createdDate = parseISO(company.createdAt);
+        const daysActive = differenceInDays(new Date(), createdDate);
+        return daysActive < PRICING.TRIAL_DAYS;
+    }, [company, isSuperAdmin]);
+
   return (
     <SidebarProvider defaultOpen={false}>
       <Sidebar 
@@ -425,6 +433,8 @@ function AuthenticatedLayout({ children, userProfile }: { children: React.ReactN
           {children}
         </main>
         
+        {isTrialing && <SubscriptionReminder />}
+
         <SubscriptionPaymentModal 
             open={isTrialExpired} 
             onClose={() => {}} 
@@ -447,6 +457,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userProfileRef);
+
+  const companyRef = useMemoFirebase(() => 
+    userProfile?.tenantId ? doc(firestore, 'companies', userProfile.tenantId) : null,
+    [firestore, userProfile?.tenantId]
+  );
+  const { data: company } = useDoc<Company>(companyRef);
 
   useEffect(() => {
     if (!isUserLoading) {
@@ -485,6 +501,27 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
                     </p>
                 </div>
                 <Button onClick={() => window.location.reload()} variant="outline" className="font-bold">Retry Sync</Button>
+            </div>
+        );
+    }
+
+    if (company && company.status === 'pending' && userProfile?.role !== 'super_admin') {
+        return (
+            <div className="flex h-screen w-full flex-col items-center justify-center p-8 text-center space-y-8 bg-background">
+                <div className="bg-primary/5 p-8 rounded-[3rem] shadow-inner border-2 border-dashed relative">
+                    <div className="bg-primary p-4 rounded-3xl w-fit mx-auto mb-6 shadow-xl">
+                        <Clock className="h-10 w-10 text-white animate-pulse" />
+                    </div>
+                    <h1 className="text-3xl font-black uppercase tracking-tighter">Installation Pending</h1>
+                    <p className="text-muted-foreground max-w-sm mx-auto mt-4 font-medium">
+                        Our engineering team is currently setting up your workspace: <span className="text-primary font-black">{company.name}</span>.
+                    </p>
+                    <div className="mt-8 p-4 bg-white rounded-2xl border flex items-center gap-4 text-left">
+                        <ShieldAlert className="h-5 w-5 text-primary" />
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Status: Awaiting Node Verification</p>
+                    </div>
+                </div>
+                <Button onClick={() => window.location.reload()} variant="outline" className="h-12 px-10 font-bold uppercase text-xs tracking-widest rounded-xl">Check Installation Status</Button>
             </div>
         );
     }

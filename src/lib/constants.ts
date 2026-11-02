@@ -50,7 +50,6 @@ export interface NavItem {
 
 /**
  * SIMPLE NAVIGATION
- * Removed Ecosystem Hub from internal navigation.
  */
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', href: '/', label: 'Main Dashboard', icon: LayoutDashboard },
