@@ -28,7 +28,10 @@ import {
     FileText,
     Palette,
     Info,
-    CheckCircle2
+    CheckCircle2,
+    Package,
+    Users,
+    DollarSign
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
