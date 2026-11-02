@@ -423,7 +423,7 @@ function DashboardPage() {
         <DialogContent className="w-[98vw] sm:max-w-md p-4 border-none shadow-2xl rounded-xl">
             <DialogHeader><DialogTitle className="text-sm font-bold">Item Configuration</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><Label className="text-[8px] font-bold uppercase opacity-60">Qty</Label><Input type="number" value={configQty} onChange={e => setConfigQty(e.target.value)} className="h-10 text-sm font-bold" /></div><div className="space-y-1"><Label className="text-[8px] font-bold uppercase opacity-60">Rate</Label><Input type="number" value={configPrice} onChange={e => setConfigPrice(e.target.value)} className="h-10 text-sm font-bold border-primary" /></div></div>
+                <div className="grid grid-cols-2 gap-3"><div className="space-y-1"><Label className="text-[8px] font-bold uppercase opacity-60">Qty</Label><Input type="number" value={configQty} onChange={e => setConfigQty(e.target.value)} className="h-14 text-lg font-black" /></div><div className="space-y-1"><Label className="text-[8px] font-bold uppercase opacity-60">Rate</Label><Input type="number" value={configPrice} onChange={e => setConfigPrice(e.target.value)} className="h-14 text-lg font-black border-primary" /></div></div>
                 <Button className="w-full h-12 font-bold uppercase text-[10px] tracking-widest shadow-xl rounded-xl" onClick={handleAddToCart}>Apply to Basket</Button>
             </div>
         </DialogContent>

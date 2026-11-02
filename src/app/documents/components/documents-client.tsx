@@ -794,9 +794,9 @@ export function DocumentsClient() {
                         <TableBody>
                             {lineItems.map((item, index) => (
                                 <TableRow key={index} className="border-b last:border-0">
-                                    <TableCell className="p-1 px-2"><Input className="h-8 border-none bg-transparent text-[11px] sm:text-sm p-0 font-medium" placeholder="Item..." value={item.description ?? ''} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
-                                    <TableCell className="p-1"><Input type="number" className="h-8 border-none bg-transparent text-[11px] sm:text-sm p-0 text-center" value={item.quantity ?? ''} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
-                                    <TableCell className="p-1"><Input type="number" className="h-8 border-none bg-transparent text-[11px] sm:text-sm p-0 text-right font-bold" value={item.unitPrice ?? ''} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
+                                    <TableCell className="p-1 px-2"><Input className="h-11 border-none bg-transparent text-[11px] sm:text-sm p-0 font-medium" placeholder="Item..." value={item.description ?? ''} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} /></TableCell>
+                                    <TableCell className="p-1"><Input type="number" className="h-11 border-none bg-transparent text-[11px] sm:text-sm p-0 text-center" value={item.quantity ?? ''} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} /></TableCell>
+                                    <TableCell className="p-1"><Input type="number" className="h-11 border-none bg-transparent text-[11px] sm:text-sm p-0 text-right font-bold" value={item.unitPrice ?? ''} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} /></TableCell>
                                     <TableCell className="p-1 text-center"><Button variant="ghost" size="icon" onClick={() => setLineItems(lineItems.filter((_, i) => i !== index))} disabled={lineItems.length === 1} className="h-7 w-7 opacity-30 hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></TableCell>
                                 </TableRow>
                             ))}
