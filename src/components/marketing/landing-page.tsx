@@ -54,7 +54,7 @@ export function LandingPage() {
   ];
 
   return (
-    <div className="space-y-12 sm:space-y-24">
+    <div className="space-y-12 sm:space-y-24 pb-20">
       
       {/* HERO SECTION */}
       <section className="relative px-6 pt-10 sm:pt-20">
@@ -65,28 +65,30 @@ export function LandingPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 1 }}
             >
-                <div className="inline-flex items-center gap-2 bg-[#eab308] text-black px-4 py-2 rounded-full shadow-2xl mx-auto lg:mx-0 ring-4 ring-[#eab308]/20">
-                    <Sparkles className="h-4 w-4 fill-black" />
-                    <span className="text-[11px] font-bold tracking-widest uppercase">The #1 Business System in Kenya</span>
-                </div>
-                <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-tight text-shadow-md">
-                    Business Management <br /> 
-                    <span className="text-[#eab308]">Simplified for Kenya.</span>
-                </h1>
-                
-                <div className="p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl max-w-xl mx-auto lg:mx-0 group hover:bg-white/15 transition-all">
-                    <p className="text-base sm:text-lg text-foreground font-medium leading-relaxed opacity-90 text-shadow-sm">
-                        Stop losing money to stock shrinkage and manual errors. Shop Manager is the premium management system engineered for retailers in Nairobi and beyond, featuring seamless M-Pesa integration and high-speed hardware scanning.
-                    </p>
-                </div>
+                <div className={cn(floatingGlass, "p-8 sm:p-12 space-y-8")}>
+                    <div className="inline-flex items-center gap-2 bg-[#eab308] text-black px-4 py-2 rounded-full shadow-2xl mx-auto lg:mx-0 ring-4 ring-[#eab308]/20">
+                        <Sparkles className="h-4 w-4 fill-black" />
+                        <span className="text-[11px] font-bold tracking-widest uppercase">The #1 Business System in Kenya</span>
+                    </div>
+                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-shadow-md">
+                        Business Management <br /> 
+                        <span className="text-[#eab308]">Simplified for Kenya.</span>
+                    </h1>
+                    
+                    <div className="p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl max-w-xl mx-auto lg:mx-0 group hover:bg-white/15 transition-all">
+                        <p className="text-base sm:text-lg text-foreground font-medium leading-relaxed opacity-90 text-shadow-sm">
+                            Stop losing money to stock shrinkage and manual errors. Shop Manager is the premium management system engineered for retailers in Nairobi and beyond, featuring seamless M-Pesa integration and high-speed hardware scanning.
+                        </p>
+                    </div>
 
-                <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-4">
-                    <Button asChild className="h-14 px-10 font-bold text-base bg-[#eab308] text-black hover:bg-[#d9a307] hover:scale-105 rounded-2xl shadow-2xl transition-all border-none">
-                        <Link href="/signup">Start Free Trial</Link>
-                    </Button>
-                    <Button asChild variant="outline" className="h-14 px-10 font-bold text-base border-2 border-white/30 bg-white/10 backdrop-blur-md rounded-2xl hover:bg-white/20 hover:scale-105 transition-all shadow-xl text-foreground">
-                        <Link href="/support/contact">Request Demo</Link>
-                    </Button>
+                    <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-4">
+                        <Button asChild className="h-14 px-10 font-bold text-base bg-[#eab308] text-black hover:bg-[#d9a307] hover:scale-105 rounded-2xl shadow-2xl transition-all border-none">
+                            <Link href="/signup">Start Free Trial</Link>
+                        </Button>
+                        <Button asChild variant="outline" className="h-14 px-10 font-bold text-base border-2 border-white/30 bg-white/10 backdrop-blur-md rounded-2xl hover:bg-white/20 hover:scale-105 transition-all shadow-xl text-foreground">
+                            <Link href="/support/contact">Request Demo</Link>
+                        </Button>
+                    </div>
                 </div>
             </motion.div>
             
@@ -114,10 +116,12 @@ export function LandingPage() {
       {/* PRICING SECTION */}
       <section id="pricing" className="px-6 py-12">
         <div className="max-w-7xl mx-auto space-y-16">
-            <motion.div className="text-center space-y-4" {...animations.fadeIn}>
-                <Badge variant="outline" className="font-bold uppercase text-[10px] tracking-widest px-4 h-7 border-primary/20 bg-white/50 text-primary">Simple Pricing</Badge>
-                <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-shadow-md">Invest in Your Growth</h2>
-                <p className="text-muted-foreground font-medium max-w-2xl mx-auto opacity-80">No complex monthly fees. A simple, transparent investment for a lifetime of stable operations.</p>
+            <motion.div className="flex justify-center" {...animations.fadeIn}>
+                <div className={cn(floatingGlass, "p-10 text-center space-y-4 max-w-3xl")}>
+                    <Badge variant="outline" className="font-bold uppercase text-[10px] tracking-widest px-4 h-7 border-primary/20 bg-white/50 text-primary">Simple Pricing</Badge>
+                    <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-shadow-md">Invest in Your Growth</h2>
+                    <p className="text-muted-foreground font-medium max-w-2xl mx-auto opacity-80">No complex monthly fees. A simple, transparent investment for a lifetime of stable operations.</p>
+                </div>
             </motion.div>
 
             <div className="flex justify-center">
@@ -178,10 +182,12 @@ export function LandingPage() {
       {/* INSTALLATION STEPS */}
       <section id="installation" className="px-6 py-12">
         <div className="max-w-7xl mx-auto space-y-16">
-            <motion.div className="text-center space-y-4" {...animations.fadeIn}>
-                <Badge className="bg-primary text-white font-bold text-[9px] px-4 h-7 tracking-widest uppercase">The Process</Badge>
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-shadow-md">How We Install Your System</h2>
-                <p className="text-muted-foreground font-medium max-w-2xl mx-auto opacity-80">Our engineering team handles everything from deployment to staff training.</p>
+            <motion.div className="flex justify-center" {...animations.fadeIn}>
+                <div className={cn(floatingGlass, "p-10 text-center space-y-4 max-w-3xl")}>
+                    <Badge className="bg-primary text-white font-bold text-[9px] px-4 h-7 tracking-widest uppercase">The Process</Badge>
+                    <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-shadow-md">How We Install Your System</h2>
+                    <p className="text-muted-foreground font-medium max-w-2xl mx-auto opacity-80">Our engineering team handles everything from deployment to staff training.</p>
+                </div>
             </motion.div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -211,9 +217,11 @@ export function LandingPage() {
       {/* INDUSTRIES GRID */}
       <section id="industries" className="px-6 py-12">
         <div className="max-w-7xl mx-auto space-y-16">
-            <motion.div className="text-center space-y-4" {...animations.fadeIn}>
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-shadow-md">Best Solutions for Every Kenyan Business</h2>
-                <p className="text-muted-foreground font-medium max-w-2xl mx-auto opacity-80 text-shadow-sm">From boutiques in Westlands to restaurants in Mombasa, we tailor the management experience to your specific business model.</p>
+            <motion.div className="flex justify-center" {...animations.fadeIn}>
+                <div className={cn(floatingGlass, "p-10 text-center space-y-4 max-w-3xl")}>
+                    <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-shadow-md">Best Solutions for Every Kenyan Business</h2>
+                    <p className="text-muted-foreground font-medium max-w-2xl mx-auto opacity-80 text-shadow-sm">From boutiques in Westlands to restaurants in Mombasa, we tailor the management experience to your specific business model.</p>
+                </div>
             </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
