@@ -68,7 +68,7 @@ export function LandingPage() {
                 <div className={cn(floatingGlass, "p-8 sm:p-12 space-y-8")}>
                     <div className="inline-flex items-center gap-2 bg-[#eab308] text-black px-4 py-2 rounded-full shadow-2xl mx-auto lg:mx-0 ring-4 ring-[#eab308]/20">
                         <Sparkles className="h-4 w-4 fill-black" />
-                        <span className="text-[11px] font-bold tracking-widest uppercase">The #1 Business System in Kenya</span>
+                        <span className="text-[11px] font-bold tracking-widest uppercase">Business System in Kenya</span>
                     </div>
                     <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-shadow-md">
                         Business Management <br /> 
